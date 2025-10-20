@@ -1,0 +1,297 @@
+An [[https://orgmode.org/][org-mode]] toolkit, including parser, renderer.
+
+* status
+
+STILL IN DEVELOPMENT.
+
+- [X] basic org-mode parser: string -parse-> AST
+- [X] html renderer: AST to html
+- [] site generator
+
+
+
+#+begin_src bash
+  cargo run
+  cargo test
+#+end_src
+
+* Design
+
+org -parser-> syntax tree(red tree) -ast_builder-> ast -html_renderer-> html --orgbook/mdbook --> site
+
+- rowan red/green tree
+- chumsky
+- render
+  - html
+
+#+begin_src rust
+let green_tree = parser.parse(f_org).green();
+let red_tree = parser.parse(f_org).syntax();
+let ast = ast_builder.build(red_tree);
+let html = html_render.render(ast);
+#+end_src
+
+** module
+
+- parser :: parse org-mode doc into GreenTree, the generate RedTree(syntax tree) using rowan's API
+- ast :: build AST from SyntaxTree
+- render :: render html from AST
+
+
+** AST Builder and HTML Renderer (Chinese)
+
+简单说，Document包含Element, Element包含Object：
+- 元素(Element)是较大的结构单元，如标题、段落、列表、表格等
+- 对象(Object)：较小的语法单元，如文本、粗体、斜体、链接、时间戳等
+
+Element可以包含Element或Object(技术上说，Elment是非叶结点)，Object可以包含Object或叶结点(技术上说, Object非严格的叶结点，可以包含其他Object，如Object::Bold可以包含其他Object)。
+
+一个AST的根节点是Document，Document由Section和HeadingSubtree组成, Section由各种Element组成，HeadingSubtree由Section和HeadingSubtree(子树)组成。实现时：
+- Document、Section、HeadingSubtree是结构结点，单独拎出来作为结构体，其他Element由枚举ast::Element建模
+  - builder: conver_element()通过模式匹配，将各种element转为ast::Element  
+  - render: render_element()通过模式匹配，将各种element渲染为html
+- Object由枚举ast::Object建模
+  - builder: convert_object()通过模式匹配，将各种object转为ast::Object
+  - render: render_object()通过模式匹配，将各种object渲染为为html
+
+Render:
+- render_document
+  - render_section
+    - render_element
+      - render_paragraph
+        - render_object
+      - ...
+      - render_drawer
+  - render_heading_subtree
+    - render_section
+    - rending_elment
+
+      
+* Org-mode AST (Chinese)
+
+** Element
+
+elment:=无法被段落包含的组件, 分为两种:
+- greater element: 可以包含element
+  - document 含section和heading, 故是greater element
+  - section 含 element, 故是greater element
+  - heading 含 section和heading, 故是greater element
+- lesser element: 不能包含element
+  - paragraph
+
+** section
+
+
+*** block summary
+greater block:
+
+=Greater blocks= are structured according to the following pattern:
+#+begin_example
+  ,#+begin_NAME PARAMETERS
+  CONTENTS
+  ,#+end_NAME
+#+end_example
+
+center, quote, anyother(special)
+
+lesser block:
+
+Like greater blocks, blocks are structured according to the following pattern:
+#+begin_example
+  ,#+begin_NAME DATA
+  CONTENTS
+  ,#+end_NAME
+#+end_example
+
+comment, example, verse, expnort, src
+
+
+*** list/headline
+
+**** head
+
+递归定义的HeadingSubtree
+
+HeadingSubtree <- HeadingRow Section? HeadingSubtree (此处有递归)
+
+HeadingRow <- Stars Keyword Priority Comment Title Tags
+
+Section <- Elements(Non-heading)+
+
+
+1 Tree
+1.1 Tree
+1.1.1 Tree
+2 Tree
+2.1 Tree
+
+解析：
+(
+  (1 Tree
+     (1.1 Tree
+        (1.1.1 Tree)))
+  (2 Tree
+      (2.1 Tree))
+)
+
+
+**** list
+- plain_list由item组成
+- item中的content结点由零个或多个elment组成
+  - elment可以是含list(注意: list的indent必须>当前item的indent)
+    - - 当前item的indent
+    - 待解析的list的indent
+
+PlainList <- ListItem+
+ListItem  <- Indent ListMarker SPACE ListItemContent EOL
+ListItemContent <- (&indent_more_than Element)? 此处间接有递归
+
+
+list indent/item indent 需要state保存，如何更新?
+indent 是在list内部还是item内部解析?
+
+TUPR：
+- 状态通过函数入参传递，函数调用栈，来存储indent?
+- 通过state全局变量存储
+
+
+footnote, element递归element? footnote: elements*
+
+list中的blankline归属于内部的paragraph了?
+
+
+
+
+blankline的归属如何确认？
+- list
+- paragraph line
+
+
+
+1 Item
+1.1 List
+1.1.1 List
+2 Item
+3 Item
+
+解析为
+(List
+  (1 Item
+    (1.1 List
+       (1.1 Item
+         ())
+    )
+  )
+  (2 Item)
+  ( Item)
+)
+
+
+
+需要一个element解析器
+
+
+
+(1) state存储indent
+- a value
+- a stack: 何时以及如何更新stack?
+  
+
+fun
+
+目标:
+
+list嵌套
+
+parse_indent()
+- 更新indent状态
+  - 仅解析>=当前indent的内容
+  - < 当前indent, emit error    
+- 构造item_indent token node
+
+- 1
+  - 1.1
+    - 1.1.1
+- 2  
+
+
+
+*** section 和 element
+
+section
+
+- block
+- last
+
+
+choice
+
+**** item / list
+
+
+- list由相同缩进的item组成
+- item可以含list
+
+递归定义
+
+
+
+**** table
+
+
+** object
+
+可以被段落包含的组件
+
+
+whitespace是不是object? 如果不是，属于那个object?
+
+
+* parser (Chinese)
+
+在解析阶段，Chumsky等解析器通常采用深度优先的策略来构建语法树（Syntax Tree）。解析器从起始符号开始，递归地展开非终结符，直到匹配到终结符。这种​*递归下降*​的过程自然形成了DFS。
+
+a parser 返回一个ParserResult, 其中核心是一个NodeOrToken,
+- token parser
+- node parser
+
+
+* AST builder
+
+DFS
+
+
+* renderer (Chinese)
+
+通过DFS遍历，生成HTML，如:
+
+#+begin_src html
+<div>
+  <p>Hello</p>
+  <p>World</p>
+</div>  
+#+end_src
+
+在生成上述HTML时：
+1) 会先访问div节点，打开<div>标签，
+2) 然后访问第一个p节点，生成<p>Hello</p>，
+3) 接着访问第二个p节点，生成<p>World</p>，
+4) 最后关闭</div>。
+这正好是​*DFS的前序遍历*​(根节点 -> 子树)。
+
+- render_document
+  - render_section
+    - 遍历section下的各种element, 进一步遍历element下的各种object
+  - render_heading_subtree
+    - render_section
+    - heading_subtree
+
+      
+
+* Reference
+
+- [[https://orgmode.org/worg/org-syntax.html][org-syntax]]
+- [[https://github.com/zesterer/chumsky][chumsky]]
+- [[https://github.com/tfeldmann/organize][orgize]]
+- mdbook
+  
