@@ -1,0 +1,5 @@
+*.html
+todo.org
+target/
+\#*
+*.json

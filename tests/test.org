@@ -1,0 +1,531 @@
+#+title: git
+
+#+date: 20250802[Sat] 18:43:14
+
+Zero-th Section
+
+* Heading without section, but with blank lines
+
+
+
+* Another heading with section
+
+This is a section. It includes everything from "This is" down to "Last
+heading", including the trailing blank lines.
+
+* h1
+
+上面的BlankLine属于HeadingRow.
+
+This is a section of h1
+
+上面的BlankLine属于section.
+
+** h2
+
+asdfadf adf a f
+
+*** h3
+
+the end
+
+
+* indentation
+
+  This paragraph will not contain
+  a long sequence of spaces before "a".
+
+  This paragraph does not have leading spaces according to the parser.
+
+  #+begin_src emacs-lisp
+    (+ 1 2)    
+  #+end_src
+
+  The above source block preserves two leading spaces inside the code
+  after removing the common indentation.
+
+* TODO [#A] COMMENT Title                                           :tag:a2%:
+
+
+
+
+
+*  [#A]  Title  :电影:美术: 
+
+a short line * faked_title
+
+
+
+* title :tagb:taga:
+
+
+
+* footnote test
+
+This is a org [fn:1]. This is not markdown[fn:2]. This is luo [fn:luo]. This is [fn:3]   . I'm bad.
+
+footnote reference: inside text.
+
+footnote definition: no indentation allowed
+
+
+
+
+footnote defintion (Greater Element)
+
+Footnote definitions must occur at the start of an /unindented/ line, and are structured according to the following pattern:
+
+
+#+begin_example
+[fn:LABEL] CONTENTS
+#+end_example
+
+- LABEL :: Either a number or an instance of the pattern WORD, where WORD represents a string consisting of word-constituent characters, hyphens and underscores (-_).
+- CONTENTS (optional) :: A collection of *zero or more elements*. It ends at the next footnote definition, the next heading, two consecutive blank lines, or the end of buffer.
+
+
+footnote reference (object):
+
+Footnote references are structured according to one of the following patterns:
+
+#+begin_src
+[fn:LABEL]
+[fn:LABEL:DEFINITION]
+[fn::DEFINITION]
+#+end_src
+
+- LABEL :: A string containing one or more word constituent characters, hyphens and underscores (-_).
+- DEFINITION (optional) :: One or more objects from the standard set, so long as opening and closing square brackets are balanced within DEFINITION.
+
+If the reference follows the second pattern, it is called an “inline footnote”. If it follows the third pattern, i.e. if LABEL is omitted, it is called an “anonymous footnote”.
+
+Note that the first pattern may not occur on an unindented line, as it is then a footnote definition.
+
+
+* Footnotes
+
+
+
+[fn:1] this is a fot note  asdfaf saf sdfadf.  
+[fn:2] asdf md document.
+[fn:3] this asdf asd f. 
+[fn:luo] ccc  sadf sdf asdf asdf
+
+
+* elements
+
+** paragraph
+
+Paragraphs are the default element, which means that any unrecognized
+context is a paragraph.
+
+Empty lines and other elements end paragraphs.
+
+Paragraphs can contain the standard set of objects.
+
+Drawer:
+:d3:
+a
+:end:
+
+
+block:
+#+begin_SRC python
+  print("hello")
+#+end_src
+
+footnote:
+[fn:2] asdf md document.
+
+comment:
+# this is a comment
+
+
+** lesser element
+
+*** horizontal-rule
+
+-----
+
+*** keyword
+
+#+key: value
+
+*** latex environment
+
+equation with number:
+
+\begin{equation}  
+\begin{split}
+a=b+c
+\end{split}
+\end{equation}
+
+equation without number:
+
+\[
+x = \sum_{i=1}^{n} i
+\]
+
+* comment
+
+# A “comment line” starts with a hash character (#) and either a whitespace character or the immediate end of the line.
+
+# Comments consist of one or more consecutive comment lines.
+
+  # Just a comment
+  #
+  # Over multiple lines
+
+#
+
+  
+#a
+
+
+
+
+
+* [#A] test of preprocess :ta:tb:tc:
+
+** test 1
+
+a /i/ line
+
+a ​*bold*​ line
+
+
+
+
+b _*/underline-bold-italic/*_ line
+c /_*italic-underline-bold*_/ line
+d /*_italic-bold-underline_*/ line
+e ~=*_/inner-most/_*=~ line
+
+
+
+a *bold* line
+
+a ~=*/bold_italic/*=~ line
+
+
+中文​*bold*​测试
+
+
+
+* table test
+
+#+CAPTION: table
+  | Name       | Phone | Age | as  |
+  | /          | <r10> | <l> | <c> |
+  |------------+-------+-----+-----|
+  | Peter Jack |   123 | 2   |  4  |
+  | Anna       | 54321 | 125 | 999 |
+
+* drawer test
+
+:d1:
+ this is the contents of drawer
+ :end:
+
+
+* block test
+
+** Greater Block 
+#+begin_center
+this is contents of a center block
+#+end_center
+
+#+begin_quote a b
+this is contents of a quote block
+#+end_quote
+
+  #+begin_xxx
+  this is contents of a special(xxx) block
+  #+end_xxx
+
+** Lesster Block
+
+#+begin_comment
+comment content
+#+end_comment
+
+#+begin_example
+example content
+#+end_example
+
+#+begin_verse
+verse content
+#+end_verse
+
+    #+begin_export html
+      <span style="color:green;">hello org</span>
+    #+end_export
+
+
+#+begin_src python
+  print("hello")
+#+end_src
+  
+* list test
+
+- item
+- [@3] set to three
+- [-] tag :: item contents
+  * item, note whitespace in front
+
+a:
+ 1.  asdf
+ 2.      sfd
+
+item是一项，可以含list
+- list由多个item组成
+- item的内容可以含list
+
+list: = item.repeated()
+item := - context [list]
+
+
+
++ いいよ，こいよ
++ [@1] 伊已逝，吾亦逝
++ [@4] 意易失，吾亦逝
++ [@5] 逸一时，误一世
++ [@1] 疑一时，误一世
++ [@4] こめいじ　こいし
+
+
+
+
+
+- 疑一时，误一世   ::   af t asf d asd as f asfd adf a df
+- a :: asfa
++ [X] tag :: item contents
+ * item, note whitespace in front
+
+
+1) 1
+   - 1.1.1
+2) 2
+   | a | b |
+   |---+---|
+   |   |   |
+
+   #+begin_src pthon
+     hi
+   #+end_src
+
+3) 3
+
+(require 'org-element)
+
+(defun my-org-element-show-tree ()
+  "Parse the current Org buffer and display its element tree in a new buffer."
+  (interactive)
+  (let* ((tree (org-element-parse-buffer))
+         (buffer (generate-new-buffer "*Org Element Tree*")))
+    (with-current-buffer buffer
+      (insert (format "%S" tree))
+      (org-mode)
+      (setq-local org-element-tree-buffer t) ; Indicate this is an element tree buffer
+      (display-buffer buffer))))   
+
+
+a list hasing one element?
+ - a
+
+
+** test
+
+A test:
+- Item 1
+
+- Item 2
+  :drawer:
+  inside item 2
+  :end:
+
+
+B test:
+- a
+
+- b
+
+
+- c
+  - c
+    #+begin_src block
+      print()
+    #+end_src
+
+** unodered list
+
+- a
+  + a1
+  + a2
+- b
+  * b1
+  * b2
+- c 
+  1. c1
+  2. c2
+     
+** descriptive list
+
+- a :: I'm A
+- b :: I'm B
+
+** ordered list
+
+1) 打开冰箱
+2) 放入冰箱
+3) 关闭冰箱
+
+
+1. 打开冰箱
+2. 放入冰箱
+3. 关闭冰箱
+   
+
+
+* object test
+
+a *sfd*
+
+a ​***​
+
+a ​****​
+a ​*asdfasfa dfa* dfadf*​
+
+a ​***​
+
+This is a *bold*;and /italic/ language.
+
+This is a *bold*  font.
+
+\delta
+
+\larr{}
+
+\_   
+
+\larr
+
+** entity test
+
+** link tset
+
+link: [[https://www.baidu.com][baidu]]
+
+[[https://orgmode.org]]
+
+** bold test
+
+a *normal* bold
+
+a​*cn_normal*​bold
+
+a   *nomral*      bold.
+
+Not*bold*.
+
+a */item/* text
+
+a *a b/item/* text
+
+
+*/This text is bold and italic, _and this part is also underlined_./*
+
+
+a */asdf/ *asdf*
+
+test:
+
+- */_bold-italic-underline_/* 
+- *_/bold-underline-italic/_* 
+- _/*underline-italic-bold*/_ 
+- _*/underline-bold-italic/*_ 
+- /_*italic-underline-bold*_/
+- /*_italic-bold-underline_*/
+
+- +/*_strikethrough-italic-bold-underline_*/+
+- +/_*strikethrough-italic-underline-bold*_/+
+  
+- *_~inner-most~_*
+- *_~=inner-most=~_*
+- *_=~inner-most~=_*    
+- ~=*_/inner-most/_*=~ : bad
+  
+
+
+- //ab//
+未正确嵌套的处理，未定义:
+
+- ​_underline_​ */_underline_ italic/ ab: <underline>underline</underline> */_underline_ italic/  ab  
+- */abc/
+- */abc/ _adf_
+- */_abc/* bar_
+  - bold italic _abc italic bold   underlne ab underline
+  - */
+- *_~inner-most~_*
+- *_~=inner-most=~_*
+- *_=~inner-most~=_*    
+- ~*_inner-most_*~ : bad
+
+
+- /*+/
+
+- ** a **
+- **a bold**: <b><b></b></b>
+- ***a bold** : <b><b></b></b>
+    
+- ***a bold*** : <b><b></b></b>
+  - * : start
+  -  *:
+    - start
+    - end OK: 内容为0 不OK
+  - ​  *:
+    - start: OK
+    - end: OK: 内容不OK
+  -    *:
+    - start: 不OK, PRE bad
+    - end: OK
+  -     *:
+    - start: OK, 但pair不满足?
+    - end: OK
+
+
+Single
+  a *bold*
+  a /italic/
+  a _underline_
+  a +strikethrough+
+  a =verbatim=
+  a ~code~
+    
+    
+#+begin_src rust
+    // let x: Vec<usize> = vec![0];
+
+    // let y = match x.len()>0 {
+    //     true => {
+    //         x[0..x.len()-1].iter().map(|&x| x).collect::<Vec<usize>>()          
+    //     },
+    //     false => vec![]
+    // };
+
+    // println!("{:?}", y);
+  let mut last_i = 999;
+  for i in 0..3 {
+      last_i = i;
+      println!("i={}", i);
+  }
+  println!("{last_i}");
+#+end_src
+
+#+RESULTS:
+: i=0
+: i=1
+: i=2
+: 2
+

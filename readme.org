@@ -1,0 +1,1348 @@
+An [[https://orgmode.org/][org-mode]] toolkit, including parser, renderer.
+
+* status
+
+STILL IN DEVELOPMENT.
+
+#+begin_src bash
+  cargo run
+  cargo test
+#+end_src
+
+* 架构设计
+
+org -parser-> syntax tree(red tree) -ast_builder-> ast -html_renderer-> html --orgbook/mdbook --> site
+
+- rowan中红绿树，表示AST
+- chumsky解析器
+- render
+  - html
+
+
+#+begin_src rust
+let green_tree = parser.parse(f_org).green();
+let red_tree = parser.parse(f_org).syntax();
+let ast = ast_builder.build(red_tree);
+let html = html_render.render(ast);
+#+end_src
+
+** target
+
+核心功能:
+- [X] org-mode解析: string -parse-> AST
+- [X] 转为html: 将解析后AST的转为html -render-> html
+- [] site generator: 解析为静态网站,  -sitegenerator-> site
+
+
+
+- parser :: 将org文档解析为GreenTree, 可利用rowan API生成RedTree(SyntaxTree)
+- ast :: 将SyntaxTree转换为AST
+- render :: 将Ast转为html
+
+*** todo
+
+能否用greenbuilder()? 还是手动构造GreenNode(Kind, Children)? 当前是手动构造GreenNode
+
+** AST Builder and HTML Renderer
+
+简单说，Document包含Element, Element包含Object：
+- 元素(Element)是较大的结构单元，如标题、段落、列表、表格等
+- 对象(Object)：较小的语法单元，如文本、粗体、斜体、链接、时间戳等
+
+Element可以包含Element或Object(技术上说，Elment是非叶结点)，Object可以包含Object或叶结点(技术上说, Object非严格的叶结点，可以包含其他Object，如Object::Bold可以包含其他Object)。
+
+一个AST的根节点是Document，Document由Section和HeadingSubtree组成, Section由各种Element组成，HeadingSubtree由Section和HeadingSubtree(子树)组成。实现时：
+- Document、Section、HeadingSubtree是结构结点，单独拎出来作为结构体，其他Element由枚举ast::Element建模
+  - builder: conver_element()通过模式匹配，将各种element转为ast::Element  
+  - render: render_element()通过模式匹配，将各种element渲染为html
+- Object由枚举ast::Object建模
+  - builder: convert_object()通过模式匹配，将各种object转为ast::Object
+  - render: render_object()通过模式匹配，将各种object渲染为为html
+
+Render:
+- render_document
+  - render_section
+    - render_element
+      - render_paragraph
+        - render_object
+      - ...
+      - render_drawer
+  - render_heading_subtree
+    - render_section
+    - rending_elment
+
+      
+* Org-mode AST
+
+** Element
+
+elment:=无法被段落包含的组件, 分为两种:
+- greater element: 可以包含element
+  - document 含section和heading, 故是greater element
+  - section 含 element, 故是greater element
+  - heading 含 section和heading, 故是greater element
+- lesser element: 不能包含element
+  - paragraph
+
+** section
+
+
+*** block summary
+greater block:
+
+=Greater blocks= are structured according to the following pattern:
+#+begin_example
+  ,#+begin_NAME PARAMETERS
+  CONTENTS
+  ,#+end_NAME
+#+end_example
+
+center, quote, anyother(special)
+
+lesser block:
+
+Like greater blocks, blocks are structured according to the following pattern:
+#+begin_example
+  ,#+begin_NAME DATA
+  CONTENTS
+  ,#+end_NAME
+#+end_example
+
+comment, example, verse, expnort, src
+
+
+*** list/headline
+
+**** head
+
+递归定义的HeadingSubtree
+
+HeadingSubtree <- HeadingRow Section? HeadingSubtree (此处有递归)
+
+HeadingRow <- Stars Keyword Priority Comment Title Tags
+
+Section <- Elements(Non-heading)+
+
+
+1 Tree
+1.1 Tree
+1.1.1 Tree
+2 Tree
+2.1 Tree
+
+解析：
+(
+  (1 Tree
+     (1.1 Tree
+        (1.1.1 Tree)))
+  (2 Tree
+      (2.1 Tree))
+)
+
+
+**** list
+- plain_list由item组成
+- item中的content结点由零个或多个elment组成
+  - elment可以是含list(注意: list的indent必须>当前item的indent)
+    - - 当前item的indent
+    - 待解析的list的indent
+
+PlainList <- ListItem+
+ListItem  <- Indent ListMarker SPACE ListItemContent EOL
+ListItemContent <- (&indent_more_than Element)? 此处间接有递归
+
+
+list indent/item indent 需要state保存，如何更新?
+indent 是在list内部还是item内部解析?
+
+TUPR：
+- 状态通过函数入参传递，函数调用栈，来存储indent?
+- 通过state全局变量存储
+
+
+footnote, element递归element? footnote: elements*
+
+list中的blankline归属于内部的paragraph了?
+
+
+
+
+blankline的归属如何确认？
+- list
+- paragraph line
+
+
+
+1 Item
+1.1 List
+1.1.1 List
+2 Item
+3 Item
+
+解析为
+(List
+  (1 Item
+    (1.1 List
+       (1.1 Item
+         ())
+    )
+  )
+  (2 Item)
+  ( Item)
+)
+
+
+
+需要一个element解析器
+
+
+
+(1) state存储indent
+- a value
+- a stack: 何时以及如何更新stack?
+  
+
+fun
+
+目标:
+
+list嵌套
+
+parse_indent()
+- 更新indent状态
+  - 仅解析>=当前indent的内容
+  - < 当前indent, emit error    
+- 构造item_indent token node
+
+- 1
+  - 1.1
+    - 1.1.1
+- 2  
+
+
+
+*** section 和 element
+
+section
+
+- block
+- last
+
+
+choice
+
+**** item / list
+
+
+- list由相同缩进的item组成
+- item可以含list
+
+递归定义
+
+
+
+**** table
+
+
+** object
+
+可以被段落包含的组件
+
+
+whitespace是不是object? 如果不是，属于那个object?
+
+*** todo
+
+
+objects 列表:
+
+- link
+- text-markup:
+  - bold
+  - italic
+  - underline
+  - strike-through
+  - code
+  - verbatim
+- latex-fragment
+  
+- entity
+- subscript
+- superscript
+
+
+
+- entity
+  - \delta
+  - \delta{}
+  - \_  
+- latex_fragments
+- export_snippet
+  - @@html:<ins>我是插入标签</ins>@@
+  - @@html:<del>我是删除标签</del>@@
+- footnote referencer
+  - [fn:LABEL]
+  - [fn:LABEL:DEFINITION]
+  - [fn::DEFINITION]
+- citation
+  - [cite:@key]
+- citation reference
+- inline_base_call
+ 
+
+bold
+
+
+
+    
+*** impl
+choices(bold, item, text)
+
+any()
+  .and_is(PRE.bold.POST.not())
+  .and_is(PRE.item.POST.not())
+.then(any())
+
+
+实现一个pre_bold_post parser, 但是pre部分如何和之前的text合并?
+
+
+为什么不能查看前一个 Token
+PEG 解析器的特性：PEG 解析器使用前瞻（lookahead）而不是回瞻（lookbehind），它们按顺序消费输入，一旦消费了 token，就无法再访问它。
+
+性能考虑：不支持回溯可以提高解析性能，因为解析器不需要维护已解析 token 的历史记录。
+
+内存效率：不存储已解析的 token 历史可以显著减少内存使用。
+
+方案:
+- bold <- PRE_bold_POST合并为一个解析器，产生 text(node) bold(node) text(node)
+
+- (bold, item, link, text)
+
+- bold/italic/嵌套，如何解决?
+  outer.nested_in(inner(text))
+  
+  - inner分离边界检查
+    custom
+    
+    this is a *bold and /italic/ font*.
+
+    需要lookleft? custom实现。
+
+    for c in in chars:
+      if pre_valid and post_valid
+        insert <bold>
+      
+
+    this is a <bold> bold and <italic> italic </italic> font</bold>.
+
+    - 内层解析器解析字符串含边界
+
+      &'a str --> &'a str --> ??
+      &'a str --> String --> NodeOrToken xxx
+      &'a str --> &'a [Token] --> NodeOrToken?
+    
+  - outer: 内容解析， 支持嵌套
+    - 内部解析
+
+如何和object_parser适配?
+markup parser? 需要处理text?
+- 只处理6种marker, 处理不了的报错？
+- 不能全部处理，给到其他parser机会
+- 嵌套如何处理?
+  - lazy?
+- 目前看preprocesser消费整个字符串
+
+  <bold>foo <italic>bar</italic> </bold>
+
+
+方案2:
+- 全局预处理: 批处理, 不再支持stream
+  - 预处理，需要判断何时该预处理？如果code block中，不需要处理？
+- chumsky解析
+
+
+preprocessor处理完整个字符串
+
+pub(crate) fn text_markup_parser<'a>() -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+> + Clone {
+     text_markup_inner_preprocesser().map(|tokens: Vec<Token>| {
+         let p = text_markup_outer_parser();
+         p.parse(&tokens[..]).into_result().unwrap()
+    })
+}
+
+
+
+
+bold
+text
+link
+
+object_parser()
+
+
+PRE/POST不是object的一部分
+
+bold  <- PRE marker text marker POST
+bold <- marker text post
+
+PRE 
+
+PRE.then(marker).then(text).then(marker()).then(POST).map()
+
+- POST:
+  text.then_ignore(marker.rewind.not())
+
+
+将paragraph拆分成sub node:
+- bold
+- text
+- other
+
+  pagraph.txt
+
+bold.or(item).or(text)
+
+text =
+  any()
+  .and_is(bold.not())
+  .and_is(item.not())
+
+this is a *bold* text.
+
+this is not a *bold text.
+
+this is a */bold/* and italict text.
+
+
+*** ds v2
+
+
+rust中chumsky如何解析org-mode中的objects。
+比如markup中的bold。
+
+bold结点构成是是: PRE MARKER CONTENTS MARKER POST，但PRE/POST部分不属于markup结点.
+
+- PRE: Either a whitespace character, -, (, {, ', ", or the beginning of a line.
+- MARKER: *
+- CONTENTS
+- POST: Either a whitespace character, -, ., ,, ;, :, !, ?, ', ), }, [, ", \ (backslash), or the end of a line.
+
+
+use chumsky::prelude::*;
+use std::collections::VecDeque;
+
+#[derive(Debug, Clone)]
+enum OrgObject {
+    Text(String),
+    Bold(Vec<OrgObject>),
+    // 其他对象类型...
+}
+
+// 定义 PRE 和 POST 字符集合
+const PRE_CHARS: &str = " \t-(\{'\"\n\r";
+const POST_CHARS: &str = " \t-.,;:!?'})]\"\\\n\r";
+
+fn org_objects_parser() -> impl Parser<char, Vec<OrgObject>, Error = Simple<char>> {
+    recursive(|objects| {
+        // 基础文本解析器（非特殊字符）
+        let text = filter(|c: &char| !"*_/".contains(*c))
+            .repeated()
+            .at_least(1)
+            .collect::<String>()
+            .map(OrgObject::Text);
+
+        // 粗体解析器
+        let bold = just('*')
+            // 验证前面是 PRE 字符或行首
+            .validate(|_, span, _| {
+                // 这里需要访问前面的字符，但 Chumsky 不支持
+                // 我们将使用自定义逻辑来处理这个限制
+                Ok(())
+            })
+            .ignore_then(
+                objects.clone()
+                    .delimited_by(just('*').not(), just('*').not())
+                    .repeated()
+                    .collect::<Vec<_>>()
+            )
+            .then_ignore(just('*'))
+            // 验证后面是 POST 字符或行尾
+            .validate(|content, span, _| {
+                // 同样，这里需要访问后面的字符
+                Ok(OrgObject::Bold(content))
+            });
+
+        choice((bold, text))
+            .repeated()
+            .collect()
+    })
+}
+
+*** deepseek
+
+rust中chumsky如何解析org-mode中的objects? 比如markup中的bold，link。问题markup结点构成是是: PRE MARKER CONTENTS MARKER POST，但PRE/POST部分不属于markup结点，且chumsky不支持查看前面的历史字符。请给到所有的候选方案。
+
+
+解析 Org-mode 中的标记对象（如粗体、链接等）确实是一个挑战，特别是因为它们的结构是 `PRE MARKER CONTENTS MARKER POST`，但 `PRE` 和 `POST` 部分不属于标记节点，而 Chumsky 不支持回溯查看历史字符。以下是几种候选方案：
+
+
+
+**** think
+
+在解析 org-mode 的 markup（如粗体、链接等）时，我们面临一个挑战：标记由前后的标记符（如 bold 中的星号）界定，但标记符本身不属于内容节点。而且，Chumsky 不支持回溯（lookbehind）来查看之前已经解析的字符。
+
+候选方案：
+- 使用状态机或自定义解析器：通过维护状态来记录是否在标记内，但Chumsky主要是PEG类解析器，状态通常用于上下文相关语法（如缩进），但这里可能不直接适用。
+- 利用组合子确保标记符的匹配：我们可以设计一个解析器，它先尝试匹配开始标记，然后解析内容，最后匹配结束标记，并在最终输出中丢弃标记符。
+- 使用nested_delimited：Chumsky提供了nested_delimited用于处理嵌套的定界符，但注意org-mode的标记不一定都是嵌套的，而且可能有不同的类型。
+- 分步解析：先解析整个文本，然后通过后处理步骤来识别标记。但这样可能不符合一次解析完成的要求。
+- 利用just和then组合子：为每种标记编写解析器，例如粗体解析器可以表示为：just("*").ignore_then(内容).then_ignore(just("*"))，但要注意内容中可能包含嵌套的标记。
+- 处理嵌套标记：org-mode允许嵌套标记，例如 bold and italic。这需要解析器能够递归地解析内容。
+- 避免标记符与文本混淆：需要确保标记符的正确匹配，例如，不要将文本中的单个星号误认为是标记。
+- 使用recursive函数：由于标记可能嵌套，我们需要使用递归解析器。
+# - 考虑链接的解析：链接的格式是固定的，例如：[[link][description]]或[[link]]，这可以用类似的方法，但需要处理方括号。
+- 错误恢复和报告：在标记不匹配时提供良好的错误信息。
+
+具体到Chumsky，我们可以为每种标记定义一个解析器，并使用recursive来处理嵌套。以下是一个示例框架：
+
+# 假设我们要解析粗体（由*包围）和链接（[[...]]或[[...][...]]）。
+
+步骤：
+
+a. 定义一个解析一般文本（不含标记）的解析器。
+b. 为每种标记定义解析器，这些解析器会递归地调用一个包含所有标记类型的解析器（用于解析标记内的内容）。
+c. 将所有这些解析器组合成一个解析器，用于解析混合了文本和标记的段落。
+
+示例代码：
+
+注意：以下代码为示例，可能需要根据实际情况调整。
+
+解析 Org-mode 中的 Objects（Markup、Links 等）在 Chumsky 中的解决方案
+
+解析 Org-mode 中的标记对象（如粗体、链接等）确实是一个挑战，特别是因为它们的结构是 `PRE MARKER CONTENTS MARKER POST`，但 `PRE` 和 `POST` 部分不属于标记节点，而 Chumsky 不支持回溯查看历史字符。以下是几种候选方案：
+
+**** 方案 1: 使用状态机跟踪上下文
+
+#+begin_src rust
+use chumsky::prelude::*;
+use std::collections::VecDeque;
+
+#[derive(Clone, Debug)]
+enum OrgObject {
+    Text(String),
+    Bold(Vec<OrgObject>),
+    Italic(Vec<OrgObject>),
+    Link { url: String, description: Vec<OrgObject> },
+    // 其他对象类型...
+}
+
+#[derive(Default)]
+struct ParseState {
+    in_bold: bool,
+    in_italic: bool,
+    // 其他状态标志...
+}
+
+fn object_parser() -> impl Parser<char, Vec<OrgObject>, Error = Simple<char>, State = ParseState> {
+    recursive(|objects| {
+        // 基础文本解析器
+        let text = filter(|c: &char| !"*_/[".contains(*c))
+            .repeated()
+            .at_least(1)
+            .collect::<String>()
+            .map(OrgObject::Text);
+        
+        // 粗体解析器
+        let bold = just('*')
+            .ignore_then(
+                objects.clone()
+                    .delimited_by(just('*').not(), just('*').not())
+                    .repeated()
+                    .collect::<Vec<_>>()
+            )
+            .then_ignore(just('*'))
+            .map_with_state(|content, state: &mut ParseState| {
+                state.in_bold = !state.in_bold;
+                OrgObject::Bold(content)
+            });
+        
+        // 类似的斜体解析器
+        let italic = just('/')
+            .ignore_then(
+                objects.clone()
+                    .delimited_by(just('/').not(), just('/').not())
+                    .repeated()
+                    .collect::<Vec<_>>()
+            )
+            .then_ignore(just('/'))
+            .map_with_state(|content, state: &mut ParseState| {
+                state.in_italic = !state.in_italic;
+                OrgObject::Italic(content)
+            });
+        
+        // 链接解析器
+        let link = just("[[")
+            .ignore_then(
+                take_until(just("][").or(just("]]")))
+            )
+            .then(
+                just("][")
+                    .ignore_then(objects.clone())
+                    .or_not()
+            )
+            .then_ignore(just("]]"))
+            .map(|(url, description)| {
+                OrgObject::Link {
+                    url: url.into_iter().collect(),
+                    description: description.unwrap_or_default(),
+                }
+            });
+        
+        // 组合所有对象解析器
+        choice((bold, italic, link, text))
+            .repeated()
+            .collect()
+    })
+}
+  
+#+end_src
+
+
+**** 方案 2: 使用预扫描和后期处理
+
+#+begin_src rust
+use chumsky::prelude::*;
+
+fn object_parser() -> impl Parser<char, Vec<OrgObject>, Error = Simple<char>> {
+    // 首先扫描整个文本，识别标记位置
+    let marker_scanner = any()
+        .repeated()
+        .collect::<String>()
+        .map(|s| {
+            let mut objects = Vec::new();
+            let mut markers = Vec::new();
+            
+            // 扫描标记位置
+            for (i, c) in s.chars().enumerate() {
+                if "*_/[".contains(c) {
+                    markers.push((i, c));
+                }
+            }
+            
+            // 根据标记位置构建对象
+            let mut last_pos = 0;
+            for (i, marker) in markers.iter().enumerate() {
+                if marker.0 > last_pos {
+                    // 添加之前的文本
+                    objects.push(OrgObject::Text(s[last_pos..marker.0].to_string()));
+                }
+                
+                // 处理标记
+                match marker.1 {
+                    '*' => {
+                        // 查找匹配的结束标记
+                        if let Some(end_pos) = find_matching(&s, marker.0, '*') {
+                            let content = parse_content(&s[marker.0+1..end_pos]);
+                            objects.push(OrgObject::Bold(content));
+                            last_pos = end_pos + 1;
+                        }
+                    },
+                    // 处理其他标记...
+                    _ => {}
+                }
+            }
+            
+            // 添加剩余文本
+            if last_pos < s.len() {
+                objects.push(OrgObject::Text(s[last_pos..].to_string()));
+            }
+            
+            objects
+        });
+    
+    marker_scanner
+}
+
+fn find_matching(s: &str, start: usize, marker: char) -> Option<usize> {
+    // 实现查找匹配标记的逻辑
+    // 这需要处理嵌套等情况
+    unimplemented!()
+}
+
+fn parse_content(s: &str) -> Vec<OrgObject> {
+    // 递归解析内容
+    object_parser().parse(s).unwrap_or_else(|_| vec![OrgObject::Text(s.to_string())])
+}
+  
+#+end_src
+
+**** 方案 3: 使用自定义解析器组合子
+
+#+begin_src rust
+use chumsky::prelude::*;
+
+fn delimited_object(
+    start: impl Parser<char, (), Error = Simple<char>> + Clone,
+    end: impl Parser<char, (), Error = Simple<char>> + Clone,
+    content: impl Parser<char, Vec<OrgObject>, Error = Simple<char>> + Clone,
+) -> impl Parser<char, Vec<OrgObject>, Error = Simple<char>> {
+    start
+        .ignore_then(content)
+        .then_ignore(end)
+        .map_with_span(|content, span| {
+            // 这里可以访问span信息，但无法访问原始文本
+            content
+        })
+}
+
+fn object_parser() -> impl Parser<char, Vec<OrgObject>, Error = Simple<char>> {
+    recursive(|objects| {
+        let text = filter(|c: &char| !"*_/[".contains(*c))
+            .repeated()
+            .at_least(1)
+            .collect::<String>()
+            .map(OrgObject::Text);
+        
+        let bold = delimited_object(
+            just('*'),
+            just('*'),
+            objects.clone(),
+        ).map(OrgObject::Bold);
+        
+        let italic = delimited_object(
+            just('/'),
+            just('/'),
+            objects.clone(),
+        ).map(OrgObject::Italic);
+        
+        let link = just("[[")
+            .ignore_then(
+                take_until(just("][").or(just("]]")))
+            )
+            .then(
+                just("][")
+                    .ignore_then(objects.clone())
+                    .or_not()
+            )
+            .then_ignore(just("]]"))
+            .map(|(url, description)| {
+                OrgObject::Link {
+                    url: url.into_iter().collect(),
+                    description: description.unwrap_or_default(),
+                }
+            });
+        
+        choice((bold, italic, link, text))
+            .repeated()
+            .collect()
+    })
+}
+#+end_src
+
+
+**** 方案 4: 使用预处理步骤
+
+#+begin_src rust
+use chumsky::prelude::*;
+
+fn preprocess(input: &str) -> String {
+    // 添加特殊标记来标识对象的开始和结束
+    let mut result = String::new();
+    let mut chars = input.chars().peekable();
+    
+    while let Some(c) = chars.next() {
+        match c {
+            '*' => {
+                if let Some(next) = chars.peek() {
+                    if *next != '*' {
+                        // 单个星号，可能是粗体开始或结束
+                        result.push_str("\u{1}B"); // 使用不可见字符作为标记
+                    } else {
+                        // 双星号，可能是粗体文本的一部分
+                        result.push(c);
+                    }
+                }
+            },
+            // 处理其他标记...
+            _ => result.push(c),
+        }
+    }
+    
+    result
+}
+
+fn object_parser() -> impl Parser<char, Vec<OrgObject>, Error = Simple<char>> {
+    recursive(|objects| {
+        let text = filter(|c: &char| *c != '\u{1}')
+            .repeated()
+            .at_least(1)
+            .collect::<String>()
+            .map(OrgObject::Text);
+        
+        let bold = just('\u{1}')
+            .ignore_then(just('B'))
+            .ignore_then(objects.clone())
+            .then_ignore(just('\u{1}').ignore_then(just('B')))
+            .map(OrgObject::Bold);
+        
+        choice((bold, text))
+            .repeated()
+            .collect()
+    })
+}
+
+// 使用方式
+fn parse_org(input: &str) -> Result<Vec<OrgObject>, Simple<char>> {
+    let preprocessed = preprocess(input);
+    object_parser().parse(preprocessed.chars().collect::<Vec<_>>())
+}
+#+end_src
+
+
+## 方案比较
+
+1. **状态机方案**：最符合 Chumsky 的设计理念，但实现复杂，需要仔细管理状态。
+2. **预扫描方案**：实现相对简单，但性能可能较差，且需要额外的处理逻辑。
+3. **自定义组合子方案**：提供了更好的抽象，但需要深入理解 Chumsky 的内部机制。
+4. **预处理方案**：通过修改输入文本来简化解析，但可能引入额外的复杂性。
+
+## 推荐方案
+
+对于大多数情况，我推荐使用**方案 1（状态机方案）**，因为它：
+1. 最符合 Chumsky 的设计哲学
+2. 提供了最好的性能特性
+3. 能够处理嵌套和复杂的标记结构
+4. 不需要修改原始输入
+
+如果性能是关键考虑因素，或者需要处理非常复杂的嵌套结构，可以考虑**方案 4（预处理方案）**，通过预处理步骤简化解析逻辑。
+
+无论选择哪种方案，都需要注意处理边缘情况，如：
+- 未闭合的标记
+- 嵌套标记
+- 标记内的转义字符
+- 标记与文本边界的情况
+
+希望这些方案能帮助你找到适合你项目需求的解析方法！
+
+#+begin_src rust
+use chumsky::prelude::*;
+
+fn delimited_object(
+    start: impl Parser<char, (), Error = Simple<char>> + Clone,
+    end: impl Parser<char, (), Error = Simple<char>> + Clone,
+    content: impl Parser<char, Vec<OrgObject>, Error = Simple<char>> + Clone,
+) -> impl Parser<char, Vec<OrgObject>, Error = Simple<char>> {
+    start
+        .ignore_then(content)
+        .then_ignore(end)
+        .map_with_span(|content, span| {
+            // 这里可以访问span信息，但无法访问原始文本
+            content
+        })
+}
+
+fn object_parser() -> impl Parser<char, Vec<OrgObject>, Error = Simple<char>> {
+    recursive(|objects| {
+        let text = filter(|c: &char| !"*_/[".contains(*c))
+            .repeated()
+            .at_least(1)
+            .collect::<String>()
+            .map(OrgObject::Text);
+        
+        let bold = delimited_object(
+            just('*'),
+            just('*'),
+            objects.clone(),
+        ).map(OrgObject::Bold);
+        
+        let italic = delimited_object(
+            just('/'),
+            just('/'),
+            objects.clone(),
+        ).map(OrgObject::Italic);
+        
+        let link = just("[[")
+            .ignore_then(
+                take_until(just("][").or(just("]]")))
+            )
+            .then(
+                just("][")
+                    .ignore_then(objects.clone())
+                    .or_not()
+            )
+            .then_ignore(just("]]"))
+            .map(|(url, description)| {
+                OrgObject::Link {
+                    url: url.into_iter().collect(),
+                    description: description.unwrap_or_default(),
+                }
+            });
+        
+        choice((bold, italic, link, text))
+            .repeated()
+            .collect()
+    })
+}
+  
+#+end_src
+
+
+
+* parser
+
+在解析阶段，Chumsky等解析器通常采用深度优先的策略来构建语法树（Syntax Tree）。解析器从起始符号开始，递归地展开非终结符，直到匹配到终结符。这种​*递归下降*​的过程自然形成了DFS。
+
+a parser 返回一个ParserResult, 其中核心是一个NodeOrToken,
+- token parser
+- node parser
+
+目前所有的parser都是fn, 如何config和input绑定？
+
+自定义config?
+State?
+Error?
+
+从input获取config, 根据config配置。
+
+
+
+** todo
+
+- bold: Not*bold*. parse failed!
+
+** 基础知识
+
+*** 编译原理基础
+
+这是最重要的部分。解析（Parsing）是编译原理的核心环节之一。你不需要掌握到写一个 C++ 编译器的程度，但必须理解以下概念：
+
+- 词法分析 (Lexical Analysis)
+  - 是什么 :: 将字符流（你的源代码/Markdown文本）分解成一个个有意义的词法单元（Token） 的过程。
+  - 怎么做 :: 你需要定义一个词法规则，说明如何识别不同的 Token。
+  例如：对于输入​=# 标题=​，词法分析器可能会产出三个Token：[HASH, '#'], [WHITESPACE, ' '], [TEXT, '标题']。但在实际中，​=#=​和后面的文本更可能被合并为一个​=HEADING_START Token=​。
+
+  # 关键工具：正则表达式 (Regex) 是进行词法分析最强大的工具。你需要非常熟练地使用它来匹配模式（如匹配 ###、**text**、[link](url)）。
+
+- 语法分析 (Syntactic Analysis)
+  - 是什么 :: 将 Token 流根据预定义的语法规则（Grammar）组合成树形的嵌套结构，这就是 AST。
+  - 怎么做 :: 你需要定义 Markdown/Org-mode 的语法规则。这些规则描述了如何由小的结构（如一个单词、一个强调符号）组成大的结构（如段落、列表项、整个列表）。
+
+   关键概念：
+
+   - 上下文无关文法 (CFG)：定义语法的一种形式化方法。虽然你不一定要用
+     纯理论的方式去写，但要理解其思想。你需要用形式化的方式或在自己的
+     脑海中定义 Org-mode 的语法规则。例如：一个文档由多个Heading组成；一个Heading可能以星号 * 开头的标题行、后跟blankline、Section、subheading等。
+   - 递归下降解析 (Recursive Descent Parsing)：一种非常直观、适合手工
+     编写解析器的方法。你为语法中的每条规则编写一个函数（如
+     parse_heading, parse_list, parse_drawer），这些函数可以相互递归调
+     用。这是非常推荐你实现第一版解析器时采用的方法。
+
+   - 解析组合子 (Parser Combinators)：在函数式编程中非常流行的一种高级方法，用组合子来构建复杂的解析器。如果你用 Haskell、Rust、JavaScript 等语言，可以寻找相关的库（如 nom for Rust, parsimmon for JS）。
+
+*** 设计
+
+混合策略是指不严格区分词法分析和语法分析阶段，而是将两者融合在一起。解析器在驱动（语法分析）的过程中，根据当前的上下文（Context），“按需”地调用特定的词法规则或直接处理字符流来获取下一个有意义的单元。
+
+
+它不像传统编译器那样：
+=字符流 -(词法分析器)-> 令牌流 -(语法分析器)-> AST=
+
+而是更像：
+=字符流 <-> [语法分析器] -> AST=
+（语法分析器直接操作字符流，并在过程中动态决定如何“词法化”）
+
+为什么 Org-mode 必须采用混合策略？
+
+主要原因在于 Org-mode 语法的以下几个特性，使得纯粹的、上下文无关的词法分析几乎不可能：
+
+1. 极度严重的标记多义性（Token Ambiguity）
+同一个字符在不同的上下文中代表完全不同的含义，词法分析器在没有全局上下文的情况下无法正确判断。
+
+星号 *:
+- 在行首，它是标题的标记。*** 这是一个三级标题。
+- 在行中，它是加粗的标记。这是*加粗*的文字。
+- 在列表中，它可能是一个列表项的标记。* 这是一个列表项。
+
+纯粹的词法分析器看到一串星号，根本无法判断它属于哪一种，必须由语法分析器根据其位置（是否在行首？后面是否有空格？）来告知。
+
+连字符 -:
+
+- 在行首，它是列表项的标记。- 这是一个列表项。
+- 在行中，它可能只是普通文本。这是一个词-另一个词。
+- 在时间戳里，它是分隔符。<2024-05-20>。
+
+等号 =:
+- 在行中，它是等宽文本的标记。这是=等宽文本=。
+- 在元数据中，它是键值对的标记。#+TITLE=我的文档。
+
+2. 上下文相关的语法（Context-Sensitive Grammar）
+一个结构的意义取决于它周围的结构。
+
+- 标题的层级：标题的层级不是由绝对数量决定的，而是由相对嵌套关系决定的。解析器需要知道当前所在的标题层级，才能正确解析下一个标题的深度。
+- 列表的嵌套：列表的嵌套关系非常复杂，列表项的起始标志（-, +, 1., 2.）需要根据缩进和上下文来判断其层级。这远远超出了正则表达式的能力范围。
+- 抽屉和块：:PROPERTIES: 和 #+BEGIN_SRC 这样的结构必须有对应的结束标记 :END: 和 #+END_SRC。词法分析器如果独立工作，很难高效地匹配开始和结束标记。
+
+3. 灵活的布局（Flexible Layout）
+- 缩进有意义：在列表、代码块等结构中，缩进是语法的一部分。词法分析器通常不处理缩进信息，这需要语法分析器来管理状态。
+- 空行的意义：空行通常分隔块级元素。词法分析器可能会将换行符(\n)视为一种令牌，但判断“两个换行符之间是一个空行并意味着段落结束”则是语法分析器的职责。
+
+
+因此，对于 Org-mode 这种复杂语法，混合策略不是一种选择，而是一种必然。它允许解析器作者用一种更直接、更符合人类直觉的方式编写解析规则：“如果我在解析一个标题，那么行首的星号是标题标记；如果我在解析一段文本，那么中间的星号是加粗标记”。这种强大的上下文感知能力是纯粹的词法分析器所不具备的。
+
+现有的优秀解析器，如 orgize (Rust) 和解析 CommonMark 的 pulldown-cmark (Rust)，都采用了这种混合策略。
+
+
+Deepseek建议
+- 混和策略，词法分析、语法分析混和
+- 使用Lossless Syntax Tree (LST) ，非AST，所提供的无损往返能力和对源代码的完全控制，更强大、更面向未来的选择。
+
+
+orgize: 用rowan来表示LST, nom
+
+
+
+
+*** 数据结构：理解并设计 AST
+
+什么是 AST：AST 是源代码语法结构的一种抽象表示。它以树状的形式表现编程语言的语法结构，树上的每个节点都表示源代码中的一种结构。
+
+如何设计 AST：你需要用代码定义出所有节点的数据结构。
+
+- 节点类型：你需要枚举出 Markdown 的所有元素类型。例如：Root, Heading, Paragraph, Text, Emphasis/Bold, CodeSpan, BlockQuote, List, ListItem, Link, Image, ThematicBreak (水平线) 等。
+
+- 节点属性：每个节点需要包含哪些信息？
+
+   - 几乎所有节点都需要 type: string 来标识类型。
+   - Heading 节点需要 depth: number (1-6) 属性。
+   - Link 节点需要 url: string 和 title: string? (可选) 属性。
+   - Text 节点需要 value: string 属性。
+   - 父节点（如 List, Paragraph）需要有 children: Array<Node> 属性来包含其子节点。
+
+*** 技术选型
+
+Rust：性能极高，拥有优秀的解析器组合子库（如 nom、pest），pulldown-cmark 就是一个很好的学习对象。
+
+编程范式：
+- 函数式编程 (FP) 思想会非常有帮助，尤其是在处理递归结构和组合解析逻辑时。
+- 大量使用递归和模式匹配（如果语言支持，如 Rust 的 match，TS 的 switch）。
+
+
+状态机是解析复杂文本格式的常用方法，但并不是唯一选择。
+
+递归下降解析 (Recursive Descent Parsing)
+递归下降解析是一种自顶向下的解析方法，为每个语法规则编写一个解析函数。
+
+优点：
+代码结构清晰，与语法规则直接对应
+易于实现和理解
+良好的错误处理和恢复能力
+
+
+解析器组合子 (Parser Combinators)
+解析器组合子是一种函数式编程方法，通过组合小型解析器来构建复杂的解析器。
+
+优点：
+高度模块化和可组合性
+易于测试和调试小型解析器
+代码声明性强
+
+
+这三个库代表了 Rust 生态中不同的解析方法：
+
+Tree-sitter 是专门为编辑器工具链设计的系统级解决方案
+
+Nom 是专注于性能和底层控制的解析器组合子库
+
+Chumsky 是注重开发体验和错误处理的高级组合子库
+
+对于大多数项目，我推荐：
+
+编辑器集成 → Tree-sitter
+
+二进制协议/高性能解析 → Nom
+
+编程语言/复杂文本解析 → Chumsky
+
+值得注意的是，这些库也可以结合使用，例如用 Nom 或 Chumsky 编写 Tree-sitter 的语法规则，或者用 Nom 解析二进制格式后再用 Chumsky 处理其中的文本部分。
+
+#+begin_src mermaid :file /tmp/tmp.png :cache yes :exports results
+flowchart TD
+subgraph SchemeA[方案A: 轻量事件桥接]
+    direction TB
+    A1(Chumsky解析器控制流程)
+    A2[解析到函数定义]
+    A3["吩咐Builder: start_node(FnDef)"]
+    A4[解析到fn关键字]
+    A5["吩咐Builder: add_token(fn)"]
+    A6[...]
+    A7[吩咐Builder: finish_node]
+
+    A1 --> A2 --> A3 --> A4 --> A5 --> A6 --> A7
+end
+
+subgraph SchemeB[方案B: 解析器感知的GreenNode构造]
+    direction TB
+    B1[解析fn关键字]
+    B2[立即构建GreenToken<br>并包装为GreenNode]
+    B3[解析标识符]
+    B4[构建另一个GreenNode]
+    B5[解析参数]
+    B6[构建参数子树GreenNode]
+    B7[组合所有GreenNode<br>形成函数定义子树]
+
+    B1 --> B2
+    B3 --> B4
+    B5 --> B6
+    B2 & B4 & B6 --> B7
+end
+#+end_src
+
+#+RESULTS[0943d7c5a8759cf6420336045d51110953c9a4fa]:
+[[file:/tmp/tmp.png]]
+
+
+
+rowan/chumsky:
+1. chumsky和rowan如何结合?
+2. Chumsky 负责解析（识别语法结构），Rowan 负责建树（构建具体的语法树节点）。
+   - 既需要定义 Chumsky 的解析输出类型，也需要定义 Rowan 的 SyntaxKind。
+3. Chumsky 先解析成一个自定义的、更易操作的 AST，然后再将这个 AST 转换为 Rowan 的语法树。
+   - rowan和chumsky割裂，需要维护两套冗余的数据结构。自定义的AST和Rowan的SyntaxKind
+4. 手动编写解析逻辑（可能是递归下降解析器），直接驱动 Rowan 的 GreenNodeBuilder 来构建语法树，也可能是合适的选择。Chumsky 并非必需。
+   - 复杂度高
+5. 不完全依赖 Rowan 的 Event 流，而是在 Chumsky 的解析过程中，直接操作 Rowan 的 GreenNodeBuilder 来逐步构建语法树。
+   - 直接操作 GreenNodeBuilder，无中间数据结构
+   - 解析逻辑与Rowan API紧密耦合, 修改语法可能需要在多个地方调整建树代码
+6. *解析器感知的 GreenNode 构造方案*
+   - 解析器的目标是返回一个代表已解析结构的、自包含的 GreenNode。每个组合子都负责构建自己那部分语法对应的子树。
+   - Chumsky 的组合子负责将这些预先构建好的“零件”（子树）组装成更大的“部件”（更大的子树）.解析过程是自底向上地构建子树，并最终组合成完整的树。
+   - 需要创建 ParseResult 等包装类型
+   - 利用 Chumsky 的 map_with_span 等方法来获取精确的文本范围，用于创建 Rowan 的 TextRange 和 SyntaxToken。
+   - 在组合子的 map 闭包中，根据解析出的值直接构造出 Rowan 树的某个子树（一个 GreenNode），然后将其作为解析结果的一部分返回。更高层的组合子会将这些子树组装成更大的树。
+   - 可能需要 定义特殊的辅助函数或宏 来简化在 Chumsky 解析器中创建 Rowan 节点的过程
+
+
+使用rust的chumsky和rowan库实现org-mode的解析器，要求:
+
+1. 解析器要能感知到GreenNode的构造
+2. 每个子解析器职责单一，方便模块化和测试
+3. 不要使用GreenNodeBuilder
+4. 创建 ParseResult 包装类型，含GreenNode、text、span。此处设计要求: (1) GreenNode 保证线程安全，注意GreenNode来回嵌套，直接用Arc可能有问题
+
+
+实现的不对，每个子解析器返回的是不同的类型，要求是相同的类型，即 ParseResult包装类型，含GreenNode、text、span。
+使用rust的chumsky和rowan库实现org-mode的解析器，要求:
+1. 解析器要能感知到GreenNode的构造
+2. 每个子解析器职责单一，方便模块化和测试，每个解析器返回ParseResult包装类型，含GreenNode、text、span。此处设计要求: (1) GreenNode 保证线程安全，注意GreenNode来回嵌套，直接用Arc可能有问题
+
+使用rust的chumsky和rowan库实现org-mode的解析器，要求:
+1. 不要使用with_children方法，直接在需要处构造GreenNode
+3. 子节点处理直接在解析器逻辑中完成
+4. 仍保持线程安全(Arc<GreenNode>)
+5. 所有解析器返回统一ParseResult类型, ParseResult仅保留必要字段：green_node、text和span，注意Arc会不会嵌套，导致类型错误?
+6. 模块化设计保持不变，各子解析器职责单一
+
+
+headline实现时，如何保证标题的嵌套复合预期?
+
+
+
+     代码清晰度高:
+     - 函数式风格，每个解析器职责单一
+     - 更容易理解和维护
+
+     更好的模块化
+   - 解析器可以独立测试和复用
+     - 语法变化的影响范围局部化
+
+     更易测试
+     - 可以直接测试解析器的输出（ParseResult）
+     - 不需要依赖Rowan的具体实现
+
+     类型安全性
+     - Rust类型系统帮助保证节点结构的正确性
+
+轻微性能开销
+
+需要创建 ParseResult 等包装类型
+
+额外的Arc引用计数操作
+
+Span处理需要额外工作
+
+需要显式传递和管理文本范围信息
+
+*** 对 Markdown/Org-mode 规范的理解
+
+你必须非常了解你要解析的语言的“语法”。
+
+Markdown：注意，Markdown 没有唯一的标准。最通用的是 CommonMark。你应该以 CommonMark 规范 为准，它详细规定了何种输入应该产生何种输出。不要只凭自己的感觉或某个编辑器的渲染结果来写规则。
+
+Org-mode：这比 Markdown 复杂得多。它不仅有丰富的文本格式，还有表格、计划项、时间戳、动态代码块（#+BEGIN_SRC）、属性等大量特性。建议先从 Markdown 开始，成功后再挑战 Org-mode。
+
+*** 实践路线图建议
+
+从最简单的子集开始：不要想一口气解析所有语法。
+
+第一步：词法分析器 (Tokenizer/Lexer)。写一个函数，输入字符串，输出一个 Token 流（数组或迭代器）。先支持：普通文本、换行符、#、*、`、[]()。
+
+第二步：解析块级元素 (Block parsing)。Markdown 解析通常分两步：先识别块级结构（段落、标题、列表等），再识别行内结构（强调、链接等）。先忽略行内结构，只构建一个只有 Heading、Paragraph (内部全是纯文本) 和 CodeBlock 的 AST。
+
+第三步：解析行内元素 (Inline parsing)。在第二步的基础上，对 Paragraph 和 Heading 等节点中的文本内容再次进行词法和语法分析，解析出其中的 Emphasis、Strong、Link 等节点，并替换掉原来的纯文本节点。
+
+第四步：处理嵌套和优先级。例如，如何处理 **bold *italic* bold**？链接中的文本是否允许强调？这需要仔细设计语法规则和解析顺序。
+
+迭代：逐步支持更多语法，如块引用、列表、图片等。
+
+测试！测试！测试！：使用 CommonMark 的官方测试套件来验证你的解析器是否正确。为你的代码编写大量单元测试。
+
+*** 学习资源推荐
+《编译原理》（龙书）：经典教材，可以重点看前几章关于词法分析和语法分析的部分。
+
+Rust 语言圣经: Rust 语言圣经
+
+CommonMark 官方标准: CommonMark Spec
+
+Org-mode 语法: Org Mode Syntax
+
+已有解析器参考：
+
+Markdown：remark (JS), pulldown-cmark (Rust), cmark (C)
+
+Org-mode：orgize (Rust), 官方 Emacs Lisp 实现
+
+** lexer
+
+token
+
+- 多字符token
+
+rust:
+- 行注释
+- 块注释
+- 空格
+
+- 单字符token
+
+
+状态:
+- 需要判断是否是行首(prev is \n?)
+
+
+#+KEY:
+
+
+
+*
+
+
+asdfa
+
+
+*
+
+** summary
+
+heading: 上一个字符，当前的token, 空格
+
+# \n*** 
+# \n[fn:xxx]
+
+greater elements:
+- footnote: 上一个空格, 
+- greater block: \n, 空格, token #+BEGIN_NAME
+- dynamic block: 上一个字符, 空格, token #+BEGIN:
+- drawer: 上一个字符，空格, :xxx:
+- property drawer: 上一个字符，空格, :xxx:
+
+- items: 上一个字符，空格, +-* 空格
+- plain list: 上一个字符，空格, +-* 空格
+- inline task: todo
+- tables: 上一个字符，空格, |
+
+
+
+endTerminal
+
+#+OPTIONS:
+#+TOC:
+#+INCLUDE:
+#+MACRO:
+#+SUBTITLE:
+#+ASCII:
+#+LATEX:
+#+STARTUP:
+#+TITLE:
+#+AUTHOR:
+#+OPTIONS:
+#+LATEX_CLASS:
+#+LATEX_CLASS_OPTIONS:
+#+BEAMER_THEME:
+#+COLUMNS:
+#+HTML:
+#+CAPTION:
+#+ATTR_HTML:
+#+STARTUP:
+#+TBLFM:
+#+CONSTANTS:
+#+NAME:
+
+
+见[fn:LABEL]
+
+
+
+#+begin_note
+asdfa f#+end_note
+#+end_note a sdafas fsdfadsf
+
+
+
+
+
+
+* AST builder
+
+AST的构建，是DFS遍历
+
+
+* renderer
+
+通过DFS遍历，生成HTML，如:
+
+#+begin_src html
+<div>
+  <p>Hello</p>
+  <p>World</p>
+</div>  
+#+end_src
+
+在生成上述HTML时：
+1) 会先访问div节点，打开<div>标签，
+2) 然后访问第一个p节点，生成<p>Hello</p>，
+3) 接着访问第二个p节点，生成<p>World</p>，
+4) 最后关闭</div>。
+这正好是​*DFS的前序遍历*​(根节点 -> 子树)。
+
+- render_document
+  - render_section
+    - 遍历section下的各种element, 进一步遍历element下的各种object
+  - render_heading_subtree
+    - render_section
+    - heading_subtree
+
+      
+
+* Reference
+
+- [[https://orgmode.org/worg/org-syntax.html][org-syntax]]
+- [[https://github.com/zesterer/chumsky][chumsky]]
+- [[https://github.com/tfeldmann/organize][orgize]]
+- mdbook
+  
