@@ -15,13 +15,21 @@ pub enum Object {
 
     TableCell(TableCell),
 
-    Link { url: String, text: Option<String> },
+    Link {
+        url: String,
+        text: Option<String>,
+    },
 
     // todo: inline/anonymous/standard footnote
-    FootnoteReference {label: Option<String>, definition: Option<String>},
+    FootnoteReference {
+        label: Option<String>,
+        definition: Option<String>,
+    },
 
-    Entity {name: String},
-    
+    Entity {
+        name: String,
+    },
+
     // other
     Whitespace(String),
 }

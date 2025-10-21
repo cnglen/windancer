@@ -58,7 +58,6 @@ impl HtmlRenderer {
     pub fn render_document(&self, document: &Document) -> String {
         let css = &fs::read_to_string("src/renderer/default.css").unwrap_or(String::new());
 
-        
         let mut output = String::new();
 
         // // 文档开始
@@ -87,8 +86,9 @@ impl HtmlRenderer {
         } else {
             ""
         };
-            
-        format!(r##"<!DOCTYPE html>
+
+        format!(
+            r##"<!DOCTYPE html>
 <html>
   <head>
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
@@ -111,7 +111,9 @@ impl HtmlRenderer {
     <p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
   </div>
   </body>
-</html>"##, css, aen, output)
+</html>"##,
+            css, aen, output
+        )
     }
 
     fn render_section(&self, section: &Section) -> String {
@@ -126,7 +128,7 @@ impl HtmlRenderer {
         if heading.is_commented {
             return String::from("");
         }
-        
+
         let todo_html = if let Some(todo) = &heading.keyword {
             format!(r#"<span class="todo">{}</span> "#, escape_html(todo))
         } else {
@@ -211,7 +213,6 @@ impl HtmlRenderer {
             // ... 其他元素渲染
         }
     }
-    
 
     fn render_table(&self, table: &Table) -> String {
         format!(
@@ -228,16 +229,15 @@ impl HtmlRenderer {
     }
 
     fn render_table_row(&self, table_row: &TableRow) -> String {
-         format!(
-             "  <tr>{}</tr>\n",
-             table_row
-                 .cells
+        format!(
+            "  <tr>{}</tr>\n",
+            table_row
+                .cells
                 .iter()
                 .map(|e| self.render_object(&e))
                 .collect::<String>()
         )
     }
-
 
     fn render_drawer(&self, drawer: &Drawer) -> String {
         drawer
@@ -246,7 +246,6 @@ impl HtmlRenderer {
             .map(|c| self.render_element(c))
             .collect()
     }
-
 
     fn render_object(&self, object: &Object) -> String {
         // println!("object={:?}", object);
@@ -312,13 +311,14 @@ impl HtmlRenderer {
                     Some(e) => e,
                     None => &String::from("todo"),
                 };
-                
+
                 format!(
                     r##"<sup>
   <a id="fnr.{label}" class="footref" href="#fn.{}" role="doc-backlink">{label}</a>
 </sup>
 "##,
-                    label=_label)
+                    label = _label
+                )
             }
 
             Object::Entity { name } => {
@@ -330,7 +330,6 @@ impl HtmlRenderer {
                 format!("{v}")
             }
 
-            
             _ => String::from(""), // AstInline::Link { url, text } => {
                                    //     format!(r#"<a href="{}">{}</a>"#, escape_html(url), escape_html(text))
                                    // }
@@ -348,9 +347,12 @@ impl HtmlRenderer {
             .iter()
             .map(|object| self.render_object(object))
             .collect();
-        format!(r##"<p>{}
+        format!(
+            r##"<p>{}
 </p>
-"##, content)
+"##,
+            content
+        )
     }
 
     // fixme: link: collect all footnotes into a div
@@ -365,12 +367,13 @@ impl HtmlRenderer {
   </div>
 </div>
 "##,
-            label=footnote_definition.label,
-            def=footnote_definition
+            label = footnote_definition.label,
+            def = footnote_definition
                 .contents
                 .iter()
                 .map(|e| self.render_element(e))
-                .collect::<String>().replace("<p>", r##"<p class="footpara">"##)
+                .collect::<String>()
+                .replace("<p>", r##"<p class="footpara">"##)
         )
     }
 

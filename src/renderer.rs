@@ -1,4 +1,4 @@
-//! 
+//!
 use crate::parser::syntax::SyntaxNode;
 use rowan::GreenNode;
 pub mod html;

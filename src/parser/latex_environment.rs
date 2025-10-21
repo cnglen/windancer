@@ -61,8 +61,6 @@ fn latex_environment_begin_row_parser<'a>() -> impl Parser<
                 rcurly,
             )));
 
-
-            
             if ws2.len() > 0 {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Whitespace.into(),
@@ -128,7 +126,7 @@ fn latex_environment_end_row_parser<'a>() -> impl Parser<
 
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::Text.into(),
-                &end[0..end.len()-1],
+                &end[0..end.len() - 1],
             )));
 
             children.push(NodeOrToken::Token(GreenToken::new(

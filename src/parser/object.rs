@@ -795,17 +795,19 @@ pub(crate) fn object_parser<'a>()
 /// Entity parser
 pub(crate) fn entity_parser<'a>()
 -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
+    let name_parser = any()
+        .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'))
+        .repeated()
+        .at_least(1)
+        .collect::<String>()
+        .filter(|name| entityname_to_html.contains_key(name));
+
+    let post_parser = any().filter(|c: &char| !c.is_alphabetic());
+
     // pattern1: \NAME POST
     let a1 = just(r"\")
-        .then(
-            any()
-                .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'))
-                .repeated()
-                .at_least(1)
-                .collect::<String>()
-                .filter(|name| entityname_to_html.contains_key(name)),
-        ) // NAME
-        .then_ignore(any().filter(|c: &char| !c.is_alphabetic()).rewind()) // POST
+        .then(name_parser) // NAME
+        .then_ignore(post_parser.rewind()) // POST
         .map(|(backslash, name)| {
             let mut children = vec![];
             children.push(NodeOrToken::Token(GreenToken::new(
@@ -824,17 +826,8 @@ pub(crate) fn entity_parser<'a>()
         });
 
     // Pattern2: \NAME{}
-    let a2 = just(r"\")
-        .then(
-            any()
-                .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'))
-                .repeated()
-                .at_least(1)
-                .collect::<String>()
-                .filter(|name| entityname_to_html.contains_key(name)),
-        ) // NAME
-        .then(just("{}"))
-        .map(|((backslash, name), left_right_curly)| {
+    let a2 = just(r"\").then(name_parser).then(just("{}")).map(
+        |((backslash, name), left_right_curly)| {
             let mut children = vec![];
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::BackSlash.into(),
@@ -857,7 +850,8 @@ pub(crate) fn entity_parser<'a>()
                 OrgSyntaxKind::Entity.into(),
                 children,
             )))
-        });
+        },
+    );
 
     // pattern3:  \_SPACES
     let a3 = just(r"\")
@@ -893,6 +887,9 @@ pub(crate) fn entity_parser<'a>()
             )))
         });
 
+    // priority: a2 > a1, or
+    // - a1: \pi{} -> Entity(\pi) + Text({})
+    // - a2: \pi{} -> Entity(\pi{})
     a2.or(a1).or(a3)
 }
 

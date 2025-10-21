@@ -46,7 +46,7 @@ pub enum OrgSyntaxKind {
     Code,
     Verbatim,
     StrikeThrough,
-    
+
     FootnoteReference,
 
     // Token
@@ -140,7 +140,7 @@ pub enum OrgSyntaxKind {
     Hash,
 
     Spaces,
-    
+
     // 错误节点
     Error,
 }

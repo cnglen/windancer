@@ -33,7 +33,7 @@ fn main() -> std::io::Result<()> {
         "tests/windancer_red_tree.json",
         format!("{:#?}", syntax_tree),
     );
-    
+
     let ast_builder = AstBuilder::new();
     let ast = ast_builder.build(&syntax_tree).unwrap();
     fs::write("tests/windancer_ast.json", format!("{:#?}", ast));
@@ -47,7 +47,6 @@ fn main() -> std::io::Result<()> {
     let html_renderer = HtmlRenderer::new(renderer_config);
     let html = html_renderer.render_document(&ast);
     fs::write("tests/windancer_output.html", format!("{}", html));
-
 
     Ok(())
 }

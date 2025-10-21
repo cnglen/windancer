@@ -296,7 +296,9 @@ impl Converter {
 
             OrgSyntaxKind::Link => Ok(self.convert_link(node_or_token.as_node().unwrap())?),
 
-            OrgSyntaxKind::FootnoteReference => Ok(self.convert_footnote_reference(node_or_token.as_node().unwrap())?),
+            OrgSyntaxKind::FootnoteReference => {
+                Ok(self.convert_footnote_reference(node_or_token.as_node().unwrap())?)
+            }
 
             OrgSyntaxKind::Entity => Ok(self.convert_entity(node_or_token.as_node().unwrap())?),
 
@@ -304,7 +306,6 @@ impl Converter {
 
             OrgSyntaxKind::Whitespace => Ok(Some(Object::Whitespace(String::from(" ")))),
 
-            
             _ => Err(AstError::UnknownNodeType {
                 kind: node_or_token.kind(),
                 position: None,
@@ -501,36 +502,38 @@ impl Converter {
     fn convert_footnote_reference(&self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
         let mut label = None;
         let definition = None;
-        
+
         match node
             .children_with_tokens()
             .filter(|e| e.kind() == OrgSyntaxKind::Text)
-            .nth(1) {
-                Some(e) => {
-                    label = Some(e.as_token()
-                        .expect("todo")
-                        .text()
-                        .to_string());
-                }
-                None =>  {}
+            .nth(1)
+        {
+            Some(e) => {
+                label = Some(e.as_token().expect("todo").text().to_string());
             }
+            None => {}
+        }
 
-        Ok(Some(Object::FootnoteReference { label, definition}))
+        Ok(Some(Object::FootnoteReference { label, definition }))
     }
 
     // object.link
     fn convert_entity(&self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
+        let n_name = node
+            .children_with_tokens()
+            .filter(|e| e.kind() == OrgSyntaxKind::EntityName)
+            .count();
+        let n_space = node
+            .children_with_tokens()
+            .filter(|e| e.kind() == OrgSyntaxKind::Spaces)
+            .count();
 
-        let n_name = node.children_with_tokens().filter(|e| e.kind() == OrgSyntaxKind::EntityName).count();
-        let n_space = node.children_with_tokens().filter(|e| e.kind() == OrgSyntaxKind::Spaces).count();
-
-        let name = if n_name==1 {
-            node
-                .children_with_tokens()
-                .filter(|e| e.kind() == OrgSyntaxKind::EntityName)            
+        let name = if n_name == 1 {
+            node.children_with_tokens()
+                .filter(|e| e.kind() == OrgSyntaxKind::EntityName)
                 .map(|e| e.as_token().expect("todo").text().to_string())
                 .collect::<String>()
-        } else if n_space==1 {
+        } else if n_space == 1 {
             node.children_with_tokens()
                 .filter(|e| e.kind() == OrgSyntaxKind::Spaces)
                 .map(|e| format!("_{}", e.as_token().expect("todo").text().to_string()))
@@ -541,7 +544,7 @@ impl Converter {
 
         Ok(Some(Object::Entity { name }))
     }
-    
+
     // element.center_block
     fn convert_center_block(&self, node: &SyntaxNode) -> Result<CenterBlock, AstError> {
         let mut parameters = None;

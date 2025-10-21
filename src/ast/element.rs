@@ -14,10 +14,14 @@ pub struct Document {
 
 impl fmt::Debug for Document {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, r##"Document {{
+        write!(
+            f,
+            r##"Document {{
 zeroth_secton: {:#?},
 heading_subtrees: {:#?}
-}}"##, self.zeroth_section, self.heading_subtrees)
+}}"##,
+            self.zeroth_section, self.heading_subtrees
+        )
     }
 }
 
@@ -65,7 +69,9 @@ pub struct HeadingSubtree {
 
 impl fmt::Debug for HeadingSubtree {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, r##"HeadingSubtree {{
+        write!(
+            f,
+            r##"HeadingSubtree {{
     level: {:#?},
     keyword: {:#?},
     priority: {:#?},
@@ -75,7 +81,16 @@ impl fmt::Debug for HeadingSubtree {
 
     section: {:#?},
     sub_heading_subtrees: {:#?}
-}}"##, self.level, self.keyword, self.priority, self.is_commented, self.title, self.tags, self.section,self.sub_heading_subtrees)
+}}"##,
+            self.level,
+            self.keyword,
+            self.priority,
+            self.is_commented,
+            self.title,
+            self.tags,
+            self.section,
+            self.sub_heading_subtrees
+        )
     }
 }
 
@@ -87,12 +102,15 @@ pub struct Section {
 }
 impl fmt::Debug for Section {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, r##"Section {{
+        write!(
+            f,
+            r##"Section {{
     elements: {:#?}
-}}"##, self.elements)
+}}"##,
+            self.elements
+        )
     }
 }
-
 
 // 块级元素（Block-level elements）： Greater Or Lesser Element
 // 第一个Table := Element:Table表示枚举，第二个Table表示该枚举所带的数据的类型(结构体)
@@ -149,7 +167,6 @@ impl fmt::Debug for Table {
     }
 }
 
-
 #[derive(Clone)]
 pub struct TableRow {
     pub(crate) syntax: SyntaxNode,
@@ -204,9 +221,13 @@ pub struct Paragraph {
 
 impl fmt::Debug for Paragraph {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, r##"Section {{
+        write!(
+            f,
+            r##"Section {{
     objects: {:#?}
-}}"##, self.objects)
+}}"##,
+            self.objects
+        )
     }
 }
 

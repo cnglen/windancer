@@ -417,13 +417,14 @@ This is a *bold*  font.
 
 #+RESULTS:
 
-** entity test
+** Entity test
 
-pattern1: This is a entity \alpha, and another entity \beta, and last \Delta
-
-pattern2: without spaces \alpha{}\beta{}c.
-
-pattern3: \_    3spaces, \_                    20spaces, not entiry \_                     21spaces is split into 20space entity + one space text.
+1) pattern1: This is a entity \alpha, and another entity \beta, and last \Delta
+2) pattern2: without spaces \pi{}d.
+3) pattern3:
+   - \_   3spaces
+   - \_                    20spaces
+   - \_                     21spaces, split into 20 space entity + one space.
 
 ** link tset
 
