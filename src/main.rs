@@ -48,12 +48,6 @@ fn main() -> std::io::Result<()> {
     let html = html_renderer.render_document(&ast);
     fs::write("tests/windancer_output.html", format!("{}", html));
 
-    // let first_token: SyntaxToken = syntax_tree.first_token().unwrap();
-    // println!("  first token = {:#?}", first_token);
-    // println!("\n\n");
-
-    // // let html = green_tree.to_html();
-    // // fs::write("/tmp/test.html", html)?;
 
     Ok(())
 }

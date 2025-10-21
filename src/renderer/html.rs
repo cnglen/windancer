@@ -35,6 +35,8 @@ use crate::ast::element::{
 };
 
 use crate::ast::object::Object;
+use crate::parser::object::entityname_to_html;
+
 use std::fs;
 
 pub struct HtmlRenderer {
@@ -318,6 +320,16 @@ impl HtmlRenderer {
 "##,
                     label=_label)
             }
+
+            Object::Entity { name } => {
+                let v = match entityname_to_html.get(name) {
+                    Some(v) => v,
+                    None => "fixme!! error occured",
+                };
+
+                format!("{v}")
+            }
+
             
             _ => String::from(""), // AstInline::Link { url, text } => {
                                    //     format!(r#"<a href="{}">{}</a>"#, escape_html(url), escape_html(text))

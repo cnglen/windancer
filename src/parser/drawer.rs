@@ -24,10 +24,10 @@ pub(crate) fn drawer_parser<'a>() -> impl Parser<
         .then(object::whitespaces())
         .then(just("\n"))
         .map(|(((((ws1, c1), name), c2), ws2), nl)| {
-            println!(
-                "drawer begin row: ws1={}, c1={}, name={}, c2={}, ws2={}, nl={}",
-                ws1, c1, name, c2, ws2, nl
-            );
+            // println!(
+            //     "drawer begin row: ws1={}, c1={}, name={}, c2={}, ws2={}, nl={}",
+            //     ws1, c1, name, c2, ws2, nl
+            // );
             let mut tokens = vec![];
 
             if ws1.len() > 0 {

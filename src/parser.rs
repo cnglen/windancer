@@ -14,7 +14,7 @@ mod keyword;
 mod latex_environment;
 mod list;
 mod markup;
-mod object;
+pub(crate) mod object;
 mod paragraph;
 mod section;
 mod table;

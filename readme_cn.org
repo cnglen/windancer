@@ -1,6 +1,6 @@
 An [[https://orgmode.org/][org-mode]] toolkit, including parser, renderer.
 
-* status
+* development status
 
 STILL IN DEVELOPMENT.
 
@@ -9,11 +9,11 @@ STILL IN DEVELOPMENT.
 - [] site generator
 
 
-
 #+begin_src bash
   cargo run
   cargo test
 #+end_src
+
 
 * Design
 
@@ -241,8 +241,11 @@ choice
 
 ** object
 
-可以被段落包含的组件
 
+
+*objects* are syntactic components that exist with a smaller scope than a paragraph, and so can be contained within a paragraph. (*<paragraph*)
+
+可以被段落包含的组件
 
 whitespace是不是object? 如果不是，属于那个object?
 

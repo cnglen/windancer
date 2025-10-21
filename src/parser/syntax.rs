@@ -139,6 +139,8 @@ pub enum OrgSyntaxKind {
     RightCurlyBracket,
     Hash,
 
+    Spaces,
+    
     // 错误节点
     Error,
 }

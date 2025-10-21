@@ -403,15 +403,27 @@ This is a *bold*;and /italic/ language.
 
 This is a *bold*  font.
 
-\delta
 
-\larr{}
 
-\_   
+#+begin_src rust
+  assert!('a'.is_alphabetic());
+  assert!('京'.is_alphabetic());
+  assert!(!'\n'.is_alphabetic());  
 
-\larr
+  let c = '💝';
+  // love is many things, but it is not alphabetic
+  assert!(!c.is_alphabetic());
+#+end_src
+
+#+RESULTS:
 
 ** entity test
+
+pattern1: This is a entity \alpha, and another entity \beta, and last \Delta
+
+pattern2: without spaces \alpha{}\beta{}c.
+
+pattern3: \_    3spaces, \_                    20spaces, not entiry \_                     21spaces is split into 20space entity + one space text.
 
 ** link tset
 

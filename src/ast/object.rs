@@ -20,6 +20,8 @@ pub enum Object {
     // todo: inline/anonymous/standard footnote
     FootnoteReference {label: Option<String>, definition: Option<String>},
 
+    Entity {name: String},
+    
     // other
     Whitespace(String),
 }

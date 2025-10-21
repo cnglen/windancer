@@ -13,6 +13,469 @@ use rowan::{GreenNode, GreenToken, NodeOrToken};
 use std::ops::Range;
 // use chumsky::input::InputRef;
 
+use phf::phf_map;
+use std::collections::HashMap;
+
+pub(crate) static entityname_to_html: phf::Map<&'static str, &'static str> = phf_map! {
+        // * letters
+        // ** latin
+        "Agrave" => "&Agrave;",
+        "agrave" => "&agrave;",
+        "Aacute" => "&Aacute;",
+        "aacute" => "&aacute;",
+        "Acirc" => "&Acirc;",
+        "acirc" => "&acirc;",
+        "Amacr" => "&Amacr;",
+        "amacr" => "&amacr;",
+        "Atilde" => "&Atilde;",
+        "atilde" => "&atilde;",
+        "Auml" => "&Auml;",
+        "auml" => "&auml;",
+        "Aring" => "&Aring;",
+        "AA" => "&Aring;",
+        "aring" => "&aring;",
+        "AElig" => "&AElig;",
+        "aelig" => "&aelig;",
+        "Ccedil" => "&Ccedil;",
+        "ccedil" => "&ccedil;",
+        "Egrave" => "&Egrave;",
+        "egrave" => "&egrave;",
+        "Eacute" => "&Eacute;",
+        "eacute" => "&eacute;",
+        "Ecirc" => "&Ecirc;",
+        "ecirc" => "&ecirc;",
+        "Euml" => "&Euml;",
+        "euml" => "&euml;",
+        "Igrave" => "&Igrave;",
+        "igrave" => "&igrave;",
+        "Iacute" => "&Iacute;",
+        "iacute" => "&iacute;",
+        "Idot" => "&idot;",
+        "inodot" => "&inodot;",
+        "Icirc" => "&Icirc;",
+        "icirc" => "&icirc;",
+        "Iuml" => "&Iuml;",
+        "iuml" => "&iuml;",
+        "Ntilde" => "&Ntilde;",
+        "ntilde" => "&ntilde;",
+        "Ograve" => "&Ograve;",
+        "ograve" => "&ograve;",
+        "Oacute" => "&Oacute;",
+        "oacute" => "&oacute;",
+        "Ocirc" => "&Ocirc;",
+        "ocirc" => "&ocirc;",
+        "Otilde" => "&Otilde;",
+        "otilde" => "&otilde;",
+        "Ouml" => "&Ouml;",
+        "ouml" => "&ouml;",
+        "Oslash" => "&Oslash;",
+        "oslash" => "&oslash;",
+        "OElig" => "&OElig;",
+        "oelig" => "&oelig;",
+        "Scaron" => "&Scaron;",
+        "scaron" => "&scaron;",
+        "szlig" => "&szlig;",
+        "Ugrave" => "&Ugrave;",
+        "ugrave" => "&ugrave;",
+        "Uacute" => "&Uacute;",
+        "uacute" => "&uacute;",
+        "Ucirc" => "&Ucirc;",
+        "ucirc" => "&ucirc;",
+        "Uuml" => "&Uuml;",
+        "uuml" => "&uuml;",
+        "Yacute" => "&Yacute;",
+        "yacute" => "&yacute;",
+        "Yuml" => "&Yuml;",
+        "yuml" => "&yuml;",
+
+        // ** Latin special face,"
+        "fnof" => "&fnof;",
+        "real" => "&real;",
+        "image" => "&image;",
+        "weierp" => "&weierp;",
+        "ell" => "&ell;",
+        "imath" => "&imath;",
+        "jmath" => "&jmath;",
+
+        // ** Greek"
+        "Alpha" => "&Alpha;",
+        "alpha" => "&alpha;",
+        "Beta" => "&Beta;",
+        "beta" => "&beta;",
+        "Gamma" => "&Gamma;",
+        "gamma" => "&gamma;",
+        "Delta" => "&Delta;",
+        "delta" => "&delta;",
+        "Epsilon" => "&Epsilon;",
+        "epsilon" => "&epsilon;",
+        "varepsilon" => "&epsilon;",
+        "Zeta" => "&Zeta;",
+        "zeta" => "&zeta;",
+        "Eta" => "&Eta;",
+        "eta" => "&eta;",
+        "Theta" => "&Theta;",
+        "theta" => "&theta;",
+        "thetasym" => "&thetasym;",
+        "vartheta" => "&thetasym;",
+        "Iota" => "&Iota;",
+        "iota" => "&iota;",
+        "Kappa" => "&Kappa;",
+        "kappa" => "&kappa;",
+        "Lambda" => "&Lambda;",
+        "lambda" => "&lambda;",
+        "Mu" => "&Mu;",
+        "mu" => "&mu;",
+        "nu" => "&nu;",
+        "Nu" => "&Nu;",
+        "Xi" => "&Xi;",
+        "xi" => "&xi;",
+        "Omicron" => "&Omicron;",
+        "omicron" => "&omicron;",
+        "Pi" => "&Pi;",
+        "pi" => "&pi;",
+        "Rho" => "&Rho;",
+        "rho" => "&rho;",
+        "Sigma" => "&Sigma;",
+        "sigma" => "&sigma;",
+        "sigmaf" => "&sigmaf;",
+        "varsigma" => "&sigmaf;",
+        "Tau" => "&Tau;",
+        "Upsilon" => "&Upsilon;",
+        "upsih" => "&upsih;",
+        "upsilon" => "&upsilon;",
+        "Phi" => "&Phi;",
+        "phi" => "&phi;",
+        "varphi" => "&varphi;",
+        "Chi" => "&Chi;",
+        "chi" => "&chi;",
+        "acutex" => "&acute;x",
+        "Psi" => "&Psi;",
+        "psi" => "&psi;",
+        "tau" => "&tau;",
+        "Omega" => "&Omega;",
+        "omega" => "&omega;",
+        "piv" => "&piv;",
+        "varpi" => "&piv;",
+        "partial" => "&part;",
+
+        // ** Hebrew"
+        "alefsym" => "&alefsym;",
+        "aleph" => "&aleph;",
+        "gimel" => "&gimel;",
+        "beth" => "&beth;",
+        "dalet" => "&daleth;",
+
+        // ** Icelandic"
+        "ETH" => "&ETH;",
+        "eth" => "&eth;",
+        "THORN" => "&THORN;",
+        "thorn" => "&thorn;",
+
+        // * Punctuation"
+        // ** Dots and Marks"
+        "dots" => "&hellip;",
+        "cdots" => "&ctdot;",
+        "hellip" => "&hellip;",
+        "middot" => "&middot;",
+        "iexcl" => "&iexcl;",
+        "iquest" => "&iquest;",
+
+        // ** Dash-like"
+        "shy" => "&shy;",
+        "ndash" => "&ndash;",
+        "mdash" => "&mdash;",
+
+        // ** Quotations"
+        "quot" => "&quot;",
+        "acute" => "&acute;",
+        "ldquo" => "&ldquo;",
+        "rdquo" => "&rdquo;",
+        "bdquo" => "&bdquo;",
+        "lsquo" => "&lsquo;",
+        "rsquo" => "&rsquo;",
+        "sbquo" => "&sbquo;",
+        "laquo" => "&laquo;",
+        "raquo" => "&raquo;",
+        "lsaquo" => "&lsaquo;",
+        "rsaquo" => "&rsaquo;",
+
+        // * Other"
+        // ** Misc. often used"
+        "circ" => "&circ;",
+        "vert" => "&vert;",
+        "vbar" => "|",
+        "brvbar" => "&brvbar;",
+        "S" => "&sect;",
+        "sect" => "&sect;",
+        "P" => "&para;",
+        "para" => "&para;",
+        "amp" => "&amp;",
+        "lt" => "&lt;",
+        "gt" => "&gt;",
+        "tilde" => "~",
+        "slash" => "/",
+        "plus" => "+",
+        "under" => "_",
+        "equal" => "=",
+        "asciicirc" => "^",
+        "dagger" => "&dagger;",
+        "dag" => "&dagger;",
+        "Dagger" => "&Dagger;",
+        "ddag" => "&Dagger;",
+
+        // ** Whitespace"
+        "nbsp" => "&nbsp;",
+        "ensp" => "&ensp;",
+        "emsp" => "&emsp;",
+        "thinsp" => "&thinsp;",
+
+        // ** Currency"
+        "curren" => "&curren;",
+        "cent" => "&cent;",
+        "pound" => "&pound;",
+        "yen" => "&yen;",
+        "euro" => "&euro;",
+        "EUR" => "&euro;",
+        "dollar" => "$",
+        "USD" => "$",
+
+        // ** Property Marks"
+        "copy" => "&copy;",
+        "reg" => "&reg;",
+        "trade" => "&trade;",
+
+        // ** Science et al."
+        "minus" => "&minus;",
+        "pm" => "&plusmn;",
+        "plusmn" => "&plusmn;",
+        "times" => "&times;",
+        "frasl" => "&frasl;",
+        "colon" => ":",
+        "div" => "&divide;",
+        "frac12" => "&frac12;",
+        "frac14" => "&frac14;",
+        "frac34" => "&frac34;",
+        "permil" => "&permil;",
+        "sup1" => "&sup1;",
+        "sup2" => "&sup2;",
+        "sup3" => "&sup3;",
+        "radic" => "&radic;",
+        "sum" => "&sum;",
+        "prod" => "&prod;",
+        "micro" => "&micro;",
+        "macr" => "&macr;",
+        "deg" => "&deg;",
+        "prime" => "&prime;",
+        "Prime" => "&Prime;",
+        "infin" => "&infin;",
+        "infty" => "&infin;",
+        "prop" => "&prop;",
+        "propto" => "&prop;",
+        "not" => "&not;",
+        "neg" => "&not;",
+        "land" => "&and;",
+        "wedge" => "&and;",
+        "lor" => "&or;",
+        "vee" => "&or;",
+        "cap" => "&cap;",
+        "cup" => "&cup;",
+        "smile" => "&smile;",
+        "frown" => "&frown;",
+        "int" => "&int;",
+        "therefore" => "&there4;",
+        "there4" => "&there4;",
+        "because" => "&because;",
+        "sim" => "&sim;",
+        "cong" => "&cong;",
+        "simeq" => "&cong;" ,
+        "asymp" => "&asymp;",
+        "approx" => "&asymp;",
+        "ne" => "&ne;",
+        "neq" => "&ne;",
+        "equiv" => "&equiv;",
+
+        "triangleq" => "&triangleq;",
+        "le" => "&le;",
+        "leq" => "&le;",
+        "ge" => "&ge;",
+        "geq" => "&ge;",
+        "lessgtr" => "&lessgtr;",
+        "lesseqgtr" => "&lesseqgtr;",
+        "ll" => "&Lt;",
+        "Ll" => "&Ll;",
+        "lll" => "&Ll;",
+        "gg" => "&Gt;",
+        "Gg" => "&Gg;",
+        "ggg" => "&Gg;",
+        "prec" => "&pr;",
+        "preceq" => "&prcue;",
+        "preccurlyeq" => "&prcue;",
+        "succ" => "&sc;",
+        "succeq" => "&sccue;",
+        "succcurlyeq" => "&sccue;",
+        "sub" => "&sub;",
+        "subset" => "&sub;",
+        "sup" => "&sup;",
+        "supset" => "&sup;",
+        "nsub" => "&nsub;",
+        "sube" => "&sube;",
+        "nsup" => "&nsup;",
+        "supe" => "&supe;",
+        "setminus" => "&setminus;",
+        "forall" => "&forall;",
+        "exist" => "&exist;",
+        "exists" => "&exist;",
+        "nexist" => "&exist;",
+        "nexists" => "&exist;",
+        "empty" => "&empty;",
+        "emptyset" => "&empty;",
+        "isin" => "&isin;",
+        "in" => "&isin;",
+        "notin" => "&notin;",
+        "ni" => "&ni;",
+        "nabla" => "&nabla;",
+        "ang" => "&ang;",
+        "angle" => "&ang;",
+        "perp" => "&perp;",
+        "parallel" => "&parallel;",
+        "sdot" => "&sdot;",
+        "cdot" => "&sdot;",
+        "lceil" => "&lceil;",
+        "rceil" => "&rceil;",
+        "lfloor" => "&lfloor;",
+        "rfloor" => "&rfloor;",
+        "lang" => "&lang;",
+        "rang" => "&rang;",
+        "langle" => "&lang;",
+        "rangle" => "&rang;",
+        "hbar" => "&hbar;",
+        "mho" => "&mho;",
+
+        // ** Arrows"
+        "larr" => "&larr;",
+        "leftarrow" => "&larr;" ,
+        "gets" => "&larr;" ,
+        "lArr" => "&lArr;",
+        "Leftarrow" => "&lArr;",
+        "uarr" => "&uarr;",
+        "uparrow" => "&uarr;",
+        "uArr" => "&uArr;",
+        "Uparrow" => "&uArr;",
+        "rarr" => "&rarr;",
+        "to" => "&rarr;",
+        "rightarrow" => "&rarr;" ,
+        "rArr" => "&rArr;",
+        "Rightarrow" => "&rArr;",
+        "darr" => "&darr;",
+        "downarrow" => "&darr;",
+        "dArr" => "&dArr;",
+        "Downarrow" => "&dArr;",
+        "harr" => "&harr;",
+        "leftrightarrow" => "&harr;" ,
+        "hArr" => "&hArr;",
+        "Leftrightarrow" => "&hArr;",
+        "crarr" => "&crarr;",
+        "hookleftarrow" => "&crarr;" ,
+
+        // ** Function names"
+        "arccos" => "arccos",
+        "arcsin" => "arcsin",
+        "arctan" => "arctan",
+        "arg" => "arg",
+        "cos" => "cos",
+        "cosh" => "cosh",
+        "cot" => "cot",
+        "coth" => "coth",
+        "csc" => "csc",
+        "det" => "det",
+        "dim" => "dim",
+        "exp" => "exp",
+        "gcd" => "gcd",
+        "hom" => "hom",
+        "inf" => "inf",
+        "ker" => "ker",
+        "lg" => "lg",
+        "lim" => "lim",
+        "liminf" => "liminf",
+        "limsup" => "limsup",
+        "ln" => "ln",
+        "log" => "log",
+        "max" => "max",
+        "min" => "min",
+        "Pr" => "Pr",
+        "sec" => "sec",
+        "sin" => "sin",
+        "sinh" => "sinh",
+        "tan" => "tan",
+        "tanh" => "tanh",
+
+        // ** Signs & Symbols"
+        "bull" => "&bull;",
+        "bullet" => "&bull;",
+        "star" => "*",
+        "lowast" => "&lowast;",
+        "ast" => "&lowast;",
+        "odot" => "o",
+        "oplus" => "&oplus;",
+        "otimes" => "&otimes;",
+        "check" => "&checkmark;",
+        "checkmark" => "&check;",
+
+        // ** Miscellaneous seldom used,"
+        "ordf" => "&ordf;",
+        "ordm" => "&ordm;",
+        "cedil" => "&cedil;",
+        "oline" => "&oline;",
+        "uml" => "&uml;",
+        "zwnj" => "&zwnj;",
+        "zwj" => "&zwj;",
+        "lrm" => "&lrm;",
+        "rlm" => "&rlm;",
+
+        // ** Smilies"
+        "smiley" => "&#9786;",
+        "blacksmile" => "&#9787;",
+        "sad" => "&#9785;",
+        "frowny" => "&#9785;",
+
+        // ** Suits"
+        "clubs" => "&clubs;",
+        "clubsuit" => "&clubs;",
+        "spades" => "&spades;",
+        "spadesuit" => "&spades;",
+        "hearts" => "&hearts;",
+        "heartsuit" => "&heartsuit;",
+        "diams" => "&diams;",
+        "diamondsuit" => "&diams;",
+        "diamond" => "&diamond;",
+        "Diamond" => "&diamond;",
+        "loz" => "&loz;",
+
+    // spaces
+    "_ " => "&ensp;",
+    "_  " => "&ensp;&ensp;",
+    "_   " => "&ensp;&ensp;&ensp;",
+    "_    " => "&ensp;&ensp;&ensp;&ensp;",
+    "_     " => "&ensp;&ensp;&ensp;&ensp;&ensp;",
+    "_      " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
+    "_       " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
+    "_        " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
+    "_         " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
+    "_          " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
+    "_           " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
+    "_            " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
+    "_             " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
+    "_              " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
+    "_               " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
+    "_                " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
+    "_                 " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
+    "_                  " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
+    "_                   " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
+    "_                    " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
+
+
+};
+
 /// 解析行终止符：换行符或输入结束
 pub(crate) fn newline_or_ending<'a>()
 -> impl Parser<'a, &'a str, Option<String>, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>>
@@ -154,6 +617,7 @@ pub(crate) fn text_parser<'a>()
 -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
     any()
         .and_is(text_markup_parser().not())
+        .and_is(entity_parser().not())
         .and_is(link_parser().not())
         .and_is(footnote_reference_parser().not())
         .repeated()
@@ -267,14 +731,15 @@ pub(crate) fn link_parser<'a>()
 // - [fn::DEFINITION] todo
 
 pub(crate) fn footnote_reference_parser<'a>()
-                                            -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
     just("[fn:")
-        .then(                  // label
+        .then(
+            // label
             any()
-                .filter(|c: &char| c.is_ascii_alphanumeric() || matches!(c, '_'|'-'))
+                .filter(|c: &char| c.is_ascii_alphanumeric() || matches!(c, '_' | '-'))
                 .repeated()
                 .at_least(1)
-                .collect::<String>()
+                .collect::<String>(),
         )
         .then(just("]"))
         .map(|((left_fn_c, label), rbracket)| {
@@ -310,9 +775,8 @@ pub(crate) fn footnote_reference_parser<'a>()
                 children,
             )))
         })
-        
 }
-    
+
 pub(crate) fn object_parser<'a>()
 -> impl Parser<'a, &'a str, Vec<S2>, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone
 {
@@ -329,19 +793,19 @@ pub(crate) fn object_parser<'a>()
 }
 
 /// Entity parser
-///
-/// fixme: candidate symbols
 pub(crate) fn entity_parser<'a>()
 -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
+    // pattern1: \NAME POST
     let a1 = just(r"\")
         .then(
             any()
-                .filter(|c: &char| !matches!(c, '\r' | '\n' | ' ' | '\t' | '{' | '}' | '_' | '['))
+                .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'))
                 .repeated()
                 .at_least(1)
-                .collect::<String>(),
-        )
-        .and_is(any().filter(|c: &char| !matches!(c, 'a'..'z'| 'A'..'Z'|'\n'|'\r')))
+                .collect::<String>()
+                .filter(|name| entityname_to_html.contains_key(name)),
+        ) // NAME
+        .then_ignore(any().filter(|c: &char| !c.is_alphabetic()).rewind()) // POST
         .map(|(backslash, name)| {
             let mut children = vec![];
             children.push(NodeOrToken::Token(GreenToken::new(
@@ -359,14 +823,16 @@ pub(crate) fn entity_parser<'a>()
             )))
         });
 
+    // Pattern2: \NAME{}
     let a2 = just(r"\")
         .then(
             any()
-                .filter(|c: &char| !matches!(c, '\r' | '\n' | ' ' | '\t' | '{' | '}' | '_'))
+                .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'))
                 .repeated()
                 .at_least(1)
-                .collect::<String>(),
-        )
+                .collect::<String>()
+                .filter(|name| entityname_to_html.contains_key(name)),
+        ) // NAME
         .then(just("{}"))
         .map(|((backslash, name), left_right_curly)| {
             let mut children = vec![];
@@ -392,21 +858,32 @@ pub(crate) fn entity_parser<'a>()
                 children,
             )))
         });
+
+    // pattern3:  \_SPACES
     let a3 = just(r"\")
         .then(just("_"))
-        .then(one_of(" ").repeated().at_least(1).collect::<String>())
+        .then(
+            one_of(" ")
+                .repeated()
+                .at_least(1)
+                .at_most(20)
+                .collect::<String>(),
+        )
         .map(|((backslash, us), ws)| {
             let mut children = vec![];
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::BackSlash.into(),
                 backslash,
             )));
+
+            // content
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::UnderScore.into(),
                 us,
             )));
+
             children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::EntityName.into(),
+                OrgSyntaxKind::Spaces.into(),
                 &ws,
             )));
 
@@ -525,6 +1002,66 @@ L3
             s.has_output(),
             s.has_errors()
         );
+    }
+
+    #[test]
+    fn test_correct_entity() {
+        let input = vec![
+            // pattern1
+            "\\alpha ",
+            "\\alpha\n",
+            // pattern2
+            "\\alpha{}",
+            // pattern3
+            "\\_ \n",
+            "\\_  \n",
+            "\\_                       \n",
+        ];
+        let parser = object_parser();
+        for e in input {
+            let s = parser.parse(e);
+            let s1 = s.output().unwrap().iter().next();
+
+            match s1 {
+                Some(S2::Single(node)) => {
+                    let kind = node.kind();
+                    assert_eq!(kind, OrgSyntaxKind::Entity.into());
+                }
+                _ => {}
+            }
+
+            println!(
+                "{:?}, has_output={:?}, has_errors={:?}",
+                s,
+                s.has_output(),
+                s.has_errors()
+            );
+        }
+    }
+
+    #[test]
+    fn test_incorrect_entity() {
+        let input = vec!["\\alphA ", "\\deltab "];
+        let parser = object_parser();
+        for e in input {
+            let s = parser.parse(e);
+            let s1 = s.output().unwrap().iter().next();
+
+            match s1 {
+                Some(S2::Single(node)) => {
+                    let kind = node.kind();
+                    assert_ne!(kind, OrgSyntaxKind::Entity.into());
+                }
+                _ => {}
+            }
+
+            // println!(
+            //     "{:?}, has_output={:?}, has_errors={:?}",
+            //     s,
+            //     s.has_output(),
+            //     s.has_errors()
+            // );
+        }
     }
 
     #[test]

@@ -10,6 +10,15 @@ STILL IN DEVELOPMENT.
 
 
 
+** syntax check list
+
+|        | kind   | parser | ast    | html-render | comment |
+|--------+--------+--------+--------+-------------+---------|
+| Entity | object | \check | \check | \check      |         |
+
+
+** test
+
 #+begin_src bash
   cargo run
   cargo test

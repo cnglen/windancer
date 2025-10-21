@@ -61,10 +61,12 @@ fn latex_environment_begin_row_parser<'a>() -> impl Parser<
                 rcurly,
             )));
 
+
+            
             if ws2.len() > 0 {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Whitespace.into(),
-                    &ws1,
+                    &ws2,
                 )));
             }
 
