@@ -417,7 +417,11 @@ This is a *bold*  font.
 
 #+RESULTS:
 
-** Entity test
+** DONE Entity test
+CLOSED: [2025-10-22 Wed 11:37]
+:LOGBOOK:
+- State "DONE"       from "DOING"      [2025-10-22 Wed 11:37]
+:END:
 
 1) pattern1: This is a entity \alpha, and another entity \beta, and last \Delta
 2) pattern2: without spaces \pi{}d.
@@ -427,7 +431,11 @@ This is a *bold*  font.
    - \_                     21spaces, split into 20 space entity + one space.
 
 
-** latex fragment test
+** DONE latex fragment test
+CLOSED: [2025-10-22 Wed 11:38]
+:LOGBOOK:
+- State "DONE"       from              [2025-10-22 Wed 11:38]
+:END:
 
 - ​=\NAME BRACKETS=​: \enlargethispage{2\baselineskip}
 - ​=\(CONTENTS\)=​: \(\pi=3.1415\)

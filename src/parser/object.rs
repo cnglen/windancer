@@ -871,10 +871,6 @@ pub(crate) fn latex_fragment_parser<'a>()
                 .repeated()
                 .collect::<String>()
         )
-        .map(|s|{
-            println!("s={:?}", s);
-            s
-        })
         .then(just("}"))
         .map(|((((bs, name), lb), content), rb)|{
             let mut children = vec![];
