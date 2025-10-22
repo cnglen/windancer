@@ -291,7 +291,7 @@ pub(crate) fn item_counter_parser<'a>() -> impl Parser<
             let mut children = vec![];
 
             children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::LeftBracket.into(),
+                OrgSyntaxKind::LeftSquareBracket.into(),
                 "[",
             )));
 
@@ -306,7 +306,7 @@ pub(crate) fn item_counter_parser<'a>() -> impl Parser<
             )));
 
             children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::RightBracket.into(),
+                OrgSyntaxKind::RightSquareBracket.into(),
                 rbracket,
             )));
 
@@ -337,7 +337,7 @@ pub(crate) fn item_checkbox_parser<'a>() -> impl Parser<
             let mut children = vec![];
 
             children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::LeftBracket.into(),
+                OrgSyntaxKind::LeftSquareBracket.into(),
                 lbracket,
             )));
 
@@ -347,7 +347,7 @@ pub(crate) fn item_checkbox_parser<'a>() -> impl Parser<
             )));
 
             children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::RightBracket.into(),
+                OrgSyntaxKind::RightSquareBracket.into(),
                 rbracket,
             )));
 

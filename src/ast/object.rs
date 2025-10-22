@@ -30,6 +30,11 @@ pub enum Object {
         name: String,
     },
 
+    LatexFragment {
+        display_mode: Option<bool>,
+        content: String,
+    },
+
     // other
     Whitespace(String),
 }

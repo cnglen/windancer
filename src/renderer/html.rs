@@ -330,6 +330,17 @@ impl HtmlRenderer {
                 format!("{v}")
             }
 
+            Object::LatexFragment { content, display_mode } => {
+                match display_mode {
+                    Some(true) => {format!(r##"\[
+{}\]
+"##, content)}
+                    Some(false) => {format!(r"\({}\)", content)}
+                    
+                    None => {String::from("")}
+                }
+            }
+            
             _ => String::from(""), // AstInline::Link { url, text } => {
                                    //     format!(r#"<a href="{}">{}</a>"#, escape_html(url), escape_html(text))
                                    // }

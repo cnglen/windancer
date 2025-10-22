@@ -12,9 +12,10 @@ STILL IN DEVELOPMENT.
 
 ** syntax check list
 
-|        | kind   | parser | ast | html-render | comment |
-|--------+--------+--------+-----+-------------+---------|
-| Entity | object | ✓     | ✓  | ✓          |         |
+|               | kind   | parser | ast | html-render | comment |
+|---------------+--------+--------+-----+-------------+---------|
+| Entity        | object | ✓     | ✓  | ✓          |         |
+| LatexFragment | object | ✓     | ✓  | ✓          |         |
 
 
 ** test

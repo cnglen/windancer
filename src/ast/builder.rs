@@ -302,6 +302,8 @@ impl Converter {
 
             OrgSyntaxKind::Entity => Ok(self.convert_entity(node_or_token.as_node().unwrap())?),
 
+            OrgSyntaxKind::LatexFragment => Ok(self.convert_latex_fragment(node_or_token.as_node().unwrap())?),
+            
             OrgSyntaxKind::Asterisk => Ok(None),
 
             OrgSyntaxKind::Whitespace => Ok(Some(Object::Whitespace(String::from(" ")))),
@@ -545,6 +547,32 @@ impl Converter {
         Ok(Some(Object::Entity { name }))
     }
 
+
+    // object.latex_fragment
+    fn convert_latex_fragment(&self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
+
+        let tokens = node.children_with_tokens();
+        let display_mode = if tokens.clone().filter(|e| e.kind() == OrgSyntaxKind::Dollar2).count()==2 {
+            Some(true)
+        } else if tokens.clone().filter(|e| e.kind() == OrgSyntaxKind::LeftSquareBracket || e.kind() == OrgSyntaxKind::RightSquareBracket ).count()==2 {
+            Some(true)
+        } else if tokens.clone().filter(|e| e.kind() == OrgSyntaxKind::LeftRoundBracket || e.kind() == OrgSyntaxKind::RightRoundBracket ).count()==2 {
+            Some(false)
+        } else if tokens.filter(|e| e.kind() == OrgSyntaxKind::Dollar).count()==2 {
+            Some(false)
+        } else {                // e.g: \enlargethispage{2\baselineskip}
+            None
+        };
+        
+        let content = node
+            .children_with_tokens()
+            .filter(|e| e.kind() == OrgSyntaxKind::Text)
+            .map(|e| e.as_token().expect("todo").text().to_string())
+            .collect::<String>();
+
+        Ok(Some(Object::LatexFragment { content, display_mode }))
+    }
+    
     // element.center_block
     fn convert_center_block(&self, node: &SyntaxNode) -> Result<CenterBlock, AstError> {
         let mut parameters = None;

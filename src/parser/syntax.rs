@@ -40,6 +40,7 @@ pub enum OrgSyntaxKind {
 
     // Object
     Entity,
+    LatexFragment,
     Bold,
     Italic,
     UnderLine,
@@ -124,6 +125,8 @@ pub enum OrgSyntaxKind {
     Tilde,      // ~
     Colon,      // Token :
     Colon2,     // Token ::
+    Dollar,     // $
+    Dollar2,    // $$
     Pipe,       // Token |
     Dash,       // Token -
     At,         // at
@@ -133,10 +136,12 @@ pub enum OrgSyntaxKind {
     LinkEnd,
 
     BlankLine, // Token
-    LeftBracket,
-    RightBracket,
+    LeftSquareBracket,
+    RightSquareBracket,
     LeftCurlyBracket,
     RightCurlyBracket,
+    LeftRoundBracket,
+    RightRoundBracket,    
     Hash,
 
     Spaces,

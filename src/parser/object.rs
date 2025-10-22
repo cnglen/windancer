@@ -619,6 +619,7 @@ pub(crate) fn text_parser<'a>()
         .and_is(text_markup_parser().not())
         .and_is(entity_parser().not())
         .and_is(link_parser().not())
+        .and_is(latex_fragment_parser().not())        
         .and_is(footnote_reference_parser().not())
         .repeated()
         .at_least(1)
@@ -641,7 +642,7 @@ pub(crate) fn link_parser<'a>()
                 .map(|((lbracket, path), rbracket)| {
                     let mut children = vec![];
                     children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::LeftBracket.into(),
+                        OrgSyntaxKind::LeftSquareBracket.into(),
                         lbracket,
                     )));
 
@@ -651,7 +652,7 @@ pub(crate) fn link_parser<'a>()
                     )));
 
                     children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::RightBracket.into(),
+                        OrgSyntaxKind::RightSquareBracket.into(),
                         rbracket,
                     )));
                     NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
@@ -671,7 +672,7 @@ pub(crate) fn link_parser<'a>()
                     Some(((lbracket, content), rbracket)) => {
                         let mut children = vec![];
                         children.push(NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::LeftBracket.into(),
+                            OrgSyntaxKind::LeftSquareBracket.into(),
                             lbracket,
                         )));
 
@@ -681,7 +682,7 @@ pub(crate) fn link_parser<'a>()
                         )));
 
                         children.push(NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::RightBracket.into(),
+                            OrgSyntaxKind::RightSquareBracket.into(),
                             rbracket,
                         )));
 
@@ -697,7 +698,7 @@ pub(crate) fn link_parser<'a>()
             let mut children = vec![];
 
             children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::LeftBracket.into(),
+                OrgSyntaxKind::LeftSquareBracket.into(),
                 lbracket,
             )));
 
@@ -711,7 +712,7 @@ pub(crate) fn link_parser<'a>()
             }
 
             children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::RightBracket.into(),
+                OrgSyntaxKind::RightSquareBracket.into(),
                 rbracket,
             )));
 
@@ -746,7 +747,7 @@ pub(crate) fn footnote_reference_parser<'a>()
             let mut children = vec![];
 
             children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::LeftBracket.into(),
+                OrgSyntaxKind::LeftSquareBracket.into(),
                 "[",
             )));
 
@@ -766,7 +767,7 @@ pub(crate) fn footnote_reference_parser<'a>()
             )));
 
             children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::RightBracket.into(),
+                OrgSyntaxKind::RightSquareBracket.into(),
                 rbracket,
             )));
 
@@ -785,11 +786,348 @@ pub(crate) fn object_parser<'a>()
         entity_parser(),
         link_parser(),
         footnote_reference_parser(),
+        latex_fragment_parser(),
         text_parser(),
     ))
     .repeated()
     .at_least(1)
     .collect::<Vec<_>>()
+}
+
+// Latex Frament parser
+pub(crate) fn latex_fragment_parser<'a>()
+                                       -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
+
+    let pre = any().filter(|c| !matches!(c, '$'));
+    let border1 = none_of("\r\n \t.,;$");
+    let border2 = none_of("\r\n \t.,$"); 
+    let post = any().filter(|c: &char| c.is_ascii_punctuation() || matches!(c, ' '|'\t'|'\r'|'\n'));
+
+    let name = any()
+        .filter(|c: &char| c.is_alphabetic())
+        .repeated()
+        .at_least(1)
+        .collect::<String>()
+        .filter(|name| !entityname_to_html.contains_key(name))
+        ;
+
+    // \NAME [CONTENTS1]
+    let t01 = just(r##"\"##)
+        .then(name)
+        .then(just("["))
+        .then(
+            none_of("{}[]\r\n")
+                .and_is(just("]").not())
+                .repeated()
+                .collect::<String>()
+        )
+        .then(just("]"))
+        .map(|((((bs, name), lb), content), rb)|{
+            let mut children = vec![];
+
+            let _content = format!("{bs}{name}{lb}{content}{rb}");
+            
+            // children.push(NodeOrToken::Token(GreenToken::new(
+            //     OrgSyntaxKind::BackSlash.into(),
+            //     bs,
+            // )));
+
+            // children.push(NodeOrToken::Token(GreenToken::new(
+            //     OrgSyntaxKind::Text.into(),
+            //     &name,
+            // )));
+
+            // children.push(NodeOrToken::Token(GreenToken::new(
+            //     OrgSyntaxKind::LeftSquareBracket.into(),
+            //     lb,
+            // )));
+
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::Text.into(),
+                &_content,
+            )));
+
+            // children.push(NodeOrToken::Token(GreenToken::new(
+            //     OrgSyntaxKind::RightSquareBracket.into(),
+            //     rb,
+            // )));
+            
+
+            S2::Single(NodeOrToken::Node(GreenNode::new(
+                OrgSyntaxKind::LatexFragment.into(),
+                children,
+            )))
+            
+        })
+        ;
+
+    // \NAME {CONTENTS2}    
+    let t02 = just(r##"\"##)
+        .then(name)
+        .then(just("{"))
+        .then(
+            none_of("{}\r\n")
+                .and_is(just("}").not())
+                .repeated()
+                .collect::<String>()
+        )
+        .map(|s|{
+            println!("s={:?}", s);
+            s
+        })
+        .then(just("}"))
+        .map(|((((bs, name), lb), content), rb)|{
+            let mut children = vec![];
+
+            // children.push(NodeOrToken::Token(GreenToken::new(
+            //     OrgSyntaxKind::BackSlash.into(),
+            //     bs,
+            // )));
+
+            let _content = format!("{bs}{name}{lb}{content}{rb}");
+                
+            // children.push(NodeOrToken::Token(GreenToken::new(
+            //     OrgSyntaxKind::Text.into(),
+            //     &name,
+            // )));
+
+            // children.push(NodeOrToken::Token(GreenToken::new(
+            //     OrgSyntaxKind::LeftCurlyBracket.into(),
+            //     lb,
+            // )));
+
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::Text.into(),
+                &_content,
+            )));
+
+            // children.push(NodeOrToken::Token(GreenToken::new(
+            //     OrgSyntaxKind::RightCurlyBracket.into(),
+            //     rb,
+            // )));
+            
+
+            S2::Single(NodeOrToken::Node(GreenNode::new(
+                OrgSyntaxKind::LatexFragment.into(),
+                children,
+            )))
+        })
+        ;
+    
+    // PRE$BORDER1 BODY BORDER2$POST
+    let t5 = pre
+        .then(just("$"))
+        .then(border1)
+        .then(
+            any()
+                .and_is(
+                    border2
+                        .then(just("$"))
+                        .not())
+                .repeated()
+                .collect::<String>()                
+        )
+        // .then(none_of("$").repeated().collect::<String>()) // todo: debug
+        .then(border2)
+        .then(just("$"))
+        .then_ignore(post.rewind())
+        .map(|(((((pre, d_pre), border1), body), border2), d_post)| {
+            let mut children = vec![];
+
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::Dollar.into(),
+                d_pre,
+            )));
+
+            let content = format!("{border1}{body}{border2}");
+
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::Text.into(),
+                &content,
+            )));
+            
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::Dollar.into(),
+                d_post,
+            )));
+
+            S2::Double(
+                NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Text.into(),
+                    pre.to_string().as_str(),
+                )),
+                
+                NodeOrToken::Node(GreenNode::new(
+                    OrgSyntaxKind::LatexFragment.into(),
+                    children,
+                ))
+            )
+            
+        })
+        ;
+
+    // PRE$CHAR$POST
+    let t4 = pre
+        .then(just("$"))
+        .then(none_of(".,?;\" \t"))
+        .then(just("$"))
+        .then_ignore(post.rewind())
+        .map(|(((pre, d_pre), c), d_post)| {
+            let mut children = vec![];
+
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::Dollar.into(),
+                d_pre,
+            )));
+
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::Text.into(),
+                &format!("{}", c),
+            )));
+            
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::Dollar.into(),
+                d_post,
+            )));
+
+            S2::Double(
+                NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Text.into(),
+                    pre.to_string().as_str(),
+                )),
+                
+                NodeOrToken::Node(GreenNode::new(
+                    OrgSyntaxKind::LatexFragment.into(),
+                    children,
+                ))
+            )
+            
+        })
+        ;
+
+    // $$CONTENTS$$
+    let t3 = just("$$")
+        .then(
+            // take_until
+            any()
+                .and_is(just("$$").not())
+                .repeated()
+                .collect::<String>()
+        )
+        .then(just("$$"))
+        .map(|((dd_pre, content), dd_post)| {
+            let mut children = vec![];
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::Dollar2.into(),
+                dd_pre,
+            )));
+
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::Text.into(),
+                &content,
+            )));
+            
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::Dollar2.into(),
+                dd_post,
+            )));
+            
+            S2::Single(NodeOrToken::Node(GreenNode::new(
+                OrgSyntaxKind::LatexFragment.into(),
+                children,
+            )))
+            
+        });
+
+    // \(CONTENTS\)
+    let t1 = just(r##"\("##)
+        .then(
+            // take_until
+            any()
+                .and_is(just(r##"\)"##).not())
+                .repeated()
+                .collect::<String>()
+        )
+        .then(just(r##"\)"##))
+        .map(|((dd_pre, content), dd_post)| {
+            let mut children = vec![];
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::BackSlash.into(),
+                dd_pre.chars().nth(0).expect("first char").to_string().as_str(),
+            )));
+
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::LeftRoundBracket.into(),
+                dd_pre.chars().nth(1).expect("second char").to_string().as_str(),
+            )));
+            
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::Text.into(),
+                &content,
+            )));
+            
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::BackSlash.into(),
+                dd_post.chars().nth(0).expect("first_char").to_string().as_str()
+            )));
+            
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::RightRoundBracket.into(),
+                dd_post.chars().nth(1).expect("second char").to_string().as_str(),
+            )));
+
+            S2::Single(NodeOrToken::Node(GreenNode::new(
+                OrgSyntaxKind::LatexFragment.into(),
+                children,
+            )))
+        });
+    
+
+    // \[CONTENTS\]
+    let t2 = just(r##"\["##)
+        .then(
+            // take_until
+            any()
+                .and_is(just(r##"\]"##).not())
+                .repeated()
+                .collect::<String>()
+        )
+        .then(just(r##"\]"##))
+        .map(|((dd_pre, content), dd_post)| {
+            let mut children = vec![];
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::BackSlash.into(),
+                dd_pre.chars().nth(0).expect("first char").to_string().as_str(),
+            )));
+
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::LeftSquareBracket.into(),
+                dd_pre.chars().nth(1).expect("second char").to_string().as_str(),
+            )));
+            
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::Text.into(),
+                &content,
+            )));
+            
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::BackSlash.into(),
+                dd_post.chars().nth(0).expect("first_char").to_string().as_str()
+            )));
+            
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::RightSquareBracket.into(),
+                dd_post.chars().nth(1).expect("second char").to_string().as_str(),
+            )));
+
+            S2::Single(NodeOrToken::Node(GreenNode::new(
+                OrgSyntaxKind::LatexFragment.into(),
+                children,
+            )))
+        });
+
+    
+    t1.or(t2).or(t3).or(t4).or(t5).or(t01).or(t02)
 }
 
 /// Entity parser
@@ -1076,16 +1414,16 @@ L3
                 assert_eq!(
                     format!("{syntax_tree:#?}"),
                     r###"Link@0..32
-  LeftBracket@0..1 "["
+  LeftSquareBracket@0..1 "["
   LinkPath@1..24
-    LeftBracket@1..2 "["
+    LeftSquareBracket@1..2 "["
     Text@2..23 "https://www.baidu.com"
-    RightBracket@23..24 "]"
+    RightSquareBracket@23..24 "]"
   LinkDescription@24..31
-    LeftBracket@24..25 "["
+    LeftSquareBracket@24..25 "["
     Text@25..30 "baidu"
-    RightBracket@30..31 "]"
-  RightBracket@31..32 "]"
+    RightSquareBracket@30..31 "]"
+  RightSquareBracket@31..32 "]"
 "###
                 );
             }

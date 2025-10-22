@@ -81,6 +81,10 @@ pub(crate) fn paragraph_parser<'a>() -> impl Parser<
                 match node {
                     S2::Single(e) => {
                         children.push(e);
+                    },
+                    S2::Double(e1, e2) => {
+                        children.push(e1);
+                        children.push(e2); 
                     }
                     _ => {}
                 }

@@ -208,13 +208,13 @@ pub fn heading_row_priority_parser<'a>()
         .map(|s: Option<(((&str, char), char), String)>| match s {
             Some((((_, level), _), ws)) => {
                 let p_children = vec![
-                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::LeftBracket.into(), "[")),
+                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::LeftSquareBracket.into(), "[")),
                     NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Hash.into(), "#")),
                     NodeOrToken::Token(GreenToken::new(
                         OrgSyntaxKind::Text.into(),
                         &level.to_string(),
                     )),
-                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::RightBracket.into(), "]")),
+                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::RightSquareBracket.into(), "]")),
                 ];
                 let priority_node = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                     OrgSyntaxKind::HeadingRowPriority.into(),
@@ -584,10 +584,10 @@ mod tests {
   HeadingRowKeywordTodo@3..7 "TODO"
   Whitespace@7..8 " "
   HeadingRowPriority@8..12
-    LeftBracket@8..9 "["
+    LeftSquareBracket@8..9 "["
     Hash@9..10 "#"
     Text@10..11 "A"
-    RightBracket@11..12 "]"
+    RightSquareBracket@11..12 "]"
   Whitespace@12..14 "  "
   HeadingRowTitle@14..19 "Title"
   Whitespace@19..20 " "

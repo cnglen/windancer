@@ -426,6 +426,26 @@ This is a *bold*  font.
    - \_                    20spaces
    - \_                     21spaces, split into 20 space entity + one space.
 
+
+** latex fragment test
+
+- ​=\NAME BRACKETS=​: \enlargethispage{2\baselineskip}
+- ​=\(CONTENTS\)=​: \(\pi=3.1415\)
+- ​=\[CONTENTS\]=​: \[\sum_{n=1}^{n}n = \frac{n(n+1)}{2}$$\]  
+- ​=PRE$BORDER1 BODY BORDER2$POST=​: $a+b$
+- ​=PRE$CHAR$POST=​: $a$, $pi$
+- ​=$$CONTENTS$$=​: $$\sum_{n=1}^{n}n = \frac{n(n+1)}{2}$$
+
+let $a=2$, \(b=2\), $c$ is sum of $a$ and $b$, then
+$$c=a+b=3$$
+\[a-b=1\]
+
+\enlargethispage{2\baselineskip}
+\enlargethispage[2\baselineskip]
+
+If $a^2=b$ and \( b=2 \), then the solution must be either $$ a=+\sqrt{2} $$ or \[ a=-\sqrt{2} \].
+
+
 ** link tset
 
 link: [[https://www.baidu.com][baidu]]
@@ -541,4 +561,5 @@ Single
 : i=1
 : i=2
 : 2
+
 

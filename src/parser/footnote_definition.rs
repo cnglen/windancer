@@ -39,7 +39,7 @@ pub(crate) fn footnote_definition_parser<'a>() -> impl Parser<
                 let mut children = vec![];
 
                 children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::LeftBracket.into(),
+                    OrgSyntaxKind::LeftSquareBracket.into(),
                     "[",
                 )));
 
@@ -59,7 +59,7 @@ pub(crate) fn footnote_definition_parser<'a>() -> impl Parser<
                 )));
 
                 children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::RightBracket.into(),
+                    OrgSyntaxKind::RightSquareBracket.into(),
                     rbracket,
                 )));
 
@@ -126,11 +126,11 @@ mod tests {
         assert_eq!(r.has_output(), true);
         let syntax_tree = SyntaxNode::new_root(r.into_result().unwrap().into_node().expect("xxx"));
         let ans = r##"FootnoteDefinition@0..24
-  LeftBracket@0..1 "["
+  LeftSquareBracket@0..1 "["
   Text@1..3 "fn"
   Colon@3..4 ":"
   Text@4..5 "1"
-  RightBracket@5..6 "]"
+  RightSquareBracket@5..6 "]"
   Whitespace@6..7 " "
   Paragraph@7..24
     Text@7..24 "A short footnote."
