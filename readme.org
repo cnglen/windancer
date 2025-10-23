@@ -10,22 +10,59 @@ STILL IN DEVELOPMENT.
 
 
 
-** syntax check list
+** TODO syntax check list
+:LOGBOOK:
+- State "TODO"       from              [2025-10-23 Thu 16:19]
+:END:
 
-|                   | kind   | parser | ast | html-render | comment                                   |
-|-------------------+--------+--------+-----+-------------+-------------------------------------------|
-| Entity            | object | ✓     | ✓  | ✓          |                                           |
-| LatexFragment     | object | ✓     | ✓  | ✓          |                                           |
-| FootnoteReference | object | ✓     | ✓  | ✓          | Parse of *definition* is simplified[fn:1] |
+|                    | kind            | parser | ast | html-render | comment                                   |
+|--------------------+-----------------+--------+-----+-------------+-------------------------------------------|
+| Entity             | object          | ✓     | ✓  | ✓          |                                           |
+| LatexFragment      | object          | ✓     | ✓  | ✓          |                                           |
+| FootnoteReference  | object          | ✓     | ✓  | ✓          | Parse of *definition* is simplified[fn:1] |
+| TextMarkup         | object          |        |     |             |                                           |
+| Link               | object          |        |     |             |                                           |
+| InlineSourceBlock  | object          |        |     |             |                                           |
+| TableCell          | object          |        |     |             |                                           |
+|--------------------+-----------------+--------+-----+-------------+-------------------------------------------|
+| HeadingSubtree     | greater element |        |     |             |                                           |
+| Section            | greater element |        |     |             |                                           |
+| Table              |                 |        |     |             |                                           |
+| Drawer             |                 |        |     |             |                                           |
+| CenterBlock        |                 |        |     |             |                                           |
+| QuoteBlock         |                 |        |     |             |                                           |
+| SpecialBlock       |                 |        |     |             |                                           |
+| List               |                 |        |     |             |                                           |
+| Item               |                 |        |     |             |                                           |
+| FootnoteDefinition |                 |        |     |             |                                           |
+| Paragraph          |                 |        |     |             |                                           |
+| SrcBlock           |                 |        |     |             |                                           |
+| CommentBlock       |                 |        |     |             |                                           |
+| VerseBlock         |                 |        |     |             |                                           |
+| ExampleBlock       |                 |        |     |             |                                           |
+| HorizontalRule     |                 |        |     |             |                                           |
+| LatexEnvironment   |                 |        |     |             |                                           |
+| Keyrord            |                 |        |     |             |                                           |
+| TableRow           |                 |        |     |             |                                           |
+
 
 
 ** test
+
+*** TODO API design
+:LOGBOOK:
+- State "TODO"       from              [2025-10-23 Thu 16:19]
+:END:
 
 #+begin_src bash
   cargo run
   cargo test
 #+end_src
 
+
+* Usage
+
+** examples
 
 * Design
 
@@ -59,6 +96,7 @@ let html = html_render.render(ast);
 - [[https://github.com/zesterer/chumsky][chumsky]]
 - [[https://github.com/tfeldmann/organize][orgize]]
 - mdbook
+
 
 * Footnotes
 

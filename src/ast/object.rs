@@ -20,13 +20,11 @@ pub enum Object {
         text: Option<String>,
     },
 
-    // todo: inline/anonymous/standard footnote
-    // definition: anonymous generate definition
-    FootnoteReference {
-        nid: usize,       // auto generated numeric id from label: label <-> nid, from 1
-        label_rid: usize, // reference id of the same label, from 1
-        label: String,    // label_id, none -> anonymous footnote
-                          // definition: Option<String>,  // optional inline footnote
+    // if definition if found (such as inline or anonymous footnote), a FootnoteDefinition object is auto generated in addition to the FootnoteReference object
+    FootnoteReference { // <label + label_rid> identify a unique reference id
+        label: String,    // label, the actual id of footnote DEFINITION
+        label_rid: usize, // reference id of the same label, started from 1.
+        nid: usize,       // auto generated numeric id from label: label <-> nid, started from 1
     },
 
     Entity {

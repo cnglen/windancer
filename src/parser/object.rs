@@ -726,11 +726,9 @@ pub(crate) fn link_parser<'a>()
 }
 
 /// Footntoe refrence
-// fixme: only one pattern suppoted
 // - [fn:LABEL] done
 // - [fn:LABEL:DEFINITION] todo
 // - [fn::DEFINITION] todo
-
 pub(crate) fn footnote_reference_parser<'a>()
 -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
     let label = any()

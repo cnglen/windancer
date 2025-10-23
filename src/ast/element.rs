@@ -319,9 +319,9 @@ pub struct SrcBlock {
 
 #[derive(Debug, Clone)]
 pub struct FootnoteDefinition {
-    pub nid: usize,
-    pub label: String,
-    pub rids: Vec<usize>,
+    pub nid: usize,          // one label determines one nid, `nid` used to sort the defintions by the order of first occurrenced reference
+    pub label: String,       // the actual id of a footnote definition
+    pub rids: Vec<usize>,    // all rids of footnote references related to current definiton, used to link back to reference.
     pub contents: Vec<Element>,
     pub(crate) syntax: SyntaxNode,
 }
