@@ -9,7 +9,7 @@ repository = "https://github.com/cnglen/windancer"
 license = "GPL-3.0"
 keywords = ["org-mode", "parse", "render"]
 categories = ["parser-implementations", "parsing", "text-processing"]
-readme = "README.org"
+readme = "README.md"
 exclude = ["readme_cn.org"]
 
 
