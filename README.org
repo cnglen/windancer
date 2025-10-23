@@ -62,6 +62,11 @@ STILL IN DEVELOPMENT.
 
 * Usage
 
+#+begin_src bash
+  cargo install windancer
+  windancer --help
+#+end_src
+
 ** examples
 
 input:
@@ -69,6 +74,7 @@ input:
 
 output:
 - html
+
 
 * Design
 

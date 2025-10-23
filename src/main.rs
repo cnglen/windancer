@@ -16,12 +16,14 @@ use std::fs;
 
 #[derive(Parser)]
 #[command(name = "winancer")]
-#[command(version = "0.1")]
+#[command(version = "0.1.0")]
 #[command(about = "Render a org file to html", long_about = None)]
 struct Cli {
+    /// Input path of org file
     #[arg(short='i', long)]
     f_org: String,
 
+    /// Output path of html file
     #[arg(short='o', long)]
     f_html: Option<String>,
 
