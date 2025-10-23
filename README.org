@@ -64,6 +64,12 @@ STILL IN DEVELOPMENT.
 
 ** examples
 
+input:
+- org_file
+
+output:
+- html
+
 * Design
 
 org -parser-> syntax tree(red tree) -ast_builder-> ast -html_renderer-> html --orgbook/mdbook --> site

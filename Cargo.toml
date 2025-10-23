@@ -1,7 +1,18 @@
 [package]
 name = "windancer"
 version = "0.1.0"
+authors = ["cnglen <cnglen@gmail.com>"]
 edition = "2024"
+description = "An org-mode toolkit, including parser, renderer."
+homepage = "https://github.com/cnglen/windancer"
+repository = "https://github.com/cnglen/windancer"
+license = "GPL v3"
+keywords = ["org-mode", "parse", "render"]
+categories = ["parser-implementations", "parsing", "text-processing"]
+readme = "README.org"
+
+
+
 
 [dependencies]
 phf = { version = "0.13.1", features = ["macros"]}
@@ -11,4 +22,5 @@ colored = "3.0.0"
 orgize = "=0.10.0-alpha.10"
 rowan = "0.16.1"
 thiserror = "2.0.17"
+clap = { version = "4.5.50", features = ["derive"] }
 
