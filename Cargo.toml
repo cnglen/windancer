@@ -10,7 +10,7 @@ license = "GPL v3"
 keywords = ["org-mode", "parse", "render"]
 categories = ["parser-implementations", "parsing", "text-processing"]
 readme = "README.org"
-
+exclude = ["readme_cn.org"]
 
 
 
