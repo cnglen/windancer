@@ -74,6 +74,10 @@ impl HtmlRenderer {
             output.push_str(&self.render_heading_subtree(subtree));
         }
 
+        for footnote_definition in &document.footnote_definitions {
+            output.push_str(&self.render_footnote_definition(footnote_definition));
+        }
+
         let automatic_equation_numbering = true;
         let aen = if automatic_equation_numbering {
             r##"<script>
@@ -200,7 +204,8 @@ impl HtmlRenderer {
             Element::List(list) => self.render_list(list),
             Element::Item(item) => self.render_item(item),
             Element::FootnoteDefinition(footnote_definition) => {
-                self.render_footnote_definition(footnote_definition)
+                String::from("")
+                // self.render_footnote_definition(footnote_definition)
             }
             Element::HorizontalRule(rule) => self.render_horizontal_rule(rule),
             Element::Keyword(keyword) => self.render_keyword(keyword),
@@ -306,19 +311,29 @@ impl HtmlRenderer {
                 )
             }
 
-            Object::FootnoteReference { label, definition } => {
-                let _label = match label {
-                    Some(e) => e,
-                    None => &String::from("todo"),
-                };
-
+            Object::FootnoteReference {
+                label,
+                nid,
+                label_rid,
+            } => {
+                // superscript:label
                 format!(
                     r##"<sup>
-  <a id="fnr.{label}" class="footref" href="#fn.{}" role="doc-backlink">{label}</a>
+  <a id="fnr.{label}.{label_rid}" class="footref" href="#fn.{label}" role="doc-backlink">{label}</a>
 </sup>
 "##,
-                    label = _label
+                    label_rid = label_rid,
+                    label = label,
                 )
+
+                // //  superscript: nid
+                //                 format!(
+                //                     r##"<sup>
+                //   <a id="fnr.{label}" class="footref" href="#fn.{}" role="doc-backlink">{label}</a>
+                // </sup>
+                // "##,
+                //                     label = nid
+                //                 )
             }
 
             Object::Entity { name } => {
@@ -330,17 +345,25 @@ impl HtmlRenderer {
                 format!("{v}")
             }
 
-            Object::LatexFragment { content, display_mode } => {
-                match display_mode {
-                    Some(true) => {format!(r##"\[
+            Object::LatexFragment {
+                content,
+                display_mode,
+            } => match display_mode {
+                Some(true) => {
+                    format!(
+                        r##"\[
 {}\]
-"##, content)}
-                    Some(false) => {format!(r"\({}\)", content)}
-                    
-                    None => {String::from("")}
+"##,
+                        content
+                    )
                 }
-            }
-            
+                Some(false) => {
+                    format!(r"\({}\)", content)
+                }
+
+                None => String::from(""),
+            },
+
             _ => String::from(""), // AstInline::Link { url, text } => {
                                    //     format!(r#"<a href="{}">{}</a>"#, escape_html(url), escape_html(text))
                                    // }
@@ -368,17 +391,42 @@ impl HtmlRenderer {
 
     // fixme: link: collect all footnotes into a div
     fn render_footnote_definition(&self, footnote_definition: &FootnoteDefinition) -> String {
+        let c = if footnote_definition.rids.len() == 1 {
+            format!(
+                r##"  <sup>
+    <a class="footnum" href="#fnr.{label}.{rid}" role="doc-backlink">^</a>
+  </sup>
+"##,
+                label = footnote_definition.label,
+                rid = 1
+            )
+        } else {
+            footnote_definition
+                .rids
+                .iter()
+                .map(|rid| {
+                    format!(
+                        r##"  <sup>
+    <a class="footnum" href="#fnr.{label}.{rid}" role="doc-backlink">{rid}</a>
+  </sup>
+"##,
+                        label = footnote_definition.label,
+                        rid = rid
+                    )
+                })
+                .collect::<String>()
+        };
+
         format!(
             r##"<div class="footdef">
-  <sup>
-    <a id="fn.{label}" class="footnum" href="#fnr.{label}" role="doc-backlink">{label}</a>
-  </sup>
+  <a id="fn.{label}">{label}</a>: {c}
   <div class="footpara" role="doc-footnote">
    {def}
   </div>
 </div>
 "##,
             label = footnote_definition.label,
+            c = c,
             def = footnote_definition
                 .contents
                 .iter()

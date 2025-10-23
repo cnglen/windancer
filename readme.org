@@ -12,10 +12,11 @@ STILL IN DEVELOPMENT.
 
 ** syntax check list
 
-|               | kind   | parser | ast | html-render | comment |
-|---------------+--------+--------+-----+-------------+---------|
-| Entity        | object | ✓     | ✓  | ✓          |         |
-| LatexFragment | object | ✓     | ✓  | ✓          |         |
+|                   | kind   | parser | ast | html-render | comment                                   |
+|-------------------+--------+--------+-----+-------------+-------------------------------------------|
+| Entity            | object | ✓     | ✓  | ✓          |                                           |
+| LatexFragment     | object | ✓     | ✓  | ✓          |                                           |
+| FootnoteReference | object | ✓     | ✓  | ✓          | Parse of *definition* is simplified[fn:1] |
 
 
 ** test
@@ -34,6 +35,9 @@ org -parser-> syntax tree(red tree) -ast_builder-> ast -html_renderer-> html --o
 - chumsky
 - render
   - html
+
+
+windancer -i xxx.org -o xxx.html
 
 #+begin_src rust
 let green_tree = parser.parse(f_org).green();
@@ -55,4 +59,7 @@ let html = html_render.render(ast);
 - [[https://github.com/zesterer/chumsky][chumsky]]
 - [[https://github.com/tfeldmann/organize][orgize]]
 - mdbook
-  
+
+* Footnotes
+
+[fn:1] In inline and anonymous footnote, DEFINITION is One or more *objects* from the standard set, simplified to use text, i.e, ​=any().and_is(just("]").not()).repeated().collect::<String>();=​

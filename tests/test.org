@@ -62,7 +62,7 @@ a short line * faked_title
 
 * footnote test
 
-This is a org [fn:1]. This is not markdown[fn:2]. This is luo [fn:luo]. This is [fn:3]   . I'm bad.
+This is a org [fn:1]. This is not markdown[fn:md]. This is luo [fn:luo]. This is [fn:3] . I'm bad[fn:2]. I love org[fn:1] bettern than md[fn:md]. this is a inline fn[fn:x:yy] and anonymous fn[fn::zz].
 
 footnote reference: inside text.
 
@@ -70,6 +70,8 @@ footnote definition: no indentation allowed
 
 
 
+
+another anonymous fn[fn::ZZ].
 
 footnote defintion (Greater Element)
 
@@ -102,14 +104,11 @@ If the reference follows the second pattern, it is called an â€œinline footnoteâ
 Note that the first pattern may not occur on an unindented line, as it is then a footnote definition.
 
 
-* Footnotes
 
 
 
-[fn:1] this is a fot note  asdfaf saf sdfadf.  
-[fn:2] asdf md document.
-[fn:3] this asdf asd f. 
-[fn:luo] ccc  sadf sdf asdf asdf
+
+
 
 
 * elements
@@ -134,8 +133,6 @@ block:
   print("hello")
 #+end_src
 
-footnote:
-[fn:2] asdf md document.
 
 comment:
 # this is a comment
@@ -570,4 +567,13 @@ Single
 : i=2
 : 2
 
+
+
+
+* Footnotes
+[fn:2] asdfaf 
+[fn:1] org-mode is a text from emacs
+[fn:md] markdown is another text std
+[fn:3] this asdf asd f. 
+[fn:luo] luo is here
 

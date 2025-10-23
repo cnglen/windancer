@@ -10,6 +10,7 @@ pub struct Document {
     pub(crate) syntax: SyntaxNode,
     pub zeroth_section: Option<Section>,
     pub heading_subtrees: Vec<HeadingSubtree>,
+    pub footnote_definitions: Vec<FootnoteDefinition>,
 }
 
 impl fmt::Debug for Document {
@@ -18,9 +19,10 @@ impl fmt::Debug for Document {
             f,
             r##"Document {{
 zeroth_secton: {:#?},
-heading_subtrees: {:#?}
+heading_subtrees: {:#?},
+footnote_definitions: {:#?}
 }}"##,
-            self.zeroth_section, self.heading_subtrees
+            self.zeroth_section, self.heading_subtrees, self.footnote_definitions
         )
     }
 }
@@ -30,11 +32,13 @@ impl Document {
         syntax: SyntaxNode,
         zeroth_section: Option<Section>,
         heading_subtrees: Vec<HeadingSubtree>,
+        footnote_definitions: Vec<FootnoteDefinition>,
     ) -> Self {
         Self {
             syntax,
             zeroth_section,
             heading_subtrees,
+            footnote_definitions,
         }
     }
 
@@ -315,7 +319,9 @@ pub struct SrcBlock {
 
 #[derive(Debug, Clone)]
 pub struct FootnoteDefinition {
+    pub nid: usize,
     pub label: String,
+    pub rids: Vec<usize>,
     pub contents: Vec<Element>,
     pub(crate) syntax: SyntaxNode,
 }

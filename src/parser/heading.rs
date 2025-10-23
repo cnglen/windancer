@@ -208,13 +208,19 @@ pub fn heading_row_priority_parser<'a>()
         .map(|s: Option<(((&str, char), char), String)>| match s {
             Some((((_, level), _), ws)) => {
                 let p_children = vec![
-                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::LeftSquareBracket.into(), "[")),
+                    NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::LeftSquareBracket.into(),
+                        "[",
+                    )),
                     NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Hash.into(), "#")),
                     NodeOrToken::Token(GreenToken::new(
                         OrgSyntaxKind::Text.into(),
                         &level.to_string(),
                     )),
-                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::RightSquareBracket.into(), "]")),
+                    NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::RightSquareBracket.into(),
+                        "]",
+                    )),
                 ];
                 let priority_node = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                     OrgSyntaxKind::HeadingRowPriority.into(),

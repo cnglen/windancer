@@ -141,7 +141,7 @@ pub enum OrgSyntaxKind {
     LeftCurlyBracket,
     RightCurlyBracket,
     LeftRoundBracket,
-    RightRoundBracket,    
+    RightRoundBracket,
     Hash,
 
     Spaces,

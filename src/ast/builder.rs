@@ -13,7 +13,8 @@
 //! Element: Each kind of ast::Element has a convert_xxx_element(), which convert SyntaxNode to ast::Element
 //! Object: `convert_object()``, Each kind of ast::Object has a convert_xxx_object(), which convert SyntaxNode to ast::Object
 
-use std::collections::HashMap;
+use rowan::{GreenNode, GreenToken, NodeOrToken};
+use std::collections::{HashMap, HashSet};
 
 use crate::ast::element::{
     CenterBlock, CommentBlock, Document, Drawer, Element, ExampleBlock, ExportBlock,
@@ -40,11 +41,21 @@ impl AstBuilder {
 // 内部转换器，不公开
 struct Converter {
     // 必要的状态字段
+    footnote_label_to_rids: HashMap<String, Vec<usize>>,
+    n_anonymous_label: usize,
+    footnote_label_to_nid: HashMap<String, usize>,
+    footnote_definitions: Vec<FootnoteDefinition>,
 }
 
 impl Converter {
     fn new() -> Self {
-        Self { /* 初始化状态 */ }
+        Self {
+            footnote_label_to_rids: HashMap::new(),
+            n_anonymous_label: 0,
+            footnote_label_to_nid: HashMap::new(),
+            footnote_definitions: vec![],
+            /* 初始化状态 */
+        }
     }
 
     fn convert(&mut self, root: &SyntaxNode) -> Result<Document, AstError> {
@@ -100,14 +111,17 @@ impl Converter {
             }
         }
 
+        self.footnote_definitions.sort_by(|a, b| a.nid.cmp(&b.nid));
+
         Ok(Document {
             syntax: node.clone(),
             heading_subtrees: heading_subtrees,
             zeroth_section: zeroth_section,
+            footnote_definitions: self.footnote_definitions.clone(),
         })
     }
 
-    fn convert_heading_subtree(&self, node: &SyntaxNode) -> Result<HeadingSubtree, AstError> {
+    fn convert_heading_subtree(&mut self, node: &SyntaxNode) -> Result<HeadingSubtree, AstError> {
         // let level = Self::extract_heading_level(node)?;
         // let title = Self::extract_text_content(node)?;
         // let children = Self::convert_children(node)?;
@@ -194,7 +208,7 @@ impl Converter {
         })
     }
 
-    fn convert_section(&self, node: &SyntaxNode) -> Result<Section, AstError> {
+    fn convert_section(&mut self, node: &SyntaxNode) -> Result<Section, AstError> {
         let mut elements = vec![];
 
         for child in node.children() {
@@ -210,7 +224,7 @@ impl Converter {
     }
 
     /// Conver SyntaxTree(RedTree) to ast::Element
-    fn convert_element(&self, node: &SyntaxNode) -> Result<Element, AstError> {
+    fn convert_element(&mut self, node: &SyntaxNode) -> Result<Element, AstError> {
         match node.kind() {
             OrgSyntaxKind::Paragraph => Ok(Element::Paragraph(self.convert_paragraph(&node)?)),
 
@@ -263,7 +277,10 @@ impl Converter {
     }
 
     // conver to object
-    fn convert_object(&self, node_or_token: &SyntaxElement) -> Result<Option<Object>, AstError> {
+    fn convert_object(
+        &mut self,
+        node_or_token: &SyntaxElement,
+    ) -> Result<Option<Object>, AstError> {
         match node_or_token.kind() {
             OrgSyntaxKind::Text => {
                 // Ok(Some(Object::Text(node_or_token.as_token().unwrap().text().to_string())));
@@ -302,13 +319,15 @@ impl Converter {
 
             OrgSyntaxKind::Entity => Ok(self.convert_entity(node_or_token.as_node().unwrap())?),
 
-            OrgSyntaxKind::LatexFragment => Ok(self.convert_latex_fragment(node_or_token.as_node().unwrap())?),
+            OrgSyntaxKind::LatexFragment => {
+                Ok(self.convert_latex_fragment(node_or_token.as_node().unwrap())?)
+            }
 
             OrgSyntaxKind::Whitespace => Ok(Some(Object::Whitespace(String::from(" ")))),
 
-            OrgSyntaxKind::Asterisk => Ok(None),            
+            OrgSyntaxKind::Asterisk => Ok(None),
             OrgSyntaxKind::BlankLine => Ok(None),
-            
+
             _ => Err(AstError::UnknownNodeType {
                 kind: node_or_token.kind(),
                 position: None,
@@ -317,7 +336,7 @@ impl Converter {
     }
 
     // element.paragraph
-    fn convert_paragraph(&self, node: &SyntaxNode) -> Result<Paragraph, AstError> {
+    fn convert_paragraph(&mut self, node: &SyntaxNode) -> Result<Paragraph, AstError> {
         let mut objects = vec![];
         // println!("convert_paragraph: {:#?}", node.children());
         for child in node.children_with_tokens() {
@@ -339,7 +358,7 @@ impl Converter {
     }
 
     // element.drawrer
-    fn convert_drawer(&self, node: &SyntaxNode) -> Result<Drawer, AstError> {
+    fn convert_drawer(&mut self, node: &SyntaxNode) -> Result<Drawer, AstError> {
         let mut name = String::new();
         let mut contents: Vec<Element> = vec![];
 
@@ -374,7 +393,7 @@ impl Converter {
     }
 
     // element.table
-    fn convert_table(&self, node: &SyntaxNode) -> Result<Table, AstError> {
+    fn convert_table(&mut self, node: &SyntaxNode) -> Result<Table, AstError> {
         let name = None;
         let caption = None;
         let header = None;
@@ -404,7 +423,7 @@ impl Converter {
 
     // element.table_row
     fn convert_table_row(
-        &self,
+        &mut self,
         node: &SyntaxNode,
         row_type: TableRowType,
     ) -> Result<TableRow, AstError> {
@@ -426,7 +445,7 @@ impl Converter {
     }
 
     // object.table_cell
-    fn convert_table_cell(&self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
+    fn convert_table_cell(&mut self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
         let contents = node
             .children_with_tokens()
             .filter(|e| e.kind() == OrgSyntaxKind::Text)
@@ -442,7 +461,7 @@ impl Converter {
 
     // convert markup object
     fn convert_markup(
-        &self,
+        &mut self,
         markup_type: &str,
         node: &SyntaxNode,
     ) -> Result<Option<Object>, AstError> {
@@ -501,23 +520,109 @@ impl Converter {
         Ok(Some(Object::Link { url, text }))
     }
 
-    // object.link
-    fn convert_footnote_reference(&self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
-        let mut label = None;
-        let definition = None;
-
-        match node
+    // object.footnote_reference
+    // - generate footnote definition if possible
+    fn convert_footnote_reference(
+        &mut self,
+        node: &SyntaxNode,
+    ) -> Result<Option<Object>, AstError> {
+        let is_anoymous = node
             .children_with_tokens()
-            .filter(|e| e.kind() == OrgSyntaxKind::Text)
-            .nth(1)
-        {
+            .filter(|e| e.kind() == OrgSyntaxKind::Colon2)
+            .count()
+            > 0;
+
+        let is_inline = node
+            .children_with_tokens()
+            .filter(|e| e.kind() == OrgSyntaxKind::Colon)
+            .count()
+            == 3;
+
+        let (raw_label, raw_definition) = if is_inline {
+            let mut texts = node
+                .children_with_tokens()
+                .filter(|e| e.kind() == OrgSyntaxKind::Text);
+            let label = texts.nth(1).expect("todo");
+            let definition = texts.nth(2).expect("todo");
+            (Some(label), Some(definition))
+        } else if is_anoymous {
+            let mut texts = node
+                .children_with_tokens()
+                .filter(|e| e.kind() == OrgSyntaxKind::Text);
+            let definition = texts.nth(1).expect("todo");
+
+            (None, Some(definition))
+        } else {
+            let mut texts = node
+                .children_with_tokens()
+                .filter(|e| e.kind() == OrgSyntaxKind::Text);
+            let label = texts.nth(1).expect("todo");
+            (Some(label), None)
+        };
+
+        let label = match raw_label {
             Some(e) => {
-                label = Some(e.as_token().expect("todo").text().to_string());
+                let _label = e.as_token().expect("todo").text().to_string();
+                if self.footnote_label_to_rids.contains_key(&_label) {
+                    let n_rid = self
+                        .footnote_label_to_rids
+                        .get(&_label)
+                        .expect("todo")
+                        .len();
+                    self.footnote_label_to_rids
+                        .get_mut(&_label)
+                        .expect("todo")
+                        .push(n_rid + 1);
+                } else {
+                    self.footnote_label_to_rids.insert(_label.clone(), vec![1]);
+                    self.footnote_label_to_nid
+                        .insert(_label.clone(), self.footnote_label_to_rids.len());
+                }
+                _label
             }
-            None => {}
+            None => {
+                let label_generated = format!("anonymous_{}", self.n_anonymous_label);
+                self.n_anonymous_label = self.n_anonymous_label + 1;
+                self.footnote_label_to_rids
+                    .insert(label_generated.clone(), vec![1]);
+                self.footnote_label_to_nid
+                    .insert(label_generated.clone(), self.footnote_label_to_rids.len());
+                label_generated
+            }
+        };
+
+        if let Some(definition) = raw_definition {
+            let green_node = GreenNode::new(OrgSyntaxKind::Paragraph.into(), vec![]);
+            let faked_syntax_node = SyntaxNode::new_root(green_node);
+
+            let object = self
+                .convert_object(&definition)
+                .expect("todo")
+                .expect("todo");
+            let element = Element::Paragraph(Paragraph {
+                objects: vec![object],
+                syntax: faked_syntax_node.clone(),
+            });
+
+            // definition
+            let rids = self.footnote_label_to_rids.get(&label).expect("todo");
+            let nid = self.footnote_label_to_nid.get(&label).expect("todo");
+            let footnote_definition = FootnoteDefinition {
+                label: label.clone(),
+                contents: vec![element],
+                syntax: faked_syntax_node,
+                rids: rids.clone(),
+                nid: *nid,
+            };
+
+            self.footnote_definitions.push(footnote_definition);
         }
 
-        Ok(Some(Object::FootnoteReference { label, definition }))
+        Ok(Some(Object::FootnoteReference {
+            label: label.clone(),
+            nid: *self.footnote_label_to_nid.get(&label).expect("todo"),
+            label_rid: self.footnote_label_to_rids.get(&label).expect("todo").len(),
+        }))
     }
 
     // object.link
@@ -548,34 +653,57 @@ impl Converter {
         Ok(Some(Object::Entity { name }))
     }
 
-
     // object.latex_fragment
     fn convert_latex_fragment(&self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
-
         let tokens = node.children_with_tokens();
-        let display_mode = if tokens.clone().filter(|e| e.kind() == OrgSyntaxKind::Dollar2).count()==2 {
+        let display_mode = if tokens
+            .clone()
+            .filter(|e| e.kind() == OrgSyntaxKind::Dollar2)
+            .count()
+            == 2
+        {
             Some(true)
-        } else if tokens.clone().filter(|e| e.kind() == OrgSyntaxKind::LeftSquareBracket || e.kind() == OrgSyntaxKind::RightSquareBracket ).count()==2 {
+        } else if tokens
+            .clone()
+            .filter(|e| {
+                e.kind() == OrgSyntaxKind::LeftSquareBracket
+                    || e.kind() == OrgSyntaxKind::RightSquareBracket
+            })
+            .count()
+            == 2
+        {
             Some(true)
-        } else if tokens.clone().filter(|e| e.kind() == OrgSyntaxKind::LeftRoundBracket || e.kind() == OrgSyntaxKind::RightRoundBracket ).count()==2 {
+        } else if tokens
+            .clone()
+            .filter(|e| {
+                e.kind() == OrgSyntaxKind::LeftRoundBracket
+                    || e.kind() == OrgSyntaxKind::RightRoundBracket
+            })
+            .count()
+            == 2
+        {
             Some(false)
-        } else if tokens.filter(|e| e.kind() == OrgSyntaxKind::Dollar).count()==2 {
+        } else if tokens.filter(|e| e.kind() == OrgSyntaxKind::Dollar).count() == 2 {
             Some(false)
-        } else {                // e.g: \enlargethispage{2\baselineskip}
+        } else {
+            // e.g: \enlargethispage{2\baselineskip}
             None
         };
-        
+
         let content = node
             .children_with_tokens()
             .filter(|e| e.kind() == OrgSyntaxKind::Text)
             .map(|e| e.as_token().expect("todo").text().to_string())
             .collect::<String>();
 
-        Ok(Some(Object::LatexFragment { content, display_mode }))
+        Ok(Some(Object::LatexFragment {
+            content,
+            display_mode,
+        }))
     }
-    
+
     // element.center_block
-    fn convert_center_block(&self, node: &SyntaxNode) -> Result<CenterBlock, AstError> {
+    fn convert_center_block(&mut self, node: &SyntaxNode) -> Result<CenterBlock, AstError> {
         let mut parameters = None;
         let mut contents = vec![];
 
@@ -604,7 +732,7 @@ impl Converter {
     }
 
     // element.quote_block
-    fn convert_quote_block(&self, node: &SyntaxNode) -> Result<QuoteBlock, AstError> {
+    fn convert_quote_block(&mut self, node: &SyntaxNode) -> Result<QuoteBlock, AstError> {
         let mut parameters = None;
         let mut contents = vec![];
 
@@ -632,7 +760,7 @@ impl Converter {
     }
 
     // element.special_block
-    fn convert_special_block(&self, node: &SyntaxNode) -> Result<SpecialBlock, AstError> {
+    fn convert_special_block(&mut self, node: &SyntaxNode) -> Result<SpecialBlock, AstError> {
         let mut parameters = None;
         let mut contents = vec![];
 
@@ -661,7 +789,7 @@ impl Converter {
     }
 
     // element.example_block
-    fn convert_example_block(&self, node: &SyntaxNode) -> Result<ExampleBlock, AstError> {
+    fn convert_example_block(&mut self, node: &SyntaxNode) -> Result<ExampleBlock, AstError> {
         let mut data = None;
         let mut contents = vec![];
 
@@ -689,7 +817,7 @@ impl Converter {
     }
 
     // element.comment_block
-    fn convert_comment_block(&self, node: &SyntaxNode) -> Result<CommentBlock, AstError> {
+    fn convert_comment_block(&mut self, node: &SyntaxNode) -> Result<CommentBlock, AstError> {
         let mut data = None;
         let mut contents = vec![];
 
@@ -717,7 +845,7 @@ impl Converter {
     }
 
     // element.verse_block
-    fn convert_verse_block(&self, node: &SyntaxNode) -> Result<VerseBlock, AstError> {
+    fn convert_verse_block(&mut self, node: &SyntaxNode) -> Result<VerseBlock, AstError> {
         let mut data = None;
         let mut contents = vec![];
 
@@ -745,7 +873,7 @@ impl Converter {
     }
 
     // element.src_block
-    fn convert_src_block(&self, node: &SyntaxNode) -> Result<SrcBlock, AstError> {
+    fn convert_src_block(&mut self, node: &SyntaxNode) -> Result<SrcBlock, AstError> {
         let mut data = None;
         let mut contents = vec![];
 
@@ -773,7 +901,7 @@ impl Converter {
     }
 
     // element.export_block
-    fn convert_export_block(&self, node: &SyntaxNode) -> Result<ExportBlock, AstError> {
+    fn convert_export_block(&mut self, node: &SyntaxNode) -> Result<ExportBlock, AstError> {
         let mut data = None;
         let mut contents = vec![];
 
@@ -803,7 +931,7 @@ impl Converter {
     //
 
     // element.item
-    fn convert_item(&self, node: &SyntaxNode) -> Result<Item, AstError> {
+    fn convert_item(&mut self, node: &SyntaxNode) -> Result<Item, AstError> {
         let mut bullet = String::new();
         let mut counter_set = None;
         let mut checkbox = None;
@@ -892,7 +1020,7 @@ impl Converter {
 
     // element.footnote_definition
     fn convert_footnote_definition(
-        &self,
+        &mut self,
         node: &SyntaxNode,
     ) -> Result<FootnoteDefinition, AstError> {
         let label = node
@@ -912,11 +1040,20 @@ impl Converter {
             .map(|e| e.unwrap())
             .collect();
 
-        Ok(FootnoteDefinition {
+        let rids = self.footnote_label_to_rids.get(&label).expect("todo");
+        let nid = self.footnote_label_to_nid.get(&label).expect("todo");
+
+        let footnote_definition = FootnoteDefinition {
             syntax: node.clone(),
+            rids: rids.clone(),
+            nid: *nid,
             label,
             contents,
-        })
+        };
+
+        self.footnote_definitions.push(footnote_definition.clone());
+
+        Ok(footnote_definition)
     }
 
     fn get_list_type(&self, node: &SyntaxNode) -> ListType {
@@ -955,7 +1092,7 @@ impl Converter {
         }
     }
     // element.list
-    fn convert_list(&self, node: &SyntaxNode) -> Result<List, AstError> {
+    fn convert_list(&mut self, node: &SyntaxNode) -> Result<List, AstError> {
         Ok(List {
             syntax: node.clone(),
             list_type: self.get_list_type(node),
