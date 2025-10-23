@@ -16,7 +16,7 @@ use std::fs;
 
 #[derive(Parser)]
 #[command(name = "winancer")]
-#[command(version = "0.1.0")]
+#[command(version = "0.1")]
 #[command(about = "Render a org file to html", long_about = None)]
 struct Cli {
     /// Input path of org file
