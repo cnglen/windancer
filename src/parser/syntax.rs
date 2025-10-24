@@ -47,6 +47,9 @@ pub enum OrgSyntaxKind {
     Code,
     Verbatim,
     StrikeThrough,
+    Macro,
+    MacroName,
+    MacroArgs,
 
     FootnoteReference,
 
@@ -143,6 +146,10 @@ pub enum OrgSyntaxKind {
     RightSquareBracket,
     LeftCurlyBracket,
     RightCurlyBracket,
+
+    LeftCurlyBracket3,
+    RightCurlyBracket3,
+
     LeftRoundBracket,
     RightRoundBracket,
     Hash,

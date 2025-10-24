@@ -8,6 +8,7 @@ use crate::parser::syntax::OrgSyntaxKind;
 use chumsky::input::MapExtra;
 use chumsky::inspector::SimpleState;
 use chumsky::prelude::*;
+use chumsky::text::ascii::ident;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 use std::ops::Range;
 
@@ -669,6 +670,7 @@ pub(crate) fn text_parser<'a>()
         .and_is(latex_fragment_parser().not())
         .and_is(footnote_reference_parser().not())
         .and_is(line_break_parser().not())
+        .and_is(macro_parser().not())
         .repeated()
         .at_least(1)
         .collect::<String>()
@@ -957,6 +959,7 @@ pub(crate) fn object_parser<'a>()
         footnote_reference_parser(),
         latex_fragment_parser(),
         line_break_parser(),
+        macro_parser(),
         text_parser(),
     ))
     .repeated()
@@ -1366,6 +1369,118 @@ pub(crate) fn latex_fragment_parser<'a>()
         );
 
     t1.or(t2).or(t3).or(t4).or(t5).or(t01).or(t02)
+}
+
+/// Macro parser
+pub(crate) fn macro_parser<'a>()
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
+    let name = any()
+        .filter(|c: &char| c.is_alphabetic())
+        .then(
+            any()
+                .filter(|c: &char| c.is_alphanumeric() || matches!(c, '_' | '-'))
+                .repeated()
+                .collect::<String>(),
+        )
+        .map(|(first, remaining)| format!("{first}{remaining}"));
+
+    // {{{NAME}}}
+    let t1 = just("{{{").then(name).then(just("}}}")).map_with(
+        |((left_3curly, name), right_3curly),
+         e: &mut MapExtra<
+            '_,
+            '_,
+            &str,
+            extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>,
+        >| {
+            e.state().prev_char = right_3curly.chars().last();
+
+            let mut children = vec![];
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::LeftCurlyBracket3.into(),
+                left_3curly,
+            )));
+
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::MacroName.into(),
+                &name,
+            )));
+
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::RightCurlyBracket3.into(),
+                right_3curly,
+            )));
+
+            S2::Single(NodeOrToken::Node(GreenNode::new(
+                OrgSyntaxKind::Macro.into(),
+                children,
+            )))
+        },
+    );
+
+    // {{{NAME(ARGUMENTS)}}}
+    let t2 = just(r"{{{")
+        .then(name)
+        .then(just("("))
+        .then(
+            any()
+                .and_is(just(")}}}").not())
+                .repeated()
+                .collect::<String>(),
+        )
+        .then(just(")"))
+        .then(just("}}}"))
+        .map_with(
+            |(((((left_3curly, name), left_round), args), right_round), right_3curly),
+             e: &mut MapExtra<
+                '_,
+                '_,
+                &str,
+                extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>,
+            >| {
+                e.state().prev_char = right_3curly.chars().last();
+
+                let mut children = vec![];
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::LeftCurlyBracket3.into(),
+                    left_3curly,
+                )));
+
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::MacroName.into(),
+                    &name,
+                )));
+
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::LeftRoundBracket.into(),
+                    &left_round.to_string(),
+                )));
+
+                if args.len() > 0 {
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::MacroArgs.into(),
+                        &args,
+                    )));
+                }
+
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::RightRoundBracket.into(),
+                    &right_round,
+                )));
+
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::RightCurlyBracket3.into(),
+                    right_3curly,
+                )));
+
+                S2::Single(NodeOrToken::Node(GreenNode::new(
+                    OrgSyntaxKind::Macro.into(),
+                    children,
+                )))
+            },
+        );
+
+    t1.or(t2)
 }
 
 /// Entity parser

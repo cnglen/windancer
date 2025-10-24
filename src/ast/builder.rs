@@ -319,6 +319,8 @@ impl Converter {
 
             OrgSyntaxKind::Entity => Ok(self.convert_entity(node_or_token.as_node().unwrap())?),
 
+            OrgSyntaxKind::Macro => Ok(self.convert_macro(node_or_token.as_node().unwrap())?),
+
             OrgSyntaxKind::LineBreak => Ok(Some(Object::LineBreak)),
 
             OrgSyntaxKind::LatexFragment => {
@@ -490,6 +492,36 @@ impl Converter {
     // object.text
     fn convert_text(&self, token: &SyntaxToken) -> Result<Option<Object>, AstError> {
         Ok(Some(Object::Text(token.text().to_string())))
+    }
+
+    // object.macro
+    fn convert_macro(&self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
+        let name = node
+            .first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::MacroName)
+            .expect("has name")
+            .as_token()
+            .unwrap()
+            .text()
+            .to_string();
+
+        let args_token = node.first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::MacroArgs);
+
+        let arguments = match args_token {
+            None => {
+                vec![]
+            }
+            Some(token) => {
+                let raw = token.as_token().unwrap().text().to_string();
+                let raw = raw.replace(r##"\,"##, "MAGIC_ESCAPED_COMMA");
+                let a = raw
+                    .split(",")
+                    .map(|s| s.trim().replace("MAGIC_ESCAPED_COMMA", ",").to_string())
+                    .collect::<Vec<String>>();
+                a
+            }
+        };
+
+        Ok(Some(Object::Macro { name, arguments }))
     }
 
     // object.link

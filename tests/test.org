@@ -1,5 +1,5 @@
-#+title: git
-
+#+title: org test
+#+macro: color @@html:<span style="color:$1">$2</span>@@@@latex:\textcolor{$1}{$2}@@
 #+date: 20250802[Sat] 18:43:14
 
 Zero-th Section
@@ -487,7 +487,20 @@ b
 
 
 
+** macro
 
+{{{title}}}
+
+{{{author()}}}
+
+{{{title(arg1, arg2)}}}
+
+  {{{color(red, word)}}}
+
+  {{{color(red\,1, word)}}}  
+
+
+  
 ** link tset
 
 link: [[https://www.baidu.com][baidu]]

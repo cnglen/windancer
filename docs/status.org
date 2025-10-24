@@ -10,6 +10,7 @@
 | latex-fragment     | ✓           | ✓         | ✓          |                                           | x   |
 | footnote-reference | ✓           | ✓         | ✓          | Parse of *definition* is simplified[fn:1] | x   |
 | line-break         | ✓           | ✓         | ✓          |                                           | y   |
+| macro              | ✓           | ✓         |             | todo render: collect macro replacement    | x   |
 | text-markup[fn:2]  |              |            |             | todo                                      | y   |
 | link               |              |            |             | todo                                      | y   |
 | table-cell         |              |            |             | todo                                      | x   |
@@ -17,13 +18,12 @@
 | superscript        |              |            |             | todo                                      | x   |
 | citation           |              |            |             | todo                                      | x   |
 | citation-reference |              |            |             | todo                                      | x   |
-| export-snippet     |              |            |             | low                                       | x   |
-| inline-babel-call  |              |            |             | low                                       | xy  |
-| macro              |              |            |             | todo                                      | x   |
 | radio-target       |              |            |             | todo                                      | y   |
-| statistics-cookie  |              |            |             | low                                       | x   |
 | timestamp          |              |            |             | todo                                      | x   |
 | target             |              |            |             | todo                                      | x   |
+| statistics-cookie  |              |            |             | low                                       | x   |
+| inline-babel-call  |              |            |             | low                                       | xy  |
+| export-snippet     |              |            |             | low                                       | x   |
 | inline-src-block   |              |            |             | low-priority                              | xy  |
 
 

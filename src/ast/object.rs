@@ -39,6 +39,11 @@ pub enum Object {
 
     LineBreak,
 
+    Macro {
+        name: String,
+        arguments: Vec<String>,
+    },
+
     // other
     Whitespace(String),
 }
