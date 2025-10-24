@@ -111,6 +111,8 @@ pub enum OrgSyntaxKind {
     LinkPath,
     LinkDescription,
 
+    LineBreak,
+
     // 令牌类型
     HeadingMarker, // *, **, *** 等
     TextContent,
@@ -131,6 +133,7 @@ pub enum OrgSyntaxKind {
     Dash,       // Token -
     At,         // at
     BackSlash,  // \
+    BackSlash2, // \\
 
     LinkStart,
     LinkEnd,

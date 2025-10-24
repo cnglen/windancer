@@ -42,11 +42,12 @@ pub enum S2 {
 
 // 上下文状态：当前解析的标题级别
 #[derive(Clone, Debug)]
-struct ParserState {
+pub(crate) struct ParserState {
     level_stack: Vec<usize>,
     block_type: String,     // begin_type, end_type: 两个解析器需要相同的type数据
     latex_env_name: String, // latex \begin{}
     item_indent: Vec<usize>,
+    prev_char: Option<char>, // previous char
 }
 
 impl Default for ParserState {
@@ -56,7 +57,14 @@ impl Default for ParserState {
             block_type: String::new(),
             latex_env_name: String::new(),
             item_indent: vec![],
+            prev_char: None,
         }
+    }
+}
+
+impl ParserState {
+    fn update_prev_char(&mut self, c: &Option<char>) {
+        self.prev_char = *c;
     }
 }
 

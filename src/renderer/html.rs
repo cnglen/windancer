@@ -35,7 +35,7 @@ use crate::ast::element::{
 };
 
 use crate::ast::object::Object;
-use crate::parser::object::entityname_to_html;
+use crate::parser::object::ENTITYNAME_TO_HTML;
 
 use std::fs;
 
@@ -337,12 +337,16 @@ impl HtmlRenderer {
             }
 
             Object::Entity { name } => {
-                let v = match entityname_to_html.get(name) {
+                let v = match ENTITYNAME_TO_HTML.get(name) {
                     Some(v) => v,
                     None => "fixme!! error occured",
                 };
 
                 format!("{v}")
+            }
+
+            Object::LineBreak => {
+                format!("<br>\n")
             }
 
             Object::LatexFragment {

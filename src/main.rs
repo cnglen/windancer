@@ -20,11 +20,11 @@ use std::fs;
 #[command(about = "Render a org file to html", long_about = None)]
 struct Cli {
     /// Input path of org file
-    #[arg(short='i', long)]
+    #[arg(short = 'i', long)]
     f_org: String,
 
     /// Output path of html file
-    #[arg(short='o', long)]
+    #[arg(short = 'o', long)]
     f_html: Option<String>,
 
     /// Turn debugging information on
@@ -53,30 +53,24 @@ fn main() {
     let html = html_renderer.render_document(&ast);
     let f_html = match args.f_html {
         Some(ref file) => file,
-        None => &args.f_org.replace(".org", ".html")
+        None => &args.f_org.replace(".org", ".html"),
     };
     fs::write(f_html, format!("{}", html));
-    println!("{:} -> {} done", f_org, f_html);    
+    println!("{:} -> {} done", f_org, f_html);
     match args.debug {
-        0 => {},
+        0 => {}
         1 => {
-            let f_ast = f_org.replace(".org", "_ast.json");    
+            let f_ast = f_org.replace(".org", "_ast.json");
             fs::write(&f_ast, format!("{:#?}", ast));
             println!("  - AST: {f_ast}");
-        },
+        }
         _ => {
             let f_syntax_tree = f_org.replace(".org", "_syntax_tree.json");
-            let f_ast = f_org.replace(".org", "_ast.json");    
+            let f_ast = f_org.replace(".org", "_ast.json");
             fs::write(&f_syntax_tree, format!("{:#?}", syntax_tree));
             fs::write(&f_ast, format!("{:#?}", ast));
             println!("  - Syntax tree: {f_syntax_tree}");
-            println!("  - AST: {f_ast}");                        
+            println!("  - AST: {f_ast}");
         }
     }
-        
-    
-
-    
-
-
 }

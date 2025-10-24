@@ -77,6 +77,7 @@ pub(crate) fn paragraph_parser<'a>() -> impl Parser<
             // ));
             // children.push(token);
 
+            // todo: 合并连续的多个text node
             for node in lines {
                 match node {
                     S2::Single(e) => {

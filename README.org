@@ -1,65 +1,5 @@
 An [[https://orgmode.org/][org-mode]] toolkit, including parser, renderer.
 
-* Status
-
-STILL IN DEVELOPMENT.
-
-- [X] basic org-mode parser: string -parse-> AST
-- [X] html renderer: AST to html
-- [] site generator
-
-
-
-** TODO syntax check list
-:LOGBOOK:
-- State "TODO"       from              [2025-10-23 Thu 16:19]
-:END:
-
-|                    | kind            | parser | ast | html-render | comment                                   |
-|--------------------+-----------------+--------+-----+-------------+-------------------------------------------|
-| Entity             | object          | ✓     | ✓  | ✓          |                                           |
-| LatexFragment      | object          | ✓     | ✓  | ✓          |                                           |
-| FootnoteReference  | object          | ✓     | ✓  | ✓          | Parse of *definition* is simplified[fn:1] |
-| TextMarkup         | object          |        |     |             |                                           |
-| Link               | object          |        |     |             |                                           |
-| InlineSourceBlock  | object          |        |     |             |                                           |
-| TableCell          | object          |        |     |             |                                           |
-|--------------------+-----------------+--------+-----+-------------+-------------------------------------------|
-| HeadingSubtree     | greater element |        |     |             |                                           |
-| Section            | greater element |        |     |             |                                           |
-| Table              |                 |        |     |             |                                           |
-| Drawer             |                 |        |     |             |                                           |
-| CenterBlock        |                 |        |     |             |                                           |
-| QuoteBlock         |                 |        |     |             |                                           |
-| SpecialBlock       |                 |        |     |             |                                           |
-| List               |                 |        |     |             |                                           |
-| Item               |                 |        |     |             |                                           |
-| FootnoteDefinition |                 |        |     |             |                                           |
-| Paragraph          |                 |        |     |             |                                           |
-| SrcBlock           |                 |        |     |             |                                           |
-| CommentBlock       |                 |        |     |             |                                           |
-| VerseBlock         |                 |        |     |             |                                           |
-| ExampleBlock       |                 |        |     |             |                                           |
-| HorizontalRule     |                 |        |     |             |                                           |
-| LatexEnvironment   |                 |        |     |             |                                           |
-| Keyrord            |                 |        |     |             |                                           |
-| TableRow           |                 |        |     |             |                                           |
-
-
-
-** test
-
-*** TODO API design
-:LOGBOOK:
-- State "TODO"       from              [2025-10-23 Thu 16:19]
-:END:
-
-#+begin_src bash
-  cargo run
-  cargo test
-#+end_src
-
-
 * Usage
 
 #+begin_src bash
@@ -67,40 +7,7 @@ STILL IN DEVELOPMENT.
   windancer --help
 #+end_src
 
-** examples
-
-input:
-- org_file
-
-output:
-- html
-
-
-* Design
-
-org -parser-> syntax tree(red tree) -ast_builder-> ast -html_renderer-> html --orgbook/mdbook --> site
-
-- rowan red/green tree
-- chumsky
-- render
-  - html
-
-
-windancer -i xxx.org -o xxx.html
-
-#+begin_src rust
-let green_tree = parser.parse(f_org).green();
-let red_tree = parser.parse(f_org).syntax();
-let ast = ast_builder.build(red_tree);
-let html = html_render.render(ast);
-#+end_src
-
-** module
-
-- parser :: parse org-mode doc into GreenTree, the generate RedTree(syntax tree) using rowan's API
-- ast :: build AST from SyntaxTree
-- render :: render html from AST
-
+see [[file:docs/status.org][status]] for status.
 
 * Reference
 
@@ -108,8 +15,3 @@ let html = html_render.render(ast);
 - [[https://github.com/zesterer/chumsky][chumsky]]
 - [[https://github.com/tfeldmann/organize][orgize]]
 - mdbook
-
-
-* Footnotes
-
-[fn:1] In inline and anonymous footnote, DEFINITION is One or more *objects* from the standard set, simplified to use text, i.e, ​=any().and_is(just("]").not()).repeated().collect::<String>();=​

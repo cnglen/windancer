@@ -1,0 +1,61 @@
+# object
+
+|  | parser-rowan | parser-ast | html-render | comment | PRE |
+|----|----|----|----|----|----|
+| entity | ✓ | ✓ | ✓ |  | x |
+| latex-fragment | ✓ | ✓ | ✓ |  | x |
+| footnote-reference | ✓ | ✓ | ✓ | Parse of **definition** is simplified[^1] | x |
+| line-break | ✓ | ✓ | ✓ |  | y |
+| text-markup[^2] |  |  |  | todo | y |
+| link |  |  |  | todo | y |
+| table-cell |  |  |  | todo | x |
+| subscript |  |  |  | todo | x |
+| superscript |  |  |  | todo | x |
+| citation |  |  |  | todo | x |
+| citation-reference |  |  |  | todo | x |
+| export-snippet |  |  |  | low | x |
+| inline-babel-call |  |  |  | low | xy |
+| macro |  |  |  | todo | x |
+| radio-target |  |  |  | todo | y |
+| statistics-cookie |  |  |  | low | x |
+| timestamp |  |  |  | todo | x |
+| target |  |  |  | todo | x |
+| inline-src-block |  |  |  | low-priority | xy |
+
+line-break, text-markup, link, radio-target 都含有pre char
+
+# element
+
+## greater element
+
+|                    | parser-rowan | parser-ast | html-render | comment |
+|--------------------|--------------|------------|-------------|---------|
+| HeadingSubtree     |              |            |             |         |
+| Section            |              |            |             |         |
+| Table              |              |            |             |         |
+| Drawer             |              |            |             |         |
+| CenterBlock        |              |            |             |         |
+| QuoteBlock         |              |            |             |         |
+| SpecialBlock       |              |            |             |         |
+| List               |              |            |             |         |
+| Item               |              |            |             |         |
+| FootnoteDefinition |              |            |             |         |
+| Paragraph          |              |            |             |         |
+| SrcBlock           |              |            |             |         |
+| CommentBlock       |              |            |             |         |
+| VerseBlock         |              |            |             |         |
+| ExampleBlock       |              |            |             |         |
+| HorizontalRule     |              |            |             |         |
+| LatexEnvironment   |              |            |             |         |
+| Keyrord            |              |            |             |         |
+| TableRow           |              |            |             |         |
+
+## lesser element
+
+# Footnotes
+
+[^1]: In inline and anonymous footnote, DEFINITION is One or more
+**objects** from the standard set, simplified to use text, i.e,
+​`any().and_is(just("]").not()).repeated().collect::<String>();`​
+
+[^2]: bold, italic, underline, strike-throught, code, verbatim

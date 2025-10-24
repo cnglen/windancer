@@ -451,6 +451,43 @@ $$c=a+b=3$$
 If $a^2=b$ and \( b=2 \), then the solution must be either $$ a=+\sqrt{2} $$ or \[ a=-\sqrt{2} \].
 
 
+** line break
+
+First line\\
+Second line
+
+a\\\
+b
+
+
+
+*** case1: detected
+
+[[https:///baidu.com][baidu]]\\
+second line
+
+*** case2: detected
+
+text\\
+second line
+
+*** case3: detected
+
+text\\  
+second line
+
+text  \\  
+second line
+
+
+*** case4: NOT detected
+
+a \\\
+b
+
+
+
+
 ** link tset
 
 link: [[https://www.baidu.com][baidu]]
@@ -569,6 +606,10 @@ Single
 
 
 
+
+** inline source
+
+src_python{print("hello")} {{{results(=None=)}}}
 
 * Footnotes
 [fn:2] asdfaf 

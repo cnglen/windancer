@@ -319,6 +319,8 @@ impl Converter {
 
             OrgSyntaxKind::Entity => Ok(self.convert_entity(node_or_token.as_node().unwrap())?),
 
+            OrgSyntaxKind::LineBreak => Ok(Some(Object::LineBreak)),
+
             OrgSyntaxKind::LatexFragment => {
                 Ok(self.convert_latex_fragment(node_or_token.as_node().unwrap())?)
             }
