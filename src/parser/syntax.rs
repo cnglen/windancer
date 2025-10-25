@@ -50,6 +50,9 @@ pub enum OrgSyntaxKind {
     Macro,
     MacroName,
     MacroArgs,
+    Subscript,
+    Superscript,
+    Caret, // ^
 
     FootnoteReference,
 

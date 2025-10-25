@@ -6,20 +6,20 @@
 | latex-fragment | ✓ | ✓ | ✓ |  | x |
 | footnote-reference | ✓ | ✓ | ✓ | Parse of **definition** is simplified[^1] | x |
 | line-break | ✓ | ✓ | ✓ |  | y |
+| macro | ✓ | ✓ |  | todo render: collect macro replacement | x |
 | text-markup[^2] |  |  |  | todo | y |
 | link |  |  |  | todo | y |
 | table-cell |  |  |  | todo | x |
 | subscript |  |  |  | todo | x |
-| superscript |  |  |  | todo | x |
+| superscript | ✓ |  |  | parse of expression is simplified[^3] | y |
 | citation |  |  |  | todo | x |
 | citation-reference |  |  |  | todo | x |
-| export-snippet |  |  |  | low | x |
-| inline-babel-call |  |  |  | low | xy |
-| macro |  |  |  | todo | x |
 | radio-target |  |  |  | todo | y |
-| statistics-cookie |  |  |  | low | x |
 | timestamp |  |  |  | todo | x |
 | target |  |  |  | todo | x |
+| statistics-cookie |  |  |  | low | x |
+| inline-babel-call |  |  |  | low | xy |
+| export-snippet |  |  |  | low | x |
 | inline-src-block |  |  |  | low-priority | xy |
 
 line-break, text-markup, link, radio-target 都含有pre char
@@ -59,3 +59,8 @@ line-break, text-markup, link, radio-target 都含有pre char
 ​`any().and_is(just("]").not()).repeated().collect::<String>();`​
 
 [^2]: bold, italic, underline, strike-throught, code, verbatim
+
+[^3]: An expression enclosed in curly brackets ({, }) or in round braces
+((, )), which may itself contain balanced curly or round brackets
+and the standard set of objects. Simplified to use text, to be
+updated.

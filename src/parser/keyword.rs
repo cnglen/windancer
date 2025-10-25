@@ -12,10 +12,16 @@ pub(crate) fn keyword_parser<'a>() -> impl Parser<
     extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
 > + Clone {
     just("#+")
-        .then(none_of(" \t:").repeated().at_least(1).collect::<String>())
+        .then(
+            none_of(" \t:")
+                .and_is(just("call").not())
+                .repeated()
+                .at_least(1)
+                .collect::<String>(),
+        )
         .then(just(":"))
         .then(object::whitespaces())
-        .then(none_of("\n").repeated().collect::<String>())
+        .then(none_of("\n\r").repeated().collect::<String>())
         .then(object::whitespaces())
         .then(object::newline_or_ending())
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())

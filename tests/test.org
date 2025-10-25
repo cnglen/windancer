@@ -1,6 +1,7 @@
 #+title: org test
 #+macro: color @@html:<span style="color:$1">$2</span>@@@@latex:\textcolor{$1}{$2}@@
 #+date: 20250802[Sat] 18:43:14
+#+udf_keyword: udf_value
 
 Zero-th Section
 
@@ -147,6 +148,9 @@ comment:
 *** keyword
 
 #+key: value
+#+KEY: VALUE
+#+call: not key word
+
 
 *** latex environment
 
@@ -403,6 +407,7 @@ This is a *bold*  font.
 
 
 #+begin_src rust
+  // assert!('('.is_alphanumeric());  
   assert!('a'.is_alphabetic());
   assert!('京'.is_alphabetic());
   assert!(!'\n'.is_alphabetic());  
@@ -413,6 +418,7 @@ This is a *bold*  font.
 #+end_src
 
 #+RESULTS:
+: thread 'main' panicked at src/main.rs:3:1:
 
 ** DONE Entity test
 CLOSED: [2025-10-22 Wed 11:37]
@@ -499,6 +505,7 @@ b
 
   {{{color(red\,1, word)}}}  
 
+{{{keyword(udf_keyword)}}}
 
   
 ** link tset
@@ -618,6 +625,36 @@ Single
 : 2
 
 
+
+
+** superscript and subscript
+*** superscript
+
+a^{(385)+3}
+
+a^(385+3 [[https://baidu.com][baidu]])
+
+a^{385+3 [[https://baidu.com][baidu]]}
+
+a single asterisk: b^*, ^^*, ,^*
+
+an expression enclosed in curly brackets: a^{2}, a^{b{3}}, a^{b^{c}^{d}^{e}} (org-toggle-pretty-entities C-c C-x \)
+
+sign(optional) chars final: a^+34, a^-12,889,,,,78.3\a, 10^24, 10^tau, 10^-12, 10^-tau, x^2-y^3, x^(2-i), x^{i^2}, a^2Kو b^(3+2),
+
+
+
+b^[a]
+
+a^+aa,
+
+*** subscript
+
+a single asterisk: b_*, __*, ,_*
+
+an expression enclosed in curly brackets: a_{2}, a_{b{3}}, a_{b_{c}_{d}_{e}} (org-toggle-pretty-entities C-c C-x \)
+
+sign(optional) chars final: a_+34, a_-12,889,78.3\a, 10_24, 10_tau, 10_-12, 10_-tau, x_2-y_3, x_(2-i), x_{i_2}, a_2Kو b_(3+2),
 
 
 ** inline source

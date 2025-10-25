@@ -60,6 +60,7 @@ pub(crate) fn create_list_item_content_parser<'a>() -> (
                 first_line.push_str(&first_row);
                 first_line.push_str(nl);
 
+                // fixme: object?
                 NodeOrToken::<GreenNode, GreenToken>::Token(GreenToken::new(
                     OrgSyntaxKind::Text.into(),
                     &first_line,
