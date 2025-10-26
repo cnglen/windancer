@@ -4,30 +4,32 @@
 
 * object
 
-|                    | parser-rowan | parser-ast | html-render | comment                                   | PRE |
-|--------------------+--------------+------------+-------------+-------------------------------------------+-----|
-| entity             | ✓           | ✓         | ✓          |                                           | x   |
-| latex-fragment     | ✓           | ✓         | ✓          |                                           | x   |
-| footnote-reference | ✓           | ✓         | ✓          | Parse of *definition* is simplified[fn:1] | x   |
-| line-break         | ✓           | ✓         | ✓          |                                           | y   |
-| macro              | ✓           | ✓         |             | todo render: collect macro replacement    | x   |
-| text-markup[fn:2]  |              |            |             | todo                                      | y   |
-| link               |              |            |             | todo                                      | y   |
-| table-cell         |              |            |             | todo                                      | x   |
-| subscript          |              |            |             | todo                                      | x   |
-| superscript        | ✓           |            |             | parse of expression is simplified[fn:3]   | y   |
-| citation           |              |            |             | todo                                      | x   |
-| citation-reference |              |            |             | todo                                      | x   |
-| radio-target       |              |            |             | todo                                      | y   |
-| timestamp          |              |            |             | todo                                      | x   |
-| target             |              |            |             | todo                                      | x   |
-| statistics-cookie  |              |            |             | low                                       | x   |
-| inline-babel-call  |              |            |             | low                                       | xy  |
-| export-snippet     |              |            |             | low                                       | x   |
-| inline-src-block   |              |            |             | low-priority                              | xy  |
+|                    | parser-rowan | parser-ast | html-render | comment                                   |
+|--------------------+--------------+------------+-------------+-------------------------------------------|
+| entity             | ✓           | ✓         | ✓          |                                           |
+| latex-fragment     | ✓           | ✓         | ✓          |                                           |
+| footnote-reference | ✓           | ✓         | ✓          | Parse of *definition* is simplified[fn:1] |
+| line-break         | ✓           | ✓         | ✓          |                                           |
+| macro              | ✓           | ✓         |             | todo render: collect macro replacement    |
+| text-markup[fn:2]  |              |            |             | todo                                      |
+| radio link         |              |            |             |                                           |
+| angle link         | ✓           |            |             |                                           |
+| plain link         |              |            |             |                                           |
+| regular link       |              |            |             |                                           |
+| table-cell         |              |            |             | todo                                      |
+| subscript          |              |            |             | todo                                      |
+| superscript        | ✓           |            |             | parse of expression is simplified[fn:3]   |
+| citation           |              |            |             | todo                                      |
+| citation-reference |              |            |             | todo                                      |
+| radio-target       |              |            |             | todo                                      |
+| timestamp          |              |            |             | todo                                      |
+| target             | \check           |            |             | todo                                      |
+| statistics-cookie  |              |            |             | low                                       |
+| inline-babel-call  |              |            |             | low                                       |
+| export-snippet     |              |            |             | low                                       |
+| inline-src-block   |              |            |             | low-priority                              |
 
 
-line-break, text-markup, link, radio-target 都含有pre char
 
 * element
 

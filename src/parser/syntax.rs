@@ -53,6 +53,7 @@ pub enum OrgSyntaxKind {
     Subscript,
     Superscript,
     Caret, // ^
+    Target,
 
     FootnoteReference,
 
@@ -117,6 +118,8 @@ pub enum OrgSyntaxKind {
     LinkPath,
     LinkDescription,
 
+    AngleLink,
+
     LineBreak,
 
     // 令牌类型
@@ -149,6 +152,10 @@ pub enum OrgSyntaxKind {
     RightSquareBracket,
     LeftCurlyBracket,
     RightCurlyBracket,
+    LeftAngleBracket,
+    RightAngleBracket,
+    LeftAngleBracket2,
+    RightAngleBracket2,
 
     LeftCurlyBracket3,
     RightCurlyBracket3,

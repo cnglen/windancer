@@ -11,6 +11,52 @@ use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 use std::ops::Range;
 
+pub(crate) fn chars_final_parser_v2a<'a>()
+-> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone
+{
+    any()
+        .filter(|c: &char| c.is_alphanumeric() || matches!(c, '\\' | '.' | ','))
+        .repeated()
+        .at_least(1)
+        .to_slice()
+        .validate(|s: &str, e, emit| {
+            if !s.chars().last().expect("at_least(1)").is_alphanumeric() {
+                emit.emit(Rich::custom(
+                    e.span(),
+                    format!(
+                        "the `char final` '{}' must end in an alphanumeric character",
+                        s
+                    ),
+                ));
+            }
+
+            s.to_string()
+        })
+}
+
+pub(crate) fn chars_final_parser_v2b<'a>()
+-> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone
+{
+    any()
+        .filter(|c: &char| c.is_alphanumeric() || matches!(c, '\\' | '.' | ','))
+        .repeated()
+        .at_least(1)
+        .to_slice()
+        .try_map_with(|s: &str, e| {
+            if !s.chars().last().expect("at_least(1)").is_alphanumeric() {
+                Err(Rich::custom(
+                    e.span(),
+                    format!(
+                        "the `char final` '{}' must end in an alphanumber character",
+                        s
+                    ),
+                ))
+            } else {
+                Ok(s.to_string())
+            }
+        })
+}
+
 /// Superscript Parser
 pub(crate) fn chars_final_parser<'a>()
 -> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone

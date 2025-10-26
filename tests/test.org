@@ -149,7 +149,7 @@ comment:
 
 #+key: value
 #+KEY: VALUE
-#+call: not key word
+# #+call: not key word
 
 
 *** latex environment
@@ -508,11 +508,15 @@ b
 {{{keyword(udf_keyword)}}}
 
   
-** link tset
+** link test
 
 link: [[https://www.baidu.com][baidu]]
 
 [[https://orgmode.org]]
+
+https://plainlink.org
+
+angle link: <mailto:xx@xx.com>
 
 ** bold test
 
@@ -636,11 +640,13 @@ a^(385+3 [[https://baidu.com][baidu]])
 
 a^{385+3 [[https://baidu.com][baidu]]}
 
+a^(c+[d+e])
+
 a single asterisk: b^*, ^^*, ,^*
 
 an expression enclosed in curly brackets: a^{2}, a^{b{3}}, a^{b^{c}^{d}^{e}} (org-toggle-pretty-entities C-c C-x \)
 
-sign(optional) chars final: a^+34, a^-12,889,,,,78.3\a, 10^24, 10^tau, 10^-12, 10^-tau, x^2-y^3, x^(2-i), x^{i^2}, a^2Kو b^(3+2),
+sign(optional) chars final: foo^abc... a^+34, a^-12,889,,,,78.3\a, 10^24, 10^tau, 10^-12, 10^-tau, x^2-y^3, x^(2-i), x^{i^2}, a^2Kو b^(3+2),
 
 
 
@@ -660,6 +666,27 @@ sign(optional) chars final: a_+34, a_-12,889,78.3\a, 10_24, 10_tau, 10_-12, 10_-
 ** inline source
 
 src_python{print("hello")} {{{results(=None=)}}}
+
+
+** target
+<<<y>>>
+
+<<y>>
+
+<<yes a target>>
+
+<<not a target   >>
+
+<< not a target>>
+
+<<not
+a target>>
+
+one item
+
+<<target>>another item
+
+Here we refer to item [[target]]. (C-c C-o)
 
 * Footnotes
 [fn:2] asdfaf 

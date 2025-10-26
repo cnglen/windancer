@@ -35,7 +35,7 @@ use crate::ast::element::{
 };
 
 use crate::ast::object::Object;
-use crate::parser::object::ENTITYNAME_TO_HTML;
+use crate::parser::object::entity::ENTITYNAME_TO_HTML;
 
 use std::fs;
 
