@@ -2,28 +2,31 @@
 
 mod angle_link;
 pub mod entity;
+mod footnote_reference;
 mod latex_fragment;
 mod r#macro;
 mod regular_link;
 mod subscript_superscript;
 mod target;
+mod text;
+mod text_markup;
 mod timestamp;
 
 use crate::parser::ParserState;
 use crate::parser::S2;
-use crate::parser::markup::text_markup_parser;
 use crate::parser::object::angle_link::angle_link_parser;
 use crate::parser::object::entity::entity_parser;
-use crate::parser::object::regular_link::regular_link_parser;
-use crate::parser::object::target::target_parser;
-use crate::parser::object::timestamp::timestamp_parser;
-
+use crate::parser::object::footnote_reference::footnote_reference_parser;
 use crate::parser::object::latex_fragment::latex_fragment_parser;
 use crate::parser::object::r#macro::macro_parser;
+use crate::parser::object::regular_link::regular_link_parser;
 use crate::parser::object::subscript_superscript::superscript_parser;
+use crate::parser::object::target::target_parser;
+use crate::parser::object::text::text_parser;
+use crate::parser::object::text_markup::text_markup_parser;
+use crate::parser::object::timestamp::timestamp_parser;
 use crate::parser::syntax::OrgSyntaxKind;
 
-use chumsky::input::MapExtra;
 use chumsky::inspector::SimpleState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
@@ -215,193 +218,6 @@ pub(crate) fn line_break_parser<'a>()
         })
 }
 
-/// Text Parser
-pub(crate) fn text_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
-    any()
-        .and_is(text_markup_parser().not())
-        .and_is(entity_parser().not())
-        .and_is(regular_link_parser().not())
-        .and_is(angle_link_parser().not())
-        .and_is(latex_fragment_parser().not())
-        .and_is(footnote_reference_parser().not())
-        .and_is(line_break_parser().not())
-        .and_is(macro_parser().not())
-        .and_is(superscript_parser().not())
-        .and_is(target_parser().not())
-        .and_is(timestamp_parser().not())
-        .repeated()
-        .at_least(1)
-        .collect::<String>()
-        .map_with(|s, e| {
-            // let z: &mut MapExtra<'_, '_, &str, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>> = e;
-            if let Some(c) = s.chars().last() {
-                e.state().prev_char = Some(c);
-            }
-
-            S2::Single(NodeOrToken::<GreenNode, GreenToken>::Token(
-                GreenToken::new(OrgSyntaxKind::Text.into(), &s),
-            ))
-        })
-}
-
-/// Footntoe refrence
-// - [fn:LABEL] done
-// - [fn:LABEL:DEFINITION] todo
-// - [fn::DEFINITION] todo
-pub(crate) fn footnote_reference_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
-    let label = any()
-        .filter(|c: &char| c.is_ascii_alphanumeric() || matches!(c, '_' | '-'))
-        .repeated()
-        .at_least(1)
-        .collect::<String>();
-
-    // let definition = object_parser(); // make object_parser: recursive
-    // FIXME: simplified version
-    let definition = any().and_is(just("]").not()).repeated().collect::<String>();
-
-    // [fn:LABEL:DEFINITION]
-    let t2 = just("[fn:")
-        .then(label)
-        .then(just(":"))
-        .then(definition)
-        .then(just("]"))
-        .map_with(
-            |((((_left_fn_c, label), colon), definition), rbracket),
-             e: &mut MapExtra<
-                '_,
-                '_,
-                &str,
-                extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>,
-            >| {
-                e.state().prev_char = rbracket.chars().last();
-                let mut children = vec![];
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::LeftSquareBracket.into(),
-                    "[",
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    "fn",
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Colon.into(),
-                    colon,
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    &label,
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Colon.into(),
-                    ":",
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    &definition,
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::RightSquareBracket.into(),
-                    rbracket,
-                )));
-
-                S2::Single(NodeOrToken::Node(GreenNode::new(
-                    OrgSyntaxKind::FootnoteReference.into(),
-                    children,
-                )))
-            },
-        );
-
-    // [fn::DEFINITION]
-    let t3 = just("[fn::").then(definition).then(just("]")).map_with(
-        |((_left_fn_c_c, definition), rbracket), e| {
-            e.state().prev_char = rbracket.chars().last();
-            let mut children = vec![];
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::LeftSquareBracket.into(),
-                "[",
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                "fn",
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Colon2.into(),
-                "::",
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                &definition,
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::RightSquareBracket.into(),
-                rbracket,
-            )));
-
-            S2::Single(NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::FootnoteReference.into(),
-                children,
-            )))
-        },
-    );
-
-    // [fn:LABEL]
-    let t1 =
-        just("[fn:")
-            .then(label)
-            .then(just("]"))
-            .map_with(|((_left_fn_c, label), rbracket), e| {
-                e.state().prev_char = rbracket.chars().last();
-                let mut children = vec![];
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::LeftSquareBracket.into(),
-                    "[",
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    "fn",
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Colon.into(),
-                    ":",
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    &label,
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::RightSquareBracket.into(),
-                    rbracket,
-                )));
-
-                S2::Single(NodeOrToken::Node(GreenNode::new(
-                    OrgSyntaxKind::FootnoteReference.into(),
-                    children,
-                )))
-            });
-
-    // t1
-    t1.or(t2).or(t3)
-}
-
 // objects_parser
 // todo: select! use prev_char state?
 pub(crate) fn object_parser<'a>()
@@ -419,6 +235,21 @@ pub(crate) fn object_parser<'a>()
         superscript_parser(),
         target_parser(),
         timestamp_parser(),
+        text_parser(),
+    ))
+    .repeated()
+    .at_least(1)
+    .collect::<Vec<_>>()
+}
+
+pub(crate) fn minimal_object_parser<'a>()
+-> impl Parser<'a, &'a str, Vec<S2>, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone
+{
+    choice((
+        text_markup_parser(),
+        entity_parser(),
+        latex_fragment_parser(),
+        superscript_parser(),
         text_parser(),
     ))
     .repeated()
@@ -657,18 +488,3 @@ L3
         }
     }
 }
-
-// block_parser
-//   source_block_parser
-//   center_block_parser
-//   quote_block_parser
-// drawer_parser
-// dynmic_block_parser
-// footnote_definition_parser
-// inline_task?
-// list_parser
-//   items?
-//   plain_list_parser: recusive?
-// table_parser
-
-// whitespace_config?

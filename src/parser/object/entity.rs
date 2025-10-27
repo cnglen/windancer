@@ -3,12 +3,14 @@ use crate::parser::ParserState;
 use crate::parser::S2;
 use crate::parser::syntax::OrgSyntaxKind;
 
-use chumsky::input::MapExtra;
 use chumsky::inspector::SimpleState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 use phf::phf_map;
+
+type NT = NodeOrToken<GreenNode, GreenToken>;
+type OSK = OrgSyntaxKind;
 
 pub(crate) static ENTITYNAME_TO_HTML: phf::Map<&'static str, &'static str> = phf_map! {
         // * letters
@@ -474,7 +476,7 @@ pub(crate) static ENTITYNAME_TO_HTML: phf::Map<&'static str, &'static str> = phf
 pub(crate) fn entity_parser<'a>()
 -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
     let name_parser = any()
-        .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'))
+        .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
         .repeated()
         .at_least(1)
         .collect::<String>()
@@ -483,66 +485,40 @@ pub(crate) fn entity_parser<'a>()
     let post_parser = any().filter(|c: &char| !c.is_alphabetic());
 
     // pattern1: \NAME POST
-    let a1 = just(r"\")
+    let a1 = just::<_, _, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>(r"\")
         .then(name_parser) // NAME
         .then_ignore(post_parser.rewind()) // POST
-        .map_with(
-            |(backslash, name),
-             e: &mut MapExtra<
-                '_,
-                '_,
-                &str,
-                extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>,
-            >| {
-                e.state().prev_char = name.chars().last();
-                let mut children = vec![];
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::BackSlash.into(),
-                    backslash,
-                )));
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::EntityName.into(),
-                    &name,
-                )));
+        .map_with(|(backslash, name), e| {
+            e.state().prev_char = name.chars().last();
+            let mut children = vec![];
+            children.push(NT::Token(GreenToken::new(OSK::BackSlash.into(), backslash)));
+            children.push(NT::Token(GreenToken::new(OSK::EntityName.into(), &name)));
 
-                S2::Single(NodeOrToken::Node(GreenNode::new(
-                    OrgSyntaxKind::Entity.into(),
-                    children,
-                )))
-            },
-        );
+            S2::Single(NT::Node(GreenNode::new(OSK::Entity.into(), children)))
+        });
 
     // Pattern2: \NAME{}
     let a2 = just(r"\").then(name_parser).then(just("{}")).map_with(
         |((backslash, name), left_right_curly), e| {
             e.state().prev_char = left_right_curly.chars().last();
             let mut children = vec![];
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::BackSlash.into(),
-                backslash,
-            )));
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::EntityName.into(),
-                &name,
-            )));
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::LeftCurlyBracket.into(),
+            children.push(NT::Token(GreenToken::new(OSK::BackSlash.into(), backslash)));
+            children.push(NT::Token(GreenToken::new(OSK::EntityName.into(), &name)));
+            children.push(NT::Token(GreenToken::new(
+                OSK::LeftCurlyBracket.into(),
                 &left_right_curly[0..1],
             )));
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::RightCurlyBracket.into(),
+            children.push(NT::Token(GreenToken::new(
+                OSK::RightCurlyBracket.into(),
                 &left_right_curly[1..2],
             )));
 
-            S2::Single(NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::Entity.into(),
-                children,
-            )))
+            S2::Single(NT::Node(GreenNode::new(OSK::Entity.into(), children)))
         },
     );
 
     // pattern3:  \_SPACES
-    let a3 = just(r"\")
+    let a3 = just::<_, _, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>(r"\")
         .then(just("_"))
         .then(
             one_of(" ")
@@ -551,41 +527,16 @@ pub(crate) fn entity_parser<'a>()
                 .at_most(20)
                 .collect::<String>(),
         )
-        .map_with(
-            |((backslash, us), ws),
-             e: &mut MapExtra<
-                '_,
-                '_,
-                &str,
-                extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>,
-            >| {
-                e.state().prev_char = ws.chars().last();
-                let mut children = vec![];
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::BackSlash.into(),
-                    backslash,
-                )));
+        .map_with(|((backslash, us), ws), e| {
+            e.state().prev_char = ws.chars().last();
+            let mut children = vec![];
+            children.push(NT::Token(GreenToken::new(OSK::BackSlash.into(), backslash)));
+            children.push(NT::Token(GreenToken::new(OSK::UnderScore.into(), us)));
+            children.push(NT::Token(GreenToken::new(OSK::Spaces.into(), &ws)));
 
-                // content
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::UnderScore.into(),
-                    us,
-                )));
+            S2::Single(NT::Node(GreenNode::new(OSK::Entity.into(), children)))
+        });
 
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Spaces.into(),
-                    &ws,
-                )));
-
-                S2::Single(NodeOrToken::Node(GreenNode::new(
-                    OrgSyntaxKind::Entity.into(),
-                    children,
-                )))
-            },
-        );
-
-    // priority: a2 > a1, or
-    // - a1: \pi{} -> Entity(\pi) + Text({})
-    // - a2: \pi{} -> Entity(\pi{})
+    // priority: `a2` > `a1` since `a2` is longer and includes `a1`, or "\pi{}" will be parsed into <Entity(\pi) + Text({})>, while <Entity(\pi{})> is expected
     a2.or(a1).or(a3)
 }

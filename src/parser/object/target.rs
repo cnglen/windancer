@@ -3,7 +3,6 @@ use crate::parser::ParserState;
 use crate::parser::S2;
 use crate::parser::syntax::OrgSyntaxKind;
 
-use chumsky::input::MapExtra;
 use chumsky::inspector::SimpleState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
@@ -26,14 +25,10 @@ pub(crate) fn target_parser<'a>()
         });
     let target = target_g2char.or(target_onechar);
 
-    just("<<").then(target).then(just(">>")).map_with(
-        |((lbracket2, target), rbracket2),
-         e: &mut MapExtra<
-            '_,
-            '_,
-            &str,
-            extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>,
-        >| {
+    just::<_, _, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>("<<")
+        .then(target)
+        .then(just(">>"))
+        .map_with(|((lbracket2, target), rbracket2), e| {
             e.state().prev_char = rbracket2.chars().last();
 
             let mut children = vec![];
@@ -57,6 +52,5 @@ pub(crate) fn target_parser<'a>()
                 OrgSyntaxKind::Target.into(),
                 children,
             )))
-        },
-    )
+        })
 }

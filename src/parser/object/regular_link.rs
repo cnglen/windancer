@@ -3,7 +3,6 @@ use crate::parser::ParserState;
 use crate::parser::S2;
 use crate::parser::syntax::OrgSyntaxKind;
 
-use chumsky::input::MapExtra;
 use chumsky::inspector::SimpleState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
@@ -36,7 +35,7 @@ pub(crate) fn regular_link_parser<'a>()
             ))
         });
 
-    just("[")
+    just::<_, _, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>("[")
         .then(pathreg)
         .then(
             just("[")
@@ -71,44 +70,36 @@ pub(crate) fn regular_link_parser<'a>()
                 }),
         )
         .then(just("]"))
-        .map_with(
-            |(((lbracket, path), maybe_desc), rbracket),
-             e: &mut MapExtra<
-                '_,
-                '_,
-                &str,
-                extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>,
-            >| {
-                // Q: ^ why type annotation needed?  for e:
-                e.state().prev_char = rbracket.chars().last();
+        .map_with(|(((lbracket, path), maybe_desc), rbracket), e| {
+            // Q: ^ why type annotation needed?  for e:
+            e.state().prev_char = rbracket.chars().last();
 
-                let mut children = vec![];
+            let mut children = vec![];
 
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::LeftSquareBracket.into(),
-                    lbracket,
-                )));
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::LeftSquareBracket.into(),
+                lbracket,
+            )));
 
-                children.push(path);
+            children.push(path);
 
-                match maybe_desc {
-                    None => {}
-                    Some(desc) => {
-                        children.push(desc);
-                    }
+            match maybe_desc {
+                None => {}
+                Some(desc) => {
+                    children.push(desc);
                 }
+            }
 
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::RightSquareBracket.into(),
-                    rbracket,
-                )));
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::RightSquareBracket.into(),
+                rbracket,
+            )));
 
-                let link = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                    OrgSyntaxKind::Link.into(),
-                    children,
-                ));
+            let link = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+                OrgSyntaxKind::Link.into(),
+                children,
+            ));
 
-                S2::Single(link)
-            },
-        )
+            S2::Single(link)
+        })
 }

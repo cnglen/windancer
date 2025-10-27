@@ -13,7 +13,6 @@ mod horizontal_rule;
 mod keyword;
 mod latex_environment;
 mod list;
-mod markup;
 pub(crate) mod object;
 mod paragraph;
 mod section;

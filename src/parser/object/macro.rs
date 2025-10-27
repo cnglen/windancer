@@ -2,7 +2,6 @@ use crate::parser::ParserState;
 use crate::parser::S2;
 use crate::parser::syntax::OrgSyntaxKind;
 
-use chumsky::input::MapExtra;
 use chumsky::inspector::SimpleState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
@@ -21,14 +20,10 @@ pub(crate) fn macro_parser<'a>()
         .map(|(first, remaining)| format!("{first}{remaining}"));
 
     // {{{NAME}}}
-    let t1 = just("{{{").then(name).then(just("}}}")).map_with(
-        |((left_3curly, name), right_3curly),
-         e: &mut MapExtra<
-            '_,
-            '_,
-            &str,
-            extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>,
-        >| {
+    let t1 = just::<_, _, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>("{{{")
+        .then(name)
+        .then(just("}}}"))
+        .map_with(|((left_3curly, name), right_3curly), e| {
             e.state().prev_char = right_3curly.chars().last();
 
             let mut children = vec![];
@@ -51,8 +46,7 @@ pub(crate) fn macro_parser<'a>()
                 OrgSyntaxKind::Macro.into(),
                 children,
             )))
-        },
-    );
+        });
 
     // {{{NAME(ARGUMENTS)}}}
     let t2 = just(r"{{{")
@@ -67,13 +61,7 @@ pub(crate) fn macro_parser<'a>()
         .then(just(")"))
         .then(just("}}}"))
         .map_with(
-            |(((((left_3curly, name), left_round), args), right_round), right_3curly),
-             e: &mut MapExtra<
-                '_,
-                '_,
-                &str,
-                extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>,
-            >| {
+            |(((((left_3curly, name), left_round), args), right_round), right_3curly), e| {
                 e.state().prev_char = right_3curly.chars().last();
 
                 let mut children = vec![];
