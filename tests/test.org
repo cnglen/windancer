@@ -518,6 +518,48 @@ https://plainlink.org
 
 angle link: <mailto:xx@xx.com>
 
+radio link:
+
+<<<*bold* target>>>
+
+<<<my radio target>>>
+
+this is *bold* target, my radio target
+
+** timestamp
+# example
+[2004-08-24 Tue]--[2004-08-26 Thu ]
+<2012-02-08 Wed 20:00 ++1d>
+<2030-10-05 Sat +1m -3d>
+
+# p1
+<1997-11-03>
+<1997-11-03 Mon>
+<1997-11-03 Mon 19:15>
+<1997-11-03 Mon 19:15 +23d>
+
+
+# p2
+<1997-11-03 Mon 19:15 +23d>--<1997-12-13>
+<1997-11-03 Mon 19:15 +23d>--<1997-12-13 Mon>
+<1997-11-03 Mon 19:15 +23d>--<1997-12-13 Mon 19:15>
+<1997-11-03 Mon 19:15 +23d>--<1997-12-13 Mon 19:15 +23d>
+
+<1997-11-03 19:15 +23d>--<1997-12-13>
+<1997-11-03 +23d>--<1997-12-13 Mon>
+<1997-11-03>--<1997-12-13 Mon 19:15>
+<1997-11-03>--<1997-12-13 Mon 19:15 +23d>
+<1997-11-03 19:15>--<1997-12-13 Mon 19:15 +23d>
+<1997-11-03 Mon 19:15>--<1997-12-13 Mon 19:15 +23d>
+<1997-11-03 Mon 19:15 +23d>--<1997-12-13 Mon 19:15 +23d>
+
+# p3
+<1997-11-03 Mon 19:15-20:18 +23d>
+
+
+  <%%(diary-float t 4 2)>
+
+  
 ** bold test
 
 a *normal* bold
@@ -687,6 +729,8 @@ one item
 <<target>>another item
 
 Here we refer to item [[target]]. (C-c C-o)
+
+
 
 * Footnotes
 [fn:2] asdfaf 

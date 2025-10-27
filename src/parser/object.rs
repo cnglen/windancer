@@ -7,6 +7,7 @@ mod r#macro;
 mod regular_link;
 mod subscript_superscript;
 mod target;
+mod timestamp;
 
 use crate::parser::ParserState;
 use crate::parser::S2;
@@ -15,6 +16,7 @@ use crate::parser::object::angle_link::angle_link_parser;
 use crate::parser::object::entity::entity_parser;
 use crate::parser::object::regular_link::regular_link_parser;
 use crate::parser::object::target::target_parser;
+use crate::parser::object::timestamp::timestamp_parser;
 
 use crate::parser::object::latex_fragment::latex_fragment_parser;
 use crate::parser::object::r#macro::macro_parser;
@@ -227,6 +229,7 @@ pub(crate) fn text_parser<'a>()
         .and_is(macro_parser().not())
         .and_is(superscript_parser().not())
         .and_is(target_parser().not())
+        .and_is(timestamp_parser().not())
         .repeated()
         .at_least(1)
         .collect::<String>()
@@ -319,7 +322,7 @@ pub(crate) fn footnote_reference_parser<'a>()
 
     // [fn::DEFINITION]
     let t3 = just("[fn::").then(definition).then(just("]")).map_with(
-        |((left_fn_c_c, definition), rbracket), e| {
+        |((_left_fn_c_c, definition), rbracket), e| {
             e.state().prev_char = rbracket.chars().last();
             let mut children = vec![];
 
@@ -415,6 +418,7 @@ pub(crate) fn object_parser<'a>()
         macro_parser(),
         superscript_parser(),
         target_parser(),
+        timestamp_parser(),
         text_parser(),
     ))
     .repeated()
@@ -422,6 +426,7 @@ pub(crate) fn object_parser<'a>()
     .collect::<Vec<_>>()
 }
 
+#[allow(unused)]
 fn is_all_whitespace(s: String) -> bool {
     for c in s.chars() {
         if !matches!(c, '\t' | ' ' | '​') {

@@ -20,6 +20,24 @@ pub enum Object {
         text: Option<String>,
     },
 
+    RadioLink(Vec<Object>),
+
+    // external link: has protocol
+    // internal link:
+    //   #my-custom-id ->
+    //   *some section ->
+    //   my_tartet -> <<my_target>> / keyword #+NAME: my_target
+    // including regular/plain/angle link, without radio link
+    // radio link?
+    GeneralLink {
+        protocol: String, // protocol or type, http/file/#
+        path: String,     //
+        description: Option<String>,
+    },
+
+    Superscript(String),
+    Target,
+
     // if definition if found (such as inline or anonymous footnote), a FootnoteDefinition object is auto generated in addition to the FootnoteReference object
     FootnoteReference {
         // <label + label_rid> identify a unique reference id

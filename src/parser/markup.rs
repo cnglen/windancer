@@ -38,7 +38,7 @@ static CHAR2TYPE_END: phf::Map<char, &'static str> = phf_map! {
     '~' => "</code_314159265358979323846264338327950288419716939937510>"
 };
 
-static CHAR2TYPE_BEGIN_v2: phf::Map<char, char> = phf_map! {
+static CHAR2TYPE_BEGIN_V2: phf::Map<char, char> = phf_map! {
     '*' => '\u{0001}',
     '/' => '\u{0003}',
     '_' => '\u{0005}',
@@ -47,7 +47,7 @@ static CHAR2TYPE_BEGIN_v2: phf::Map<char, char> = phf_map! {
     '~' => '\u{0011}',
 };
 
-static CHAR2TYPE_END_v2: phf::Map<char, char> = phf_map! {
+static CHAR2TYPE_END_V2: phf::Map<char, char> = phf_map! {
     '*' => '\u{0002}',
     '/' => '\u{0004}',
     '_' => '\u{0006}',
@@ -498,6 +498,7 @@ pub(crate) fn text_markup_inner_preprocesser<'a>()
     )
 }
 
+#[allow(unused)]
 pub(crate) fn text_markup_inner_preprocesser_v2<'a>()
 -> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone
 {
@@ -527,13 +528,13 @@ pub(crate) fn text_markup_inner_preprocesser_v2<'a>()
                     // println!("marker star");
                     let marker_char = text.chars().nth(i).unwrap();
                     marker_stack.push((marker_char, i));
-                    result.push(i, CHAR2TYPE_BEGIN_v2.get(&marker_char).unwrap().to_string());
+                    result.push(i, CHAR2TYPE_BEGIN_V2.get(&marker_char).unwrap().to_string());
                     i = i + 1;
                 } else if i > 0 && is_end_marker_valid(text, i, &marker_stack) {
                     // println!("marker end");
 
                     if let Some((marker_char, _)) = marker_stack.pop() {
-                        result.push(i, CHAR2TYPE_END_v2.get(&marker_char).unwrap().to_string());
+                        result.push(i, CHAR2TYPE_END_V2.get(&marker_char).unwrap().to_string());
                         i = i + 1;
                     }
                 } else {
@@ -870,6 +871,7 @@ pub(crate) fn text_markup_outer_parser_v2<'a>() -> impl Parser<
 
 /// Note: we can't use nested, since &str -parser1-> &[Token] -parser2-> Node
 /// full_markup_parser
+#[allow(unused)]
 pub(crate) fn text_markup_parser_todo<'a>()
 -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
     text_markup_inner_preprocesser().map(|tokens: Vec<Token>| {
@@ -957,6 +959,7 @@ pub(crate) fn text_markup_parser<'a>() -> impl Parser<
 }
 
 // to_slice: 会 恢复为preprocess之前的str
+#[allow(unused)]
 pub(crate) fn text_markup_parser_v2<'a>() -> impl Parser<
     'a,
     &'a str,

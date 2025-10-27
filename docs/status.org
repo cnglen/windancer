@@ -22,7 +22,7 @@
 | citation           |              |            |             | todo                                      |
 | citation-reference |              |            |             | todo                                      |
 | radio-target       |              |            |             | todo                                      |
-| timestamp          |              |            |             | todo                                      |
+| timestamp          | \check           |            |             | todo                                      |
 | target             | \check           |            |             | todo                                      |
 | statistics-cookie  |              |            |             | low                                       |
 | inline-babel-call  |              |            |             | low                                       |

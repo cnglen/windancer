@@ -15,6 +15,7 @@ pub(crate) static LINK_PROTOCOLS: phf::Set<&'static str> = phf_set! {
 };
 
 /// PROTOCOL: A string which is one of the link type strings in org-link-parameters
+#[allow(unused)]
 pub(crate) fn protocol<'a>()
 -> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone
 {

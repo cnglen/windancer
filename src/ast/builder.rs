@@ -13,8 +13,8 @@
 //! Element: Each kind of ast::Element has a convert_xxx_element(), which convert SyntaxNode to ast::Element
 //! Object: `convert_object()``, Each kind of ast::Object has a convert_xxx_object(), which convert SyntaxNode to ast::Object
 
-use rowan::{GreenNode, GreenToken, NodeOrToken};
-use std::collections::{HashMap, HashSet};
+use rowan::GreenNode;
+use std::collections::HashMap;
 
 use crate::ast::element::{
     CenterBlock, CommentBlock, Document, Drawer, Element, ExampleBlock, ExportBlock,

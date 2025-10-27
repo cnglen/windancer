@@ -11,6 +11,7 @@ use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 use std::ops::Range;
 
+#[allow(unused)]
 pub(crate) fn chars_final_parser_v2a<'a>()
 -> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone
 {
@@ -34,6 +35,7 @@ pub(crate) fn chars_final_parser_v2a<'a>()
         })
 }
 
+#[allow(unused)]
 pub(crate) fn chars_final_parser_v2b<'a>()
 -> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone
 {
@@ -431,7 +433,7 @@ pub(crate) fn superscript_parser<'a>()
     //     },
     // );
 
-    t1.or(t3).or(t2a)
+    t1.or(t3).or(t2a).or(t2b)
 }
 
 // /// Subscript Parser

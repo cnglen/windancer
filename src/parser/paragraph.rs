@@ -101,6 +101,7 @@ pub(crate) fn paragraph_parser<'a>() -> impl Parser<
         })
 }
 
+#[allow(unused)]
 pub(crate) fn paragraph_parser_old<'a>() -> impl Parser<
     'a,
     &'a str,

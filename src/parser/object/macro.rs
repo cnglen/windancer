@@ -1,13 +1,11 @@
 use crate::parser::ParserState;
 use crate::parser::S2;
-use crate::parser::markup::text_markup_parser;
 use crate::parser::syntax::OrgSyntaxKind;
 
 use chumsky::input::MapExtra;
 use chumsky::inspector::SimpleState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
-use std::ops::Range;
 
 /// Macro parser
 pub(crate) fn macro_parser<'a>()
