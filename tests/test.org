@@ -676,13 +676,35 @@ Single
 ** superscript and subscript
 *** superscript
 
+simple
+
+a^{34}
+
+a^{(34)}
+
+complex
+
+a^{(34)+3}
+
 a^{(385)+3}
+
+a^{(385)+{a*b + (c/d) + a^{d}} + [d+e]}
+
+a^{c+[d+e}: ok
+
+a^{c+(d+e}: bad
+
+a^(c+4)
+
+a^(c+4}: bad
+
+complex with object
 
 a^(385+3 [[https://baidu.com][baidu]])
 
 a^{385+3 [[https://baidu.com][baidu]]}
 
-a^(c+[d+e])
+
 
 a single asterisk: b^*, ^^*, ,^*
 

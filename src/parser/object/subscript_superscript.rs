@@ -4,15 +4,17 @@ use crate::parser::ParserState;
 use crate::parser::S2;
 use crate::parser::syntax::OrgSyntaxKind;
 
-use chumsky::input::InputRef;
 use chumsky::inspector::SimpleState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
+use std::collections::HashMap;
 use std::ops::Range;
 type NT = NodeOrToken<GreenNode, GreenToken>;
 type OSK = OrgSyntaxKind;
 
-/// chars final parser
+/// chars final parser:
+/// - find the longest string consisting of <alphanumeric characters, commas, backslashes, and dots>, whose length>=1
+/// - find the last alphnumeric character as FINAL
 pub(crate) fn chars_final_parser<'a>()
 -> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone
 {
@@ -21,14 +23,10 @@ pub(crate) fn chars_final_parser<'a>()
             start: &inp.cursor(),
         });
 
-        let mut content = String::new();
-        for c in remaining.chars() {
-            if c.is_alphanumeric() || c == ',' || c == '\\' || c == '.' {
-                content.push(c);
-            } else {
-                break;
-            }
-        }
+        let content: String = remaining
+            .chars()
+            .take_while(|c| c.is_alphanumeric() || matches!(c, ',' | '\\' | '.'))
+            .collect();
 
         // find last alphanumeric in content
         let maybe_final = content
@@ -36,32 +34,31 @@ pub(crate) fn chars_final_parser<'a>()
             .rev()
             .find(|(_, c)| c.is_alphanumeric());
 
-        match maybe_final {
-            None => {
-                let error = Rich::custom(
-                    SimpleSpan::from(Range {
-                        start: *inp.cursor().inner(),
-                        end: (inp.cursor().inner() + content.chars().count()),
-                    }),
-                    "must include at least one alphanumeric char",
-                );
-                return Err(error);
-            }
+        let (idx, _) = maybe_final.ok_or_else(|| {
+            let n_char = content.chars().count();
+            Rich::custom(
+                SimpleSpan::from(Range {
+                    start: *inp.cursor().inner(),
+                    end: (inp.cursor().inner() + n_char),
+                }),
+                format!(
+                    "superscript must include at least one alphanumeric char: '{}'",
+                    content
+                ),
+            )
+        })?;
 
-            Some((idx, _)) => {
-                content = content.chars().take(idx + 1).collect::<String>();
-                for _ in 0..idx + 1 {
-                    inp.next();
-                }
-
-                Ok(content)
-            }
+        let chars_final = content.chars().take(idx + 1).collect::<String>();
+        for _ in 0..idx + 1 {
+            inp.next();
         }
+        Ok(chars_final)
     })
 }
 
 pub(crate) fn superscript_parser<'a>()
 -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
+    // ^*
     let t1 = just::<_, _, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>("^")
         .then(just("*"))
         .map_with(|(sup, aes), e| {
@@ -74,83 +71,76 @@ pub(crate) fn superscript_parser<'a>()
             S2::Single(NT::Node(GreenNode::new(OSK::Superscript.into(), children)))
         });
 
-    // - standard objects not supported
-    // - nested brackets not supported
-    let simplified_expressiona = any().and_is(just("}").not()).repeated().collect::<String>();
-    let t2a = just::<_, _, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>("^{")
-        .then(simplified_expressiona)
-        .then(just("}"))
-        .try_map_with(|((sup_lb, expression), rb), e| match e.state().prev_char {
-            None => {
-                let error = Rich::custom::<&str>(e.span(), &format!("CHAR is empty"));
-                Err(error)
-            }
-            Some(c) if c == ' ' || c == '\t' => {
-                let error = Rich::custom::<&str>(e.span(), &format!("CHAR is whitesace"));
-                Err(error)
-            }
-            _ => {
-                e.state().prev_char = rb.chars().last();
+    // CHAR^{expression} / CHAR^(EXPRESSION)
+    // FIXME: standard objects not supported yet: user standar_object.nested(expression)
+    let var = none_of::<&str, &str, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>(
+        "{}()\r\n",
+    )
+    .repeated()
+    .at_least(1)
+    .to_slice();
+    let mut single_expression = Recursive::declare(); // foo / (foo) / (((foo)))
+    single_expression.define(
+        var.or(just("(")
+            .then(single_expression.clone().repeated())
+            .then(just(")"))
+            .to_slice())
+            .or(just("{")
+                .then(single_expression.clone().repeated())
+                .then(just("}"))
+                .to_slice()),
+    );
+    let expression = single_expression.clone().repeated().to_slice(); // foo(bar){(def)ghi}
 
-                let mut children = vec![];
-                children.push(NT::Token(GreenToken::new(
-                    OSK::Caret.into(),
-                    &sup_lb.chars().nth(0).unwrap().to_string(),
-                )));
-                children.push(NT::Token(GreenToken::new(
-                    OSK::LeftCurlyBracket.into(),
-                    &sup_lb.chars().last().unwrap().to_string(),
-                )));
-                children.push(NT::Token(GreenToken::new(OSK::Text.into(), &expression)));
-                children.push(NT::Token(GreenToken::new(
-                    OSK::RightCurlyBracket.into(),
-                    &rb.chars().last().unwrap().to_string(),
-                )));
+    let pairs = HashMap::from([('(', ')'), ('{', '}')]);
+    let pair_starts = pairs.keys().copied().collect::<Vec<_>>();
+    let pair_ends = pairs.values().copied().collect::<Vec<_>>();
+    let t2 = just::<_, _, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>("^")
+        .then(one_of(pair_starts))
+        .then(expression)
+        .then(one_of(pair_ends))
+        .try_map_with(
+            move |(((sup, lb), expression), rb), e| match e.state().prev_char {
+                None => {
+                    let error = Rich::custom::<&str>(e.span(), &format!("CHAR is empty"));
+                    Err(error)
+                }
+                Some(c) if c == ' ' || c == '\t' => {
+                    let error = Rich::custom::<&str>(e.span(), &format!("CHAR is whitesace"));
+                    Err(error)
+                }
 
-                Ok(S2::Single(NT::Node(GreenNode::new(
-                    OSK::Superscript.into(),
-                    children,
-                ))))
-            }
-        });
+                _ => {
+                    let expected_rb = *pairs.get(&lb).unwrap();
 
-    let simplified_expressionb = any().and_is(just(")").not()).repeated().collect::<String>();
-    let t2b = just::<_, _, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>("^(")
-        .then(simplified_expressionb)
-        .then(just(")"))
-        .try_map_with(|((sup_lb, expression), rb), e| match e.state().prev_char {
-            None => {
-                let error = Rich::custom::<&str>(e.span(), &format!("CHAR is empty"));
-                Err(error)
-            }
-            Some(c) if c == ' ' || c == '\t' => {
-                let error = Rich::custom::<&str>(e.span(), &format!("CHAR is whitesace"));
-                Err(error)
-            }
-            _ => {
-                e.state().prev_char = rb.chars().last();
+                    if rb != expected_rb {
+                        Err(Rich::custom::<&str>(
+                            e.span(),
+                            &format!("bracket not matched: {lb} {rb}"),
+                        ))
+                    } else {
+                        e.state().prev_char = Some(rb);
 
-                let mut children = vec![];
-                children.push(NT::Token(GreenToken::new(
-                    OSK::Caret.into(),
-                    &sup_lb.chars().nth(0).unwrap().to_string(),
-                )));
-                children.push(NT::Token(GreenToken::new(
-                    OSK::LeftRoundBracket.into(),
-                    &sup_lb.chars().last().unwrap().to_string(),
-                )));
-                children.push(NT::Token(GreenToken::new(OSK::Text.into(), &expression)));
-                children.push(NT::Token(GreenToken::new(
-                    OSK::RightRoundBracket.into(),
-                    &rb.chars().last().unwrap().to_string(),
-                )));
+                        let mut children = vec![];
+                        children.push(NT::Token(GreenToken::new(OSK::Caret.into(), sup)));
+                        children.push(NT::Token(GreenToken::new(
+                            OSK::LeftCurlyBracket.into(),
+                            lb.to_string().as_str(),
+                        )));
+                        children.push(NT::Token(GreenToken::new(OSK::Text.into(), &expression)));
+                        children.push(NT::Token(GreenToken::new(
+                            OSK::RightCurlyBracket.into(),
+                            rb.to_string().as_str(),
+                        )));
 
-                Ok(S2::Single(NT::Node(GreenNode::new(
-                    OSK::Superscript.into(),
-                    children,
-                ))))
-            }
-        });
+                        Ok(S2::Single(NT::Node(GreenNode::new(
+                            OSK::Superscript.into(),
+                            children,
+                        ))))
+                    }
+                }
+            },
+        );
 
     // ^ SIGN CHARS FINAL
     let sign = one_of("+-").or_not();
@@ -158,23 +148,16 @@ pub(crate) fn superscript_parser<'a>()
         .then(sign)
         .then(chars_final_parser())
         .try_map_with(|((sup, sign), content), e| match e.state().prev_char {
-            None => {
-                let error = Rich::custom::<&str>(e.span(), &format!("CHAR is empty"));
-                Err(error)
-            }
-            Some(c) if c == ' ' || c == '\t' => {
-                let error = Rich::custom::<&str>(e.span(), &format!("CHAR is whitesace"));
-                Err(error)
+            None => Err(Rich::custom(e.span(), format!("CHAR is empty"))),
+            Some(c) if matches!(c, ' ' | '\t') => {
+                Err(Rich::custom(e.span(), format!("CHAR is whitesace")))
             }
             _ => {
                 e.state().prev_char = content.chars().last();
 
                 let mut children = vec![];
                 children.push(NT::Token(GreenToken::new(OSK::Caret.into(), sup)));
-                let text = match sign {
-                    Some(s) => format!("{s}{content}"),
-                    None => format!("{content}"),
-                };
+                let text = sign.map_or_else(|| content.clone(), |s| format!("{s}{content}"));
                 children.push(NT::Token(GreenToken::new(OSK::Text.into(), &text)));
 
                 Ok(S2::Single(NT::Node(GreenNode::new(
@@ -184,7 +167,7 @@ pub(crate) fn superscript_parser<'a>()
             }
         });
 
-    t1.or(t3).or(t2a).or(t2b)
+    t1.or(t3).or(t2)
 }
 
 // /// Subscript Parser
