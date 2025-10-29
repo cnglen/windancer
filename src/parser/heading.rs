@@ -316,6 +316,8 @@ pub(crate) fn heading_row_parser<'a>()
                 ((((((ws, kw_ws), priority_ws), comment_ws), title_ws), tag_ws), nl_blank_tokens),
             ),
              e| {
+                e.state().prev_char = Some('\n'); // fixme: hard coded!
+
                 let span: SimpleSpan = e.span();
                 let mut children = vec![stars_token_result.green];
                 let mut text = String::new();

@@ -566,9 +566,10 @@ impl Converter {
             .count()
             > 0;
 
+        // todo: bold  fixme
         let is_inline = node
             .children_with_tokens()
-            .filter(|e| e.kind() == OrgSyntaxKind::Colon)
+            .filter(|e| e.kind() == OrgSyntaxKind::Text)
             .count()
             == 3;
 
@@ -576,8 +577,11 @@ impl Converter {
             let mut texts = node
                 .children_with_tokens()
                 .filter(|e| e.kind() == OrgSyntaxKind::Text);
-            let label = texts.nth(1).expect("todo");
-            let definition = texts.nth(2).expect("todo");
+            let label = texts.clone().nth(1).expect("todo");
+            let definition = texts
+                .clone()
+                .nth(2)
+                .expect(&format!("{:?} doesn't have 3rd text, fixme", texts));
             (Some(label), Some(definition))
         } else if is_anoymous {
             let mut texts = node
@@ -593,6 +597,8 @@ impl Converter {
             let label = texts.nth(1).expect("todo");
             (Some(label), None)
         };
+
+        println!("{:?}:{:?}", raw_label, raw_definition);
 
         let label = match raw_label {
             Some(e) => {
@@ -649,6 +655,7 @@ impl Converter {
                 nid: *nid,
             };
 
+            println!("footnotedefinition={:?}", footnote_definition);
             self.footnote_definitions.push(footnote_definition);
         }
 
@@ -1074,7 +1081,10 @@ impl Converter {
             .map(|e| e.unwrap())
             .collect();
 
-        let rids = self.footnote_label_to_rids.get(&label).expect("todo");
+        let rids = self.footnote_label_to_rids.get(&label).expect(&format!(
+            "convert_footnote_defintion(): Can't get {label} from {:?}, {node:?}",
+            self.footnote_label_to_rids
+        ));
         let nid = self.footnote_label_to_nid.get(&label).expect("todo");
 
         let footnote_definition = FootnoteDefinition {

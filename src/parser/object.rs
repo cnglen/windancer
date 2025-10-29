@@ -20,9 +20,10 @@ use crate::parser::object::footnote_reference::footnote_reference_parser;
 use crate::parser::object::latex_fragment::latex_fragment_parser;
 use crate::parser::object::r#macro::macro_parser;
 use crate::parser::object::regular_link::regular_link_parser;
-use crate::parser::object::subscript_superscript::superscript_parser;
+use crate::parser::object::subscript_superscript::subscript_superscript_parser;
 use crate::parser::object::target::target_parser;
-use crate::parser::object::text::text_parser;
+// use crate::parser::object::text::text_parser;
+use crate::parser::object::text::plain_text_parser;
 use crate::parser::object::text_markup::text_markup_parser;
 use crate::parser::object::timestamp::timestamp_parser;
 use crate::parser::syntax::OrgSyntaxKind;
@@ -218,43 +219,100 @@ pub(crate) fn line_break_parser<'a>()
         })
 }
 
-// objects_parser
-// todo: select! use prev_char state?
-pub(crate) fn object_parser<'a>()
+// // objects_parser
+// // todo: select! use prev_char state?
+// pub(crate) fn objects_parser_v1<'a>()
+// -> impl Parser<'a, &'a str, Vec<S2>, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone
+// {
+//     choice((
+//         text_markup_parser(),
+//         entity_parser(),
+//         regular_link_parser(),
+//         angle_link_parser(),
+//         footnote_reference_parser(),
+//         latex_fragment_parser(),
+//         line_break_parser(),
+//         macro_parser(),
+//         subscript_superscript_parser(),
+//         target_parser(),
+//         timestamp_parser(),
+//         text_parser(),
+//     ))
+//     .repeated()
+//     .at_least(1)
+//     .collect::<Vec<_>>()
+// }
+
+// recursive version
+pub(crate) fn objects_parser<'a>()
 -> impl Parser<'a, &'a str, Vec<S2>, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone
 {
-    choice((
-        text_markup_parser(),
-        entity_parser(),
-        regular_link_parser(),
-        angle_link_parser(),
-        footnote_reference_parser(),
-        latex_fragment_parser(),
-        line_break_parser(),
-        macro_parser(),
-        superscript_parser(),
-        target_parser(),
-        timestamp_parser(),
-        text_parser(),
-    ))
-    .repeated()
-    .at_least(1)
-    .collect::<Vec<_>>()
+    object_parser().repeated().at_least(1).collect::<Vec<_>>()
 }
 
+// // define minimal/standard/all?
+// pub(crate) fn object_parser<'a>()
+// -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
+//     recursive(|object_parser| {
+//         let entity_parser = entity_parser();
+//         let text_markup_parser = text_markup_parser();
+//         let latex_fragment_parsre = latex_fragment_parser();
+//         let subscript_superscript_parser = subscript_superscript_parser(object_parser.clone());
+//         let footnote_reference_parser = footnote_reference_parser(object_parser.clone());
+
+//         let non_plain_text_parsers = choice((
+//             entity_parser.clone(),
+//             text_markup_parser,
+//             latex_fragment_parsre,
+//             subscript_superscript_parser,
+//             footnote_reference_parser,
+//         ));
+
+//         let plain_text_parser = plain_text_parser(non_plain_text_parsers.clone());
+//         // let text_parser = text_parser();
+
+//         choice((non_plain_text_parsers, plain_text_parser))
+//     })
+// }
+
 pub(crate) fn minimal_object_parser<'a>()
--> impl Parser<'a, &'a str, Vec<S2>, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone
-{
-    choice((
-        text_markup_parser(),
-        entity_parser(),
-        latex_fragment_parser(),
-        superscript_parser(),
-        text_parser(),
-    ))
-    .repeated()
-    .at_least(1)
-    .collect::<Vec<_>>()
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
+    recursive(|object_parser| {
+        let entity_parser = entity_parser();
+        let latex_fragment_parsre = latex_fragment_parser();
+        let subscript_superscript_parser = subscript_superscript_parser(object_parser.clone());
+        let text_markup_parser = text_markup_parser();
+        let non_plain_text_parsers = choice((
+            entity_parser.clone(),
+            text_markup_parser,
+            latex_fragment_parsre,
+            subscript_superscript_parser,
+        ));
+        let plain_text_parser = plain_text_parser(non_plain_text_parsers.clone());
+
+        choice((non_plain_text_parsers, plain_text_parser))
+    })
+}
+
+pub(crate) fn standard_object_parser<'a>()
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
+    recursive(|object_parser| {
+        let entity_parser = entity_parser();
+        let text_markup_parser = text_markup_parser();
+        let latex_fragment_parsre = latex_fragment_parser();
+        let subscript_superscript_parser = subscript_superscript_parser(object_parser.clone());
+        let non_plain_text_parsers = choice((
+            entity_parser.clone(),
+            text_markup_parser,
+            latex_fragment_parsre,
+            subscript_superscript_parser,
+        ));
+
+        let plain_text_parser = plain_text_parser(non_plain_text_parsers.clone());
+        // let text_parser = text_parser();
+
+        choice((non_plain_text_parsers, plain_text_parser))
+    })
 }
 
 #[allow(unused)]
@@ -379,7 +437,7 @@ L3
             "\\_  \n",
             "\\_                       \n",
         ];
-        let parser = object_parser();
+        let parser = objects_parser();
         for e in input {
             let s = parser.parse(e);
             let s1 = s.output().unwrap().iter().next();
@@ -404,7 +462,7 @@ L3
     #[test]
     fn test_incorrect_entity() {
         let input = vec!["\\alphA ", "\\deltab "];
-        let parser = object_parser();
+        let parser = objects_parser();
         for e in input {
             let s = parser.parse(e);
             let s1 = s.output().unwrap().iter().next();
@@ -464,7 +522,7 @@ L3
         // let input = "[[https://www.baidu.com][baidu]]";
         let input = "foo [[https://www.baidu.com][baidu]]";
 
-        for e in object_parser().parse(input).unwrap() {
+        for e in objects_parser().parse(input).unwrap() {
             match e {
                 S2::Single(node_or_token) => {
                     match node_or_token {
@@ -488,3 +546,122 @@ L3
         }
     }
 }
+
+pub(crate) fn object_parser<'a>()
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
+    recursive(|object_parser| {
+        // 第一层：12个独立解析器
+        let independent_parsers = choice((
+            entity_parser(),
+            latex_fragment_parser(),
+            angle_link_parser(),
+            line_break_parser(),
+            macro_parser(),
+            target_parser(),
+            timestamp_parser(),
+            // statistics_cookie_parser(),
+            // inline_babel_call_parser(),
+            // export_snippet_parser(),
+            // inline_src_block_parser(),
+            // plain_link_parser(), // 第12个
+        ));
+
+        // 第二层：minimal_set_object（6个）
+        let minimal_set_object = {
+            let entity_parser = entity_parser();
+            let latex_fragment_parser = latex_fragment_parser();
+            let subscript_superscript_parser = subscript_superscript_parser(object_parser.clone());
+            // let text_markup_parser = text_markup_parser(object_parser.clone());
+            let text_markup_parser = text_markup_parser(); // todo
+
+            let non_plain_text_parsers = choice((
+                entity_parser.clone(),
+                latex_fragment_parser.clone(),
+                subscript_superscript_parser.clone(),
+                text_markup_parser.clone(),
+            ));
+
+            // minimal_set_object 中的纯文本解析器
+            let plain_text_parser = plain_text_parser(non_plain_text_parsers.clone());
+
+            choice((non_plain_text_parsers, plain_text_parser))
+        };
+
+        // 第三层：standard_set_object（21个）
+        let standard_set_object = {
+            // 依赖 minimal_set_object 的解析器（只包含其中3个）
+            // let radio_link_parser = radio_link_parser(minimal_set_object.clone());
+            // let regular_link_parser = regular_link_parser(minimal_set_object.clone());
+            let regular_link_parser = regular_link_parser();
+            // let radio_target_parser = radio_target_parser(minimal_set_object.clone());
+
+            // 依赖 standard_set_object 的解析器（5个）
+            let subscript_superscript_parser = subscript_superscript_parser(object_parser.clone());
+            // let subscript_parser = subscript_parser(object_parser.clone());
+            // let superscript_parser = superscript_parser(object_parser.clone());
+            // let text_markup_parser = text_markup_parser(object_parser.clone());
+            let text_markup_parser = text_markup_parser(); // todo
+            let footnote_reference_parser = footnote_reference_parser(object_parser.clone());
+            // let citation_parser = citation_parser(object_parser.clone());
+
+            // 构建不包含 plain_text 的 standard_set_object（20个）
+            let standard_set_without_plain_text = choice((
+                independent_parsers.clone(), // 12个
+                // radio_link_parser,           // 1个
+                regular_link_parser, // 1个
+                // radio_target_parser,         // 1个
+                // subscript_parser,            // 1个
+                // superscript_parser,          // 1个
+                subscript_superscript_parser,
+                text_markup_parser, // 1个
+                footnote_reference_parser, // 1个
+                                    // citation_parser,             // 1个
+                                    // 总共：12 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 = 20个
+            ));
+
+            // standard_set_object 中的纯文本解析器
+            let plain_text_for_standard =
+                plain_text_parser(standard_set_without_plain_text.clone());
+
+            // 最终的 standard_set_object（21个）
+            choice((
+                standard_set_without_plain_text,
+                plain_text_for_standard, // 第21个
+            ))
+        };
+
+        // 第四层：完整的23个对象集合
+        {
+            // // 不在 standard_set_object 中的2个解析器
+            // let table_cell_parser = table_cell_parser(minimal_set_object.clone());
+            // let citation_reference_parser = citation_reference_parser(minimal_set_object.clone());
+
+            // 构建不包含 plain_text 的完整集合（22个）
+            let full_set_without_plain_text = choice((
+                standard_set_object.clone(), // 21个（包含自己的 plain_text）
+                                             // table_cell_parser,           // 1个
+                                             // citation_reference_parser,   // 1个
+                                             // 注意：这里会有重复，但 choice 会处理
+            ));
+
+            // 最终的纯文本解析器，依赖所有其他22个对象
+            let final_plain_text = plain_text_parser(full_set_without_plain_text.clone());
+
+            // 完整的23个对象集合
+            choice((
+                full_set_without_plain_text,
+                final_plain_text, // 第23个
+            ))
+        }
+    })
+}
+
+// 1. minimal_set_object定义：由entity/latex_fragment/subscript/superscript/text_markup/plain_text 6个parser组成。
+// 2. standard_set_object定义: 由entity/latex_fragment/angle_link/line_break/macro/target/timestamp/ statistics-cookie/inline-babel-call/export_snippet/inline_src_block/radio_link/regular_link/radio-target/subscript/superscript/text_markup/footnote_reference/citation/plain_text/plain_link 21个parser组成。
+// 注意: minimal_set_objet是standard_set_object的子集，除了standard_set_object外，还有tabel_cell和citation_reference 2个object。
+
+// 依赖关系:
+// 1. entity/latex_fragment/angle_link/line_break/macro/target/timestamp/statistics-cookie/inline-babel-call/export_snippet/inline_src_block/plain_link 12个object的parser, 是独立解析器
+// 2. radio_link/regular_link/table_cell/citation_reference/radio-target 5个object的parser, 依赖上文定义的minimal_set_object
+// 3. subscript/superscript/text_markup/footnote_reference/citation 5object的parser, 依赖上文定义的standard_set_object
+// 4. plain_text的parser依赖其余的22个object的parser，用于否定前瞻。

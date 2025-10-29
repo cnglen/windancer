@@ -1,7 +1,7 @@
 //! Text markup parser, including bold, italic, underline, strikethrough, verbatim and code.
 use crate::parser::ParserState;
 use crate::parser::S2;
-use crate::parser::object::text_parser;
+// use crate::parser::object::text_parser;
 use crate::parser::syntax::OrgSyntaxKind;
 use chumsky::input::InputRef;
 use chumsky::inspector::SimpleState;
@@ -509,11 +509,11 @@ pub(crate) fn text_markup_inner_preprocesser_v2<'a>()
             &'a str,
             extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
         >| {
-            println!("\ninner: cursor_inner={:?}", inp.cursor().inner());
+            // println!("\ninner: cursor_inner={:?}", inp.cursor().inner());
             let text: &str = inp.slice_from(std::ops::RangeFrom {
                 start: &inp.cursor(),
             });
-            println!("inner: text={:?}", text);
+            // println!("inner: text={:?}", text);
 
             let mut i: usize = 0;
             let n: usize = text.chars().count();
@@ -924,7 +924,7 @@ pub(crate) fn text_markup_parser<'a>() -> impl Parser<
 
     text_markup_inner_preprocesser()
         // .map(|s| {
-        //     println!("s={:?}", s);
+        //     println!("text_markup_inner_preprocessor: s={:?}", s);
         //     s
         // })
         .try_map_with(|tokens: Vec<Token>, e| {
@@ -936,7 +936,7 @@ pub(crate) fn text_markup_parser<'a>() -> impl Parser<
                 // .lazy()
                 .parse(&tokens[..]);
             if a.has_output() {
-                // println!("  text_markup_parser's output={:?}", a);
+                // println!("text_markup_parser(outer(innter(input)))'s output={:?}", a);
                 // Ok(a.into_result().unwrap())
                 Ok(S2::Single(a.into_result().unwrap()))
             } else {
@@ -1111,47 +1111,47 @@ mod tests {
     //         assert_eq!(format!("{:#?}", syntax_tree), answer);
     //     }
 
-    #[test]
-    fn test_text_markup_rpt_parser() {
-        // all normal OK
-        // all bold OK
-        // a /it/ bad: bad
+    // #[test]
+    // fn test_text_markup_rpt_parser() {
+    //     // all normal OK
+    //     // all bold OK
+    //     // a /it/ bad: bad
 
-        let input = "a /it/ line";
-        // let input = "/it/ *bo*";
-        // let input = "\u{0001}it\u{0002} \u{0003}it\u{0004}  \t";
-        // let input = "\u{0001}it\u{0002} ";
+    //     let input = "a /it/ line";
+    //     // let input = "/it/ *bo*";
+    //     // let input = "\u{0001}it\u{0002} \u{0003}it\u{0004}  \t";
+    //     // let input = "\u{0001}it\u{0002} ";
 
-        let parser = text_markup_parser()
-            // text_markup_parser_v2()
-            .or(text_parser())
-            // text_markup_parser().or(text_parser())
-            // text_parser()
-            // demo()
-            // .or(text_markup_parser())
-            .repeated()
-            .at_least(1)
-            .collect::<Vec<_>>();
+    //     let parser = text_markup_parser()
+    //         // text_markup_parser_v2()
+    //         .or(text_parser())
+    //         // text_markup_parser().or(text_parser())
+    //         // text_parser()
+    //         // demo()
+    //         // .or(text_markup_parser())
+    //         .repeated()
+    //         .at_least(1)
+    //         .collect::<Vec<_>>();
 
-        let nodes = parser.parse(input);
-        for e in nodes.errors() {
-            println!("error={:?}", e);
-        }
-        println!("test_text_markup_rpt_parser: nodes={:?}\n\n", nodes);
+    //     let nodes = parser.parse(input);
+    //     for e in nodes.errors() {
+    //         println!("error={:?}", e);
+    //     }
+    //     println!("test_text_markup_rpt_parser: nodes={:?}\n\n", nodes);
 
-        for _node in nodes.into_result().unwrap() {
-            match _node {
-                S2::Single(node) => match node {
-                    NodeOrToken::Token(t) => {
-                        println!(" token={}", t);
-                    }
-                    NodeOrToken::Node(n) => {
-                        let syntax_tree: SyntaxNode<OrgLanguage> = SyntaxNode::new_root(n);
-                        println!("  node={:#?}", syntax_tree);
-                    }
-                },
-                _ => {}
-            }
-        }
-    }
+    //     for _node in nodes.into_result().unwrap() {
+    //         match _node {
+    //             S2::Single(node) => match node {
+    //                 NodeOrToken::Token(t) => {
+    //                     println!(" token={}", t);
+    //                 }
+    //                 NodeOrToken::Node(n) => {
+    //                     let syntax_tree: SyntaxNode<OrgLanguage> = SyntaxNode::new_root(n);
+    //                     println!("  node={:#?}", syntax_tree);
+    //                 }
+    //             },
+    //             _ => {}
+    //         }
+    //     }
+    // }
 }

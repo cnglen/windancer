@@ -8,6 +8,8 @@
 |--------------------+--------------+------------+-------------+-------------------------------------------|
 | entity             | ✓           | ✓         | ✓          |                                           |
 | latex-fragment     | ✓           | ✓         | ✓          |                                           |
+| subscript          | \check           |            |             | parse of expression is simplified[fn:3]   |
+| superscript        | ✓           |            |             | parse of expression is simplified[fn:3]   |
 | footnote-reference | ✓           | ✓         | ✓          | Parse of *definition* is simplified[fn:1] |
 | line-break         | ✓           | ✓         | ✓          |                                           |
 | macro              | ✓           | ✓         |             | todo render: collect macro replacement    |
@@ -17,8 +19,6 @@
 | plain link         |              |            |             |                                           |
 | regular link       |              |            |             |                                           |
 | table-cell         |              |            |             | todo                                      |
-| subscript          |              |            |             | todo                                      |
-| superscript        | ✓           |            |             | parse of expression is simplified[fn:3]   |
 | citation           |              |            |             | todo                                      |
 | citation-reference |              |            |             | todo                                      |
 | radio-target       |              |            |             | todo                                      |
@@ -70,4 +70,4 @@
 
 [fn:2] bold, italic, underline, strike-throught, code, verbatim
 
-[fn:3] An expression enclosed in curly brackets ({, }) or in round braces ((, )), which may itself contain balanced curly or round brackets and the standard set of objects. Simplified to use text, to be updated.
+[fn:3] An expression enclosed in curly brackets ({, }) or in round braces ((, )), which may itself contain balanced curly or round brackets and the standard set of objects. *Standard set* of objects is NOT supported yet.

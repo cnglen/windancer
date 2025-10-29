@@ -426,12 +426,13 @@ CLOSED: [2025-10-22 Wed 11:37]
 - State "DONE"       from "DOING"      [2025-10-22 Wed 11:37]
 :END:
 
-1) pattern1: This is a entity \alpha, and another entity \beta, and last \Delta
-2) pattern2: without spaces \pi{}d.
-3) pattern3:
-   - \_   3spaces
-   - \_                    20spaces
-   - \_                     21spaces, split into 20 space entity + one space.
+pattern1: This is a entity \alpha, and another entity \beta, and last \Delta
+pattern2: without spaces \pi{}d.
+pattern3:
+
+\_   3spaces
+\_                    20spaces
+\_                     21spaces, split into 20 space entity + one space.
 
 
 ** DONE latex fragment test
@@ -456,6 +457,7 @@ $$c=a+b=3$$
 
 If $a^2=b$ and \( b=2 \), then the solution must be either $$ a=+\sqrt{2} $$ or \[ a=-\sqrt{2} \].
 
+$$a$ bad fragment
 
 ** line break
 
@@ -699,6 +701,14 @@ a^(c+4)
 a^(c+4}: bad
 
 complex with object
+
+a^{foo *boldmarkup* bar}
+
+a^{*boldmarkup*}
+
+a^{*boldmarkup* foo \alpha}
+
+a^{\alpha} 
 
 a^(385+3 [[https://baidu.com][baidu]])
 

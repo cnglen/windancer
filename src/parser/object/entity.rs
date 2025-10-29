@@ -482,7 +482,9 @@ pub(crate) fn entity_parser<'a>()
         .collect::<String>()
         .filter(|name| ENTITYNAME_TO_HTML.contains_key(name));
 
-    let post_parser = any().filter(|c: &char| !c.is_alphabetic());
+    let post_parser = any()
+        .filter(|c: &char| !c.is_alphabetic())
+        .or(end().to('x'));
 
     // pattern1: \NAME POST
     let a1 = just::<_, _, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>(r"\")

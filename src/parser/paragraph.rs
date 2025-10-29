@@ -59,7 +59,7 @@ pub(crate) fn paragraph_parser<'a>() -> impl Parser<
         .map(|s| s.join(""))
         .to_slice();
 
-    object::object_parser()
+    object::objects_parser()
         .nested_in(inner)
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
         .map_with(|(lines, blanklines), _e| {
