@@ -8,7 +8,7 @@ use chumsky::inspector::SimpleState;
 use chumsky::prelude::*;
 use phf::{phf_map, phf_set};
 use rowan::{GreenNode, GreenToken, NodeOrToken};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::ops::Range;
 
 static NORMAL_PRE: phf::Set<char> = phf_set! {' ', '\t', '(', '{', '"', '\'', '​'};
@@ -36,24 +36,6 @@ static CHAR2TYPE_END: phf::Map<char, &'static str> = phf_map! {
     '+' => "</strikethrough_314159265358979323846264338327950288419716939937510>",
     '=' => "</verbatim_314159265358979323846264338327950288419716939937510>",
     '~' => "</code_314159265358979323846264338327950288419716939937510>"
-};
-
-static CHAR2TYPE_BEGIN_V2: phf::Map<char, char> = phf_map! {
-    '*' => '\u{0001}',
-    '/' => '\u{0003}',
-    '_' => '\u{0005}',
-    '+' => '\u{0007}',
-    '=' => '\u{0009}',
-    '~' => '\u{0011}',
-};
-
-static CHAR2TYPE_END_V2: phf::Map<char, char> = phf_map! {
-    '*' => '\u{0002}',
-    '/' => '\u{0004}',
-    '_' => '\u{0006}',
-    '+' => '\u{0008}',
-    '=' => '\u{0010}',
-    '~' => '\u{0012}',
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -207,9 +189,13 @@ impl Result {
 }
 
 /// Check whether the start marker is valid through: PRE MARKER FIRST_CHAR_OF_CONTENT
-// i?
+//
+//  - text[i-1] ~ PRE
+//  - text[i]   ~ start_MARKER
+//  - text[i+1] ~ FIRST_CHAR_OF_CONTENT
+//
 fn is_start_marker_valid(text: &str, i: usize, marker_stack: &MarkerStack) -> bool {
-    // Hight Priority?
+    // if in hight priority marker(=~), disabled other marker
     match marker_stack.last() {
         Some((marker, _i)) if MARKER_SET_HIGH_PRIORITY.contains(marker) => {
             return false;
@@ -228,6 +214,8 @@ fn is_start_marker_valid(text: &str, i: usize, marker_stack: &MarkerStack) -> bo
     };
 
     // marker
+    // text[i] in MARKER_SET and text[i] not a END marker
+    // why without_last?
     let text_i = text.chars().nth(i).unwrap();
     let marker_valid = if MARKER_SET.contains(&text_i)
         && !marker_stack.history_state_without_last().contains(&text_i)
@@ -254,21 +242,19 @@ fn is_start_marker_valid(text: &str, i: usize, marker_stack: &MarkerStack) -> bo
     pre_valid && marker_valid && first_char_of_content_valid
 }
 
+// text[i] ~ MARKER
 fn is_end_marker_valid(text: &str, i: usize, marker_stack: &MarkerStack) -> bool {
-    // println!("is_end_marker_valid ...");
-
-    // last char of content
-    let text_nm1 = text.chars().nth(i - 1).unwrap();
-    // println!("{}", text_nm1);
+    // CONTENTS may not end with whitespace
+    let text_nm1 = text.chars().nth(i - 1).unwrap(); // last char of content
     let last_of_char_content_valid = if !WHITESPACE_SET.contains(&text_nm1) {
         true
     } else {
         false
     };
-
+    // println!("is_end_marker_valid: last_char of conent=<{}>", text_nm1);
     // println!("last_of_char_content_valid={}", last_of_char_content_valid);
 
-    // marker
+    // MARKER: match the last marker of marker_statck
     let marker_valid = if marker_stack.len() > 0
         && text.chars().nth(i).unwrap() == marker_stack.last().unwrap().0
     {
@@ -277,34 +263,45 @@ fn is_end_marker_valid(text: &str, i: usize, marker_stack: &MarkerStack) -> bool
         false
     };
 
-    // println!("marker_valid={}", marker_valid);
+    // println!("marker_stack_last={:?}, text[i]={:?}, marker_valid={}", marker_stack.last(), text.chars().nth(i), marker_valid);
 
-    // post valid
+    // POST ~ text[i+1]
+    //  - in NORMAL_POST := a whitespace character, -, ., ,, ;, :, !, ?, ', ), }, [, ", \ (backslash)
+    //  - the end of a line := \r\n
+    //  - 后面跟state中的某个marker, 且为history_state的逆序，且后续的字符为whitespace或eol或eof
     let post_valid = if i == text.chars().count() - 1 {
+        // end of file
         true
     } else if END_OF_LINE_SET.contains(&text.chars().nth(i + 1).unwrap()) {
+        // end of a line
         true
     } else if NORMAL_POST.contains(&text.chars().nth(i + 1).unwrap()) {
+        //
         true
-    } else if marker_stack
+    } else if marker_stack // *_/xx/_*
         .history_state_without_last()
         .contains(&text.chars().nth(i + 1).unwrap())
     {
         // lookahead
         let mut tmp_history_state_without_last = marker_stack.history_state_without_last().clone();
         let n_history_state = tmp_history_state_without_last.len();
-        let mut post_valid = false;
+        let post_valid: bool;
         let mut flag_break = false;
 
         let n = text.chars().count();
 
         let mut last_j: usize = 0;
 
-        for j in i + 1..(if i + 1 + n_history_state < n {
+        let range_end = if i + 1 + n_history_state < n {
             i + 1 + n_history_state
         } else {
             n
-        }) {
+        };
+        // println!(
+        //     "range_end={range_end}, tmp_history_state_without_last={:?}",
+        //     tmp_history_state_without_last
+        // );
+        for j in i + 1..range_end {
             last_j = j;
             if *tmp_history_state_without_last.last().unwrap() == text.chars().nth(j).unwrap() {
                 tmp_history_state_without_last.pop();
@@ -314,11 +311,19 @@ fn is_end_marker_valid(text: &str, i: usize, marker_stack: &MarkerStack) -> bool
             }
         }
 
-        if flag_break && WHITESPACE_SET.contains(&text.chars().nth(last_j).unwrap()) {
+        let text_lastj = text.chars().nth(last_j).unwrap();
+        // println!("text_last_j={text_lastj:?}");
+        // println!("{} VS {n}", last_j + 1);
+        if flag_break
+            && (WHITESPACE_SET.contains(&text_lastj) || END_OF_LINE_SET.contains(&text_lastj))
+        {
             post_valid = true;
         } else {
             if last_j + 1 < n {
-                if WHITESPACE_SET.contains(&text.chars().nth(last_j + 1).unwrap()) {
+                let text_lastj_plus1 = text.chars().nth(last_j + 1).unwrap();
+                if WHITESPACE_SET.contains(&text_lastj_plus1)
+                    || END_OF_LINE_SET.contains(&text_lastj_plus1)
+                {
                     post_valid = true;
                 } else {
                     post_valid = false;
@@ -333,22 +338,32 @@ fn is_end_marker_valid(text: &str, i: usize, marker_stack: &MarkerStack) -> bool
         false
     };
 
-    // println!(
-    //     "last_of_char_content_valid={}, marker_valid={},  post_valid={}",
-    //     last_of_char_content_valid, marker_valid, post_valid
-    // );
+    //   println!(
+    //       r##"{}:{}:is_end_marker_valid(): text={text:?}, i={i}, text[i]={:?}, marker_stack={:?},
+    // last_of_char_content_valid={}
+    // marker_valid              ={}
+    // post_valid                ={}"##,
+    //       file!(),
+    //       line!(),
+    //       text.chars().nth(i).unwrap(),
+    //       marker_stack.data,
+    //       last_of_char_content_valid,
+    //       marker_valid,
+    //       post_valid
+    //   );
+
     last_of_char_content_valid && marker_valid && post_valid
 }
 
 /// markup preprocessor: mark the bound of marker using xml style string
-/// 仅当输入第一个char为markup开始时，才消费，且消费到第一个markup_end，含后续的空格。之后不再消费
+/// 仅当输入第一个char为markup开始时，才消费，且消费到第一个markup_end，含后续的空格和换行符。之后不再消费
 ///
 /// - mark the bound of marker using xml style string
 ///   - `CHAR2TYPE_BEGIN`
 ///   - `CHAR2TYPE_END`
 /// - map into Token Stream using Vec<Token>
 ///   - `Token`
-pub(crate) fn text_markup_inner_preprocesser<'a>()
+fn text_markup_inner_preprocesser<'a>()
 -> impl Parser<'a, &'a str, Vec<Token>, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>>
 + Clone {
     custom(
@@ -362,7 +377,7 @@ pub(crate) fn text_markup_inner_preprocesser<'a>()
             let text: &str = inp.slice_from(std::ops::RangeFrom {
                 start: &inp.cursor(),
             });
-            // println!("inner: text={:?}", text);
+            // println!("inner_preprocessor: text={:?}", text);
 
             let mut i: usize = 0;
             let n: usize = text.chars().count();
@@ -373,14 +388,15 @@ pub(crate) fn text_markup_inner_preprocesser<'a>()
             // println!("n={}, i={}", n, i);
             while i < n {
                 // println!("n={}, i={}", n, i);
+                // println!("text={text:?}, i={i}, {:?}", marker_stack.data);
                 if i < n - 1 && is_start_marker_valid(text, i, &marker_stack) {
-                    // println!("marker star");
+                    // println!("marker starts");
                     let marker_char = text.chars().nth(i).unwrap();
                     marker_stack.push((marker_char, i));
                     result.push(i, CHAR2TYPE_BEGIN.get(&marker_char).unwrap().to_string());
                     i = i + 1;
                 } else if i > 0 && is_end_marker_valid(text, i, &marker_stack) {
-                    // println!("marker end");
+                    // println!("marker ends");
 
                     if let Some((marker_char, _)) = marker_stack.pop() {
                         result.push(i, CHAR2TYPE_END.get(&marker_char).unwrap().to_string());
@@ -482,7 +498,7 @@ pub(crate) fn text_markup_inner_preprocesser<'a>()
                 }
 
                 while let Some(c) = inp.peek() {
-                    if matches!(c, '\t' | ' ') {
+                    if matches!(c, '\t' | ' ' | '\r' | '\n') {
                         inp.next();
                         ans.push(Token::Char(c));
                     } else {
@@ -492,97 +508,8 @@ pub(crate) fn text_markup_inner_preprocesser<'a>()
             }
 
             // println!("inner: cursor_inner={:?}", inp.cursor().inner());
-            // println!("inner: ans={:?}", ans);
+            // println!("inner_preprocessor: ans ={:?}", ans);
             Ok(ans)
-        },
-    )
-}
-
-#[allow(unused)]
-pub(crate) fn text_markup_inner_preprocesser_v2<'a>()
--> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone
-{
-    custom(
-        |inp: &mut InputRef<
-            'a,
-            '_,
-            &'a str,
-            extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
-        >| {
-            // println!("\ninner: cursor_inner={:?}", inp.cursor().inner());
-            let text: &str = inp.slice_from(std::ops::RangeFrom {
-                start: &inp.cursor(),
-            });
-            // println!("inner: text={:?}", text);
-
-            let mut i: usize = 0;
-            let n: usize = text.chars().count();
-
-            let mut marker_stack = MarkerStack::default();
-            let mut result = Result::default();
-
-            // println!("n={}, i={}", n, i);
-            while i < n {
-                // println!("n={}, i={}", n, i);
-                if i < n - 1 && is_start_marker_valid(text, i, &marker_stack) {
-                    // println!("marker star");
-                    let marker_char = text.chars().nth(i).unwrap();
-                    marker_stack.push((marker_char, i));
-                    result.push(i, CHAR2TYPE_BEGIN_V2.get(&marker_char).unwrap().to_string());
-                    i = i + 1;
-                } else if i > 0 && is_end_marker_valid(text, i, &marker_stack) {
-                    // println!("marker end");
-
-                    if let Some((marker_char, _)) = marker_stack.pop() {
-                        result.push(i, CHAR2TYPE_END_V2.get(&marker_char).unwrap().to_string());
-                        i = i + 1;
-                    }
-                } else {
-                    i = i + 1;
-                }
-            }
-
-            while marker_stack.len() > 0 {
-                if let Some((_, i_input)) = marker_stack.pop() {
-                    while result.len() > 0 && result.last().unwrap().0 >= i_input {
-                        result.pop();
-                    }
-                }
-            }
-            let mut ans: String = String::new();
-
-            for (i, c) in text.chars().enumerate() {
-                if result.contains(&i) {
-                    match result.get(&i) {
-                        Some(x) => ans.push_str(x),
-                        _ => {}
-                    }
-                } else {
-                    ans.push(c);
-                }
-            }
-
-            // for i in 0..n {
-            //     if let Some(c) = inp.next() {
-            //         if result.contains(&i) {
-            //             match result.get(&i) {
-            //                 Some(x) => ans.push_str(x),
-            //                 _ => {}
-            //             }
-            //         } else {
-            //             ans.push(c);
-            //         }
-            //     }
-            // }
-
-            println!("    result={:?}", result);
-            println!("  inner: cursor_inner={:?}", inp.cursor().inner());
-            println!("  text_markup_inner_preprocesser: ans={:?}", ans);
-            Ok(ans)
-            // let a = ans.into_boxed_str();
-            // let b = Box::leak(a);
-            // Ok(b)
-            // Ok(ans.as_str())
         },
     )
 }
@@ -643,9 +570,14 @@ pub(crate) fn text_markup_outer_parser<'a>() -> impl Parser<
                 //     s
                 // })
                 .then(
-                    one_of([Token::Char(' '), Token::Char('\t')])
-                        .repeated()
-                        .collect::<Vec<Token>>(),
+                    one_of([
+                        Token::Char(' '),
+                        Token::Char('\t'),
+                        Token::Char('\n'),
+                        Token::Char('\r'),
+                    ])
+                    .repeated()
+                    .collect::<Vec<Token>>(),
                 )
                 // .map(|s| {
                 //     println!("outer: s3={:?}", s);
@@ -910,7 +842,14 @@ pub(crate) fn demo<'a>()
 
 /// text_markup_parser:
 /// 两个parser的类型不一致，无法用nested_in, 需要手动嵌套用inner_parser.try_map(|s| outer_parser.parse)解析
-pub(crate) fn text_markup_parser<'a>() -> impl Parser<
+pub(crate) fn text_markup_parser<'a>(
+    object_parser: impl Parser<
+        'a,
+        &'a str,
+        S2,
+        extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+    > + Clone,
+) -> impl Parser<
     'a,
     &'a str,
     S2,
@@ -940,14 +879,8 @@ pub(crate) fn text_markup_parser<'a>() -> impl Parser<
                 // Ok(a.into_result().unwrap())
                 Ok(S2::Single(a.into_result().unwrap()))
             } else {
-                let error = Rich::custom::<&str>(
-                    SimpleSpan::from(Range {
-                        start: e.span().start(),
-                        end: e.span().end(),
-                    }),
-                    &format!("text_markup_parser: has errorsxx"),
-                );
-                // // debug
+                let error = Rich::custom(e.span(), format!("text_markup_parser: has errorsxx"));
+                // // // debug
                 // for (i, e) in a.errors().enumerate() {
                 //     println!("text_markup_parsers' error{:?}={:?}", i, e);
                 // }
@@ -958,42 +891,12 @@ pub(crate) fn text_markup_parser<'a>() -> impl Parser<
         })
 }
 
-// to_slice: 会 恢复为preprocess之前的str
-#[allow(unused)]
-pub(crate) fn text_markup_parser_v2<'a>() -> impl Parser<
-    'a,
-    &'a str,
-    S2,
-    // NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
-> + Clone {
-    // text_markup_inner_preprocesser().map(|tokens: Vec<Token>| {
-    //     let p = text_markup_outer_parser();
-    //     p.parse(&tokens[..]).into_result().unwrap()
-    // })
-
-    text_markup_outer_parser_v2()
-        // .lazy( )
-        .nested_in(
-            text_markup_inner_preprocesser_v2()
-                // .lazy()
-                .to_slice(),
-        )
-        .validate(|result, e, emitter| {
-            println!("  validate: result={:?}, e={:?}", result, e.span());
-            result
-        })
-        // .lazy()
-        .map(|s| S2::Single(s))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::section::section_unknown_parser;
-    use crate::parser::syntax::OrgLanguage;
-
-    use rowan::SyntaxNode;
+    use crate::parser::common::{get_parser_output, get_parsers_output};
+    use crate::parser::object;
+    use pretty_assertions::assert_eq; // 该包仅能用于测试
 
     #[test]
     fn test_inner_preprocessor() {
@@ -1055,6 +958,10 @@ mod tests {
                 "=~*_/inner-most/_*~=",
                 "<verbatim>~*_/inner-most/_*~</verbatim>",
             ),
+            (
+                "*/bold-italic-underline/*\n",
+                "<bold><italic>bold-italic-underline</italic></bold>\n",
+            ),
         ];
 
         for (i, (input, answer)) in inputs.iter().enumerate() {
@@ -1075,83 +982,72 @@ mod tests {
                 acc
             });
             let output = output.replace("_314159265358979323846264338327950288419716939937510", "");
-            println!("output={:?}", output);
-
             assert_eq!(&output, answer);
         }
     }
 
-    //     #[test]
-    //     fn test_text_markup_parser() {
-    //         let input = "*/_+=all=+_/*";
-    //         let parser = text_markup_parser();
-    //         let node = parser.parse(input).unwrap();
-    //         println!("node={:?}", node);
-    //         let syntax_tree: SyntaxNode<OrgLanguage> =
-    //             SyntaxNode::new_root(node.into_node().expect("xxx"));
+    #[test]
+    fn test_01_nested_markup() {
+        assert_eq!(
+            get_parsers_output(object::objects_parser(), "*/_+=all=+_/*"),
+            r##"Root@0..13
+  Bold@0..13
+    Asterisk@0..1 "*"
+    Italic@1..12
+      Slash@1..2 "/"
+      UnderLine@2..11
+        UnderScore@2..3 "_"
+        StrikeThrough@3..10
+          Plus@3..4 "+"
+          Verbatim@4..9
+            Equals@4..5 "="
+            Text@5..8 "all"
+            Equals@8..9 "="
+          Plus@9..10 "+"
+        UnderScore@10..11 "_"
+      Slash@11..12 "/"
+    Asterisk@12..13 "*"
+"##
+        );
+    }
 
-    //         let answer = r##"Bold@0..13
-    //   Asterisk@0..1 "*"
-    //   Italic@1..12
-    //     Slash@1..2 "/"
-    //     UnderLine@2..11
-    //       UnderScore@2..3 "_"
-    //       StrikeThrough@3..10
-    //         Plus@3..4 "+"
-    //         Verbatim@4..9
-    //           Equals@4..5 "="
-    //           Text@5..8
-    //             Text@5..8 "all"
-    //           Equals@8..9 "="
-    //         Plus@9..10 "+"
-    //       UnderScore@10..11 "_"
-    //     Slash@11..12 "/"
-    //   Asterisk@12..13 "*"
-    // "##;
-    //         assert_eq!(format!("{:#?}", syntax_tree), answer);
-    //     }
+    #[test]
+    fn test_02_nested_markup() {
+        assert_eq!(
+            get_parsers_output(object::objects_parser(), "~=*_/inner-most/_*=~"),
+            r##"Root@0..20
+  Code@0..20
+    Tilde@0..1 "~"
+    Text@1..19 "=*_/inner-most/_*="
+    Tilde@19..20 "~"
+"##
+        );
+    }
 
-    // #[test]
-    // fn test_text_markup_rpt_parser() {
-    //     // all normal OK
-    //     // all bold OK
-    //     // a /it/ bad: bad
-
-    //     let input = "a /it/ line";
-    //     // let input = "/it/ *bo*";
-    //     // let input = "\u{0001}it\u{0002} \u{0003}it\u{0004}  \t";
-    //     // let input = "\u{0001}it\u{0002} ";
-
-    //     let parser = text_markup_parser()
-    //         // text_markup_parser_v2()
-    //         .or(text_parser())
-    //         // text_markup_parser().or(text_parser())
-    //         // text_parser()
-    //         // demo()
-    //         // .or(text_markup_parser())
-    //         .repeated()
-    //         .at_least(1)
-    //         .collect::<Vec<_>>();
-
-    //     let nodes = parser.parse(input);
-    //     for e in nodes.errors() {
-    //         println!("error={:?}", e);
-    //     }
-    //     println!("test_text_markup_rpt_parser: nodes={:?}\n\n", nodes);
-
-    //     for _node in nodes.into_result().unwrap() {
-    //         match _node {
-    //             S2::Single(node) => match node {
-    //                 NodeOrToken::Token(t) => {
-    //                     println!(" token={}", t);
-    //                 }
-    //                 NodeOrToken::Node(n) => {
-    //                     let syntax_tree: SyntaxNode<OrgLanguage> = SyntaxNode::new_root(n);
-    //                     println!("  node={:#?}", syntax_tree);
-    //                 }
-    //             },
-    //             _ => {}
-    //         }
-    //     }
-    // }
+    #[test]
+    fn test_03_bad_nested_markup() {
+        assert_eq!(
+            get_parsers_output(
+                object::objects_parser(),
+                "_underline_ */_underline_ italic/"
+            ),
+            r##"Root@0..33
+  UnderLine@0..12
+    UnderScore@0..1 "_"
+    Text@1..10 "underline"
+    UnderScore@10..11 "_"
+    Whitespace@11..12 " "
+  Text@12..13 "*"
+  Italic@13..33
+    Slash@13..14 "/"
+    UnderLine@14..26
+      UnderScore@14..15 "_"
+      Text@15..24 "underline"
+      UnderScore@24..25 "_"
+      Whitespace@25..26 " "
+    Text@26..32 "italic"
+    Slash@32..33 "/"
+"##
+        );
+    }
 }

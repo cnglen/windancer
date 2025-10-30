@@ -17,10 +17,11 @@ pub(crate) mod object;
 mod paragraph;
 mod section;
 mod table;
+mod common;
 
 use chumsky::inspector::SimpleState;
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, Language, NodeOrToken};
+use rowan::{GreenNode, GreenToken, NodeOrToken};
 use std::ops::Range;
 
 use crate::parser::syntax::SyntaxNode;
@@ -61,11 +62,6 @@ impl Default for ParserState {
     }
 }
 
-impl ParserState {
-    fn update_prev_char(&mut self, c: &Option<char>) {
-        self.prev_char = *c;
-    }
-}
 
 // 表示解析结果的类型，直接包含 GreenNode 和文本信息
 #[allow(dead_code)]

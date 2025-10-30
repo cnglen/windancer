@@ -26,7 +26,7 @@ pub(crate) fn footnote_reference_parser<'a>(
         .at_least(1)
         .collect::<String>();
 
-    // defintion mus in oneline
+    // defintion must in oneline
     let var =
         none_of::<&str, &str, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>("[]\r\n")
             .repeated()
@@ -67,7 +67,7 @@ pub(crate) fn footnote_reference_parser<'a>(
             )));
 
             children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
+                OrgSyntaxKind::FootnoteReferenceLabel.into(),
                 &label,
             )));
 
@@ -85,20 +85,12 @@ pub(crate) fn footnote_reference_parser<'a>(
     // [fn:LABEL:DEFINITION]
     let t2 = just("[fn:")
         .then(label)
-        .map(|s| {
-            println!("s0={s:?};");
-            s
-        })
         .then(just(":"))
-        .map(|s| {
-            println!("s1={s:?};");
-            s
-        })
         .then(definition.clone())
-        .map(|s| {
-            println!("s2={s:?};");
-            s
-        })
+        // .map(|s| {
+        //     println!("s2={s:?};");
+        //     s
+        // })
         .then(just("]"))
         .map_with(
             |((((_left_fn_c, label), colon), definition), rbracket), e| {
@@ -121,7 +113,7 @@ pub(crate) fn footnote_reference_parser<'a>(
                 )));
 
                 children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
+                    OrgSyntaxKind::FootnoteReferenceLabel.into(),
                     &label,
                 )));
 
@@ -130,23 +122,24 @@ pub(crate) fn footnote_reference_parser<'a>(
                     ":",
                 )));
 
+                let mut defintion_children = vec![];
                 for node in definition {
                     match node {
                         S2::Single(e) => {
-                            children.push(e);
+                            defintion_children.push(e);
                         }
                         S2::Double(e1, e2) => {
-                            children.push(e1);
-                            children.push(e2);
+                            defintion_children.push(e1);
+                            defintion_children.push(e2);
                         }
                         _ => {}
                     }
                 }
-
-                // children.push(NodeOrToken::Token(GreenToken::new(
-                //     OrgSyntaxKind::Text.into(),
-                //     &definition,
-                // )));
+                children.push(
+                    NodeOrToken::Node(GreenNode::new(
+                        OrgSyntaxKind::FootnoteReferenceDefintion.into(),
+                        defintion_children,
+                    )));
 
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::RightSquareBracket.into(),
@@ -181,23 +174,24 @@ pub(crate) fn footnote_reference_parser<'a>(
                 "::",
             )));
 
+            let mut defintion_children = vec![];
             for node in definition {
                 match node {
                     S2::Single(e) => {
-                        children.push(e);
+                        defintion_children.push(e);
                     }
                     S2::Double(e1, e2) => {
-                        children.push(e1);
-                        children.push(e2);
+                        defintion_children.push(e1);
+                        defintion_children.push(e2);
                     }
                     _ => {}
                 }
             }
-
-            // children.push(NodeOrToken::Token(GreenToken::new(
-            //     OrgSyntaxKind::Text.into(),
-            //     &definition,
-            // )));
+            children.push(
+                NodeOrToken::Node(GreenNode::new(
+                    OrgSyntaxKind::FootnoteReferenceDefintion.into(),
+                    defintion_children,
+                )));
 
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::RightSquareBracket.into(),
@@ -212,4 +206,66 @@ pub(crate) fn footnote_reference_parser<'a>(
     );
 
     t1.or(t2).or(t3)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::common::{get_parser_output, get_parsers_output};
+    use crate::parser::object;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_01_fn_label() {
+        assert_eq!(get_parsers_output(object::objects_parser(), "this is a org [fn:1]."), r##"Root@0..21
+  Text@0..14 "this is a org "
+  FootnoteReference@14..20
+    LeftSquareBracket@14..15 "["
+    Text@15..17 "fn"
+    Colon@17..18 ":"
+    FootnoteReferenceLabel@18..19 "1"
+    RightSquareBracket@19..20 "]"
+  Text@20..21 "."
+"##);
+    }
+
+    #[test]
+    fn test_02_fn_label_defintion() {
+        assert_eq!(get_parsers_output(object::objects_parser(), "this is a org [fn:1:*bold*]."), r##"Root@0..28
+  Text@0..14 "this is a org "
+  FootnoteReference@14..27
+    LeftSquareBracket@14..15 "["
+    Text@15..17 "fn"
+    Colon@17..18 ":"
+    FootnoteReferenceLabel@18..19 "1"
+    Colon@19..20 ":"
+    FootnoteReferenceDefintion@20..26
+      Bold@20..26
+        Asterisk@20..21 "*"
+        Text@21..25 "bold"
+        Asterisk@25..26 "*"
+    RightSquareBracket@26..27 "]"
+  Text@27..28 "."
+"##);
+    }
+
+    #[test]
+    fn test_03_fn_defintion() {
+        assert_eq!(get_parsers_output(object::objects_parser(), "this is a org [fn::*org* is a good format]."), r##"Root@0..43
+  Text@0..14 "this is a org "
+  FootnoteReference@14..42
+    LeftSquareBracket@14..15 "["
+    Text@15..17 "fn"
+    Colon2@17..19 "::"
+    FootnoteReferenceDefintion@19..41
+      Bold@19..25
+        Asterisk@19..20 "*"
+        Text@20..23 "org"
+        Asterisk@23..24 "*"
+        Whitespace@24..25 " "
+      Text@25..41 "is a good format"
+    RightSquareBracket@41..42 "]"
+  Text@42..43 "."
+"##);
+    }
 }

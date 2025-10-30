@@ -542,3 +542,138 @@ pub(crate) fn entity_parser<'a>()
     // priority: `a2` > `a1` since `a2` is longer and includes `a1`, or "\pi{}" will be parsed into <Entity(\pi) + Text({})>, while <Entity(\pi{})> is expected
     a2.or(a1).or(a3)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::common::{get_parser_output, get_parsers_output};
+    use crate::parser::object;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_01_name_post() {
+        // \NAME POST(where POST=EOF)
+        assert_eq!(
+            get_parser_output(entity_parser(), r"\alpha"),
+            r###"Entity@0..6
+  BackSlash@0..1 "\\"
+  EntityName@1..6 "alpha"
+"###
+        );
+
+        assert_eq!(
+            get_parsers_output(object::objects_parser(), r"\alpha foo \beta"),
+            format!(
+                r###"Root@0..16
+  Entity@0..6
+    BackSlash@0..1 "\\"
+    EntityName@1..6 "alpha"
+  Text@6..11 " foo "
+  Entity@11..16
+    BackSlash@11..12 "\\"
+    EntityName@12..16 "beta"
+"###
+            )
+        );
+
+        assert_eq!(
+            get_parsers_output(
+                object::objects_parser(),
+                r"\alpha
+"
+            ),
+            format!(
+                r###"Root@0..7
+  Entity@0..6
+    BackSlash@0..1 "\\"
+    EntityName@1..6 "alpha"
+  Text@6..7 "\n"
+"###
+            )
+        );
+
+        assert_eq!(
+            get_parsers_output(object::objects_parser(), r"\alphafoo"),
+            format!(
+                r###"Root@0..9
+  Text@0..9 "\\alphafoo"
+"###
+            )
+        );
+    }
+
+    #[test]
+    fn test_02_name_curly_bracket() {
+        // \NAME{}
+        assert_eq!(
+            get_parser_output(entity_parser(), r"\beta{}"),
+            r###"Entity@0..7
+  BackSlash@0..1 "\\"
+  EntityName@1..5 "beta"
+  LeftCurlyBracket@5..6 "{"
+  RightCurlyBracket@6..7 "}"
+"###
+        );
+
+        assert_eq!(
+            get_parsers_output(object::objects_parser(), r"\pi{}d"),
+            r###"Root@0..6
+  Entity@0..5
+    BackSlash@0..1 "\\"
+    EntityName@1..3 "pi"
+    LeftCurlyBracket@3..4 "{"
+    RightCurlyBracket@4..5 "}"
+  Text@5..6 "d"
+"###
+        );
+
+        assert_eq!(
+            get_parsers_output(object::objects_parser(), r"\pid"),
+            r###"Root@0..4
+  Text@0..4 "\\pid"
+"###
+        );
+    }
+
+    #[test]
+    fn test_03_spaces() {
+        // \_SPACES
+        assert_eq!(
+            get_parser_output(entity_parser(), r"\_ "),
+            r###"Entity@0..3
+  BackSlash@0..1 "\\"
+  UnderScore@1..2 "_"
+  Spaces@2..3 " "
+"###
+        );
+        assert_eq!(
+            get_parser_output(entity_parser(), r"\_          "),
+            r###"Entity@0..12
+  BackSlash@0..1 "\\"
+  UnderScore@1..2 "_"
+  Spaces@2..12 "          "
+"###
+        );
+
+        assert_eq!(
+            get_parsers_output(object::objects_parser(), r"\_          \n"),
+            r###"Root@0..14
+  Entity@0..12
+    BackSlash@0..1 "\\"
+    UnderScore@1..2 "_"
+    Spaces@2..12 "          "
+  Text@12..14 "\\n"
+"###
+        );
+    }
+
+    #[test]
+    fn test_04_bad_entity() {
+        assert_eq!(
+            get_parsers_output(object::objects_parser(), r"\alphA \deltab "),
+            r###"Root@0..15
+  Text@0..15 "\\alphA \\deltab "
+"###
+        );
+    }
+}

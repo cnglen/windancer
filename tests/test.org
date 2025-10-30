@@ -1,7 +1,10 @@
+
 #+title: org test
 #+macro: color @@html:<span style="color:$1">$2</span>@@@@latex:\textcolor{$1}{$2}@@
 #+date: 20250802[Sat] 18:43:14
 #+udf_keyword: udf_value
+
+a */_bold-italic-underline_/*
 
 Zero-th Section
 
@@ -584,12 +587,13 @@ a */asdf/ *asdf*
 
 test:
 
-- */_bold-italic-underline_/* 
+a ha: */_bold-italic-underline_/*
+
 - *_/bold-underline-italic/_* 
 - _/*underline-italic-bold*/_ 
 - _*/underline-bold-italic/*_ 
 - /_*italic-underline-bold*_/
-- /*_italic-bold-underline_*/
+ /*_italic-bold-underline_*/
 
 - +/*_strikethrough-italic-bold-underline_*/+
 - +/_*strikethrough-italic-underline-bold*_/+

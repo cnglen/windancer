@@ -57,6 +57,8 @@ pub enum OrgSyntaxKind {
     Timestamp,
 
     FootnoteReference,
+    FootnoteReferenceLabel,     // simplify ast
+    FootnoteReferenceDefintion,
 
     // Token
     EntityName,
