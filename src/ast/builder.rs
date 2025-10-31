@@ -295,11 +295,11 @@ impl Converter {
                 Ok(self.convert_markup("Italic", node_or_token.as_node().unwrap())?)
             }
 
-            OrgSyntaxKind::UnderLine => {
+            OrgSyntaxKind::Underline => {
                 Ok(self.convert_markup("Underline", node_or_token.as_node().unwrap())?)
             }
 
-            OrgSyntaxKind::StrikeThrough => {
+            OrgSyntaxKind::Strikethrough => {
                 Ok(self.convert_markup("Strikethrough", node_or_token.as_node().unwrap())?)
             }
 
@@ -569,32 +569,38 @@ impl Converter {
         // todo: bold  fixme
         let is_inline = node
             .children_with_tokens()
-            .filter(|e| e.kind() == OrgSyntaxKind::Text)
+            .filter(|e| {
+                e.kind() == OrgSyntaxKind::FootnoteReferenceLabel
+                    || e.kind() == OrgSyntaxKind::FootnoteReferenceDefintion
+            })
             .count()
-            == 3;
+            == 2;
 
         let (raw_label, raw_definition) = if is_inline {
-            let mut texts = node
+            let label = node
                 .children_with_tokens()
-                .filter(|e| e.kind() == OrgSyntaxKind::Text);
-            let label = texts.clone().nth(1).expect("todo");
-            let definition = texts
-                .clone()
-                .nth(2)
-                .expect(&format!("{:?} doesn't have 3rd text, fixme", texts));
+                .filter(|e| e.kind() == OrgSyntaxKind::FootnoteReferenceLabel)
+                .nth(0)
+                .expect("must have label");
+            let definition = node
+                .children_with_tokens()
+                .filter(|e| e.kind() == OrgSyntaxKind::FootnoteReferenceDefintion)
+                .nth(0)
+                .expect("must have defintion");
             (Some(label), Some(definition))
         } else if is_anoymous {
-            let mut texts = node
+            let definition = node
                 .children_with_tokens()
-                .filter(|e| e.kind() == OrgSyntaxKind::Text);
-            let definition = texts.nth(1).expect("todo");
-
+                .filter(|e| e.kind() == OrgSyntaxKind::FootnoteReferenceDefintion)
+                .nth(0)
+                .expect("must have defintion");
             (None, Some(definition))
         } else {
-            let mut texts = node
+            let label = node
                 .children_with_tokens()
-                .filter(|e| e.kind() == OrgSyntaxKind::Text);
-            let label = texts.nth(1).expect("todo");
+                .filter(|e| e.kind() == OrgSyntaxKind::FootnoteReferenceLabel)
+                .nth(0)
+                .expect("must have label");
             (Some(label), None)
         };
 
@@ -635,12 +641,14 @@ impl Converter {
             let green_node = GreenNode::new(OrgSyntaxKind::Paragraph.into(), vec![]);
             let faked_syntax_node = SyntaxNode::new_root(green_node);
 
-            let object = self
-                .convert_object(&definition)
-                .expect("todo")
-                .expect("todo");
+            let objects = definition
+                .as_node()
+                .unwrap()
+                .children_with_tokens()
+                .map(|e| self.convert_object(&e).unwrap().unwrap())
+                .collect::<Vec<_>>();
             let element = Element::Paragraph(Paragraph {
-                objects: vec![object],
+                objects: objects,
                 syntax: faked_syntax_node.clone(),
             });
 

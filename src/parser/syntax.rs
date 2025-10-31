@@ -43,10 +43,10 @@ pub enum OrgSyntaxKind {
     LatexFragment,
     Bold,
     Italic,
-    UnderLine,
+    Underline,
     Code,
     Verbatim,
-    StrikeThrough,
+    Strikethrough,
     Macro,
     MacroName,
     MacroArgs,
@@ -57,7 +57,7 @@ pub enum OrgSyntaxKind {
     Timestamp,
 
     FootnoteReference,
-    FootnoteReferenceLabel,     // simplify ast
+    FootnoteReferenceLabel, // simplify ast
     FootnoteReferenceDefintion,
 
     // Token
@@ -133,7 +133,7 @@ pub enum OrgSyntaxKind {
     Asterisk,   // *
     Star,       // *
     Slash,      // /
-    UnderScore, // _
+    Underscore, // _
     Plus,       // +
     Equals,     // =
     Tilde,      // ~

@@ -533,7 +533,7 @@ pub(crate) fn entity_parser<'a>()
             e.state().prev_char = ws.chars().last();
             let mut children = vec![];
             children.push(NT::Token(GreenToken::new(OSK::BackSlash.into(), backslash)));
-            children.push(NT::Token(GreenToken::new(OSK::UnderScore.into(), us)));
+            children.push(NT::Token(GreenToken::new(OSK::Underscore.into(), us)));
             children.push(NT::Token(GreenToken::new(OSK::Spaces.into(), &ws)));
 
             S2::Single(NT::Node(GreenNode::new(OSK::Entity.into(), children)))
@@ -642,7 +642,7 @@ mod tests {
             get_parser_output(entity_parser(), r"\_ "),
             r###"Entity@0..3
   BackSlash@0..1 "\\"
-  UnderScore@1..2 "_"
+  Underscore@1..2 "_"
   Spaces@2..3 " "
 "###
         );
@@ -650,7 +650,7 @@ mod tests {
             get_parser_output(entity_parser(), r"\_          "),
             r###"Entity@0..12
   BackSlash@0..1 "\\"
-  UnderScore@1..2 "_"
+  Underscore@1..2 "_"
   Spaces@2..12 "          "
 "###
         );
@@ -660,7 +660,7 @@ mod tests {
             r###"Root@0..14
   Entity@0..12
     BackSlash@0..1 "\\"
-    UnderScore@1..2 "_"
+    Underscore@1..2 "_"
     Spaces@2..12 "          "
   Text@12..14 "\\n"
 "###

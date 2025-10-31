@@ -8,12 +8,12 @@
 |--------------------+--------------+------------+-------------+----------------------------------------|
 | entity             | ✓           | ✓         | ✓          |                                        |
 | latex-fragment     | ✓           | ✓         | ✓          |                                        |
-| subscript          | \check           |            |             |                                        |
+| subscript          | ✓           |            |             |                                        |
 | superscript        | ✓           |            |             |                                        |
 | footnote-reference | ✓           | ✓         | ✓          |                                        |
 | line-break         | ✓           | ✓         | ✓          |                                        |
 | macro              | ✓           | ✓         |             | todo render: collect macro replacement |
-| text-markup[fn:2]  |              |            |             | todo                                   |
+| text-markup[fn:2]  | ✓           |            |             | todo                                   |
 | radio link         |              |            |             |                                        |
 | angle link         | ✓           |            |             |                                        |
 | plain link         |              |            |             |                                        |
@@ -22,8 +22,8 @@
 | citation           |              |            |             | todo                                   |
 | citation-reference |              |            |             | todo                                   |
 | radio-target       |              |            |             | todo                                   |
-| timestamp          | \check           |            |             | todo                                   |
-| target             | \check           |            |             | todo                                   |
+| timestamp          | ✓           |            |             | todo                                   |
+| target             | ✓           |            |             | todo                                   |
 | statistics-cookie  |              |            |             | low                                    |
 | inline-babel-call  |              |            |             | low                                    |
 | export-snippet     |              |            |             | low                                    |
@@ -66,6 +66,6 @@
 * Footnotes
 
 
-[fn:2] bold, italic, underline, strike-throught, code, verbatim
+[fn:2] bold, italic, underline, strike-through, code, verbatim
 
 

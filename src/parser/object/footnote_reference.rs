@@ -135,11 +135,10 @@ pub(crate) fn footnote_reference_parser<'a>(
                         _ => {}
                     }
                 }
-                children.push(
-                    NodeOrToken::Node(GreenNode::new(
-                        OrgSyntaxKind::FootnoteReferenceDefintion.into(),
-                        defintion_children,
-                    )));
+                children.push(NodeOrToken::Node(GreenNode::new(
+                    OrgSyntaxKind::FootnoteReferenceDefintion.into(),
+                    defintion_children,
+                )));
 
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::RightSquareBracket.into(),
@@ -187,11 +186,10 @@ pub(crate) fn footnote_reference_parser<'a>(
                     _ => {}
                 }
             }
-            children.push(
-                NodeOrToken::Node(GreenNode::new(
-                    OrgSyntaxKind::FootnoteReferenceDefintion.into(),
-                    defintion_children,
-                )));
+            children.push(NodeOrToken::Node(GreenNode::new(
+                OrgSyntaxKind::FootnoteReferenceDefintion.into(),
+                defintion_children,
+            )));
 
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::RightSquareBracket.into(),
@@ -217,7 +215,9 @@ mod tests {
 
     #[test]
     fn test_01_fn_label() {
-        assert_eq!(get_parsers_output(object::objects_parser(), "this is a org [fn:1]."), r##"Root@0..21
+        assert_eq!(
+            get_parsers_output(object::objects_parser(), "this is a org [fn:1]."),
+            r##"Root@0..21
   Text@0..14 "this is a org "
   FootnoteReference@14..20
     LeftSquareBracket@14..15 "["
@@ -226,12 +226,15 @@ mod tests {
     FootnoteReferenceLabel@18..19 "1"
     RightSquareBracket@19..20 "]"
   Text@20..21 "."
-"##);
+"##
+        );
     }
 
     #[test]
     fn test_02_fn_label_defintion() {
-        assert_eq!(get_parsers_output(object::objects_parser(), "this is a org [fn:1:*bold*]."), r##"Root@0..28
+        assert_eq!(
+            get_parsers_output(object::objects_parser(), "this is a org [fn:1:*bold*]."),
+            r##"Root@0..28
   Text@0..14 "this is a org "
   FootnoteReference@14..27
     LeftSquareBracket@14..15 "["
@@ -246,26 +249,32 @@ mod tests {
         Asterisk@25..26 "*"
     RightSquareBracket@26..27 "]"
   Text@27..28 "."
-"##);
+"##
+        );
     }
 
     #[test]
     fn test_03_fn_defintion() {
-        assert_eq!(get_parsers_output(object::objects_parser(), "this is a org [fn::*org* is a good format]."), r##"Root@0..43
+        assert_eq!(
+            get_parsers_output(
+                object::objects_parser(),
+                "this is a org [fn::*org* is a good format]."
+            ),
+            r##"Root@0..43
   Text@0..14 "this is a org "
   FootnoteReference@14..42
     LeftSquareBracket@14..15 "["
     Text@15..17 "fn"
     Colon2@17..19 "::"
     FootnoteReferenceDefintion@19..41
-      Bold@19..25
+      Bold@19..24
         Asterisk@19..20 "*"
         Text@20..23 "org"
         Asterisk@23..24 "*"
-        Whitespace@24..25 " "
-      Text@25..41 "is a good format"
+      Text@24..41 " is a good format"
     RightSquareBracket@41..42 "]"
   Text@42..43 "."
-"##);
+"##
+        );
     }
 }

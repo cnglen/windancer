@@ -2,8 +2,8 @@
 
 use crate::parser::ParserState;
 use crate::parser::S2;
-use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::object::whitespaces;
+use crate::parser::syntax::OrgSyntaxKind;
 
 use chumsky::inspector::SimpleState;
 use chumsky::prelude::*;
@@ -24,10 +24,8 @@ pub(crate) fn line_break_parser<'a>()
         )
         .try_map_with(|(line_break, maybe_ws), e| {
             if let Some('\\') = e.state().prev_char {
-                let error = Rich::custom(
-                    e.span(),
-                    format!("PRE is \\ not mathced, NOT line break"),
-                );
+                let error =
+                    Rich::custom(e.span(), format!("PRE is \\ not mathced, NOT line break"));
                 Err(error)
             } else {
                 let mut children = vec![];

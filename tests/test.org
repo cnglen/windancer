@@ -567,6 +567,8 @@ this is *bold* target, my radio target
   
 ** bold test
 
+a *[[https://www.baidu.com][baidu]]* link
+
 a *normal* bold
 
 a​*cn_normal*​bold

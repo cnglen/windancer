@@ -4,6 +4,7 @@ mod angle_link;
 pub mod entity;
 mod footnote_reference;
 mod latex_fragment;
+mod line_break;
 mod r#macro;
 mod regular_link;
 mod subscript_superscript;
@@ -11,15 +12,14 @@ mod target;
 mod text;
 mod text_markup;
 mod timestamp;
-mod line_break;
 
 use crate::parser::ParserState;
 use crate::parser::S2;
 use crate::parser::object::angle_link::angle_link_parser;
 use crate::parser::object::entity::entity_parser;
-use crate::parser::object::line_break::line_break_parser;
 use crate::parser::object::footnote_reference::footnote_reference_parser;
 use crate::parser::object::latex_fragment::latex_fragment_parser;
+use crate::parser::object::line_break::line_break_parser;
 use crate::parser::object::r#macro::macro_parser;
 use crate::parser::object::regular_link::regular_link_parser;
 use crate::parser::object::subscript_superscript::subscript_parser;
@@ -32,9 +32,7 @@ use crate::parser::syntax::OrgSyntaxKind;
 
 use chumsky::inspector::SimpleState;
 use chumsky::prelude::*;
-use rowan::{GreenToken};
-
-
+use rowan::GreenToken;
 
 /// 解析行终止符：换行符或输入结束
 pub(crate) fn newline_or_ending<'a>()
@@ -180,11 +178,8 @@ pub(crate) fn objects_parser<'a>()
     object_parser().repeated().at_least(1).collect::<Vec<_>>()
 }
 
-
-
-
 /// objects_parser
-// object defintion: 
+// object defintion:
 // minimal_set_object := entity + latex_fragment + subscript + superscript + text_markup + plain_text, 6 objects
 // standard_set_object := entity + latex_fragment + angle_link + line_break + macro + target + timestamp +  statistics-cookie + inline-babel-call + export_snippet + inline_src_block + radio_link + regular_link + radio-target + subscript + superscript + text_markup + footnote_reference + citation + plain_text + plain_link, 21 objects
 // Note: minimal_set_objet is subset of standard_set_object，which includes standard_set_object(12), tabel_cell and citation_reference.
@@ -219,13 +214,13 @@ pub(crate) fn object_parser<'a>()
             let entity_parser = entity_parser();
             let latex_fragment_parser = latex_fragment_parser();
             let subscript_parser = subscript_parser(object_parser.clone());
-            let superscript_parser = superscript_parser(object_parser.clone()); 
+            let superscript_parser = superscript_parser(object_parser.clone());
             let text_markup_parser = text_markup_parser(object_parser.clone());
 
             let non_plain_text_parsers = choice((
                 entity_parser.clone(),
                 latex_fragment_parser.clone(),
-                text_markup_parser.clone(),                
+                text_markup_parser.clone(),
                 subscript_parser.clone(),
                 superscript_parser.clone(),
             ));
@@ -245,7 +240,7 @@ pub(crate) fn object_parser<'a>()
             // let radio_target_parser = radio_target_parser(minimal_set_object.clone());
 
             // 依赖 standard_set_object 的解析器（5个）
-            let text_markup_parser = text_markup_parser(object_parser.clone());            
+            let text_markup_parser = text_markup_parser(object_parser.clone());
             let subscript_parser = subscript_parser(object_parser.clone());
             let superscript_parser = superscript_parser(object_parser.clone());
             let footnote_reference_parser = footnote_reference_parser(object_parser.clone());
@@ -257,9 +252,9 @@ pub(crate) fn object_parser<'a>()
                 // radio_link_parser,           // 1个
                 regular_link_parser, // 1个
                 // radio_target_parser,         // 1个
-                text_markup_parser, // 1个                
-                subscript_parser,            // 1个
-                superscript_parser,          // 1个
+                text_markup_parser, // 1个
+                subscript_parser,   // 1个
+                superscript_parser, // 1个
                 footnote_reference_parser, // 1个
                                     // citation_parser,             // 1个
                                     // 总共：12 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 = 20个
@@ -318,7 +313,6 @@ mod tests {
     use crate::parser::syntax::OrgLanguage;
     use rowan::SyntaxNode;
     use rowan::{GreenNode, GreenToken, NodeOrToken};
-    
 
     #[test]
     fn test_is_ending() {
@@ -413,7 +407,6 @@ L3
         );
     }
 
-
     #[test]
     fn test_link() {
         let input = "[[https://www.baidu.com][baidu]]";
@@ -476,4 +469,3 @@ L3
         }
     }
 }
-

@@ -4,6 +4,7 @@ pub(crate) mod syntax;
 
 mod block;
 mod comment;
+mod common;
 mod document;
 mod drawer;
 mod element;
@@ -17,7 +18,6 @@ pub(crate) mod object;
 mod paragraph;
 mod section;
 mod table;
-mod common;
 
 use chumsky::inspector::SimpleState;
 use chumsky::prelude::*;
@@ -61,7 +61,6 @@ impl Default for ParserState {
         }
     }
 }
-
 
 // 表示解析结果的类型，直接包含 GreenNode 和文本信息
 #[allow(dead_code)]

@@ -69,141 +69,140 @@ fn create_script_parser<'a>(
     > + Clone,
 ) -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone
 {
-
     let (c, syntax_kind) = match script_type {
         ScriptType::Super => ("^", OSK::Superscript),
         ScriptType::Sub => ("_", OSK::Subscript),
     };
-    
+
     // ^* or _*
     let t1 = just::<_, _, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>(c)
-            .then(just("*"))
-            .map_with(move |(sup, aes), e| {
-                e.state().prev_char = Some('*');
-                let mut children = vec![];
-                children.push(NT::Token(GreenToken::new(OSK::Caret.into(), sup)));
-                children.push(NT::Token(GreenToken::new(OSK::Text.into(), aes)));
-                S2::Single(NT::Node(GreenNode::new(
-                    syntax_kind.clone().into(),
-                    children,
-                )))
-            });
+        .then(just("*"))
+        .map_with(move |(sup, aes), e| {
+            e.state().prev_char = Some('*');
+            let mut children = vec![];
+            children.push(NT::Token(GreenToken::new(OSK::Caret.into(), sup)));
+            children.push(NT::Token(GreenToken::new(OSK::Text.into(), aes)));
+            S2::Single(NT::Node(GreenNode::new(
+                syntax_kind.clone().into(),
+                children,
+            )))
+        });
 
-        // CHAR^{expression} / CHAR^(EXPRESSION)
-        let var = none_of::<&str, &str, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>(
-            "{}()\r\n",
-        )
+    // CHAR^{expression} / CHAR^(EXPRESSION)
+    let var = none_of::<&str, &str, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>(
+        "{}()\r\n",
+    )
+    .repeated()
+    .at_least(1)
+    .to_slice();
+    let mut single_expression = Recursive::declare(); // foo / (foo) / (((foo)))
+    single_expression.define(
+        var.or(just("(")
+            .then(single_expression.clone().repeated())
+            .then(just(")"))
+            .to_slice())
+            .or(just("{")
+                .then(single_expression.clone().repeated())
+                .then(just("}"))
+                .to_slice()),
+    );
+    let standard_objects_parser = object_parser
+        .clone()
         .repeated()
         .at_least(1)
-        .to_slice();
-        let mut single_expression = Recursive::declare(); // foo / (foo) / (((foo)))
-        single_expression.define(
-            var.or(just("(")
-                .then(single_expression.clone().repeated())
-                .then(just(")"))
-                .to_slice())
-                .or(just("{")
-                    .then(single_expression.clone().repeated())
-                    .then(just("}"))
-                    .to_slice()),
-        );
-        let standard_objects_parser = object_parser
-            .clone()
-            .repeated()
-            .at_least(1)
-            .collect::<Vec<S2>>();
-        let expression =
-            standard_objects_parser.nested_in(single_expression.clone().repeated().to_slice()); // foo(bar){(def)ghi}
+        .collect::<Vec<S2>>();
+    let expression =
+        standard_objects_parser.nested_in(single_expression.clone().repeated().to_slice()); // foo(bar){(def)ghi}
 
-        let pairs = HashMap::from([('(', ')'), ('{', '}')]);
-        let pair_starts = pairs.keys().copied().collect::<Vec<_>>();
-        let pair_ends = pairs.values().copied().collect::<Vec<_>>();
-        let t2 = just::<_, _, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>(c)
-            .then(one_of(pair_starts))
-            .then(expression)
-            .then(one_of(pair_ends))
-            // .map(|s|{println!("withobject: expression={s:?}");s})
-            .try_map_with(move |(((sup, lb), expression), rb), e| {
-                // println!("prev_char={:?}", e.state().prev_char);
+    let pairs = HashMap::from([('(', ')'), ('{', '}')]);
+    let pair_starts = pairs.keys().copied().collect::<Vec<_>>();
+    let pair_ends = pairs.values().copied().collect::<Vec<_>>();
+    let t2 = just::<_, _, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>(c)
+        .then(one_of(pair_starts))
+        .then(expression)
+        .then(one_of(pair_ends))
+        // .map(|s|{println!("withobject: expression={s:?}");s})
+        .try_map_with(move |(((sup, lb), expression), rb), e| {
+            // println!("prev_char={:?}", e.state().prev_char);
 
-                match e.state().prev_char {
-                    None => {
-                        let error = Rich::custom::<&str>(e.span(), &format!("CHAR is empty"));
-                        Err(error)
-                    }
-                    Some(c) if c == ' ' || c == '\t' => {
-                        let error = Rich::custom::<&str>(e.span(), &format!("CHAR is whitesace"));
-                        Err(error)
-                    }
-
-                    _ => {
-                        let expected_rb = *pairs.get(&lb).unwrap();
-
-                        if rb != expected_rb {
-                            Err(Rich::custom::<&str>(
-                                e.span(),
-                                &format!("bracket not matched: {lb} {rb}"),
-                            ))
-                        } else {
-                            e.state().prev_char = Some(rb);
-
-                            let mut children = vec![];
-                            children.push(NT::Token(GreenToken::new(OSK::Caret.into(), sup)));
-                            children.push(NT::Token(GreenToken::new(
-                                OSK::LeftCurlyBracket.into(),
-                                lb.to_string().as_str(),
-                            )));
-
-                            for node in expression {
-                                match node {
-                                    S2::Single(e) => {
-                                        children.push(e);
-                                    }
-                                    S2::Double(e1, e2) => {
-                                        children.push(e1);
-                                        children.push(e2);
-                                    }
-                                    _ => {}
-                                }
-                            }
-
-                            children.push(NT::Token(GreenToken::new(
-                                OSK::RightCurlyBracket.into(),
-                                rb.to_string().as_str(),
-                            )));
-
-                            Ok(S2::Single(NT::Node(GreenNode::new(
-                                syntax_kind.clone().into(),
-                                children,
-                            ))))
-                        }
-                    }
+            match e.state().prev_char {
+                None => {
+                    let error = Rich::custom::<&str>(e.span(), &format!("CHAR is empty"));
+                    Err(error)
                 }
-            });
-
-        // ^ SIGN CHARS FINAL
-        let sign = one_of("+-").or_not();
-        let t3 = just(c).then(sign).then(chars_final_parser()).try_map_with(
-            move |((sup, sign), content), e| match e.state().prev_char {
-                None => Err(Rich::custom(e.span(), format!("CHAR is empty"))),
-                Some(c) if matches!(c, ' ' | '\t') => {
-                    Err(Rich::custom(e.span(), format!("CHAR is whitesace")))
+                Some(c) if c == ' ' || c == '\t' => {
+                    let error = Rich::custom::<&str>(e.span(), &format!("CHAR is whitesace"));
+                    Err(error)
                 }
+
                 _ => {
-                    e.state().prev_char = content.chars().last();
+                    let expected_rb = *pairs.get(&lb).unwrap();
 
-                    let mut children = vec![];
-                    children.push(NT::Token(GreenToken::new(OSK::Caret.into(), sup)));
-                    let text = sign.map_or_else(|| content.clone(), |s| format!("{s}{content}"));
-                    children.push(NT::Token(GreenToken::new(OSK::Text.into(), &text)));
+                    if rb != expected_rb {
+                        Err(Rich::custom::<&str>(
+                            e.span(),
+                            &format!("bracket not matched: {lb} {rb}"),
+                        ))
+                    } else {
+                        e.state().prev_char = Some(rb);
 
-                    Ok(S2::Single(NT::Node(GreenNode::new(
-                        syntax_kind.into(),
-                        children,
-                    ))))
+                        let mut children = vec![];
+                        children.push(NT::Token(GreenToken::new(OSK::Caret.into(), sup)));
+                        children.push(NT::Token(GreenToken::new(
+                            OSK::LeftCurlyBracket.into(),
+                            lb.to_string().as_str(),
+                        )));
+
+                        for node in expression {
+                            match node {
+                                S2::Single(e) => {
+                                    children.push(e);
+                                }
+                                S2::Double(e1, e2) => {
+                                    children.push(e1);
+                                    children.push(e2);
+                                }
+                                _ => {}
+                            }
+                        }
+
+                        children.push(NT::Token(GreenToken::new(
+                            OSK::RightCurlyBracket.into(),
+                            rb.to_string().as_str(),
+                        )));
+
+                        Ok(S2::Single(NT::Node(GreenNode::new(
+                            syntax_kind.clone().into(),
+                            children,
+                        ))))
+                    }
                 }
-            },
-        );
+            }
+        });
+
+    // ^ SIGN CHARS FINAL
+    let sign = one_of("+-").or_not();
+    let t3 = just(c).then(sign).then(chars_final_parser()).try_map_with(
+        move |((sup, sign), content), e| match e.state().prev_char {
+            None => Err(Rich::custom(e.span(), format!("CHAR is empty"))),
+            Some(c) if matches!(c, ' ' | '\t') => {
+                Err(Rich::custom(e.span(), format!("CHAR is whitesace")))
+            }
+            _ => {
+                e.state().prev_char = content.chars().last();
+
+                let mut children = vec![];
+                children.push(NT::Token(GreenToken::new(OSK::Caret.into(), sup)));
+                let text = sign.map_or_else(|| content.clone(), |s| format!("{s}{content}"));
+                children.push(NT::Token(GreenToken::new(OSK::Text.into(), &text)));
+
+                Ok(S2::Single(NT::Node(GreenNode::new(
+                    syntax_kind.into(),
+                    children,
+                ))))
+            }
+        },
+    );
 
     t1.or(t3).or(t2)
 }
@@ -219,7 +218,6 @@ pub(crate) fn subscript_parser<'a>(
 {
     create_script_parser(ScriptType::Sub, object_parser)
 }
-
 
 pub(crate) fn superscript_parser<'a>(
     object_parser: impl Parser<
