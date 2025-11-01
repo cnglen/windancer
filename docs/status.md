@@ -4,17 +4,17 @@
 |----|----|----|----|----|
 | entity | ✓ | ✓ | ✓ |  |
 | latex-fragment | ✓ | ✓ | ✓ |  |
-| footnote-reference | ✓ | ✓ | ✓ | Parse of **definition** is simplified[^1] |
+| subscript | ✓ |  |  |  |
+| superscript | ✓ |  |  |  |
+| footnote-reference | ✓ | ✓ | ✓ |  |
 | line-break | ✓ | ✓ | ✓ |  |
 | macro | ✓ | ✓ |  | todo render: collect macro replacement |
-| text-markup[^2] |  |  |  | todo |
+| text-markup[^1] | ✓ | ✓ | ✓ |  |
 | radio link |  |  |  |  |
 | angle link | ✓ |  |  |  |
 | plain link |  |  |  |  |
 | regular link |  |  |  |  |
 | table-cell |  |  |  | todo |
-| subscript |  |  |  | todo |
-| superscript | ✓ |  |  | parse of expression is simplified[^3] |
 | citation |  |  |  | todo |
 | citation-reference |  |  |  | todo |
 | radio-target |  |  |  | todo |
@@ -55,13 +55,4 @@
 
 # Footnotes
 
-[^1]: In inline and anonymous footnote, DEFINITION is One or more
-**objects** from the standard set, simplified to use text, i.e,
-​`any().and_is(just("]").not()).repeated().collect::<String>();`​
-
-[^2]: bold, italic, underline, strike-throught, code, verbatim
-
-[^3]: An expression enclosed in curly brackets ({, }) or in round braces
-((, )), which may itself contain balanced curly or round brackets
-and the standard set of objects. Simplified to use text, to be
-updated.
+[^1]: bold, italic, underline, strike-through, code, verbatim

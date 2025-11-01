@@ -567,127 +567,82 @@ this is *bold* target, my radio target
   
 ** text-markup test
 
-基础测试:
+*** basic test
 
 a *bold*, a /italic/, a _underline_, a +strikethrough+, a ~code~, and a =verbatim= text
 
 一个​*粗体*​、​/斜体/​、​_下划线_​、​+横划线+​、​~编程~​和​=字面=​文本
 
+Not*bold* bad PRE
 
-a *[[https://www.baidu.com][baidu]]* link
+Not *bold*( bad POST
 
+Not * bold* *bold * bad content
 
+*** Nested test
 
-a *normal* bold
+a */bold-italic/* text
 
-a​*cn_normal*​bold
-
-a   *nomral*      bold.
-
-Not*bold*.
-
-a */item/* text
-
-a *a b/item/* text
-
+a *bold NOT/italic/* text
 
 */This text is bold and italic, _and this part is also underlined_./*
 
+a */bold-italic/ *bold*
 
-a */asdf/ *asdf*
+**** nested test
 
-test:
+*/_bold-italic-underline_/*
 
-a ha: */_bold-italic-underline_/*
+*_/bold-underline-italic/_*
 
-- *_/bold-underline-italic/_* 
-- _/*underline-italic-bold*/_ 
-- _*/underline-bold-italic/*_ 
-- /_*italic-underline-bold*_/
- /*_italic-bold-underline_*/
+_/*underline-italic-bold*/_
 
-- +/*_strikethrough-italic-bold-underline_*/+
-- +/_*strikethrough-italic-underline-bold*_/+
-  
-- *_~inner-most~_*
-- *_~=inner-most=~_*
-- *_=~inner-most~=_*    
-- ~=*_/inner-most/_*=~ : bad
-  
+_*/underline-bold-italic/*_
 
+/_*italic-underline-bold*_/
 
-- //ab//
+/*_italic-bold-underline_*/
+
++/*_strikethrough-italic-bold-underline_*/+
+
++/_*strikethrough-italic-underline-bold*_/+
+
++/_*strikethrough-italic_*/+
+
+*_~inner-most~_*
+
+*_~=inner-most-include-equal=~_*
+
+*_=~inner-most-include-tilde~=_*    
+
+~=*_/inner-most-include-equal-star-underscore-slash/_*=~
+
+ 
 未正确嵌套的处理，未定义:
 
-- ​_underline_​ */_underline_ italic/ ab: <underline>underline</underline> */_underline_ italic/  ab  
-- */abc/
-- */abc/ _adf_
-- */_abc/* bar_
-  - bold italic _abc italic bold   underlne ab underline
-  - */
-- *_~inner-most~_*
-- *_~=inner-most=~_*
-- *_=~inner-most~=_*    
-- ~*_inner-most_*~ : bad
+ */abc/
 
+ */abc/ _adf_
 
-- /*+/
+ */_abc/* bar_
 
-- ** a **
-- **a bold**: <b><b></b></b>
-- ***a bold** : <b><b></b></b>
+ /*+/
+
+ ** a **
+
+ **a bold** : 2b
+
+ ***a bold** : 2b
     
-- ***a bold*** : <b><b></b></b>
-  - * : start
-  -  *:
-    - start
-    - end OK: 内容为0 不OK
-  - ​  *:
-    - start: OK
-    - end: OK: 内容不OK
-  -    *:
-    - start: 不OK, PRE bad
-    - end: OK
-  -     *:
-    - start: OK, 但pair不满足?
-    - end: OK
+ ***a bold*** : 3b
 
 
-Single
-  a *bold*
-  a /italic/
-  a _underline_
-  a +strikethrough+
-  a =verbatim=
-  a ~code~
-    
-    
-#+begin_src rust
-    // let x: Vec<usize> = vec![0];
-
-    // let y = match x.len()>0 {
-    //     true => {
-    //         x[0..x.len()-1].iter().map(|&x| x).collect::<Vec<usize>>()          
-    //     },
-    //     false => vec![]
-    // };
-
-    // println!("{:?}", y);
-  let mut last_i = 999;
-  for i in 0..3 {
-      last_i = i;
-      println!("i={}", i);
-  }
-  println!("{last_i}");
-#+end_src
-
-#+RESULTS:
-: i=0
-: i=1
-: i=2
-: 2
 
 
+
+***  object in markup
+
+a *[[https://www.foo.org][foo]]* link
 
 
 ** superscript and subscript

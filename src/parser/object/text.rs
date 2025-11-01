@@ -36,7 +36,7 @@ pub(crate) fn plain_text_parser<'a>(
         .at_least(1)
         .collect::<String>()
         .map_with(|s, e| {
-            println!("plain_text_parser: s={s:?}, prev_char={:?}", e.state().prev_char);
+            // println!("plain_text_parser: s={s:?}, prev_char={:?}", e.state().prev_char);
             if let Some(c) = s.chars().last() {
                 e.state().prev_char = Some(c);
             }

@@ -13,7 +13,7 @@
 | footnote-reference | ✓           | ✓         | ✓          |                                        |
 | line-break         | ✓           | ✓         | ✓          |                                        |
 | macro              | ✓           | ✓         |             | todo render: collect macro replacement |
-| text-markup[fn:2]  | ✓           |            |             | todo                                   |
+| text-markup[fn:2]  | ✓           | ✓         | ✓          |                                        |
 | radio link         |              |            |             |                                        |
 | angle link         | ✓           |            |             |                                        |
 | plain link         |              |            |             |                                        |
