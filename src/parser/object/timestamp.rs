@@ -11,7 +11,8 @@ use super::whitespaces_g1;
 
 /// timestamp parser: <<TIMESTAMP>>
 pub(crate) fn timestamp_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+{
     let yyyymmdd = one_of("0123456789")
         .repeated()
         .at_least(4)

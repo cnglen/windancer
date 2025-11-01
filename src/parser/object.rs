@@ -191,7 +191,8 @@ pub(crate) fn objects_parser<'a>()
 // 4. plain_text's parser dpendnes all other 22 object's parsers，used to lookahead NOT
 // TODO: select! use prev_char state? performance? first char
 pub(crate) fn object_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+{
     recursive(|object_parser| {
         // 第一层：12个独立解析器
         let independent_parsers = choice((
@@ -202,7 +203,6 @@ pub(crate) fn object_parser<'a>()
             macro_parser(),
             target_parser(),
             timestamp_parser(),
-            
             // todo
             // statistics_cookie_parser(),
             // inline_babel_call_parser(),

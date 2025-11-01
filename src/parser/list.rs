@@ -418,7 +418,8 @@ pub(crate) fn item_tag_parser<'a>() -> impl Parser<
 //   - The first line less or equally indented than the starting line, not counting lines within other non-paragraph elements or inlinetask boundaries.
 //   - Two consecutive blank lines.
 fn lesser_indent_termination<'a>()
--> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+{
     // todo: not counting non-paragraph elements or inline task boudaries
     object::whitespaces()
         .try_map_with(|ws, e| {

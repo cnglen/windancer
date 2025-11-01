@@ -121,11 +121,8 @@ fn create_script_parser<'a>(
         .then(one_of(pair_starts))
         .then(expression)
         .then(one_of(pair_ends))
-        // .map(|s|{println!("withobject: expression={s:?}");s})
-        .try_map_with(move |(((sup, lb), expression), rb), e| {
-            // println!("prev_char={:?}", e.state().prev_char);
-
-            match e.state().prev_char {
+        .try_map_with(
+            move |(((sup, lb), expression), rb), e| match e.state().prev_char {
                 None => {
                     let error = Rich::custom::<&str>(e.span(), &format!("CHAR is empty"));
                     Err(error)
@@ -177,41 +174,29 @@ fn create_script_parser<'a>(
                         ))))
                     }
                 }
-            }
-        });
+            },
+        );
 
     // ^ SIGN CHARS FINAL
     let sign = one_of("+-").or_not();
     let t3 = just(c).then(sign).then(chars_final_parser()).try_map_with(
-        move |((sup, sign), content), e| {
-            // println!("script_parser:t3: prev_char={:?}", e.state().prev_char);
+        move |((sup, sign), content), e| match e.state().prev_char {
+            None => Err(Rich::custom(e.span(), format!("CHAR is empty"))),
+            Some(c) if matches!(c, ' ' | '\t') => {
+                Err(Rich::custom(e.span(), format!("CHAR is whitesace")))
+            }
+            _ => {
+                e.state().prev_char = content.chars().last();
 
-            match e.state().prev_char {
-                None => Err(Rich::custom(e.span(), format!("CHAR is empty"))),
-                Some(c) if matches!(c, ' ' | '\t') => {
-                    Err(Rich::custom(e.span(), format!("CHAR is whitesace")))
-                }
-                _ => {
-                    // println!(
-                    //     "script_parser:t3:ok prev_char={:?}, content={content:?}",
-                    //     e.state().prev_char
-                    // );
-                    e.state().prev_char = content.chars().last();
-                    // println!(
-                    //     "script_parser:t3:ok prev_char= -> {:?}",
-                    //     e.state().prev_char
-                    // );
+                let mut children = vec![];
+                children.push(NT::Token(GreenToken::new(OSK::Caret.into(), sup)));
+                let text = sign.map_or_else(|| content.clone(), |s| format!("{s}{content}"));
+                children.push(NT::Token(GreenToken::new(OSK::Text.into(), &text)));
 
-                    let mut children = vec![];
-                    children.push(NT::Token(GreenToken::new(OSK::Caret.into(), sup)));
-                    let text = sign.map_or_else(|| content.clone(), |s| format!("{s}{content}"));
-                    children.push(NT::Token(GreenToken::new(OSK::Text.into(), &text)));
-
-                    Ok(S2::Single(NT::Node(GreenNode::new(
-                        syntax_kind.into(),
-                        children,
-                    ))))
-                }
+                Ok(S2::Single(NT::Node(GreenNode::new(
+                    syntax_kind.into(),
+                    children,
+                ))))
             }
         },
     );
@@ -245,16 +230,14 @@ pub(crate) fn superscript_parser<'a>(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::parser::common::{get_parser_output, get_parsers_output};
+    use crate::parser::common::get_parsers_output;
     use crate::parser::object;
     use pretty_assertions::assert_eq;
 
     #[test]
     fn test_subscript() {
         // fox_bar
-        // markup解析时，中间步骤解析standard_objects.nested(content)成功, 会误更新prev_char；后续marker_end解析失败，状态不恢复，导致状态混乱
-        // 当前方案: 每个object执行成功时，更新状态。(这个object可能是中间状态，非最终成功!!)
+        // 否定前瞻过程中, markup解析，中间步骤解析standard_objects.nested(content)成功, 会更新prev_char, 后续marker_end解析失败，但状态不恢复，导致状态混乱
         assert_eq!(
             get_parsers_output(object::objects_parser(), r"fox_bar"),
             r###"Root@0..7

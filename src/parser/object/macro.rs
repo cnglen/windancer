@@ -8,7 +8,8 @@ use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 /// Macro parser
 pub(crate) fn macro_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+{
     let name = any()
         .filter(|c: &char| c.is_alphabetic())
         .then(

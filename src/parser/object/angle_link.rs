@@ -79,7 +79,8 @@ pub(crate) fn protocol<'a>()
 
 /// angle link parser
 pub(crate) fn angle_link_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+{
     let protocol = any()
         .filter(|c: &char| matches!(c, 'a'..'z' | '+'))
         .repeated()

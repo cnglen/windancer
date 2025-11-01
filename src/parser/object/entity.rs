@@ -475,7 +475,8 @@ pub(crate) static ENTITYNAME_TO_HTML: phf::Map<&'static str, &'static str> = phf
 
 /// Entity parser
 pub(crate) fn entity_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+{
     let name_parser = any()
         .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
         .repeated()

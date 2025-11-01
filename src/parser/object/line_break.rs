@@ -10,7 +10,8 @@ use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 pub(crate) fn line_break_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+{
     // PRE\\SPACE
     just(r##"\\"##)
         .then(whitespaces())

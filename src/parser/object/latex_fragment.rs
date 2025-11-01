@@ -13,7 +13,8 @@ type OSK = OrgSyntaxKind;
 
 // Latex Frament parser
 pub(crate) fn latex_fragment_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+{
     // \(CONTENTS\)
     let t1 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>(r##"\"##)
         .then(just("("))

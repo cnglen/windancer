@@ -24,8 +24,12 @@ pub(crate) fn get_parser_output<'a>(
 
 #[allow(dead_code)]
 pub(crate) fn get_parsers_output<'a>(
-    parser: impl Parser<'a, &'a str, Vec<S2>, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>
-    + Clone,
+    parser: impl Parser<
+        'a,
+        &'a str,
+        Vec<S2>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    > + Clone,
     input: &'a str,
 ) -> String {
     let ans = parser.parse(input).unwrap();

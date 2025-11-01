@@ -9,7 +9,8 @@ use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 /// target parser: <<TARGET>>
 pub(crate) fn target_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+{
     let target_onechar = none_of("<>\n \t").map(|c| format!("{c}"));
     let target_g2char = none_of("<>\n \t")
         .then(none_of("<>\n").repeated().at_least(1).collect::<String>())

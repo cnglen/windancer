@@ -89,7 +89,8 @@ pub(crate) fn heading_row_stars_parser<'a>()
 ///
 /// Note: 仅解析Tag部分，至于后续是否newline/end(), 不在此处判断，由HeadingRow统筹统一处理
 pub fn heading_row_tag_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+{
     let tag = just(':')
         .then(
             any()
@@ -149,7 +150,8 @@ pub fn heading_row_tag_parser<'a>()
 // * asdf  :xx:yy:                                                      :da:
 /// HeadingRowTitle parser, 解析标题行中的可选的Title
 pub fn heading_row_title_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+{
     // let newline_or_end = just("\n").map(Some).or(end().to(None));
     let tag_char =
         any().filter(|c: &char| c.is_alphanumeric() || matches!(c, '_' | '#' | '@' | '%'));
@@ -199,7 +201,8 @@ pub fn heading_row_title_parser<'a>()
 
 /// HeadingRowTitle parser, 解析标题行中的可选的Priority
 pub fn heading_row_priority_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+{
     let priority = just("[#")
         .then(one_of('0'..'9').or(one_of('a'..'z').or(one_of('A'..'Z'))))
         .then(just(']'))

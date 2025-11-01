@@ -7,7 +7,8 @@ use rowan::{GreenNode, GreenToken, NodeOrToken};
 use std::collections::HashSet;
 
 pub(crate) fn block_begin_row_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+{
     object::whitespaces()
         .then(object::just_case_insensitive("#+BEGIN_"))
         .then(
@@ -80,7 +81,8 @@ pub(crate) fn block_begin_row_parser<'a>()
 }
 
 pub(crate) fn block_end_row_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+{
     object::whitespaces()
         .then(object::just_case_insensitive("#+END_"))
         .then(

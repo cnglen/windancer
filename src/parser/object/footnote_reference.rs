@@ -27,11 +27,12 @@ pub(crate) fn footnote_reference_parser<'a>(
         .collect::<String>();
 
     // defintion must in oneline
-    let var =
-        none_of::<&str, &str, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>("[]\r\n")
-            .repeated()
-            .at_least(1)
-            .to_slice();
+    let var = none_of::<&str, &str, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>(
+        "[]\r\n",
+    )
+    .repeated()
+    .at_least(1)
+    .to_slice();
     let mut single_expression = Recursive::declare(); // foo / (foo) / (((foo)))
     single_expression.define(
         var.or(just("[")

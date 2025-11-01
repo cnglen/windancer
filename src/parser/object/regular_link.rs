@@ -9,7 +9,8 @@ use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 /// regular link parser
 pub(crate) fn regular_link_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+{
     let pathreg = just("[")
         .then(none_of("]").repeated().collect::<String>())
         .then(just("]"))
