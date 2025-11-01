@@ -19,7 +19,7 @@ mod paragraph;
 mod section;
 mod table;
 
-use chumsky::inspector::SimpleState;
+use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 use std::ops::Range;
@@ -99,7 +99,7 @@ impl OrgParser {
 
     pub fn parse(&mut self, input: &str) -> ParserResult {
         let parse_result = document::document_parser()
-            .parse_with_state(input, &mut SimpleState(ParserState::default()));
+            .parse_with_state(input, &mut RollbackState(ParserState::default()));
 
         if parse_result.has_errors() {
             for e in parse_result.errors() {

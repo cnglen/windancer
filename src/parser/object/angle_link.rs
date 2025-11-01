@@ -3,7 +3,7 @@ use crate::parser::ParserState;
 use crate::parser::S2;
 use crate::parser::syntax::OrgSyntaxKind;
 
-use chumsky::inspector::SimpleState;
+use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
@@ -17,7 +17,7 @@ pub(crate) static LINK_PROTOCOLS: phf::Set<&'static str> = phf_set! {
 /// PROTOCOL: A string which is one of the link type strings in org-link-parameters
 #[allow(unused)]
 pub(crate) fn protocol<'a>()
--> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone
+-> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
 {
     any()
         .filter(|c: &char| matches!(c, 'a'..'z' | '+'))
@@ -29,7 +29,7 @@ pub(crate) fn protocol<'a>()
 
 // /// plain link parser
 // pub(crate) fn plain_link_parser<'a>()
-// -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
+// -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
 //     let protocol = protocol();
 //     let path_plain = none_of(" \t()[]<>,") // . is permitted: orgmode.org, xx@xx.com
 //         .repeated()
@@ -79,7 +79,7 @@ pub(crate) fn protocol<'a>()
 
 /// angle link parser
 pub(crate) fn angle_link_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
     let protocol = any()
         .filter(|c: &char| matches!(c, 'a'..'z' | '+'))
         .repeated()

@@ -1,14 +1,14 @@
 use crate::parser::ParserState;
 use crate::parser::S2;
 use crate::parser::syntax::{OrgLanguage, OrgSyntaxKind};
-use chumsky::inspector::SimpleState;
+use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 use rowan::{SyntaxNode, SyntaxToken};
 
 #[allow(dead_code)]
 pub(crate) fn get_parser_output<'a>(
-    parser: impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>>
+    parser: impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>
     + Clone,
     input: &'a str,
 ) -> String {
@@ -24,7 +24,7 @@ pub(crate) fn get_parser_output<'a>(
 
 #[allow(dead_code)]
 pub(crate) fn get_parsers_output<'a>(
-    parser: impl Parser<'a, &'a str, Vec<S2>, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>>
+    parser: impl Parser<'a, &'a str, Vec<S2>, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>
     + Clone,
     input: &'a str,
 ) -> String {

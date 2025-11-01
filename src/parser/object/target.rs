@@ -3,13 +3,13 @@ use crate::parser::ParserState;
 use crate::parser::S2;
 use crate::parser::syntax::OrgSyntaxKind;
 
-use chumsky::inspector::SimpleState;
+use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 /// target parser: <<TARGET>>
 pub(crate) fn target_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
     let target_onechar = none_of("<>\n \t").map(|c| format!("{c}"));
     let target_g2char = none_of("<>\n \t")
         .then(none_of("<>\n").repeated().at_least(1).collect::<String>())
@@ -25,7 +25,7 @@ pub(crate) fn target_parser<'a>()
         });
     let target = target_g2char.or(target_onechar);
 
-    just::<_, _, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>("<<")
+    just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>("<<")
         .then(target)
         .then(just(">>"))
         .map_with(|((lbracket2, target), rbracket2), e| {

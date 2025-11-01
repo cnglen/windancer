@@ -565,9 +565,18 @@ this is *bold* target, my radio target
   <%%(diary-float t 4 2)>
 
   
-** bold test
+** text-markup test
+
+基础测试:
+
+a *bold*, a /italic/, a _underline_, a +strikethrough+, a ~code~, and a =verbatim= text
+
+一个​*粗体*​、​/斜体/​、​_下划线_​、​+横划线+​、​~编程~​和​=字面=​文本
+
 
 a *[[https://www.baidu.com][baidu]]* link
+
+
 
 a *normal* bold
 

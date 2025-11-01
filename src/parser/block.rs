@@ -1,13 +1,13 @@
 //! Block parser
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserState, S2, object};
-use chumsky::inspector::SimpleState;
+use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 use std::collections::HashSet;
 
 pub(crate) fn block_begin_row_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
     object::whitespaces()
         .then(object::just_case_insensitive("#+BEGIN_"))
         .then(
@@ -80,7 +80,7 @@ pub(crate) fn block_begin_row_parser<'a>()
 }
 
 pub(crate) fn block_end_row_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
     object::whitespaces()
         .then(object::just_case_insensitive("#+END_"))
         .then(
@@ -151,7 +151,7 @@ pub(crate) fn block_parser<'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     block_begin_row_parser()
         .then(
@@ -242,7 +242,7 @@ mod tests {
     fn test_block_bad() {
         let input = "#+BEGIN_SRC python
 #+END_DRC";
-        let mut state = SimpleState(ParserState::default());
+        let mut state = RollbackState(ParserState::default());
         let r = block_parser().parse_with_state(input, &mut state);
         assert_eq!(r.has_errors(), true);
 
@@ -255,7 +255,7 @@ mod tests {
     fn test_block_src() {
         let input = "#+BEGIN_sRC python
 #+END_SrC";
-        let mut state = SimpleState(ParserState::default());
+        let mut state = RollbackState(ParserState::default());
         let r = block_parser().parse_with_state(input, &mut state);
         assert_eq!(r.has_output(), true);
         let syntax_tree = SyntaxNode::new_root(r.into_result().unwrap().into_node().expect("xxx"));
@@ -278,7 +278,7 @@ mod tests {
 
     #[test]
     fn test_block_src_full() {
-        let mut state = SimpleState(ParserState::default());
+        let mut state = RollbackState(ParserState::default());
 
         let input = r###"#+BEGIN_sRC python
 print("hi");
@@ -309,7 +309,7 @@ print("py");
 
     #[test]
     fn test_block_example() {
-        let mut state = SimpleState(ParserState::default());
+        let mut state = RollbackState(ParserState::default());
 
         let input = "#+BEGIN_example
 #+END_examplE";

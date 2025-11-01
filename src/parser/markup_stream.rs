@@ -3,7 +3,7 @@ use crate::parser::OrgSyntaxKind;
 use crate::parser::ParserState;
 use crate::parser::S2;
 use chumsky::input::InputRef;
-use chumsky::inspector::SimpleState;
+use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use phf::{phf_map, phf_set};
 use rowan::{GreenNode, GreenToken, NodeOrToken};
@@ -328,14 +328,14 @@ fn is_end_marker_valid(text: &str, i: usize, marker_stack: &MarkerStack) -> bool
 /// - map into Token Stream using Vec<Token>
 ///   - `Token`
 pub(crate) fn text_markup_inner_preprocesser<'a>()
--> impl Parser<'a, &'a str, Vec<Token>, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>>
+-> impl Parser<'a, &'a str, Vec<Token>, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>
 + Clone {
     custom(
         |inp: &mut InputRef<
             'a,
             '_,
             &'a str,
-            extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+            extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
         >| {
             let text: &str = inp.slice_from(std::ops::RangeFrom {
                 start: &inp.cursor(),
@@ -437,7 +437,7 @@ pub(crate) fn text_markup_outer_parser<'a>() -> impl Parser<
     'a,
     &'a [Token],
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, Token>, SimpleState<ParserState>, ()>,
+    extra::Full<Rich<'a, Token>, RollbackState<ParserState>, ()>,
 > + Clone {
     recursive(|markup| {
         let base_case = any()
@@ -545,7 +545,7 @@ pub(crate) fn text_markup_outer_parser<'a>() -> impl Parser<
 /// Note: we can't use nested, since &str -parser1-> &[Token] -parser2-> Node
 /// full_markup_parser
 pub(crate) fn text_markup_parser_todo<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
     text_markup_inner_preprocesser().map(|tokens: Vec<Token>| {
         let p = text_markup_outer_parser();
 
@@ -557,7 +557,7 @@ pub(crate) fn text_markup_parser<'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     text_markup_inner_preprocesser().map(|tokens: Vec<Token>| {
         let p = text_markup_outer_parser();
@@ -569,7 +569,7 @@ pub(crate) fn text_markup_multiple_parser<'a>() -> impl Parser<
     'a,
     &'a str,
     Vec<NodeOrToken<GreenNode, GreenToken>>,
-    extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     text_markup_inner_preprocesser().map(|tokens: Vec<Token>| {
         let p = text_markup_outer_parser().repeated().collect::<Vec<_>>();
@@ -650,7 +650,7 @@ mod tests {
         ];
 
         for (i, (input, answer)) in inputs.iter().enumerate() {
-            let mut state = SimpleState(ParserState::default());
+            let mut state = RollbackState(ParserState::default());
             let preprocessor = text_markup_inner_preprocesser();
             let t = preprocessor.parse_with_state(input, &mut state);
 

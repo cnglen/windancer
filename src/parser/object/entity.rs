@@ -3,7 +3,8 @@ use crate::parser::ParserState;
 use crate::parser::S2;
 use crate::parser::syntax::OrgSyntaxKind;
 
-use chumsky::inspector::SimpleState;
+use chumsky::inspector::Inspector;
+use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
@@ -474,7 +475,7 @@ pub(crate) static ENTITYNAME_TO_HTML: phf::Map<&'static str, &'static str> = phf
 
 /// Entity parser
 pub(crate) fn entity_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
     let name_parser = any()
         .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
         .repeated()
@@ -487,7 +488,7 @@ pub(crate) fn entity_parser<'a>()
         .or(end().to('x'));
 
     // pattern1: \NAME POST
-    let a1 = just::<_, _, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>(r"\")
+    let a1 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>(r"\")
         .then(name_parser) // NAME
         .then_ignore(post_parser.rewind()) // POST
         .map_with(|(backslash, name), e| {
@@ -520,7 +521,7 @@ pub(crate) fn entity_parser<'a>()
     );
 
     // pattern3:  \_SPACES
-    let a3 = just::<_, _, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>(r"\")
+    let a3 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>(r"\")
         .then(just("_"))
         .then(
             one_of(" ")

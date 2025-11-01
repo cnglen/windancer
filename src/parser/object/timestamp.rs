@@ -3,7 +3,7 @@ use crate::parser::ParserState;
 use crate::parser::S2;
 use crate::parser::syntax::OrgSyntaxKind;
 
-use chumsky::inspector::SimpleState;
+use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
@@ -11,7 +11,7 @@ use super::whitespaces_g1;
 
 /// timestamp parser: <<TIMESTAMP>>
 pub(crate) fn timestamp_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
     let yyyymmdd = one_of("0123456789")
         .repeated()
         .at_least(4)

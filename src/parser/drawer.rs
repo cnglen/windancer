@@ -1,7 +1,7 @@
 //! Drawer parser
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserState, object};
-use chumsky::inspector::SimpleState;
+use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
@@ -9,7 +9,7 @@ pub(crate) fn drawer_parser<'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     let drawer_name_row = object::whitespaces()
         .then(just(":"))

@@ -4,7 +4,7 @@ use crate::parser::{ParserResult, ParserState, S2};
 use crate::parser::{object, section};
 
 use chumsky::input::InputRef;
-use chumsky::inspector::SimpleState;
+use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 use std::ops::Range;
@@ -14,14 +14,14 @@ use std::ops::Range;
 /// - 标题嵌套, 标题有level, 如二级标题包含三级标题，有状态
 /// - 关键部分用命令式解析，其他部分尽量用声明式解析
 pub(crate) fn heading_row_stars_parser<'a>()
--> impl Parser<'a, &'a str, ParserResult, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>>
+-> impl Parser<'a, &'a str, ParserResult, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>
 + Clone {
     custom(
         |inp: &mut InputRef<
             'a,
             '_,
             &'a str,
-            extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+            extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
         >| {
             let binding = inp.cursor();
             let start = binding.inner();
@@ -89,7 +89,7 @@ pub(crate) fn heading_row_stars_parser<'a>()
 ///
 /// Note: 仅解析Tag部分，至于后续是否newline/end(), 不在此处判断，由HeadingRow统筹统一处理
 pub fn heading_row_tag_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
     let tag = just(':')
         .then(
             any()
@@ -149,7 +149,7 @@ pub fn heading_row_tag_parser<'a>()
 // * asdf  :xx:yy:                                                      :da:
 /// HeadingRowTitle parser, 解析标题行中的可选的Title
 pub fn heading_row_title_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
     // let newline_or_end = just("\n").map(Some).or(end().to(None));
     let tag_char =
         any().filter(|c: &char| c.is_alphanumeric() || matches!(c, '_' | '#' | '@' | '%'));
@@ -199,7 +199,7 @@ pub fn heading_row_title_parser<'a>()
 
 /// HeadingRowTitle parser, 解析标题行中的可选的Priority
 pub fn heading_row_priority_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
     let priority = just("[#")
         .then(one_of('0'..'9').or(one_of('a'..'z').or(one_of('A'..'Z'))))
         .then(just(']'))
@@ -245,7 +245,7 @@ pub fn heading_row_priority_parser<'a>()
 
 /// HeadingRow parser, 解析标题行`STARS KEYWORD PRIORITY COMMENT TITLE TAGS`
 pub(crate) fn heading_row_parser<'a>()
--> impl Parser<'a, &'a str, ParserResult, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>>
+-> impl Parser<'a, &'a str, ParserResult, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>
 + Clone {
     let keyword_ws = just("TODO")
         .or(just("DONE"))
@@ -432,7 +432,7 @@ pub(crate) fn heading_row_parser<'a>()
 // heading = heading_row + section + heading?
 /// HeadingSubtree parser
 pub(crate) fn heading_subtree_parser<'a>()
--> impl Parser<'a, &'a str, ParserResult, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>>
+-> impl Parser<'a, &'a str, ParserResult, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>
 + Clone {
     recursive(|heading| {
         heading_row_parser()
@@ -495,7 +495,7 @@ mod tests {
         let input = ":taga:tag#:  ";
         let parser = heading_row_tag_parser();
         let ans: S2 = parser
-            .parse_with_state(input, &mut SimpleState(ParserState::default()))
+            .parse_with_state(input, &mut RollbackState(ParserState::default()))
             .into_result()
             .unwrap();
 
@@ -530,7 +530,7 @@ mod tests {
         let input = ":taga:tag#:  ";
         let parser = heading_row_tag_parser();
         let ans: S2 = parser
-            .parse_with_state(input, &mut SimpleState(ParserState::default()))
+            .parse_with_state(input, &mut RollbackState(ParserState::default()))
             .into_result()
             .unwrap();
 
@@ -566,7 +566,7 @@ mod tests {
         let parser = heading_row_tag_parser();
         assert_eq!(
             parser
-                .parse_with_state(input, &mut SimpleState(ParserState::default()))
+                .parse_with_state(input, &mut RollbackState(ParserState::default()))
                 .has_errors(),
             true
         )
@@ -579,7 +579,7 @@ mod tests {
         let parser = heading_row_parser();
 
         let syntax_node = parser
-            .parse_with_state(input, &mut SimpleState(ParserState::default()))
+            .parse_with_state(input, &mut RollbackState(ParserState::default()))
             .into_result()
             .unwrap()
             .syntax();

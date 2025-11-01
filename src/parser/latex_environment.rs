@@ -1,7 +1,7 @@
 //! Table parser
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserState, object};
-use chumsky::inspector::SimpleState;
+use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
@@ -9,7 +9,7 @@ fn latex_environment_begin_row_parser<'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     object::whitespaces()
         .then(object::just_case_insensitive(r##"\BEGIN{"##))
@@ -84,7 +84,7 @@ fn latex_environment_end_row_parser<'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     object::whitespaces()
         .then(object::just_case_insensitive(r##"\END{"##))
@@ -172,7 +172,7 @@ pub(crate) fn latex_environment_parser<'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     latex_environment_begin_row_parser()
         .then(

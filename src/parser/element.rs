@@ -5,7 +5,7 @@ use crate::parser::{
     latex_environment, paragraph, section, table,
 };
 
-use chumsky::inspector::SimpleState;
+use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
@@ -16,7 +16,7 @@ pub(crate) fn element_parser<'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     choice((
         footnote_definition::footnote_definition_parser(),

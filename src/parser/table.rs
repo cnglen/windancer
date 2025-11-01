@@ -1,7 +1,7 @@
 //! Table parser
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserState, object};
-use chumsky::inspector::SimpleState;
+use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
@@ -9,7 +9,7 @@ fn table_cell<'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     object::whitespaces()
         .then(
@@ -65,7 +65,7 @@ fn table_standard_row<'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     object::whitespaces()
         .then(just("|"))
@@ -107,7 +107,7 @@ fn table_rule_row<'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     object::whitespaces()
         .then(just("|"))
@@ -158,7 +158,7 @@ pub(crate) fn table_parser<'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     table_rule_row()
         .or(table_standard_row())
@@ -205,7 +205,7 @@ mod tests {
     #[test]
     fn test_table_cell() {
         let inputs = vec![" foo  |", "foo  |", "  foo|", "foo|", "foo"];
-        let mut state = SimpleState(ParserState::default());
+        let mut state = RollbackState(ParserState::default());
         for input in inputs {
             let ans = table_cell().parse_with_state(input, &mut state);
             match ans.clone().unwrap() {
@@ -227,7 +227,7 @@ mod tests {
   | Peter |  1234 |  24 |
   | Anna  |  4321 |  25 |
 "##;
-        let mut state = SimpleState(ParserState::default());
+        let mut state = RollbackState(ParserState::default());
         let t = table_parser().parse_with_state(input, &mut state);
         let syntax_tree = SyntaxNode::new_root(t.into_result().unwrap().into_node().expect("xxx"));
 

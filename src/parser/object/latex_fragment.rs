@@ -4,7 +4,7 @@ use crate::parser::ParserState;
 use crate::parser::S2;
 use crate::parser::object::entity::ENTITYNAME_TO_HTML;
 use crate::parser::syntax::OrgSyntaxKind;
-use chumsky::inspector::SimpleState;
+use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
@@ -13,9 +13,9 @@ type OSK = OrgSyntaxKind;
 
 // Latex Frament parser
 pub(crate) fn latex_fragment_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
     // \(CONTENTS\)
-    let t1 = just::<_, _, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>(r##"\"##)
+    let t1 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>(r##"\"##)
         .then(just("("))
         .then(
             any()
@@ -45,7 +45,7 @@ pub(crate) fn latex_fragment_parser<'a>()
         });
 
     // \[CONTENTS\]
-    let t2 = just::<_, _, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>(r##"\"##)
+    let t2 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>(r##"\"##)
         .then(just("["))
         .then(
             any()
@@ -78,7 +78,7 @@ pub(crate) fn latex_fragment_parser<'a>()
         });
 
     // $$CONTENTS$$
-    let t3 = just::<_, _, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>("$$")
+    let t3 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>("$$")
         .then(
             any()
                 .and_is(just("$$").not())
@@ -101,7 +101,7 @@ pub(crate) fn latex_fragment_parser<'a>()
         });
 
     // PRE$CHAR$POST
-    let pre = any::<_, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>()
+    let pre = any::<_, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>()
         .filter(|c| !matches!(c, '$'));
     let post =
         any().filter(|c: &char| c.is_ascii_punctuation() || matches!(c, ' ' | '\t' | '\r' | '\n'));
@@ -162,7 +162,7 @@ pub(crate) fn latex_fragment_parser<'a>()
     // // v2: use prev_char state
     // let post =
     //     any().filter(|c: &char| c.is_ascii_punctuation() || matches!(c, ' ' | '\t' | '\r' | '\n'));
-    // let t4 =just::<_, _, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>("$")
+    // let t4 =just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>("$")
     //     .then(none_of(".,?;\" \t"))
     //     .then(just("$"))
     //     .then_ignore(post.rewind())
@@ -233,7 +233,7 @@ pub(crate) fn latex_fragment_parser<'a>()
         .at_least(1)
         .collect::<String>()
         .filter(|name| !ENTITYNAME_TO_HTML.contains_key(name));
-    let t01 = just::<_, _, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>(r##"\"##)
+    let t01 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>(r##"\"##)
         .then(name)
         .then(just("["))
         .then(

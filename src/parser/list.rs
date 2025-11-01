@@ -1,7 +1,7 @@
 //! List parser
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserState, element, object};
-use chumsky::inspector::SimpleState;
+use chumsky::inspector::RollbackState;
 
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
@@ -18,19 +18,19 @@ pub(crate) fn create_list_item_content_parser<'a>() -> (
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
     > + Clone,
     impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
     > + Clone,
     impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
     > + Clone,
 ) {
     let mut list_parser = Recursive::declare();
@@ -225,7 +225,7 @@ pub(crate) fn item_indent_parser<'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     object::whitespaces().map(|ws| {
         let mut children = vec![];
@@ -247,7 +247,7 @@ pub(crate) fn item_bullet_parser<'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     just("*")
         .to(String::from("*"))
@@ -282,7 +282,7 @@ pub(crate) fn item_counter_parser<'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     just("[@")
         .then(text::int(10))
@@ -328,7 +328,7 @@ pub(crate) fn item_checkbox_parser<'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     just("[")
         .then(just(" ").or(just("-")).or(just("X")))
@@ -369,7 +369,7 @@ pub(crate) fn item_tag_parser<'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     any()
         .filter(|c: &char| *c != '\n')
@@ -418,7 +418,7 @@ pub(crate) fn item_tag_parser<'a>() -> impl Parser<
 //   - The first line less or equally indented than the starting line, not counting lines within other non-paragraph elements or inlinetask boundaries.
 //   - Two consecutive blank lines.
 fn lesser_indent_termination<'a>()
--> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
     // todo: not counting non-paragraph elements or inline task boudaries
     object::whitespaces()
         .try_map_with(|ws, e| {
@@ -455,7 +455,7 @@ mod tests {
         let inputs = vec!["f\n"];
 
         for (i, input) in inputs.iter().enumerate() {
-            let mut state = SimpleState(ParserState::default());
+            let mut state = RollbackState(ParserState::default());
             let (_, _list_item_parser, list_item_content_parser) =
                 create_list_item_content_parser();
             let t = list_item_content_parser.parse_with_state(input, &mut state);
@@ -495,7 +495,7 @@ mod tests {
         ];
 
         for (i, input) in inputs.iter().enumerate() {
-            let mut state = SimpleState(ParserState::default());
+            let mut state = RollbackState(ParserState::default());
             let (_, list_item_parser, _list_item_content_parser) =
                 create_list_item_content_parser();
             let t = list_item_parser.parse_with_state(input, &mut state);
@@ -526,7 +526,7 @@ mod tests {
         println!("test_list_4_ok\n");
         for (i, input) in inputs.iter().enumerate() {
             println!("input_{:02}={}", i, input);
-            let mut state = SimpleState(ParserState::default());
+            let mut state = RollbackState(ParserState::default());
             let (list_parser, _list_item_parser, _) = create_list_item_content_parser();
             let t = list_parser.parse_with_state(input, &mut state);
 
@@ -559,7 +559,7 @@ mod tests {
         println!("test_list_4_ok\n");
         for (i, input) in inputs.iter().enumerate() {
             println!("input_{:02}={}", i, input);
-            let mut state = SimpleState(ParserState::default());
+            let mut state = RollbackState(ParserState::default());
             let (list_parser, _list_item_parser, _) = create_list_item_content_parser();
             let t = list_parser.parse_with_state(input, &mut state);
 
@@ -590,7 +590,7 @@ mod tests {
         ];
 
         for (i, input) in inputs.iter().enumerate() {
-            let mut state = SimpleState(ParserState::default());
+            let mut state = RollbackState(ParserState::default());
             let (list_parser, _list_item_parser, _) = create_list_item_content_parser();
             let t = list_parser.parse_with_state(input, &mut state);
 
@@ -620,7 +620,7 @@ mod tests {
         ];
 
         for (_i, input) in inputs.iter().enumerate() {
-            let mut state = SimpleState(ParserState::default());
+            let mut state = RollbackState(ParserState::default());
             let (list_parser, _list_item_parser, _) = create_list_item_content_parser();
             let t = list_parser.parse_with_state(input, &mut state);
 
@@ -643,7 +643,7 @@ mod tests {
         ];
 
         for (i, input) in inputs.iter().enumerate() {
-            let mut state = SimpleState(ParserState::default());
+            let mut state = RollbackState(ParserState::default());
             let (list_parser, _list_item_parser, _) = create_list_item_content_parser();
             let t = list_parser.parse_with_state(input, &mut state);
             for e in t.errors() {

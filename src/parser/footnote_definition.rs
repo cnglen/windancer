@@ -2,7 +2,7 @@
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserState, object};
 use chumsky::prelude::*;
-use chumsky::{inspector::SimpleState, text::Char};
+use chumsky::{inspector::RollbackState, text::Char};
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 // fixme: 简单版本，假设只一行
@@ -10,7 +10,7 @@ pub(crate) fn footnote_definition_parser<'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     just("[fn:")
         .then(
@@ -121,7 +121,7 @@ mod tests {
     #[test]
     fn test_footnote_basic() {
         let input = "[fn:1] A short footnote.";
-        let mut state = SimpleState(ParserState::default());
+        let mut state = RollbackState(ParserState::default());
         let r = footnote_definition_parser().parse_with_state(input, &mut state);
         assert_eq!(r.has_output(), true);
         let syntax_tree = SyntaxNode::new_root(r.into_result().unwrap().into_node().expect("xxx"));
@@ -146,7 +146,7 @@ mod tests {
 
     // It even contains a single blank line.
     // ";
-    //         let mut state = SimpleState(ParserState::default());
+    //         let mut state = RollbackState(ParserState::default());
     //         let r = footnote_definition_parser().parse_with_state(input, &mut state);
     //         assert!(r.has_output());
     //         let syntax_tree = SyntaxNode::new_root(r.into_result().unwrap().into_node().expect("xxx"));

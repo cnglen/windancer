@@ -1,7 +1,7 @@
 //! Section parser
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserResult, ParserState, element, list, object};
-use chumsky::inspector::SimpleState;
+use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 use std::ops::Range;
@@ -23,7 +23,7 @@ use crate::parser::paragraph::simple_heading_row_parser;
 // other_parser
 // S2? 是否合适?
 pub(crate) fn section_parser<'a>()
--> impl Parser<'a, &'a str, ParserResult, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>>
+-> impl Parser<'a, &'a str, ParserResult, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>
 + Clone {
     // elements: children
     // 每个element实现时可通过前缀快速终止
@@ -55,7 +55,7 @@ pub(crate) fn section_unknown_parser<'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     none_of("*")
         .then(
@@ -96,7 +96,7 @@ mod tests {
     fn test_section_end_with_heading() {
         let input = "section content
 * heading";
-        let mut state = SimpleState(ParserState::default());
+        let mut state = RollbackState(ParserState::default());
         assert_eq!(
             section_parser()
                 .parse_with_state(input, &mut state)
@@ -108,7 +108,7 @@ mod tests {
     //     #[test]
     //     fn test_section_with_end() {
     //         let input = "0123456789";
-    //         let mut state = SimpleState(ParserState::default());
+    //         let mut state = RollbackState(ParserState::default());
     //         let s = section_parser()
     //             .parse_with_state(input, &mut state)
     //             .into_result()
@@ -127,7 +127,7 @@ mod tests {
     #[test]
     fn test_section_with_newline_end() {
         let input = "0123456789\n";
-        let mut state = SimpleState(ParserState::default());
+        let mut state = RollbackState(ParserState::default());
         let s = section_parser()
             .parse_with_state(input, &mut state)
             .into_result()
@@ -146,7 +146,7 @@ mod tests {
     #[test]
     fn test_section_fakedtitle() {
         let input = "0123456789 * faked_title";
-        let mut state = SimpleState(ParserState::default());
+        let mut state = RollbackState(ParserState::default());
         let result = section_parser().parse_with_state(input, &mut state);
 
         // for e in result.errors() {
@@ -171,7 +171,7 @@ mod tests {
     #[test]
     fn test_section_vs_heading_subtree() {
         let input = "* title\n asf\n";
-        let mut state = SimpleState(ParserState::default());
+        let mut state = RollbackState(ParserState::default());
 
         assert!(
             section_parser()
@@ -182,7 +182,7 @@ mod tests {
         let parser = simple_heading_row_parser().then(any().repeated());
         assert_eq!(
             parser
-                .parse_with_state(input, &mut SimpleState(ParserState::default()))
+                .parse_with_state(input, &mut RollbackState(ParserState::default()))
                 .has_errors(),
             false
         );

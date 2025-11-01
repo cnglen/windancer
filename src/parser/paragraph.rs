@@ -4,13 +4,13 @@ use crate::parser::{
     ParserState, S2, block, comment, drawer, footnote_definition, horizontal_rule, keyword,
     latex_environment, list, object, table,
 };
-use chumsky::inspector::SimpleState;
+use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 /// A simple heading row parser WITHOUT state, used by section parser to check whether the next part is heading to stop
 pub(crate) fn simple_heading_row_parser<'a>()
--> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone
+-> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
 {
     let stars = just('*').repeated().at_least(1).collect::<String>();
     let whitespaces = one_of(" \t").repeated().at_least(1).collect::<String>();
@@ -32,7 +32,7 @@ pub(crate) fn paragraph_parser<'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     let inner = object::line_parser()
         .and_is(latex_environment::latex_environment_parser().not())
@@ -106,7 +106,7 @@ pub(crate) fn paragraph_parser_old<'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     // v1: paragrap 以XX结束
     object::line_parser()
@@ -166,7 +166,7 @@ mod tests {
 foo
 bar
 "##;
-        let mut state = SimpleState(ParserState::default());
+        let mut state = RollbackState(ParserState::default());
         let ans = paragraph_parser().parse_with_state(input, &mut state);
 
         let syntax_tree =
@@ -184,7 +184,7 @@ bar
 abc
 :end:
 "##;
-        let mut state = SimpleState(ParserState::default());
+        let mut state = RollbackState(ParserState::default());
         assert_eq!(
             paragraph_parser()
                 .parse_with_state(input, &mut state)
@@ -199,7 +199,7 @@ abc
 #+begin_src python
 #+end_src
 "##;
-        let mut state = SimpleState(ParserState::default());
+        let mut state = RollbackState(ParserState::default());
         assert_eq!(
             paragraph_parser()
                 .parse_with_state(input, &mut state)
@@ -213,7 +213,7 @@ abc
         let input = r##"foo
 bar
 "##;
-        let mut state = SimpleState(ParserState::default());
+        let mut state = RollbackState(ParserState::default());
         let r = paragraph_parser().parse_with_state(input, &mut state);
 
         for e in r.errors() {
@@ -228,7 +228,7 @@ bar
         let input = r##"#+begin_src python
 #+end_src
 "##;
-        let mut state = SimpleState(ParserState::default());
+        let mut state = RollbackState(ParserState::default());
         assert_eq!(
             block::block_parser()
                 .parse_with_state(input, &mut state)

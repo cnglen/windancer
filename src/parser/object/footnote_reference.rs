@@ -3,7 +3,7 @@ use crate::parser::ParserState;
 use crate::parser::S2;
 use crate::parser::syntax::OrgSyntaxKind;
 
-use chumsky::inspector::SimpleState;
+use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
@@ -16,9 +16,9 @@ pub(crate) fn footnote_reference_parser<'a>(
         'a,
         &'a str,
         S2,
-        extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
     > + Clone,
-) -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone
+) -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
 {
     let label = any()
         .filter(|c: &char| c.is_ascii_alphanumeric() || matches!(c, '_' | '-'))
@@ -28,7 +28,7 @@ pub(crate) fn footnote_reference_parser<'a>(
 
     // defintion must in oneline
     let var =
-        none_of::<&str, &str, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>("[]\r\n")
+        none_of::<&str, &str, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>("[]\r\n")
             .repeated()
             .at_least(1)
             .to_slice();
@@ -44,7 +44,7 @@ pub(crate) fn footnote_reference_parser<'a>(
         standard_objects_parser.nested_in(single_expression.clone().repeated().to_slice());
 
     // [fn:LABEL]
-    let t1 = just::<_, _, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>("[fn:")
+    let t1 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>("[fn:")
         .then(label)
         .then(just("]"))
         .map_with(|((_left_fn_c, label), rbracket), e| {

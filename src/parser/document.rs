@@ -6,7 +6,7 @@ use crate::parser::syntax::OrgSyntaxKind;
 
 use crate::parser::heading;
 use crate::parser::section;
-use chumsky::inspector::SimpleState;
+use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, NodeOrToken};
 use std::ops::Range;
@@ -19,7 +19,7 @@ use std::ops::Range;
 ///   - HeadingSubtree
 
 pub(crate) fn document_parser<'a>()
--> impl Parser<'a, &'a str, ParserResult, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>>
+-> impl Parser<'a, &'a str, ParserResult, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>
 {
     section::section_parser()
         .repeated()

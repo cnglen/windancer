@@ -3,13 +3,13 @@ use crate::parser::ParserState;
 use crate::parser::S2;
 use crate::parser::syntax::OrgSyntaxKind;
 
-use chumsky::inspector::SimpleState;
+use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 /// regular link parser
 pub(crate) fn regular_link_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
     let pathreg = just("[")
         .then(none_of("]").repeated().collect::<String>())
         .then(just("]"))
@@ -35,7 +35,7 @@ pub(crate) fn regular_link_parser<'a>()
             ))
         });
 
-    just::<_, _, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>("[")
+    just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>("[")
         .then(pathreg)
         .then(
             just("[")

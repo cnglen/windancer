@@ -1,7 +1,7 @@
 //! Horizontal rule parser
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserState, object};
-use chumsky::inspector::SimpleState;
+use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
@@ -9,7 +9,7 @@ pub(crate) fn horizontal_rule_parser<'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     object::whitespaces()
         .then(just("-").repeated().at_least(5).collect::<Vec<&str>>()) //todo: collect as String failed

@@ -1,7 +1,7 @@
 //! Keyword parser
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserState, object};
-use chumsky::inspector::SimpleState;
+use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
@@ -9,7 +9,7 @@ pub(crate) fn keyword_parser<'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     just("#+")
         .then(

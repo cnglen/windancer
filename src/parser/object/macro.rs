@@ -2,13 +2,13 @@ use crate::parser::ParserState;
 use crate::parser::S2;
 use crate::parser::syntax::OrgSyntaxKind;
 
-use chumsky::inspector::SimpleState;
+use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 /// Macro parser
 pub(crate) fn macro_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone {
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone {
     let name = any()
         .filter(|c: &char| c.is_alphabetic())
         .then(
@@ -20,7 +20,7 @@ pub(crate) fn macro_parser<'a>()
         .map(|(first, remaining)| format!("{first}{remaining}"));
 
     // {{{NAME}}}
-    let t1 = just::<_, _, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>("{{{")
+    let t1 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>("{{{")
         .then(name)
         .then(just("}}}"))
         .map_with(|((left_3curly, name), right_3curly), e| {

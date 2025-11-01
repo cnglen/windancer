@@ -3,7 +3,7 @@ use crate::parser::ParserState;
 use crate::parser::S2;
 use crate::parser::syntax::OrgSyntaxKind;
 use chumsky::input::InputRef;
-use chumsky::inspector::SimpleState;
+use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use phf::{phf_map, phf_set};
 use rowan::{GreenNode, GreenToken, NodeOrToken};
@@ -131,15 +131,15 @@ pub(crate) fn text_markup_parser<'a>(
         'a,
         &'a str,
         S2,
-        extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
     > + Clone,
-) -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, SimpleState<ParserState>, ()>> + Clone
+) -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
 {
     let post = one_of(" \t​-.,;:!?)}]\"'\\\r\n").or(end().to('x'));
 
     // a string may not begin or end with whitespace.
     let get_content = |marker: char| {
-        none_of::<_, _, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>(" \t​")
+        none_of::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>(" \t​")
             .then(any()
                   .and_is(just(marker).then(post).not().rewind())
                   .repeated()
@@ -161,8 +161,11 @@ pub(crate) fn text_markup_parser<'a>(
                     _ => true
                 };
 
+                // println!("text-markup:content: pre_valid={pre_valid}, content_end_valid={content_end_valid}:\n  - content={content:?} Not valid if ends with whitesace\n  - PRE={:?} not valid if not in <whitespace and -({{ and others>", e.state().prev_char);
+                
                 match (pre_valid, content_end_valid) {
                     (true, true) => {Ok(())},
+
                     _ => {Err(Rich::custom(
                         e.span(),
                         format!("text-markup:content: pre_valid={pre_valid}, content_end_valid={content_end_valid}:\n  - content={content:?} ends with whitesace\n  - PRE={:?} not valid", e.state().prev_char),
@@ -180,13 +183,17 @@ pub(crate) fn text_markup_parser<'a>(
         .collect::<Vec<S2>>();
 
     let bold = just("*")
+        .map(|s|{println!("s0={s:?}"); s})
         .then(standard_objects_parser.clone().nested_in(get_content('*')))
         .then(just("*"))
         .then_ignore(post.rewind())
         .try_map_with(|((start_marker, content), end_marker), e| {
             // pre valid should NOT be deteced here, state.prev_char is update by standard object parser
-            e.state().prev_char = end_marker.chars().last();
+            let old_state = e.state().prev_char;
 
+            e.state().prev_char = end_marker.chars().last();
+            println!("bold: {:?}{:?}{:?}, set prev_char {:?} -> {:?}", start_marker, content, end_marker, old_state, e.state().prev_char);
+                
             let mut children = vec![];
             children.push(NT::Token(GreenToken::new(OSK::Asterisk.into(), start_marker)));
             for node in content {
@@ -208,8 +215,9 @@ pub(crate) fn text_markup_parser<'a>(
                 children,
             ))))
         });
+
     let italic = just("/")
-        .then(standard_objects_parser.clone().nested_in(get_content('/')))
+        .then(standard_objects_parser.clone().nested_in(get_content('/'))) // 这里objects_parser可能会执行plain_text_parser, 会更新prev_char!!(不应更新)
         .then(just("/"))
         .then_ignore(post.rewind())
         .try_map_with(|((start_marker, content), end_marker), e| {
@@ -299,7 +307,7 @@ pub(crate) fn text_markup_parser<'a>(
         });
     
 
-    let code = just::<_, _, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>("~")
+    let code = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>("~")
         .then(get_content('~'))
         .then(just("~"))
         .then_ignore(post.rewind())
@@ -317,7 +325,7 @@ pub(crate) fn text_markup_parser<'a>(
             ))))
         });
 
-    let verbatim = just::<_, _, extra::Full<Rich<'_, char>, SimpleState<ParserState>, ()>>("=")
+    let verbatim = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>("=")
         .then(get_content('='))
         .then(just("="))
         .then_ignore(post.rewind())
@@ -388,6 +396,44 @@ mod tests {
         );
     }
 
+    #[test]
+    fn test_markup_basic() {
+        assert_eq!(get_parsers_output(object::objects_parser(), "a *bold*, a /italic/, a _underline_, a +strikethrough+, a ~code~, and a =verbatim= text"), r##"Root@0..87
+  Text@0..2 "a "
+  Bold@2..8
+    Asterisk@2..3 "*"
+    Text@3..7 "bold"
+    Asterisk@7..8 "*"
+  Text@8..12 ", a "
+  Italic@12..20
+    Slash@12..13 "/"
+    Text@13..19 "italic"
+    Slash@19..20 "/"
+  Text@20..24 ", a "
+  Underline@24..35
+    Underscore@24..25 "_"
+    Text@25..34 "underline"
+    Underscore@34..35 "_"
+  Text@35..39 ", a "
+  Strikethrough@39..54
+    Plus@39..40 "+"
+    Text@40..53 "strikethrough"
+    Plus@53..54 "+"
+  Text@54..58 ", a "
+  Code@58..64
+    Tilde@58..59 "~"
+    Text@59..63 "code"
+    Tilde@63..64 "~"
+  Text@64..72 ", and a "
+  Verbatim@72..82
+    Equals@72..73 "="
+    Text@73..81 "verbatim"
+    Equals@81..82 "="
+  Text@82..87 " text"
+"##);
+    }
+
+        
     #[test]
     fn test_code() {
         assert_eq!(
