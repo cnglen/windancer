@@ -16,7 +16,7 @@ pub(crate) fn footnote_definition_parser<'a>() -> impl Parser<
         .then(
             // label
             any()
-                .filter(|c: &char| c.is_ascii_alphanumeric() || matches!(c, '_' | '-'))
+                .filter(|c: &char| c.is_alphanumeric() || matches!(c, '_' | '-'))
                 .repeated()
                 .at_least(1)
                 .collect::<String>(),

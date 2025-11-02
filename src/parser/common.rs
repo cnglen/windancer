@@ -3,8 +3,8 @@ use crate::parser::S2;
 use crate::parser::syntax::{OrgLanguage, OrgSyntaxKind};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
+use rowan::SyntaxNode;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
-use rowan::{SyntaxNode, SyntaxToken};
 
 #[allow(dead_code)]
 pub(crate) fn get_parser_output<'a>(

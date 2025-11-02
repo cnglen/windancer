@@ -21,7 +21,7 @@ pub(crate) fn footnote_reference_parser<'a>(
 ) -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
 {
     let label = any()
-        .filter(|c: &char| c.is_ascii_alphanumeric() || matches!(c, '_' | '-'))
+        .filter(|c: &char| c.is_alphanumeric() || matches!(c, '_' | '-'))
         .repeated()
         .at_least(1)
         .collect::<String>();

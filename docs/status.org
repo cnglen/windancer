@@ -16,7 +16,7 @@
 | text-markup[fn:2]  | ✓           | ✓         | ✓          |                                        |
 | radio link         |              |            |             |                                        |
 | angle link         | ✓           |            |             |                                        |
-| plain link         |              |            |             |                                        |
+| plain link         | ✓[fn:3]     |            |             |                                        |
 | regular link       |              |            |             |                                        |
 | table-cell         |              |            |             | todo                                   |
 | citation           |              |            |             | todo                                   |
@@ -64,6 +64,7 @@
 
 
 * Footnotes
+[fn:3] parenthesis substring not supported 
 
 
 [fn:2] bold, italic, underline, strike-through, code, verbatim

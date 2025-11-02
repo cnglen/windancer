@@ -1,12 +1,11 @@
 //! Object paser (todo)
 
-mod angle_link;
 pub mod entity;
 mod footnote_reference;
 mod latex_fragment;
 mod line_break;
+mod link;
 mod r#macro;
-mod regular_link;
 mod subscript_superscript;
 mod target;
 mod text;
@@ -15,13 +14,12 @@ mod timestamp;
 
 use crate::parser::ParserState;
 use crate::parser::S2;
-use crate::parser::object::angle_link::angle_link_parser;
 use crate::parser::object::entity::entity_parser;
 use crate::parser::object::footnote_reference::footnote_reference_parser;
 use crate::parser::object::latex_fragment::latex_fragment_parser;
 use crate::parser::object::line_break::line_break_parser;
+use crate::parser::object::link::{angle_link_parser, plain_link_parser, regular_link_parser};
 use crate::parser::object::r#macro::macro_parser;
-use crate::parser::object::regular_link::regular_link_parser;
 use crate::parser::object::subscript_superscript::subscript_parser;
 use crate::parser::object::subscript_superscript::superscript_parser;
 use crate::parser::object::target::target_parser;
@@ -208,7 +206,7 @@ pub(crate) fn object_parser<'a>()
             // inline_babel_call_parser(),
             // export_snippet_parser(),
             // inline_src_block_parser(),
-            // plain_link_parser(), // 第12个
+            plain_link_parser(), // 第12个
         ));
 
         // 第二层：minimal_set_object（6个）

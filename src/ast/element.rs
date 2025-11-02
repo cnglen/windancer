@@ -1,7 +1,6 @@
 //! AST node definition for element in org-mode
-use crate::ast::object::{Object, TableCell};
-use crate::parser::syntax::{OrgLanguage, OrgSyntaxKind, SyntaxElement, SyntaxNode};
-use std::collections::HashMap;
+use crate::ast::object::Object;
+use crate::parser::syntax::SyntaxNode;
 use std::fmt;
 
 // 文档级结构

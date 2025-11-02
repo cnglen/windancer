@@ -122,6 +122,7 @@ pub enum OrgSyntaxKind {
     LinkDescription,
 
     AngleLink,
+    PlainLink,
 
     LineBreak,
 

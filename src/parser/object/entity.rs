@@ -3,7 +3,6 @@ use crate::parser::ParserState;
 use crate::parser::S2;
 use crate::parser::syntax::OrgSyntaxKind;
 
-use chumsky::inspector::Inspector;
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};

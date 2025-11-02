@@ -89,7 +89,7 @@ impl Converter {
     // 内部转换方法可以访问状态
     fn convert_document(&mut self, node: &SyntaxNode) -> Result<Document, AstError> {
         // 使用内部状态进行转换
-        let mut children = node.children().collect::<Vec<_>>();
+        let children = node.children().collect::<Vec<_>>();
         let (zeroth_nodes, remainig_nodes) = self.split_at_first_heading(children);
 
         let mut zeroth_section = None;
@@ -753,7 +753,7 @@ impl Converter {
 
     // element.center_block
     fn convert_center_block(&mut self, node: &SyntaxNode) -> Result<CenterBlock, AstError> {
-        let mut parameters = None;
+        let parameters = None;
         let mut contents = vec![];
 
         match node.kind() {
@@ -782,7 +782,7 @@ impl Converter {
 
     // element.quote_block
     fn convert_quote_block(&mut self, node: &SyntaxNode) -> Result<QuoteBlock, AstError> {
-        let mut parameters = None;
+        let parameters = None;
         let mut contents = vec![];
 
         match node.kind() {
@@ -810,7 +810,7 @@ impl Converter {
 
     // element.special_block
     fn convert_special_block(&mut self, node: &SyntaxNode) -> Result<SpecialBlock, AstError> {
-        let mut parameters = None;
+        let parameters = None;
         let mut contents = vec![];
 
         match node.kind() {
@@ -839,7 +839,7 @@ impl Converter {
 
     // element.example_block
     fn convert_example_block(&mut self, node: &SyntaxNode) -> Result<ExampleBlock, AstError> {
-        let mut data = None;
+        let data = None;
         let mut contents = vec![];
 
         match node.kind() {
@@ -867,7 +867,7 @@ impl Converter {
 
     // element.comment_block
     fn convert_comment_block(&mut self, node: &SyntaxNode) -> Result<CommentBlock, AstError> {
-        let mut data = None;
+        let data = None;
         let mut contents = vec![];
 
         match node.kind() {
@@ -895,7 +895,7 @@ impl Converter {
 
     // element.verse_block
     fn convert_verse_block(&mut self, node: &SyntaxNode) -> Result<VerseBlock, AstError> {
-        let mut data = None;
+        let data = None;
         let mut contents = vec![];
 
         match node.kind() {
@@ -923,7 +923,7 @@ impl Converter {
 
     // element.src_block
     fn convert_src_block(&mut self, node: &SyntaxNode) -> Result<SrcBlock, AstError> {
-        let mut data = None;
+        let data = None;
         let mut contents = vec![];
 
         match node.kind() {
@@ -951,7 +951,7 @@ impl Converter {
 
     // element.export_block
     fn convert_export_block(&mut self, node: &SyntaxNode) -> Result<ExportBlock, AstError> {
-        let mut data = None;
+        let data = None;
         let mut contents = vec![];
 
         match node.kind() {
@@ -982,8 +982,8 @@ impl Converter {
     // element.item
     fn convert_item(&mut self, node: &SyntaxNode) -> Result<Item, AstError> {
         let mut bullet = String::new();
-        let mut counter_set = None;
-        let mut checkbox = None;
+        let counter_set = None;
+        let checkbox = None;
         let mut tag = None;
         let mut contents = vec![];
         for child in node.children_with_tokens() {
