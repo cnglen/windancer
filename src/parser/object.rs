@@ -6,6 +6,7 @@ mod latex_fragment;
 mod line_break;
 mod link;
 mod r#macro;
+mod radio_target;
 mod subscript_superscript;
 mod target;
 mod text;
@@ -20,6 +21,7 @@ use crate::parser::object::latex_fragment::latex_fragment_parser;
 use crate::parser::object::line_break::line_break_parser;
 use crate::parser::object::link::{angle_link_parser, plain_link_parser, regular_link_parser};
 use crate::parser::object::r#macro::macro_parser;
+use crate::parser::object::radio_target::radio_target_parser;
 use crate::parser::object::subscript_superscript::subscript_parser;
 use crate::parser::object::subscript_superscript::superscript_parser;
 use crate::parser::object::target::target_parser;
@@ -266,7 +268,7 @@ pub(crate) fn object_parser<'a>()
             // let radio_link_parser = radio_link_parser(minimal_set_object.clone());
             let regular_link_parser =
                 regular_link_parser(objects_parsers_supported_by_regular_link);
-            // let radio_target_parser = radio_target_parser(minimal_set_object.clone());
+            let radio_target_parser = radio_target_parser(minimal_set_object.clone());
 
             // 依赖 standard_set_object 的解析器（5个）
             let text_markup_parser = text_markup_parser(object_parser.clone());
@@ -280,13 +282,13 @@ pub(crate) fn object_parser<'a>()
                 // radio_link_parser,           // 1个
                 regular_link_parser,         // 1个
                 independent_parsers.clone(), // 12个
-                // radio_target_parser,         // 1个
-                text_markup_parser, // 1个
-                subscript_parser,   // 1个
-                superscript_parser, // 1个
-                footnote_reference_parser, // 1个
-                                    // citation_parser,             // 1个
-                                    // 总共：12 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 = 20个
+                radio_target_parser,         // 1个
+                text_markup_parser,          // 1个
+                subscript_parser,            // 1个
+                superscript_parser,          // 1个
+                footnote_reference_parser,   // 1个
+                                             // citation_parser,             // 1个
+                                             // 总共：12 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 = 20个
             ));
 
             // standard_set_object 中的纯文本解析器

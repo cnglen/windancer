@@ -12,13 +12,29 @@ pub(crate) fn get_parser_output<'a>(
     + Clone,
     input: &'a str,
 ) -> String {
-    match parser.parse(input).unwrap() {
-        S2::Single(node) => {
-            let syntax_tree: SyntaxNode<OrgLanguage> =
-                SyntaxNode::new_root(node.into_node().expect("syntax node"));
-            format!("{syntax_tree:#?}")
+    let a = parser.parse(input);
+
+    let mut errors = vec![];
+    errors.push(String::from("errors:"));
+    if a.has_errors() {
+        for error in a.errors() {
+            // println!("{:?}", error);
+            errors.push(format!("{:?}", error));
         }
-        _ => String::from(""),
+    }
+
+    if a.has_output() {
+        match parser.parse(input).unwrap() {
+            S2::Single(node) => {
+                let syntax_tree: SyntaxNode<OrgLanguage> =
+                    SyntaxNode::new_root(node.into_node().expect("syntax node"));
+                // println!("{syntax_tree:#?}");
+                format!("{syntax_tree:#?}")
+            }
+            _ => String::from(""),
+        }
+    } else {
+        errors.join("\n")
     }
 }
 

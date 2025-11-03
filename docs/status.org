@@ -21,7 +21,7 @@
 | table-cell         |              |            |             | todo                                   |
 | citation           |              |            |             | todo                                   |
 | citation-reference |              |            |             | todo                                   |
-| radio-target       |              |            |             | todo                                   |
+| radio-target       | ✓           |            |             | todo                                   |
 | timestamp          | ✓           |            |             | todo                                   |
 | target             | ✓           |            |             | todo                                   |
 | statistics-cookie  |              |            |             | low                                    |

@@ -161,6 +161,9 @@ pub enum OrgSyntaxKind {
     LeftAngleBracket2,
     RightAngleBracket2,
 
+    LeftAngleBracket3,
+    RightAngleBracket3,
+
     LeftCurlyBracket3,
     RightCurlyBracket3,
 

@@ -24,7 +24,8 @@ pub(crate) fn target_parser<'a>()
                 Ok(format!("{a}{b}"))
             }
         });
-    let target = target_g2char.or(target_onechar);
+
+    let target = choice((target_g2char, target_onechar)); // target_g2char > target_onechar
 
     just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>("<<")
         .then(target)
@@ -54,4 +55,67 @@ pub(crate) fn target_parser<'a>()
                 children,
             )))
         })
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::parser::common::get_parser_output;
+    use pretty_assertions::assert_eq;
+
+    use super::target_parser;
+
+    #[test]
+    fn test_target_01() {
+        assert_eq!(
+            get_parser_output(target_parser(), "<<target>>"),
+            r##"Target@0..10
+  LeftAngleBracket2@0..2 "<<"
+  Text@2..8 "target"
+  RightAngleBracket2@8..10 ">>"
+"##
+        );
+    }
+
+    #[test]
+    fn test_target_02() {
+        assert_eq!(
+            get_parser_output(target_parser(), "<<tar\nget>>"),
+            r##"errors:
+found ''\n'' at 5..6 expected something else, or ''>''"##,
+            r"TARGET is a string containing any characters but `<>\n`"
+        );
+    }
+
+    #[test]
+    fn test_target_03() {
+        assert_eq!(
+            get_parser_output(target_parser(), "<< target>>"),
+            r##"errors:
+found '' '' at 2..3 expected something else"##,
+            r"TARGET It cannot start or end with a whitespace character."
+        );
+    }
+
+    #[test]
+    fn test_target_04() {
+        assert_eq!(
+            get_parser_output(target_parser(), "<<target >>"),
+            r##"errors:
+found ''a'' at 3..4 expected ''>''"##,
+            r"TARGET It cannot start or end with a whitespace character."
+        );
+    }
+
+    #[test]
+    fn test_target_05() {
+        assert_eq!(
+            get_parser_output(target_parser(), "<<t>>"),
+            r##"Target@0..5
+  LeftAngleBracket2@0..2 "<<"
+  Text@2..3 "t"
+  RightAngleBracket2@3..5 ">>"
+"##,
+            r"TARGET with one char"
+        );
+    }
 }
