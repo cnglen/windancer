@@ -517,9 +517,15 @@ b
 
 link: [[https://www.baidu.com][baidu]]
 
+[[https://foo.bar]]
+
 [[https://orgmode.org]]
 
 https://plainlink.org
+
+https://asdf(jack).org
+
+[[http://foo.bar][\alpha *bold* $a+b$ foo]]
 
 angle link: <mailto:xx@xx.com>
 
@@ -530,6 +536,8 @@ radio link:
 <<<my radio target>>>
 
 this is *bold* target, my radio target
+
+
 
 ** timestamp
 # example

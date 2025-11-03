@@ -12,8 +12,8 @@
 | text-markup[^1] | ✓ | ✓ | ✓ |  |
 | radio link |  |  |  |  |
 | angle link | ✓ |  |  |  |
-| plain link |  |  |  |  |
-| regular link |  |  |  |  |
+| plain link | ✓ |  |  |  |
+| regular link | ✓ |  |  |  |
 | table-cell |  |  |  | todo |
 | citation |  |  |  | todo |
 | citation-reference |  |  |  | todo |

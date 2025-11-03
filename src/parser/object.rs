@@ -193,7 +193,7 @@ pub(crate) fn object_parser<'a>()
 {
     recursive(|object_parser| {
         // 第一层：12个独立解析器
-        let independent_parsers = choice((
+        let independent_parsers = Parser::boxed(choice((
             entity_parser(),
             latex_fragment_parser(),
             angle_link_parser(),
@@ -207,7 +207,7 @@ pub(crate) fn object_parser<'a>()
             // export_snippet_parser(),
             // inline_src_block_parser(),
             plain_link_parser(), // 第12个
-        ));
+        )));
 
         // 第二层：minimal_set_object（6个）
         let minimal_set_object = {
@@ -228,15 +228,44 @@ pub(crate) fn object_parser<'a>()
             // minimal_set_object 中的纯文本解析器
             let plain_text_parser = plain_text_parser(non_plain_text_parsers.clone());
 
-            choice((non_plain_text_parsers, plain_text_parser))
+            Parser::boxed(choice((non_plain_text_parsers, plain_text_parser)))
+        };
+
+        // regular link :: DESCRIPTION
+        // One or more objects enclosed by square brackets. It can contain the minimal set of objects as well as export snippets, inline babel calls, inline source blocks, macros, and statistics cookies. It can also contain another link, but only when it is a plain or angle link. It can contain square brackets, but not ]].
+        let objects_parsers_supported_by_regular_link = {
+            let non_plain_text_parsers_for_regular_link = choice((
+                // minimal set
+                entity_parser().clone(),
+                latex_fragment_parser().clone(),
+                text_markup_parser(object_parser.clone()).clone(),
+                subscript_parser(object_parser.clone()).clone(),
+                superscript_parser(object_parser.clone()).clone(),
+                // other
+                // export_snippet_parser().clone(),
+                // inline_babel_call_parser().clone(),
+                // inline_src_block_parser().clone(),
+                macro_parser().clone(),
+                // statistics_cookie_parser().clone(),
+                angle_link_parser().clone(),
+                plain_link_parser().clone(),
+            ));
+
+            // minimal_set_object 中的纯文本解析器
+            let plain_text_parser =
+                plain_text_parser(non_plain_text_parsers_for_regular_link.clone());
+            Parser::boxed(choice((
+                non_plain_text_parsers_for_regular_link,
+                plain_text_parser,
+            )))
         };
 
         // 第三层：standard_set_object（21个）
         let standard_set_object = {
             // 依赖 minimal_set_object 的解析器（只包含其中3个）
             // let radio_link_parser = radio_link_parser(minimal_set_object.clone());
-            // let regular_link_parser = regular_link_parser(minimal_set_object.clone());
-            let regular_link_parser = regular_link_parser();
+            let regular_link_parser =
+                regular_link_parser(objects_parsers_supported_by_regular_link);
             // let radio_target_parser = radio_target_parser(minimal_set_object.clone());
 
             // 依赖 standard_set_object 的解析器（5个）
@@ -248,9 +277,9 @@ pub(crate) fn object_parser<'a>()
 
             // 构建不包含 plain_text 的 standard_set_object（20个）
             let standard_set_without_plain_text = choice((
-                independent_parsers.clone(), // 12个
                 // radio_link_parser,           // 1个
-                regular_link_parser, // 1个
+                regular_link_parser,         // 1个
+                independent_parsers.clone(), // 12个
                 // radio_target_parser,         // 1个
                 text_markup_parser, // 1个
                 subscript_parser,   // 1个
@@ -265,10 +294,11 @@ pub(crate) fn object_parser<'a>()
                 plain_text_parser(standard_set_without_plain_text.clone());
 
             // 最终的 standard_set_object（21个）
-            choice((
+
+            Parser::boxed(choice((
                 standard_set_without_plain_text,
                 plain_text_for_standard, // 第21个
-            ))
+            )))
         };
 
         // 第四层：完整的23个对象集合
@@ -289,10 +319,10 @@ pub(crate) fn object_parser<'a>()
             let final_plain_text = plain_text_parser(full_set_without_plain_text.clone());
 
             // 完整的23个对象集合
-            choice((
+            Parser::boxed(choice((
                 full_set_without_plain_text,
                 final_plain_text, // 第23个
-            ))
+            )))
         }
     })
 }
@@ -405,39 +435,6 @@ L3
             s.has_output(),
             s.has_errors()
         );
-    }
-
-    #[test]
-    fn test_link() {
-        let input = "[[https://www.baidu.com][baidu]]";
-
-        let parser = regular_link_parser();
-
-        match parser.parse(input).unwrap() {
-            S2::Single(node) => {
-                let syntax_tree: SyntaxNode<OrgLanguage> =
-                    SyntaxNode::new_root(node.into_node().expect("xxx"));
-                println!("{:#?}", syntax_tree);
-
-                assert_eq!(
-                    format!("{syntax_tree:#?}"),
-                    r###"Link@0..32
-  LeftSquareBracket@0..1 "["
-  LinkPath@1..24
-    LeftSquareBracket@1..2 "["
-    Text@2..23 "https://www.baidu.com"
-    RightSquareBracket@23..24 "]"
-  LinkDescription@24..31
-    LeftSquareBracket@24..25 "["
-    Text@25..30 "baidu"
-    RightSquareBracket@30..31 "]"
-  RightSquareBracket@31..32 "]"
-"###
-                );
-            }
-
-            _ => {}
-        };
     }
 
     #[test]
