@@ -54,6 +54,8 @@ pub enum OrgSyntaxKind {
     Superscript,
     Caret, // ^
     Target,
+    RadioTarget,
+    RadioLink,
     Timestamp,
 
     FootnoteReference,

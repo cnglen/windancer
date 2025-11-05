@@ -1,5 +1,4 @@
 // #![allow(warnings)]
-
 //! cargo run --example main -- --show-output
 use orgize::{Org, rowan::ast::AstNode};
 use std::fs;

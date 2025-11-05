@@ -6,6 +6,7 @@ use crate::parser::syntax::OrgSyntaxKind;
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
+
 use std::collections::HashMap;
 use std::ops::Range;
 type NT = NodeOrToken<GreenNode, GreenToken>;
@@ -119,20 +120,29 @@ fn create_script_parser<'a>(
     let pair_ends = pairs.values().copied().collect::<Vec<_>>();
     let t2 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>(c)
         .then(one_of(pair_starts))
+        .map_with(|s, e| {
+            e.state().prev_char_backup = e.state().prev_char;
+            s
+        })
         .then(expression)
+        .map_with(|s, e| {
+            e.state().prev_char = e.state().prev_char_backup;
+            s
+        })
         .then(one_of(pair_ends))
-        .try_map_with(
-            move |(((sup, lb), expression), rb), e| match e.state().prev_char {
-                None => {
-                    let error = Rich::custom::<&str>(e.span(), &format!("CHAR is empty"));
-                    Err(error)
-                }
-                Some(c) if c == ' ' || c == '\t' => {
-                    let error = Rich::custom::<&str>(e.span(), &format!("CHAR is whitesace"));
+        .try_map_with(move |(((sup, lb), expression), rb), e| {
+            let pre_valid = e
+                .state()
+                .prev_char
+                .map_or(false, |c| !matches!(c, ' ' | '\t'));
+
+            match pre_valid {
+                false => {
+                    let error = Rich::custom::<&str>(e.span(), &format!("PRE not valid"));
                     Err(error)
                 }
 
-                _ => {
+                true => {
                     let expected_rb = *pairs.get(&lb).unwrap();
 
                     if rb != expected_rb {
@@ -174,8 +184,8 @@ fn create_script_parser<'a>(
                         ))))
                     }
                 }
-            },
-        );
+            }
+        });
 
     // ^ SIGN CHARS FINAL
     let sign = one_of("+-").or_not();
@@ -235,7 +245,7 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     #[test]
-    fn test_subscript() {
+    fn test_subscript_01() {
         // fox_bar
         // 否定前瞻过程中, markup解析，中间步骤解析standard_objects.nested(content)成功, 会更新prev_char, 后续marker_end解析失败，但状态不恢复，导致状态混乱
         assert_eq!(
@@ -245,6 +255,28 @@ mod tests {
   Subscript@3..7
     Caret@3..4 "_"
     Text@4..7 "bar"
+"###
+        );
+
+        assert_eq!(
+            get_parsers_output(object::objects_parser(), r"fox_{bar}"),
+            r###"Root@0..9
+  Text@0..3 "fox"
+  Subscript@3..9
+    Caret@3..4 "_"
+    LeftCurlyBracket@4..5 "{"
+    Text@5..8 "bar"
+    RightCurlyBracket@8..9 "}"
+"###
+        );
+    }
+
+    #[test]
+    fn test_subscript_02_bad() {
+        assert_eq!(
+            get_parsers_output(object::objects_parser(), r"fo _{bar}"),
+            r###"Root@0..9
+  Text@0..9 "fo _{bar}"
 "###
         );
     }

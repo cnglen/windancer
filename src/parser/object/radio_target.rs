@@ -52,10 +52,6 @@ pub(crate) fn radio_target_parser<'a>(
                 lbracket3,
             )));
 
-            // children.push(NodeOrToken::Token(GreenToken::new(
-            //     OrgSyntaxKind::Text.into(),
-            //     &target,
-            // )));
             for node in target {
                 match node {
                     S2::Single(e) => {
@@ -75,7 +71,7 @@ pub(crate) fn radio_target_parser<'a>(
             )));
 
             S2::Single(NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                OrgSyntaxKind::Target.into(),
+                OrgSyntaxKind::RadioTarget.into(),
                 children,
             )))
         })
@@ -83,7 +79,6 @@ pub(crate) fn radio_target_parser<'a>(
 
 #[cfg(test)]
 mod tests {
-    use super::radio_target_parser;
     use crate::parser::{common::get_parsers_output, object};
     use pretty_assertions::assert_eq;
 
@@ -92,7 +87,7 @@ mod tests {
         assert_eq!(
             get_parsers_output(object::objects_parser(), "<<<target>>>"),
             r##"Root@0..12
-  Target@0..12
+  RadioTarget@0..12
     LeftAngleBracket3@0..3 "<<<"
     Text@3..9 "target"
     RightAngleBracket3@9..12 ">>>"
@@ -137,7 +132,7 @@ mod tests {
         assert_eq!(
             get_parsers_output(object::objects_parser(), "<<<t>>>"),
             r##"Root@0..7
-  Target@0..7
+  RadioTarget@0..7
     LeftAngleBracket3@0..3 "<<<"
     Text@3..4 "t"
     RightAngleBracket3@4..7 ">>>"
@@ -151,7 +146,7 @@ mod tests {
         assert_eq!(
             get_parsers_output(object::objects_parser(), r"<<<\alpha $a+b$ foo>>>"),
             r##"Root@0..22
-  Target@0..22
+  RadioTarget@0..22
     LeftAngleBracket3@0..3 "<<<"
     Entity@3..9
       BackSlash@3..4 "\\"

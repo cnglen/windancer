@@ -515,27 +515,30 @@ b
   
 ** link test
 
-link: [[https://www.baidu.com][baidu]]
+regular link:
 
-[[https://foo.bar]]
+with description [[https://www.baidu.com][baidu]]
 
-[[https://orgmode.org]]
+without description [[https://foo.bar]]
+
+description with objects [[http://foo.bar][\alpha *bold* $a+b$ foo]]
+
+plain link:
 
 https://plainlink.org
 
-https://asdf(jack).org
-
-[[http://foo.bar][\alpha *bold* $a+b$ foo]]
+https://foo(bar).org
 
 angle link: <mailto:xx@xx.com>
 
 radio link:
 
-<<<*bold* target>>>
+my radio target
 
-<<<my radio target>>>
+define three radio targer <<<*bold* target>>> and <<<my radio target>>>  and <<<\alpha>>> and <<<$\alpha$>>>
 
-this is *bold* target, my radio target
+
+radio link: this is *bold* target, my radio target, notmyradio target and $\alpha$ and \alpha.
 
 
 

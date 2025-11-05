@@ -4,3 +4,5 @@ target/
 \#*
 *.json
 .#*
+*.bak
+*.backup

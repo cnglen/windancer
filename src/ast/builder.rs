@@ -604,7 +604,7 @@ impl Converter {
             (Some(label), None)
         };
 
-        println!("{:?}:{:?}", raw_label, raw_definition);
+        // println!("{:?}:{:?}", raw_label, raw_definition);
 
         let label = match raw_label {
             Some(e) => {
@@ -663,7 +663,7 @@ impl Converter {
                 nid: *nid,
             };
 
-            println!("footnotedefinition={:?}", footnote_definition);
+            // println!("footnotedefinition={:?}", footnote_definition);
             self.footnote_definitions.push(footnote_definition);
         }
 

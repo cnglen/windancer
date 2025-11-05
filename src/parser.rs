@@ -19,9 +19,11 @@ mod paragraph;
 mod section;
 mod table;
 
+use crate::parser::syntax::OrgSyntaxKind;
+
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
+use rowan::{GreenNode, GreenToken, NodeOrToken, WalkEvent};
 use std::ops::Range;
 
 use crate::parser::syntax::SyntaxNode;
@@ -47,7 +49,9 @@ pub(crate) struct ParserState {
     block_type: String,     // begin_type, end_type: 两个解析器需要相同的type数据
     latex_env_name: String, // latex \begin{}
     item_indent: Vec<usize>,
-    prev_char: Option<char>, // previous char
+    prev_char: Option<char>,        // previous char
+    prev_char_backup: Option<char>, // previous char backup manually set for later resume back
+    radio_targets: Vec<String>,
 }
 
 impl Default for ParserState {
@@ -58,6 +62,22 @@ impl Default for ParserState {
             latex_env_name: String::new(),
             item_indent: vec![],
             prev_char: None,
+            prev_char_backup: None,
+            radio_targets: vec![],
+        }
+    }
+}
+
+impl ParserState {
+    fn default_with_radio_targets(radio_targets: Vec<String>) -> Self {
+        Self {
+            level_stack: vec![0],
+            block_type: String::new(),
+            latex_env_name: String::new(),
+            item_indent: vec![],
+            prev_char: None,
+            radio_targets: radio_targets,
+            prev_char_backup: None,
         }
     }
 }
@@ -97,9 +117,65 @@ impl OrgParser {
         OrgParser { config }
     }
 
+    pub fn get_radio_targets(&self, input: &str) -> Vec<String> {
+        let radio_targets: Vec<NodeOrToken<GreenNode, GreenToken>> = object::objects_parser()
+            .parse(input)
+            .unwrap()
+            .into_iter()
+            .filter(|s| match s {
+                S2::Single(NodeOrToken::<GreenNode, GreenToken>::Node(n))
+                    if n.kind() == OrgSyntaxKind::RadioTarget.into() =>
+                {
+                    true
+                }
+                _ => false,
+            })
+            .map(|s| match s {
+                S2::Single(n) => n,
+                _ => todo!(),
+            })
+            .collect();
+
+        let root = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+            OrgSyntaxKind::Root.into(),
+            radio_targets,
+        ));
+
+        let mut radio_targets_text = vec![];
+        let syntax_tree = SyntaxNode::new_root(root.into_node().expect("xx"));
+        for e in syntax_tree.children() {
+            let mut text = String::new();
+            let mut preorder = e.preorder_with_tokens();
+            while let Some(event) = preorder.next() {
+                match event {
+                    WalkEvent::Enter(element) => {
+                        if let Some(token) = element.as_token() {
+                            if token.kind() != OrgSyntaxKind::LeftAngleBracket3
+                                && token.kind() != OrgSyntaxKind::RightAngleBracket3
+                            {
+                                text.push_str(token.text());
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            radio_targets_text.push(text);
+        }
+        radio_targets_text
+    }
+
     pub fn parse(&mut self, input: &str) -> ParserResult {
-        let parse_result = document::document_parser()
-            .parse_with_state(input, &mut RollbackState(ParserState::default()));
+        let radio_targets = self.get_radio_targets(input);
+        println!("radio_targets={:?}", radio_targets);
+
+        let parse_result = document::document_parser().parse_with_state(
+            input,
+            &mut RollbackState(ParserState::default_with_radio_targets(radio_targets)),
+        );
+
+        // let parse_result = document::document_parser()
+        //     .parse_with_state(input, &mut RollbackState(ParserState::default()));
 
         if parse_result.has_errors() {
             for e in parse_result.errors() {
@@ -209,3 +285,5 @@ mod tests {
         println!("{}", format!("{syntax_node:#?}"));
     }
 }
+
+// todo: test of radio link

@@ -10,13 +10,11 @@
 | line-break | ✓ | ✓ | ✓ |  |
 | macro | ✓ | ✓ |  | todo render: collect macro replacement |
 | text-markup[^1] | ✓ | ✓ | ✓ |  |
-| radio link |  |  |  |  |
+| radio link | ✓ |  |  |  |
 | angle link | ✓ |  |  |  |
 | plain link | ✓ |  |  |  |
 | regular link | ✓ |  |  |  |
 | table-cell |  |  |  | todo |
-| citation |  |  |  | todo |
-| citation-reference |  |  |  | todo |
 | radio-target | ✓ |  |  | todo |
 | timestamp | ✓ |  |  | todo |
 | target | ✓ |  |  | todo |
@@ -24,6 +22,8 @@
 | inline-babel-call |  |  |  | low |
 | export-snippet |  |  |  | low |
 | inline-src-block |  |  |  | low-priority |
+| citation |  |  |  | low |
+| citation-reference |  |  |  | low |
 
 # element
 

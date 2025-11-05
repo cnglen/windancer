@@ -6,6 +6,7 @@ mod latex_fragment;
 mod line_break;
 mod link;
 mod r#macro;
+mod radio_link;
 mod radio_target;
 mod subscript_superscript;
 mod target;
@@ -21,6 +22,7 @@ use crate::parser::object::latex_fragment::latex_fragment_parser;
 use crate::parser::object::line_break::line_break_parser;
 use crate::parser::object::link::{angle_link_parser, plain_link_parser, regular_link_parser};
 use crate::parser::object::r#macro::macro_parser;
+use crate::parser::object::radio_link::radio_link_parser;
 use crate::parser::object::radio_target::radio_target_parser;
 use crate::parser::object::subscript_superscript::subscript_parser;
 use crate::parser::object::subscript_superscript::superscript_parser;
@@ -196,8 +198,8 @@ pub(crate) fn object_parser<'a>()
     recursive(|object_parser| {
         // 第一层：12个独立解析器
         let independent_parsers = Parser::boxed(choice((
-            entity_parser(),
             latex_fragment_parser(),
+            entity_parser(),
             angle_link_parser(),
             line_break_parser(),
             macro_parser(),
@@ -213,15 +215,15 @@ pub(crate) fn object_parser<'a>()
 
         // 第二层：minimal_set_object（6个）
         let minimal_set_object = {
-            let entity_parser = entity_parser();
             let latex_fragment_parser = latex_fragment_parser();
+            let entity_parser = entity_parser();
             let subscript_parser = subscript_parser(object_parser.clone());
             let superscript_parser = superscript_parser(object_parser.clone());
             let text_markup_parser = text_markup_parser(object_parser.clone());
 
             let non_plain_text_parsers = choice((
-                entity_parser.clone(),
                 latex_fragment_parser.clone(),
+                entity_parser.clone(),
                 text_markup_parser.clone(),
                 subscript_parser.clone(),
                 superscript_parser.clone(),
@@ -238,8 +240,8 @@ pub(crate) fn object_parser<'a>()
         let objects_parsers_supported_by_regular_link = {
             let non_plain_text_parsers_for_regular_link = choice((
                 // minimal set
-                entity_parser().clone(),
                 latex_fragment_parser().clone(),
+                entity_parser().clone(),
                 text_markup_parser(object_parser.clone()).clone(),
                 subscript_parser(object_parser.clone()).clone(),
                 superscript_parser(object_parser.clone()).clone(),
@@ -265,7 +267,7 @@ pub(crate) fn object_parser<'a>()
         // 第三层：standard_set_object（21个）
         let standard_set_object = {
             // 依赖 minimal_set_object 的解析器（只包含其中3个）
-            // let radio_link_parser = radio_link_parser(minimal_set_object.clone());
+            let radio_link_parser = radio_link_parser(minimal_set_object.clone());
             let regular_link_parser =
                 regular_link_parser(objects_parsers_supported_by_regular_link);
             let radio_target_parser = radio_target_parser(minimal_set_object.clone());
@@ -279,7 +281,7 @@ pub(crate) fn object_parser<'a>()
 
             // 构建不包含 plain_text 的 standard_set_object（20个）
             let standard_set_without_plain_text = choice((
-                // radio_link_parser,           // 1个
+                radio_link_parser,           // 1个
                 regular_link_parser,         // 1个
                 independent_parsers.clone(), // 12个
                 radio_target_parser,         // 1个
