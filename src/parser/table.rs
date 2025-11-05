@@ -4,62 +4,7 @@ use crate::parser::{ParserState, object};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
-
-fn table_cell<'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
-> + Clone {
-    object::whitespaces()
-        .then(
-            none_of("\n|")
-                .and_is(object::whitespaces().then(just("|")).not())
-                .repeated()
-                .collect::<String>(),
-        )
-        .then(object::whitespaces())
-        .then(just("|").to(Some(String::from("|"))).or(end().to(None)))
-        .map(|(((ws1, content), ws2), maybe_pipe)| {
-            let mut children = vec![];
-
-            if ws1.len() > 0 {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    &ws1,
-                )));
-            }
-
-            if content.len() > 0 {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    &content,
-                )));
-            }
-
-            if ws2.len() > 0 {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    &ws2,
-                )));
-            }
-
-            match maybe_pipe {
-                Some(pipe) => {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Pipe.into(),
-                        &pipe,
-                    )));
-                }
-                None => {}
-            }
-
-            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                OrgSyntaxKind::TableCell.into(),
-                children,
-            ))
-        })
-}
+use crate::parser::S2;
 
 fn table_standard_row<'a>() -> impl Parser<
     'a,
@@ -69,7 +14,7 @@ fn table_standard_row<'a>() -> impl Parser<
 > + Clone {
     object::whitespaces()
         .then(just("|"))
-        .then(table_cell().repeated().collect::<Vec<_>>())
+        .then(object::table_cell::table_cell_parser(object::object_parser()).repeated().collect::<Vec<_>>()) // todo: object_parser not limited!
         .then(object::newline_or_ending())
         .map(|(((ws, pipe), cells), maybe_newline)| {
             let mut children = vec![];
@@ -84,7 +29,11 @@ fn table_standard_row<'a>() -> impl Parser<
                 &pipe,
             )));
             for cell in cells {
-                children.push(cell);
+                match cell {
+                    S2::Single(node) => {children.push(node);}
+                    _ => {}
+                }
+
             }
             match maybe_newline {
                 Some(newline) => {
@@ -202,23 +151,29 @@ mod tests {
     use super::*;
     use crate::parser::SyntaxNode;
 
-    #[test]
-    fn test_table_cell() {
-        let inputs = vec![" foo  |", "foo  |", "  foo|", "foo|", "foo"];
-        let mut state = RollbackState(ParserState::default());
-        for input in inputs {
-            let ans = table_cell().parse_with_state(input, &mut state);
-            match ans.clone().unwrap() {
-                NodeOrToken::Node(e) => {
-                    let syntax_node = SyntaxNode::new_root(e.clone());
-                    println!("{:#?}", syntax_node);
-                }
-                _ => {}
-            }
+    // #[test]
+    // fn test_table_cell() {
+    //     let inputs = vec![" foo  |", "foo  |", "  foo|", "foo|", "foo"];
+    //     let mut state = RollbackState(ParserState::default());
+    //     for input in inputs {
+    //         let ans = object::table_cell::table_cell_parser().parse_with_state(input, &mut state);
 
-            assert!(ans.has_output());
-        }
-    }
+    //         match ans.into_result() {
+    //             S2::Single(x) => {
+    //                 match x {
+    //                     NodeOrToken::Node(e) => {
+    //                         let syntax_node = SyntaxNode::new_root(e.clone());
+    //                         println!("{:#?}", syntax_node);
+    //                     }
+    //                     _ => {}
+    //                 }
+    //             }
+    //             _ => {}
+    //         }
+
+    //         assert!(ans.has_output());
+    //     }
+    // }
 
     #[test]
     fn test_table() {

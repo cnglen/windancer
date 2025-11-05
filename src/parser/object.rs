@@ -13,6 +13,7 @@ mod target;
 mod text;
 mod text_markup;
 mod timestamp;
+pub(crate) mod table_cell;
 
 use crate::parser::ParserState;
 use crate::parser::S2;
@@ -23,6 +24,7 @@ use crate::parser::object::line_break::line_break_parser;
 use crate::parser::object::link::{angle_link_parser, plain_link_parser, regular_link_parser};
 use crate::parser::object::r#macro::macro_parser;
 use crate::parser::object::radio_link::radio_link_parser;
+use crate::parser::object::table_cell::table_cell_parser;
 use crate::parser::object::radio_target::radio_target_parser;
 use crate::parser::object::subscript_superscript::subscript_parser;
 use crate::parser::object::subscript_superscript::superscript_parser;
@@ -264,6 +266,38 @@ pub(crate) fn object_parser<'a>()
             )))
         };
 
+        let objects_parsers_supported_by_table_cell = {
+            let non_plain_text_parsers_for_table_cell = choice((
+                // minimal set
+                latex_fragment_parser().clone(),
+                entity_parser().clone(),
+                text_markup_parser(object_parser.clone()).clone(),
+                subscript_parser(object_parser.clone()).clone(),
+                superscript_parser(object_parser.clone()).clone(),
+                // other
+                // citation_parser(object_parser.clone()),
+                // export_snippet_parser().clone(),
+                footnote_reference_parser(object_parser.clone()).clone(),
+                angle_link_parser().clone(),
+                plain_link_parser().clone(),
+                regular_link_parser(object_parser.clone()).clone(),
+                radio_link_parser(object_parser.clone()).clone(),
+                macro_parser().clone(),
+                radio_target_parser(object_parser.clone()).clone(),
+                target_parser(),
+                timestamp_parser(),
+            ));
+
+            // minimal_set_object 中的纯文本解析器
+            let plain_text_parser =
+                plain_text_parser(non_plain_text_parsers_for_table_cell.clone());
+            Parser::boxed(choice((
+                non_plain_text_parsers_for_table_cell,
+                plain_text_parser,
+            )))
+        };
+        
+
         // 第三层：standard_set_object（21个）
         let standard_set_object = {
             // 依赖 minimal_set_object 的解析器（只包含其中3个）
@@ -308,13 +342,13 @@ pub(crate) fn object_parser<'a>()
         // 第四层：完整的23个对象集合
         {
             // // 不在 standard_set_object 中的2个解析器
-            // let table_cell_parser = table_cell_parser(minimal_set_object.clone());
+            let table_cell_parser = table_cell_parser(objects_parsers_supported_by_table_cell.clone());
             // let citation_reference_parser = citation_reference_parser(minimal_set_object.clone());
 
             // 构建不包含 plain_text 的完整集合（22个）
             let full_set_without_plain_text = choice((
                 standard_set_object.clone(), // 21个（包含自己的 plain_text）
-                                             // table_cell_parser,           // 1个
+                table_cell_parser,           // 1个
                                              // citation_reference_parser,   // 1个
                                              // 注意：这里会有重复，但 choice 会处理
             ));
