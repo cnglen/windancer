@@ -169,3 +169,31 @@ pub(crate) fn radio_link_parser<'a>(
 }
 
 // show test with OrgParser, since RadioTargets should be collected firstly.
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::common::{get_parser_output, get_parsers_output, get_parser_output_with_state, get_parsers_output_with_state};
+    use crate::parser::{OrgConfig, OrgParser, object};
+    use pretty_assertions::assert_eq;
+    use rowan::GreenToken;
+
+    #[test]
+    fn test_radio_link() {
+        let radio_targets: Vec<String> = vec!["y".to_string()];
+        let state = RollbackState(ParserState::default_with_radio_targets(radio_targets));
+
+        assert_eq!(
+            get_parsers_output_with_state(
+                object::objects_parser(),
+                " y",
+                state.clone(),
+                ),
+            r##"Root@0..2
+  Text@0..1 " "
+  RadioLink@1..2
+    Text@1..2 "y"
+"##);
+
+    }
+
+}

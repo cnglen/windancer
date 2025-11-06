@@ -50,6 +50,50 @@ pub(crate) fn get_parser_output<'a>(
 }
 
 #[allow(dead_code)]
+pub(crate) fn get_parser_output_with_state<'a>(
+    parser: impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>
+    + Clone,
+    input: &'a str,
+    mut state: RollbackState<ParserState>,
+) -> String {
+    let a = parser.parse_with_state(input, &mut state);
+
+    let mut errors = vec![];
+    errors.push(String::from("errors:"));
+    if a.has_errors() {
+        for error in a.errors() {
+            // println!("{:?}", error);
+            errors.push(format!("{:?}", error));
+        }
+    }
+
+    if a.has_output() {
+        match parser.parse(input).unwrap() {
+            S2::Single(NodeOrToken::Node(node)) => {
+                let syntax_tree: SyntaxNode<OrgLanguage> = SyntaxNode::new_root(node);
+                // println!("{syntax_tree:#?}");
+                format!("{syntax_tree:#?}")
+            }
+
+            S2::Single(NodeOrToken::Token(token)) => {
+                let root = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+                    OrgSyntaxKind::Root.into(),
+                    vec![NodeOrToken::Token(token)],
+                ));
+                let syntax_tree: SyntaxNode<OrgLanguage> =
+                    SyntaxNode::new_root(root.into_node().expect("xx"));
+
+                format!("{syntax_tree:#?}")
+            }
+
+            _ => String::from(""),
+        }
+    } else {
+        errors.join("\n")
+    }
+}
+
+#[allow(dead_code)]
 pub(crate) fn get_parsers_output<'a>(
     parser: impl Parser<
         'a,
@@ -57,9 +101,22 @@ pub(crate) fn get_parsers_output<'a>(
         Vec<S2>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
     > + Clone,
-    input: &'a str,
+    input: &'a str
 ) -> String {
-    let ans = parser.parse(input).unwrap();
+    let mut state = RollbackState(ParserState::default());
+    get_parsers_output_with_state(parser, input, state)
+}
+pub(crate) fn get_parsers_output_with_state<'a>(
+    parser: impl Parser<
+        'a,
+        &'a str,
+        Vec<S2>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    > + Clone,
+    input: &'a str,
+    mut state: RollbackState<ParserState>
+) -> String {
+    let ans = parser.parse_with_state(input, &mut state).unwrap();
     let mut children: Vec<NodeOrToken<GreenNode, GreenToken>> = vec![];
     ans.iter().for_each(|e| match e {
         S2::Single(nt) => {

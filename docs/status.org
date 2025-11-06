@@ -18,14 +18,15 @@
 | angle link         | ✓           |            |             |                                        |
 | plain link         | ✓           |            |             |                                        |
 | regular link       | ✓           |            |             |                                        |
-| table-cell         |              |            |             | todo                                   |
+| table-cell         | ✓           |            |             | todo                                   |
 | radio-target       | ✓           |            |             | todo                                   |
 | timestamp          | ✓           |            |             | todo                                   |
 | target             | ✓           |            |             | todo                                   |
+|--------------------+--------------+------------+-------------+----------------------------------------|
 | statistics-cookie  |              |            |             | low                                    |
 | inline-babel-call  |              |            |             | low                                    |
 | export-snippet     |              |            |             | low                                    |
-| inline-src-block   |              |            |             | low-priority                           |
+| inline-src-block   |              |            |             | low                                    |
 | citation           |              |            |             | low                                    |
 | citation-reference |              |            |             | low                                    |
 
