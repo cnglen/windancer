@@ -1,10 +1,10 @@
 //! Table parser
+use crate::parser::S2;
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserState, object};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
-use crate::parser::S2;
 
 fn table_standard_row<'a>() -> impl Parser<
     'a,
@@ -14,7 +14,11 @@ fn table_standard_row<'a>() -> impl Parser<
 > + Clone {
     object::whitespaces()
         .then(just("|"))
-        .then(object::table_cell::table_cell_parser(object::object_in_table_cell_parser()).repeated().collect::<Vec<_>>()) // todo: object_parser not limited!
+        .then(
+            object::table_cell::table_cell_parser(object::object_in_table_cell_parser())
+                .repeated()
+                .collect::<Vec<_>>(),
+        ) // todo: object_parser not limited!
         .then(object::newline_or_ending())
         .map(|(((ws, pipe), cells), maybe_newline)| {
             let mut children = vec![];
@@ -30,10 +34,11 @@ fn table_standard_row<'a>() -> impl Parser<
             )));
             for cell in cells {
                 match cell {
-                    S2::Single(node) => {children.push(node);}
+                    S2::Single(node) => {
+                        children.push(node);
+                    }
                     _ => {}
                 }
-
             }
             match maybe_newline {
                 Some(newline) => {

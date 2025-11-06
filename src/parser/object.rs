@@ -195,41 +195,44 @@ pub(crate) fn objects_parser<'a>()
 // 4. plain_text's parser dpendnes all other 22 object's parsers，used to lookahead NOT
 // TODO: select! use prev_char state? performance? first char
 
-pub(crate) fn object_parser<'a>() -> 
-impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone{
+pub(crate) fn object_parser<'a>()
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+{
     get_object_parser().0
 }
 
-pub(crate) fn standard_set_object_parser<'a>() -> 
-impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone{
+pub(crate) fn standard_set_object_parser<'a>()
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+{
     get_object_parser().1
 }
 
-pub(crate) fn minimal_set_object_parser<'a>() -> 
-impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone{
+pub(crate) fn minimal_set_object_parser<'a>()
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+{
     get_object_parser().2
 }
 
-pub(crate) fn object_in_regular_link_parser<'a>() -> 
-impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone{
+pub(crate) fn object_in_regular_link_parser<'a>()
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+{
     get_object_parser().3
 }
 
-pub(crate) fn object_in_table_cell_parser<'a>() -> 
-impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone{
+pub(crate) fn object_in_table_cell_parser<'a>()
+-> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+{
     get_object_parser().4
 }
 
 // (full_set_object, standard_set_object, minimal_set_object, object_in_regular_link, object_in_table_cell)
-pub(crate) fn get_object_parser<'a>()
-                                       -> (
-    impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone,
-    impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone,    
+pub(crate) fn get_object_parser<'a>() -> (
     impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone,
     impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone,
-    impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-)
-{
+    impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone,
+    impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone,
+    impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone,
+) {
     let mut object_parser = Recursive::declare();
 
     // independent object (12)
@@ -345,16 +348,16 @@ pub(crate) fn get_object_parser<'a>()
 
         // 构建不包含 plain_text 的 standard_set_object（20个）
         let standard_set_without_plain_text = choice((
-            radio_link_parser,           // 1个
-            regular_link_parser,         // 1个
+            radio_link_parser,          // 1个
+            regular_link_parser,        // 1个
             independent_object.clone(), // 12个
-            radio_target_parser,         // 1个
-            text_markup_parser,          // 1个
-            subscript_parser,            // 1个
-            superscript_parser,          // 1个
-            footnote_reference_parser,   // 1个
-                                         // citation_parser,             // 1个
-                                         // 总共：12 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 = 20个
+            radio_target_parser,        // 1个
+            text_markup_parser,         // 1个
+            subscript_parser,           // 1个
+            superscript_parser,         // 1个
+            footnote_reference_parser,  // 1个
+                                        // citation_parser,             // 1个
+                                        // 总共：12 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 = 20个
         ));
 
         // standard_set_object 中的纯文本解析器
@@ -390,7 +393,13 @@ pub(crate) fn get_object_parser<'a>()
     )));
     let full_set_object = Parser::boxed(object_parser);
 
-    (full_set_object, standard_set_object, minimal_set_object, object_in_regular_link, object_in_table_cell)
+    (
+        full_set_object,
+        standard_set_object,
+        minimal_set_object,
+        object_in_regular_link,
+        object_in_table_cell,
+    )
 }
 
 pub(crate) fn object_parser_old<'a>()
@@ -500,8 +509,7 @@ pub(crate) fn object_parser_old<'a>()
         let standard_set_object = {
             // 依赖 minimal_set_object 的解析器（只包含其中3个）
             let radio_link_parser = radio_link_parser(minimal_set_object.clone());
-            let regular_link_parser =
-                regular_link_parser(object_in_regular_link);
+            let regular_link_parser = regular_link_parser(object_in_regular_link);
             let radio_target_parser = radio_target_parser(minimal_set_object.clone());
 
             // 依赖 standard_set_object 的解析器（5个）
@@ -513,16 +521,16 @@ pub(crate) fn object_parser_old<'a>()
 
             // 构建不包含 plain_text 的 standard_set_object（20个）
             let standard_set_without_plain_text = choice((
-                radio_link_parser,           // 1个
-                regular_link_parser,         // 1个
+                radio_link_parser,          // 1个
+                regular_link_parser,        // 1个
                 independent_object.clone(), // 12个
-                radio_target_parser,         // 1个
-                text_markup_parser,          // 1个
-                subscript_parser,            // 1个
-                superscript_parser,          // 1个
-                footnote_reference_parser,   // 1个
-                                             // citation_parser,             // 1个
-                                             // 总共：12 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 = 20个
+                radio_target_parser,        // 1个
+                text_markup_parser,         // 1个
+                subscript_parser,           // 1个
+                superscript_parser,         // 1个
+                footnote_reference_parser,  // 1个
+                                            // citation_parser,             // 1个
+                                            // 总共：12 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 = 20个
             ));
 
             // standard_set_object 中的纯文本解析器
@@ -540,8 +548,7 @@ pub(crate) fn object_parser_old<'a>()
         // 第四层：完整的23个对象集合
         {
             // // 不在 standard_set_object 中的2个解析器
-            let table_cell_parser =
-                table_cell_parser(object_in_table_cell.clone());
+            let table_cell_parser = table_cell_parser(object_in_table_cell.clone());
             // let citation_reference_parser = citation_reference_parser(minimal_set_object.clone());
 
             // 构建不包含 plain_text 的完整集合（22个）
@@ -578,13 +585,11 @@ fn is_all_whitespace(s: String) -> bool {
 mod tests {
     use super::*;
     use crate::parser::common::get_parsers_output;
-    use crate::parser::syntax::OrgLanguage;
-    use rowan::SyntaxNode;
-    use rowan::{GreenNode, GreenToken, NodeOrToken};
+    use crate::parser::{OrgConfig, OrgParser};
     use pretty_assertions::assert_eq;
+    use rowan::GreenToken;
 
-
-    fn get_objects_string()-> String {
+    fn get_objects_string() -> String {
         r##"
 minimal set objects(6)
 
@@ -634,10 +639,8 @@ other objects (2):
 
 23 citation-reference: todo
 "##.to_owned()
-
-            
     }
-    
+
     #[test]
     fn test_is_ending() {
         let mut state = RollbackState(ParserState::default());
@@ -672,6 +675,7 @@ other objects (2):
             );
         }
     }
+
     #[test]
     fn test_line() {
         let mut state = RollbackState(ParserState::default());
@@ -733,9 +737,14 @@ L3
 
     #[test]
     fn test_minimal_set_object() {
-        let minimal_objects_parser = minimal_set_object_parser().repeated().at_least(1).collect::<Vec<_>>();
+        let minimal_objects_parser = minimal_set_object_parser()
+            .repeated()
+            .at_least(1)
+            .collect::<Vec<_>>();
 
-        assert_eq!(get_parsers_output(minimal_objects_parser, &get_objects_string()), r##"Root@0..749
+        assert_eq!(
+            get_parsers_output(minimal_objects_parser, &get_objects_string()),
+            r##"Root@0..749
   Text@0..41 "\nminimal set objects( ..."
   Bold@41..47
     Asterisk@41..42 "*"
@@ -786,15 +795,20 @@ L3
     Caret@209..210 "^"
     Text@210..211 "3"
   Text@211..749 "\n\n06 plain-text: text ..."
-"##);
-        
+"##
+        );
     }
 
     #[test]
     fn test_standard_set_object() {
-        let standard_objects_parser = standard_set_object_parser().repeated().at_least(1).collect::<Vec<_>>();
+        let standard_objects_parser = standard_set_object_parser()
+            .repeated()
+            .at_least(1)
+            .collect::<Vec<_>>();
 
-        assert_eq!(get_parsers_output(standard_objects_parser, &get_objects_string()), r##"Root@0..749
+        assert_eq!(
+            get_parsers_output(standard_objects_parser, &get_objects_string()),
+            r##"Root@0..749
   Text@0..41 "\nminimal set objects( ..."
   Bold@41..47
     Asterisk@41..42 "*"
@@ -893,36 +907,483 @@ L3
       RightSquareBracket@535..536 "]"
     RightSquareBracket@536..537 "]"
   Text@537..749 "\n\n17 statistics-cooki ..."
-"##);
-        
+"##
+        );
     }
-    
+
     #[test]
-    fn test_object() {
-        // let input = "[[https://www.baidu.com][baidu]]";
-        let input = "foo [[https://www.baidu.com][baidu]]";
+    fn test_object_in_table_cell() {
+        let table_string_with_objects = r##"* table
+| object kind           | object value           | supported in table cell |
+|-----------------------+------------------------+-------------------------|
+| 01 text markup        | *bold*                 | y                       |
+| 02 entity             | \alpha                 | y                       |
+| 03 latex fragment     | $\sum_{i=1}^{n} i$     | y                       |
+| 04 superscript        | a_1                    | y                       |
+| 05 subscript          | c^{2}                  | y                       |
+| 06 plain text         | just text              | y                       |
+| 07 footnote-reference | [fn:1]                 | y                       |
+| 08 line-break         | \\                     | n                       |
+| 09 timestamp          | <1234-07-31>           | y                       |
+| 10 macro              | {{{title}}}            | y                       |
+| 11 radio-target       | <<<radio target 011>>> | y                       |
+| 12 target             | <<target 012>>         | y                       |
+| 13 plain link         | https://foo.bar        | y                       |
+| 14 angle link         | <mailto:foo@bar>       | y                       |
+| 15 radio link         | radio target 011       | y                       |
+| 16 regular link       | [[target 011]]         | y                       |
+| 17 statistics-cookie  | todo                   | n                       |
+| 18 inline-babel-call  | todo                   | n                       |
+| 19 inline-src-block   | todo                   | n                       |
+| 20 citation           | todo                   | y                       |
+| 21 export-snippet     | todo                   | y                       |
+| 22 table-cell         | NA                     | n                       |
+| 23 citation-reference | todo                   | n                       |
+"##;
 
-        for e in objects_parser().parse(input).unwrap() {
-            match e {
-                S2::Single(node_or_token) => {
-                    match node_or_token {
-                        NodeOrToken::Node(node) => {
-                            let syntax_tree: SyntaxNode<OrgLanguage> = SyntaxNode::new_root(node);
-                            println!("{:#?}", syntax_tree);
-                        }
+        let org_config = OrgConfig::default();
+        let mut parser = OrgParser::new(org_config);
+        let parser_output = parser.parse(&table_string_with_objects);
+        let _green_tree = parser_output.green();
+        let syntax_tree = parser_output.syntax();
 
-                        NodeOrToken::Token(token) => {
-                            println!("{:#?}", token);
-                        }
-
-                        _ => {}
-                    }
-                    // println!("{:?}", node);
-                    // let syntax_tree: SyntaxNode<OrgLanguage> = SyntaxNode::new_root(node.into_node().expect("xxx"));
-                    // println!("{:#?}", syntax_tree);
-                }
-                _ => {}
-            };
-        }
+        assert_eq!(
+            format!("{syntax_tree:#?}"),
+            r##"Document@0..1933
+  HeadingSubtree@0..1933
+    HeadingRow@0..8
+      HeadingRowStars@0..1 "*"
+      Whitespace@1..2 " "
+      HeadingRowTitle@2..7 "table"
+      Newline@7..8 "\n"
+    Section@8..1933
+      Table@8..1933
+        TableStandardRow@8..85
+          Pipe@8..9 "|"
+          TableCell@9..33
+            Text@9..21 " object kind"
+            Whitespace@21..32 "           "
+            Pipe@32..33 "|"
+          TableCell@33..58
+            Text@33..46 " object value"
+            Whitespace@46..57 "           "
+            Pipe@57..58 "|"
+          TableCell@58..84
+            Text@58..82 " supported in table cell"
+            Whitespace@82..83 " "
+            Pipe@83..84 "|"
+          Newline@84..85 "\n"
+        TableRuleRow@85..162
+          Pipe@85..86 "|"
+          Dash@86..87 "-"
+          Text@87..161 "--------------------- ..."
+          Newline@161..162 "\n"
+        TableStandardRow@162..239
+          Pipe@162..163 "|"
+          TableCell@163..187
+            Text@163..178 " 01 text markup"
+            Whitespace@178..186 "        "
+            Pipe@186..187 "|"
+          TableCell@187..212
+            Text@187..188 " "
+            Bold@188..194
+              Asterisk@188..189 "*"
+              Text@189..193 "bold"
+              Asterisk@193..194 "*"
+            Whitespace@194..211 "                 "
+            Pipe@211..212 "|"
+          TableCell@212..238
+            Text@212..214 " y"
+            Whitespace@214..237 "                       "
+            Pipe@237..238 "|"
+          Newline@238..239 "\n"
+        TableStandardRow@239..316
+          Pipe@239..240 "|"
+          TableCell@240..264
+            Text@240..250 " 02 entity"
+            Whitespace@250..263 "             "
+            Pipe@263..264 "|"
+          TableCell@264..289
+            Text@264..265 " "
+            Entity@265..271
+              BackSlash@265..266 "\\"
+              EntityName@266..271 "alpha"
+            Whitespace@271..288 "                 "
+            Pipe@288..289 "|"
+          TableCell@289..315
+            Text@289..291 " y"
+            Whitespace@291..314 "                       "
+            Pipe@314..315 "|"
+          Newline@315..316 "\n"
+        TableStandardRow@316..393
+          Pipe@316..317 "|"
+          TableCell@317..341
+            Text@317..335 " 03 latex fragment"
+            Whitespace@335..340 "     "
+            Pipe@340..341 "|"
+          TableCell@341..366
+            Text@341..342 " "
+            LatexFragment@342..360
+              Dollar@342..343 "$"
+              Text@343..359 "\\sum_{i=1}^{n} i"
+              Dollar@359..360 "$"
+            Whitespace@360..365 "     "
+            Pipe@365..366 "|"
+          TableCell@366..392
+            Text@366..368 " y"
+            Whitespace@368..391 "                       "
+            Pipe@391..392 "|"
+          Newline@392..393 "\n"
+        TableStandardRow@393..470
+          Pipe@393..394 "|"
+          TableCell@394..418
+            Text@394..409 " 04 superscript"
+            Whitespace@409..417 "        "
+            Pipe@417..418 "|"
+          TableCell@418..443
+            Text@418..420 " a"
+            Subscript@420..422
+              Caret@420..421 "_"
+              Text@421..422 "1"
+            Whitespace@422..442 "                    "
+            Pipe@442..443 "|"
+          TableCell@443..469
+            Text@443..445 " y"
+            Whitespace@445..468 "                       "
+            Pipe@468..469 "|"
+          Newline@469..470 "\n"
+        TableStandardRow@470..547
+          Pipe@470..471 "|"
+          TableCell@471..495
+            Text@471..484 " 05 subscript"
+            Whitespace@484..494 "          "
+            Pipe@494..495 "|"
+          TableCell@495..520
+            Text@495..497 " c"
+            Superscript@497..501
+              Caret@497..498 "^"
+              LeftCurlyBracket@498..499 "{"
+              Text@499..500 "2"
+              RightCurlyBracket@500..501 "}"
+            Whitespace@501..519 "                  "
+            Pipe@519..520 "|"
+          TableCell@520..546
+            Text@520..522 " y"
+            Whitespace@522..545 "                       "
+            Pipe@545..546 "|"
+          Newline@546..547 "\n"
+        TableStandardRow@547..624
+          Pipe@547..548 "|"
+          TableCell@548..572
+            Text@548..562 " 06 plain text"
+            Whitespace@562..571 "         "
+            Pipe@571..572 "|"
+          TableCell@572..597
+            Text@572..582 " just text"
+            Whitespace@582..596 "              "
+            Pipe@596..597 "|"
+          TableCell@597..623
+            Text@597..599 " y"
+            Whitespace@599..622 "                       "
+            Pipe@622..623 "|"
+          Newline@623..624 "\n"
+        TableStandardRow@624..701
+          Pipe@624..625 "|"
+          TableCell@625..649
+            Text@625..647 " 07 footnote-reference"
+            Whitespace@647..648 " "
+            Pipe@648..649 "|"
+          TableCell@649..674
+            Text@649..650 " "
+            FootnoteReference@650..656
+              LeftSquareBracket@650..651 "["
+              Text@651..653 "fn"
+              Colon@653..654 ":"
+              FootnoteReferenceLabel@654..655 "1"
+              RightSquareBracket@655..656 "]"
+            Whitespace@656..673 "                 "
+            Pipe@673..674 "|"
+          TableCell@674..700
+            Text@674..676 " y"
+            Whitespace@676..699 "                       "
+            Pipe@699..700 "|"
+          Newline@700..701 "\n"
+        TableStandardRow@701..778
+          Pipe@701..702 "|"
+          TableCell@702..726
+            Text@702..716 " 08 line-break"
+            Whitespace@716..725 "         "
+            Pipe@725..726 "|"
+          TableCell@726..751
+            Text@726..729 " \\\\"
+            Whitespace@729..750 "                     "
+            Pipe@750..751 "|"
+          TableCell@751..777
+            Text@751..753 " n"
+            Whitespace@753..776 "                       "
+            Pipe@776..777 "|"
+          Newline@777..778 "\n"
+        TableStandardRow@778..855
+          Pipe@778..779 "|"
+          TableCell@779..803
+            Text@779..792 " 09 timestamp"
+            Whitespace@792..802 "          "
+            Pipe@802..803 "|"
+          TableCell@803..828
+            Text@803..804 " "
+            Timestamp@804..816
+              Text@804..816 "<1234-07-31>"
+            Whitespace@816..827 "           "
+            Pipe@827..828 "|"
+          TableCell@828..854
+            Text@828..830 " y"
+            Whitespace@830..853 "                       "
+            Pipe@853..854 "|"
+          Newline@854..855 "\n"
+        TableStandardRow@855..932
+          Pipe@855..856 "|"
+          TableCell@856..880
+            Text@856..865 " 10 macro"
+            Whitespace@865..879 "              "
+            Pipe@879..880 "|"
+          TableCell@880..905
+            Text@880..881 " "
+            Macro@881..892
+              LeftCurlyBracket3@881..884 "{{{"
+              MacroName@884..889 "title"
+              RightCurlyBracket3@889..892 "}}}"
+            Whitespace@892..904 "            "
+            Pipe@904..905 "|"
+          TableCell@905..931
+            Text@905..907 " y"
+            Whitespace@907..930 "                       "
+            Pipe@930..931 "|"
+          Newline@931..932 "\n"
+        TableStandardRow@932..1009
+          Pipe@932..933 "|"
+          TableCell@933..957
+            Text@933..949 " 11 radio-target"
+            Whitespace@949..956 "       "
+            Pipe@956..957 "|"
+          TableCell@957..982
+            Text@957..958 " "
+            RadioTarget@958..980
+              LeftAngleBracket3@958..961 "<<<"
+              RadioLink@961..977
+                Text@961..977 "radio target 011"
+              RightAngleBracket3@977..980 ">>>"
+            Whitespace@980..981 " "
+            Pipe@981..982 "|"
+          TableCell@982..1008
+            Text@982..984 " y"
+            Whitespace@984..1007 "                       "
+            Pipe@1007..1008 "|"
+          Newline@1008..1009 "\n"
+        TableStandardRow@1009..1086
+          Pipe@1009..1010 "|"
+          TableCell@1010..1034
+            Text@1010..1020 " 12 target"
+            Whitespace@1020..1033 "             "
+            Pipe@1033..1034 "|"
+          TableCell@1034..1059
+            Text@1034..1035 " "
+            Target@1035..1049
+              LeftAngleBracket2@1035..1037 "<<"
+              Text@1037..1047 "target 012"
+              RightAngleBracket2@1047..1049 ">>"
+            Whitespace@1049..1058 "         "
+            Pipe@1058..1059 "|"
+          TableCell@1059..1085
+            Text@1059..1061 " y"
+            Whitespace@1061..1084 "                       "
+            Pipe@1084..1085 "|"
+          Newline@1085..1086 "\n"
+        TableStandardRow@1086..1163
+          Pipe@1086..1087 "|"
+          TableCell@1087..1111
+            Text@1087..1101 " 13 plain link"
+            Whitespace@1101..1110 "         "
+            Pipe@1110..1111 "|"
+          TableCell@1111..1136
+            Text@1111..1112 " "
+            PlainLink@1112..1127
+              Text@1112..1117 "https"
+              Colon@1117..1118 ":"
+              Text@1118..1127 "//foo.bar"
+            Whitespace@1127..1135 "        "
+            Pipe@1135..1136 "|"
+          TableCell@1136..1162
+            Text@1136..1138 " y"
+            Whitespace@1138..1161 "                       "
+            Pipe@1161..1162 "|"
+          Newline@1162..1163 "\n"
+        TableStandardRow@1163..1240
+          Pipe@1163..1164 "|"
+          TableCell@1164..1188
+            Text@1164..1178 " 14 angle link"
+            Whitespace@1178..1187 "         "
+            Pipe@1187..1188 "|"
+          TableCell@1188..1213
+            Text@1188..1189 " "
+            AngleLink@1189..1205
+              LeftAngleBracket@1189..1190 "<"
+              Text@1190..1196 "mailto"
+              Colon@1196..1197 ":"
+              Text@1197..1204 "foo@bar"
+              RightAngleBracket@1204..1205 ">"
+            Whitespace@1205..1212 "       "
+            Pipe@1212..1213 "|"
+          TableCell@1213..1239
+            Text@1213..1215 " y"
+            Whitespace@1215..1238 "                       "
+            Pipe@1238..1239 "|"
+          Newline@1239..1240 "\n"
+        TableStandardRow@1240..1317
+          Pipe@1240..1241 "|"
+          TableCell@1241..1265
+            Text@1241..1255 " 15 radio link"
+            Whitespace@1255..1264 "         "
+            Pipe@1264..1265 "|"
+          TableCell@1265..1290
+            Text@1265..1266 " "
+            RadioLink@1266..1282
+              RadioLink@1266..1282
+                Text@1266..1282 "radio target 011"
+            Whitespace@1282..1289 "       "
+            Pipe@1289..1290 "|"
+          TableCell@1290..1316
+            Text@1290..1292 " y"
+            Whitespace@1292..1315 "                       "
+            Pipe@1315..1316 "|"
+          Newline@1316..1317 "\n"
+        TableStandardRow@1317..1394
+          Pipe@1317..1318 "|"
+          TableCell@1318..1342
+            Text@1318..1334 " 16 regular link"
+            Whitespace@1334..1341 "       "
+            Pipe@1341..1342 "|"
+          TableCell@1342..1367
+            Text@1342..1343 " "
+            Link@1343..1357
+              LeftSquareBracket@1343..1344 "["
+              LinkPath@1344..1356
+                LeftSquareBracket@1344..1345 "["
+                Text@1345..1355 "target 011"
+                RightSquareBracket@1355..1356 "]"
+              RightSquareBracket@1356..1357 "]"
+            Whitespace@1357..1366 "         "
+            Pipe@1366..1367 "|"
+          TableCell@1367..1393
+            Text@1367..1369 " y"
+            Whitespace@1369..1392 "                       "
+            Pipe@1392..1393 "|"
+          Newline@1393..1394 "\n"
+        TableStandardRow@1394..1471
+          Pipe@1394..1395 "|"
+          TableCell@1395..1419
+            Text@1395..1416 " 17 statistics-cookie"
+            Whitespace@1416..1418 "  "
+            Pipe@1418..1419 "|"
+          TableCell@1419..1444
+            Text@1419..1424 " todo"
+            Whitespace@1424..1443 "                   "
+            Pipe@1443..1444 "|"
+          TableCell@1444..1470
+            Text@1444..1446 " n"
+            Whitespace@1446..1469 "                       "
+            Pipe@1469..1470 "|"
+          Newline@1470..1471 "\n"
+        TableStandardRow@1471..1548
+          Pipe@1471..1472 "|"
+          TableCell@1472..1496
+            Text@1472..1493 " 18 inline-babel-call"
+            Whitespace@1493..1495 "  "
+            Pipe@1495..1496 "|"
+          TableCell@1496..1521
+            Text@1496..1501 " todo"
+            Whitespace@1501..1520 "                   "
+            Pipe@1520..1521 "|"
+          TableCell@1521..1547
+            Text@1521..1523 " n"
+            Whitespace@1523..1546 "                       "
+            Pipe@1546..1547 "|"
+          Newline@1547..1548 "\n"
+        TableStandardRow@1548..1625
+          Pipe@1548..1549 "|"
+          TableCell@1549..1573
+            Text@1549..1569 " 19 inline-src-block"
+            Whitespace@1569..1572 "   "
+            Pipe@1572..1573 "|"
+          TableCell@1573..1598
+            Text@1573..1578 " todo"
+            Whitespace@1578..1597 "                   "
+            Pipe@1597..1598 "|"
+          TableCell@1598..1624
+            Text@1598..1600 " n"
+            Whitespace@1600..1623 "                       "
+            Pipe@1623..1624 "|"
+          Newline@1624..1625 "\n"
+        TableStandardRow@1625..1702
+          Pipe@1625..1626 "|"
+          TableCell@1626..1650
+            Text@1626..1638 " 20 citation"
+            Whitespace@1638..1649 "           "
+            Pipe@1649..1650 "|"
+          TableCell@1650..1675
+            Text@1650..1655 " todo"
+            Whitespace@1655..1674 "                   "
+            Pipe@1674..1675 "|"
+          TableCell@1675..1701
+            Text@1675..1677 " y"
+            Whitespace@1677..1700 "                       "
+            Pipe@1700..1701 "|"
+          Newline@1701..1702 "\n"
+        TableStandardRow@1702..1779
+          Pipe@1702..1703 "|"
+          TableCell@1703..1727
+            Text@1703..1721 " 21 export-snippet"
+            Whitespace@1721..1726 "     "
+            Pipe@1726..1727 "|"
+          TableCell@1727..1752
+            Text@1727..1732 " todo"
+            Whitespace@1732..1751 "                   "
+            Pipe@1751..1752 "|"
+          TableCell@1752..1778
+            Text@1752..1754 " y"
+            Whitespace@1754..1777 "                       "
+            Pipe@1777..1778 "|"
+          Newline@1778..1779 "\n"
+        TableStandardRow@1779..1856
+          Pipe@1779..1780 "|"
+          TableCell@1780..1804
+            Text@1780..1794 " 22 table-cell"
+            Whitespace@1794..1803 "         "
+            Pipe@1803..1804 "|"
+          TableCell@1804..1829
+            Text@1804..1807 " NA"
+            Whitespace@1807..1828 "                     "
+            Pipe@1828..1829 "|"
+          TableCell@1829..1855
+            Text@1829..1831 " n"
+            Whitespace@1831..1854 "                       "
+            Pipe@1854..1855 "|"
+          Newline@1855..1856 "\n"
+        TableStandardRow@1856..1933
+          Pipe@1856..1857 "|"
+          TableCell@1857..1881
+            Text@1857..1879 " 23 citation-reference"
+            Whitespace@1879..1880 " "
+            Pipe@1880..1881 "|"
+          TableCell@1881..1906
+            Text@1881..1886 " todo"
+            Whitespace@1886..1905 "                   "
+            Pipe@1905..1906 "|"
+          TableCell@1906..1932
+            Text@1906..1908 " n"
+            Whitespace@1908..1931 "                       "
+            Pipe@1931..1932 "|"
+          Newline@1932..1933 "\n"
+"##
+        );
     }
 }

@@ -29,18 +29,19 @@ pub(crate) fn get_parser_output<'a>(
                 let syntax_tree: SyntaxNode<OrgLanguage> = SyntaxNode::new_root(node);
                 // println!("{syntax_tree:#?}");
                 format!("{syntax_tree:#?}")
-            },
+            }
 
             S2::Single(NodeOrToken::Token(token)) => {
                 let root = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                     OrgSyntaxKind::Root.into(),
                     vec![NodeOrToken::Token(token)],
                 ));
-                let syntax_tree: SyntaxNode<OrgLanguage> = SyntaxNode::new_root(root.into_node().expect("xx"));
-                
+                let syntax_tree: SyntaxNode<OrgLanguage> =
+                    SyntaxNode::new_root(root.into_node().expect("xx"));
+
                 format!("{syntax_tree:#?}")
             }
-            
+
             _ => String::from(""),
         }
     } else {

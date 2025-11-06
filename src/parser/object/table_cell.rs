@@ -1,7 +1,7 @@
 use crate::parser::ParserState;
 use crate::parser::S2;
-use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::object;
+use crate::parser::syntax::OrgSyntaxKind;
 
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
@@ -15,26 +15,19 @@ pub(crate) fn table_cell_parser<'a>(
         S2,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
     > + Clone,
-)
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+) -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
 {
+    let minimal_and_other_objects_parser = object_parser.clone().repeated().collect::<Vec<S2>>();
 
-    let minimal_and_other_objects_parser = object_parser
-        .clone()
-        .repeated()
-        .collect::<Vec<S2>>();
-    
     // CONTENTS SPACES|
     let contents_inner = none_of("|\n")
         .and_is(object::whitespaces().then(just("|")).not())
         .repeated()
-        .to_slice()
-        ;
+        .to_slice();
     let contents = minimal_and_other_objects_parser.nested_in(contents_inner);
     // note: EOL not supported for simplicity
     let pipe = just("|");
 
-        
     contents
         .then(object::whitespaces())
         .then(pipe)
@@ -55,7 +48,7 @@ pub(crate) fn table_cell_parser<'a>(
                     _ => {}
                 }
             }
-            
+
             // if contents.len()>0 {
             //     children.push(NodeOrToken::Token(GreenToken::new(
             //         OrgSyntaxKind::Text.into(),
@@ -63,30 +56,26 @@ pub(crate) fn table_cell_parser<'a>(
             //     )));
             // }
 
-            if ws.len()>0 {
+            if ws.len() > 0 {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Whitespace.into(),
                     &ws,
                 )));
             }
 
-            if pipe.len()>0 {
+            if pipe.len() > 0 {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Pipe.into(),
                     &pipe,
                 )));
             }
-            
-            S2::Single(
-                NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                    OrgSyntaxKind::TableCell.into(),
-                    children,
-                ))
-            )
+
+            S2::Single(NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+                OrgSyntaxKind::TableCell.into(),
+                children,
+            )))
         })
-        
-        
-    
+
     // object::whitespaces()
     //     .then(
     //         none_of("\n|")
@@ -136,30 +125,53 @@ pub(crate) fn table_cell_parser<'a>(
     //                 children,
     //             ))
     //         )
-        // })
+    // })
 }
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::common::{get_parser_output};
+    use crate::parser::common::get_parser_output;
     use pretty_assertions::assert_eq;
 
     #[test]
     fn test_table_cell_01() {
-
-        assert_eq!(get_parser_output(table_cell_parser(object::object_in_table_cell_parser()), " foo |"), r##"TableCell@0..6
+        assert_eq!(
+            get_parser_output(
+                table_cell_parser(object::object_in_table_cell_parser()),
+                " foo |"
+            ),
+            r##"TableCell@0..6
   Text@0..4 " foo"
   Whitespace@4..5 " "
   Pipe@5..6 "|"
-"##);
+"##
+        );
     }
 
     #[test]
     fn test_table_cell_02() {
-        assert_eq!(get_parser_output(table_cell_parser(object::object_in_table_cell_parser()), " |"), r##"TableCell@0..2
+        assert_eq!(
+            get_parser_output(
+                table_cell_parser(object::object_in_table_cell_parser()),
+                " |"
+            ),
+            r##"TableCell@0..2
   Whitespace@0..1 " "
   Pipe@1..2 "|"
-"##);
+"##
+        );
     }
-    
+
+    #[test]
+    fn test_table_cell_03() {
+        assert_eq!(
+            get_parser_output(
+                table_cell_parser(object::object_in_table_cell_parser()),
+                "|"
+            ),
+            r##"TableCell@0..1
+  Pipe@0..1 "|"
+"##
+        );
+    }
 }

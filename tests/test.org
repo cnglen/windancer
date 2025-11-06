@@ -219,6 +219,33 @@ a ~=*/bold_italic/*=~ line
 
 * table test
 
+| object kind           | object value           | supported in table cell |
+|-----------------------+------------------------+-------------------------|
+| 01 text markup        | *bold*                 | y                       |
+| 02 entity             | \alpha                 | y                       |
+| 03 latex fragment     | $\sum_{i=1}^{n} i$     | y                       |
+| 04 superscript        | a_1                    | y                       |
+| 05 subscript          | c^{2}                  | y                       |
+| 06 plain text         | just text              | y                       |
+| 07 footnote-reference | [fn:1]                 | y                       |
+| 08 line-break         | \\                     | n                       |
+| 09 timestamp          | <1234-07-31>           | y                       |
+| 10 macro              | {{{title}}}            | y                       |
+| 11 radio-target       | <<<radio target 011>>> | y                       |
+| 12 target             | <<target 012>>         | y                       |
+| 13 plain link         | https://foo.bar        | y                       |
+| 14 angle link         | <mailto:foo@bar>       | y                       |
+| 15 radio link         | radio target 011       | y                       |
+| 16 regular link       | [[target 011]]             | y                       |
+| 17 statistics-cookie  | todo                   | n                       |
+| 18 inline-babel-call  | todo                   | n                       |
+| 19 inline-src-block   | todo                   | n                       |
+| 20 citation           | todo                   | y                       |
+| 21 export-snippet     | todo                   | y                       |
+| 22 table-cell         | NA                     | n                       |
+| 23 citation-reference | todo                   | n                       |
+
+
 #+CAPTION: table
   | Name       | Phone | Age | as  |
   | /          | <r10> | <l> | <c> |
@@ -247,25 +274,7 @@ table cell's CONTENT can contain:
 
   
   
-| object kind     | object value               | status |
-|-----------------+----------------------------+--------|
-| plain text      | just text                  | yes    |
-| text markup     | *bold*                     |        |
-| entity          | \alpha                     |        |
-| latex fragment  | $\sum_{i=1}^{n} i$         |        |
-| superscript     | a_1                        |        |
-| subscript       | c^{2}                      |        |
-| radio link      | radio target in cell       |        |
-| plain link      | https://www.foo.bar        |        |
-| regular link    | [[target in cell][target link]]                |        |
-| angle link      | <mailto:foo@bar.org>       |        |
-| macro           | {{{title}}}                |        |
-| radio target    | <<<radio target in cell>>> |        |
-| target          | <<target in cell>>         |        |
-| timestamps      | <1234-04-23>               |        |
-|-----------------+----------------------------+--------|
-| citation        |                            | N      |
-| export snippets |                            | N      |
+
 
 
 
