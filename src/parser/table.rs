@@ -14,7 +14,7 @@ fn table_standard_row<'a>() -> impl Parser<
 > + Clone {
     object::whitespaces()
         .then(just("|"))
-        .then(object::table_cell::table_cell_parser(object::object_parser()).repeated().collect::<Vec<_>>()) // todo: object_parser not limited!
+        .then(object::table_cell::table_cell_parser(object::object_in_table_cell_parser()).repeated().collect::<Vec<_>>()) // todo: object_parser not limited!
         .then(object::newline_or_ending())
         .map(|(((ws, pipe), cells), maybe_newline)| {
             let mut children = vec![];

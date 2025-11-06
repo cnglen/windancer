@@ -22,7 +22,6 @@ pub(crate) fn table_cell_parser<'a>(
     let minimal_and_other_objects_parser = object_parser
         .clone()
         .repeated()
-        .at_least(1)
         .collect::<Vec<S2>>();
     
     // CONTENTS SPACES|
@@ -33,15 +32,16 @@ pub(crate) fn table_cell_parser<'a>(
         ;
     let contents = minimal_and_other_objects_parser.nested_in(contents_inner);
     // note: EOL not supported for simplicity
-    let pipe = choice((just("|"), end().to("")));
+    let pipe = just("|");
 
         
     contents
         .then(object::whitespaces())
         .then(pipe)
+        // .map(|s|{println!("table_cell_parser: s={s:?}"); s})
         .map(|((contents, ws), pipe)| {
             let mut children = vec![];
-            // println!("{:?}; {:?}; {:?}", contents, ws, pipe_or_eol);
+            // println!("contents={:?}; ws={:?}; pipe={:?}", contents, ws, pipe);
 
             for node in contents {
                 match node {
@@ -144,14 +144,22 @@ mod tests {
     use crate::parser::common::{get_parser_output};
     use pretty_assertions::assert_eq;
 
-//     #[test]
-//     fn test_table_cell_01() {
+    #[test]
+    fn test_table_cell_01() {
 
-//         assert_eq!(get_parser_output(table_cell_parser(), " foo |"), r##"TableCell@0..6
-//   Text@0..4 " foo"
-//   Whitespace@4..5 " "
-//   Pipe@5..6 "|"
-// "##);
-//     }
+        assert_eq!(get_parser_output(table_cell_parser(object::object_in_table_cell_parser()), " foo |"), r##"TableCell@0..6
+  Text@0..4 " foo"
+  Whitespace@4..5 " "
+  Pipe@5..6 "|"
+"##);
+    }
 
+    #[test]
+    fn test_table_cell_02() {
+        assert_eq!(get_parser_output(table_cell_parser(object::object_in_table_cell_parser()), " |"), r##"TableCell@0..2
+  Whitespace@0..1 " "
+  Pipe@1..2 "|"
+"##);
+    }
+    
 }

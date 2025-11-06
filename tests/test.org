@@ -226,6 +226,53 @@ a ~=*/bold_italic/*=~ line
   | Peter Jack |   123 | 2   |  4  |
   | Anna       | 54321 | 125 | 999 |
 
+
+table cell with objects:
+
+table cell's CONTENT can contain:
+- minimal set of objects:
+  - _plain text_
+  - _text markup_
+  - _entities_
+  - _LaTeX fragments_
+  - _superscripts_
+  - _subscripts_
+- citations, export snippets,
+- footnote references
+- links
+- macros
+- radio targets
+- targets
+- timestamps
+
+  
+  
+| object kind     | object value               | status |
+|-----------------+----------------------------+--------|
+| plain text      | just text                  | yes    |
+| text markup     | *bold*                     |        |
+| entity          | \alpha                     |        |
+| latex fragment  | $\sum_{i=1}^{n} i$         |        |
+| superscript     | a_1                        |        |
+| subscript       | c^{2}                      |        |
+| radio link      | radio target in cell       |        |
+| plain link      | https://www.foo.bar        |        |
+| regular link    | [[target in cell][target link]]                |        |
+| angle link      | <mailto:foo@bar.org>       |        |
+| macro           | {{{title}}}                |        |
+| radio target    | <<<radio target in cell>>> |        |
+| target          | <<target in cell>>         |        |
+| timestamps      | <1234-04-23>               |        |
+|-----------------+----------------------------+--------|
+| citation        |                            | N      |
+| export snippets |                            | N      |
+
+
+
+
+
+| *bold*      | entity: \alpha | latex fragment $a_b$ | a_b | [[https://www.foo.bar][link]] | my radio target | <2025-08-02> | [[target]] |   |
+  
 * drawer test
 
 :d1:
@@ -394,34 +441,55 @@ B test:
 
 * object test
 
-a *sfd*
+minimal set objects(6)
 
-a ​***​
+01 text-markup: *bold*, /italic/, _underline_, +strike-throught+, ​~code~, =verbatim=
 
-a ​****​
-a ​*asdfasfa dfa* dfadf*​
+02 entity: \alpha
 
-a ​***​
+03 latex-fragment: $\sum_{i=1}^{n}i$
 
-This is a *bold*;and /italic/ language.
+04 suscripot: a_{i,j}
 
-This is a *bold*  font.
+05 supscript: a^3
+
+06 plain-text: text
+
+standard set object(21)
+
+07 footnote-reference: [fn:1]
+
+08 line-break: \\
+
+09 timestamp: <1234-07-31>
+
+10 macro: {{{title}}}
+
+11 radio-target: <<<radio target>>>
+
+12 target: <<target>>
+
+13-16 link: plain link https://foo.bar, angle link <mailto:foo@bar>, radio link radio target, regular link [[target]]
+
+17 statistics-cookie: todo
+
+18 inline-babel-call: todo
+
+19 inline-src-block: todo
+
+20 citation: todo
+
+21 export-snippet: todo
 
 
+other objects (2):
 
-#+begin_src rust
-  // assert!('('.is_alphanumeric());  
-  assert!('a'.is_alphabetic());
-  assert!('京'.is_alphabetic());
-  assert!(!'\n'.is_alphabetic());  
+22 table-cell:
+| foo |   | bar |
 
-  let c = '💝';
-  // love is many things, but it is not alphabetic
-  assert!(!c.is_alphabetic());
-#+end_src
+23 citation-reference: todo
 
-#+RESULTS:
-: thread 'main' panicked at src/main.rs:3:1:
+
 
 ** DONE Entity test
 CLOSED: [2025-10-22 Wed 11:37]
