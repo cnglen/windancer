@@ -11,9 +11,9 @@
 | macro | ✓ | ✓ |  | todo render: collect macro replacement |
 | text-markup[^1] | ✓ | ✓ | ✓ |  |
 | radio link | ✓ | ✓ | ✓ |  |
-| angle link | ✓ |  |  |  |
-| plain link | ✓ |  |  |  |
-| regular link | ✓ |  |  |  |
+| angle link | ✓ | ✓ | ✓ |  |
+| plain link | ✓ | ✓ | ✓ |  |
+| regular link | ✓ | ✓ | ✓ |  |
 | table-cell | ✓ | ✓ | ✓ |  |
 | radio-target | ✓ | ✓ | ✓ |  |
 | timestamp | ✓ | ✓ | ✓ |  |

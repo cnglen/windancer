@@ -35,7 +35,7 @@ pub enum Object {
     GeneralLink {
         protocol: String, // protocol or type, http/file/#
         path: String,     //
-        description: Option<String>,
+        description: Vec<Object>,
     },
 
     Superscript(Vec<Object>),

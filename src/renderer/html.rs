@@ -289,6 +289,27 @@ impl HtmlRenderer {
                 format!(r##"{}"##, content)
             }
 
+            Object::GeneralLink {
+                protocol,
+                description,
+                path,
+            } => {
+                let desc = if description.len() == 0 {
+                    path
+                } else {
+                    &description
+                        .iter()
+                        .map(|e| self.render_object(e))
+                        .collect::<String>()
+                };
+
+                if protocol == "fuzzy" {
+                    format!(r##"<a href="#{}">{}</a>"##, path, desc)
+                } else {
+                    format!(r##"<a href="{}">{}</a>"##, path, desc)
+                }
+            }
+
             Object::TableCell(table_cell) => {
                 format!(
                     " <td>{}</td> ",

@@ -476,7 +476,8 @@ standard set object(21)
 
 11 radio-target: <<<radio target>>>
 
-12 target: <<target>>
+12 target: 
+<<target>>
 
 13-16 link: plain link https://foo.bar, angle link <mailto:foo@bar>, radio link radio target, regular link [[target]]
 
@@ -592,31 +593,13 @@ b
   
 ** link test
 
-regular link:
+regular link: with description [[https://www.baidu.com][baidu]]; without description [[https://foo.bar][foo_bar]]; description with objects [[http://foo.bar][\alpha *bold* $a+b$ foo]]; fuzzy internal [[target]]
 
-with description [[https://www.baidu.com][baidu]]
+plain link: https://plainlink.org https://foo(bar).org
 
-without description [[https://foo.bar]]
+angle link: <mailto:xx@xx.com> <https://foo(bar).org>
 
-description with objects [[http://foo.bar][\alpha *bold* $a+b$ foo]]
-
-plain link:
-
-https://plainlink.org
-
-https://foo(bar).org
-
-angle link: <mailto:xx@xx.com>
-
-radio link:
-
-my radio target
-
-define three radio targer <<<*bold* target>>> and <<<my radio target>>>  and <<<\alpha>>> and <<<$\alpha$>>>
-
-
-radio link: this is *bold* target, my radio target, notmyradio target and $\alpha$ and \alpha.
-
+radio link: my radio target, define three radio target <<<*bold* target>>> and <<<my radio target>>>  and <<<\alpha>>> and <<<$\alpha$>>>, then we have *bold* target, my radio target, notmyradio target and $\alpha$ and \alpha.
 
 
 ** timestamp
@@ -649,10 +632,6 @@ radio link: this is *bold* target, my radio target, notmyradio target and $\alph
 
 # p3
 <1997-11-03 Mon 19:15-20:18 +23d>
-
-
-  <%%(diary-float t 4 2)>
-
   
 ** text-markup test
 

@@ -313,8 +313,6 @@ impl Converter {
                 Ok(self.convert_markup("Code", node_or_token.as_node().unwrap())?)
             }
 
-            OrgSyntaxKind::Link => Ok(self.convert_link(node_or_token.as_node().unwrap())?),
-
             OrgSyntaxKind::FootnoteReference => {
                 Ok(self.convert_footnote_reference(node_or_token.as_node().unwrap())?)
             }
@@ -352,6 +350,11 @@ impl Converter {
             }
 
             OrgSyntaxKind::Whitespace => Ok(Some(Object::Whitespace(String::from(" ")))),
+
+            // OrgSyntaxKind::Link => Ok(self.convert_link(node_or_token.as_node().unwrap())?),
+            OrgSyntaxKind::PlainLink | OrgSyntaxKind::Link | OrgSyntaxKind::AngleLink => {
+                Ok(self.convert_link(node_or_token.as_node().unwrap())?)
+            }
 
             OrgSyntaxKind::Asterisk => Ok(None),
             OrgSyntaxKind::BlankLine => Ok(None),
@@ -628,33 +631,72 @@ impl Converter {
     }
 
     // object.link
-    fn convert_link(&self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
-        let url = node
-            .first_child_by_kind(&|c| c == OrgSyntaxKind::LinkPath)
-            .expect("has link")
-            .first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::Text)
-            .expect("has text")
-            .as_token()
-            .unwrap()
-            .text()
-            .to_string();
+    fn parse_pathreg(s: String) -> (String, String) {
+        if s.starts_with("./") {
+            ("file".to_string(), s.replacen("./", "file:", 1))
+        } else if s.starts_with("/") {
+            ("file".to_string(), s.replacen("/", "file:/", 1))
+        } else if s.starts_with("#") {
+            ("custom_id".to_string(), s)
+        } else if s.starts_with("(") && s.ends_with(")") {
+            ("coderef".to_string(), s)
+        } else if s.contains(":") {
+            (s.split_once(":").unwrap().0.to_lowercase(), s)
+        } else if s.starts_with("*") {
+            ("internal_section".to_string(), s)
+        } else {
+            ("fuzzy".to_string(), s)
+        }
+    }
 
-        let text = if let Some(desc) =
-            node.first_child_by_kind(&|c| c == OrgSyntaxKind::LinkDescription)
-        {
-            Some(
-                desc.first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::Text)
+    fn convert_link(&mut self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
+        let (pathreg, description) = match node.kind() {
+            OrgSyntaxKind::Link => {
+                let path = node
+                    .first_child_by_kind(&|c| c == OrgSyntaxKind::LinkPath)
+                    .expect("has link")
+                    .first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::Text)
                     .expect("has text")
                     .as_token()
                     .unwrap()
                     .text()
-                    .to_string(),
-            )
-        } else {
-            None
-        };
+                    .to_string();
 
-        Ok(Some(Object::Link { url, text }))
+                let desc_objects = if let Some(desc) =
+                    node.first_child_by_kind(&|c| c == OrgSyntaxKind::LinkDescription)
+                {
+                    desc.children_with_tokens()
+                        .filter(|e| {
+                            e.kind() != OrgSyntaxKind::LeftSquareBracket
+                                && e.kind() != OrgSyntaxKind::RightSquareBracket
+                        })
+                        .map(|e| self.convert_object(&e))
+                        .filter(|e| e.is_ok())
+                        .map(|e| e.unwrap())
+                        .filter(|e| e.is_some())
+                        .map(|e| e.unwrap())
+                        .collect()
+                } else {
+                    vec![]
+                };
+                (path, desc_objects)
+            }
+            OrgSyntaxKind::AngleLink | OrgSyntaxKind::PlainLink => {
+                let path = node
+                    .children_with_tokens()
+                    .filter(|e| e.kind() == OrgSyntaxKind::Text || e.kind() == OrgSyntaxKind::Colon)
+                    .map(|e| e.as_token().unwrap().text().to_string())
+                    .collect::<String>();
+                (path, vec![])
+            }
+            _ => (String::from("unreachable"), vec![]),
+        };
+        let (protocol, path) = Self::parse_pathreg(pathreg);
+        Ok(Some(Object::GeneralLink {
+            protocol,
+            path,
+            description,
+        }))
     }
 
     // object.footnote_reference
