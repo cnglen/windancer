@@ -311,6 +311,10 @@ impl HtmlRenderer {
                 )
             }
 
+            Object::Target(text) => {
+                format!(r##"<a id="{text}"></a>"##)
+            }
+            
             Object::FootnoteReference {
                 label,
                 nid,

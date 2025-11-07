@@ -333,6 +333,10 @@ impl Converter {
 
             OrgSyntaxKind::LineBreak => Ok(Some(Object::LineBreak)),
 
+            OrgSyntaxKind::Target => {
+                Ok(self.convert_target(node_or_token.as_node().unwrap())?)
+            }
+            
             OrgSyntaxKind::LatexFragment => {
                 Ok(self.convert_latex_fragment(node_or_token.as_node().unwrap())?)
             }
@@ -538,6 +542,17 @@ impl Converter {
         Ok(Some(radio_link))
     }
 
+    // object.target
+    fn convert_target(&mut self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
+        let text = node
+            .children_with_tokens()
+            .filter(|e| e.kind() == OrgSyntaxKind::Text)
+            .map(|e| e.as_token().unwrap().text().to_string())
+            .collect::<String>();
+
+        Ok(Some(Object::Target(text)))
+    }
+    
     // object.text
     fn convert_text(&self, token: &SyntaxToken) -> Result<Option<Object>, AstError> {
         Ok(Some(Object::Text(token.text().to_string())))

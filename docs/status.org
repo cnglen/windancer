@@ -21,7 +21,7 @@
 | table-cell         | ✓           | ✓         | ✓          |                                        |
 | radio-target       | ✓           | ✓         | ✓          |                                        |
 | timestamp          | ✓           |            |             | todo                                   |
-| target             | ✓           |            |             | todo                                   |
+| target             | ✓           | ✓         | ✓          |                                        |
 |--------------------+--------------+------------+-------------+----------------------------------------|
 | statistics-cookie  |              |            |             | low                                    |
 | inline-babel-call  |              |            |             | low                                    |

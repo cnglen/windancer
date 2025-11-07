@@ -41,7 +41,7 @@ pub enum Object {
     Superscript(Vec<Object>),
     Subscript(Vec<Object>),
 
-    Target,
+    Target(String),
 
     // if definition if found (such as inline or anonymous footnote), a FootnoteDefinition object is auto generated in addition to the FootnoteReference object
     FootnoteReference {
