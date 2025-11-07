@@ -63,12 +63,10 @@ pub(crate) fn table_cell_parser<'a>(
                 )));
             }
 
-
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::Pipe.into(),
                 &pipe,
             )));
-
 
             S2::Single(NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                 OrgSyntaxKind::TableCell.into(),

@@ -20,7 +20,10 @@ pub enum Object {
         text: Option<String>,
     },
 
+    // RadioLink(String),
+    // RadioTarget(String),
     RadioLink(Vec<Object>),
+    RadioTarget(Vec<Object>),
 
     // external link: has protocol
     // internal link:
@@ -35,7 +38,9 @@ pub enum Object {
         description: Option<String>,
     },
 
-    Superscript(String),
+    Superscript(Vec<Object>),
+    Subscript(Vec<Object>),
+
     Target,
 
     // if definition if found (such as inline or anonymous footnote), a FootnoteDefinition object is auto generated in addition to the FootnoteReference object

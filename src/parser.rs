@@ -49,8 +49,8 @@ pub(crate) struct ParserState {
     block_type: String,     // begin_type, end_type: 两个解析器需要相同的type数据
     latex_env_name: String, // latex \begin{}
     item_indent: Vec<usize>,
-    prev_char: Option<char>,        // previous char
-    prev_char_backup: Option<char>, // previous char backup manually set for later resume back
+    prev_char: Option<char>,             // previous char
+    prev_char_backup: Vec<Option<char>>, // previous char backup manually set for later resume back
     radio_targets: Vec<String>,
 }
 
@@ -62,7 +62,7 @@ impl Default for ParserState {
             latex_env_name: String::new(),
             item_indent: vec![],
             prev_char: None,
-            prev_char_backup: None,
+            prev_char_backup: vec![None],
             radio_targets: vec![],
         }
     }
@@ -77,7 +77,7 @@ impl ParserState {
             item_indent: vec![],
             prev_char: None,
             radio_targets: radio_targets,
-            prev_char_backup: None,
+            prev_char_backup: vec![None],
         }
     }
 }

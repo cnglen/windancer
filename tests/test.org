@@ -750,7 +750,7 @@ a^{(385)+3}
 
 a^{(385)+{a*b + (c/d) + a^{d}} + [d+e]}
 
-a^{c+[d+e}: ok
+a^{c+[d+e}
 
 a^{c+(d+e}: bad
 
@@ -772,8 +772,6 @@ a^(385+3 [[https://baidu.com][baidu]])
 
 a^{385+3 [[https://baidu.com][baidu]]}
 
-
-
 a single asterisk: b^*, ^^*, ,^*
 
 an expression enclosed in curly brackets: a^{2}, a^{b{3}}, a^{b^{c}^{d}^{e}} (org-toggle-pretty-entities C-c C-x \)
@@ -782,7 +780,7 @@ sign(optional) chars final: foo^abc... a^+34, a^-12,889,,,,78.3\a, 10^24, 10^tau
 
 
 
-b^[a]
+b^[a]: bad
 
 a^+aa,
 

@@ -110,7 +110,8 @@ pub(crate) fn radio_link_parser<'a>(
 
     let backup_prev_char = any::<_, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>()
         .map_with(|s, e| {
-            e.state().prev_char_backup = e.state().prev_char;
+            let tmp = e.state().prev_char;
+            e.state().prev_char_backup.push(tmp);
             s
         })
         .rewind();
@@ -119,7 +120,7 @@ pub(crate) fn radio_link_parser<'a>(
         .then(radio)
         .map_with(|s, e| {
             // println!("radio_link_parser: s={s:?}");
-            e.state().prev_char = e.state().prev_char_backup; // resume prev_char
+            e.state().prev_char = e.state().prev_char_backup.pop().unwrap(); // resume prev_char
             s
         })
         .then_ignore(post.rewind())
@@ -172,7 +173,10 @@ pub(crate) fn radio_link_parser<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::common::{get_parser_output, get_parsers_output, get_parser_output_with_state, get_parsers_output_with_state};
+    use crate::parser::common::{
+        get_parser_output, get_parser_output_with_state, get_parsers_output,
+        get_parsers_output_with_state,
+    };
     use crate::parser::{OrgConfig, OrgParser, object};
     use pretty_assertions::assert_eq;
     use rowan::GreenToken;
@@ -183,17 +187,12 @@ mod tests {
         let state = RollbackState(ParserState::default_with_radio_targets(radio_targets));
 
         assert_eq!(
-            get_parsers_output_with_state(
-                object::objects_parser(),
-                " y",
-                state.clone(),
-                ),
+            get_parsers_output_with_state(object::objects_parser(), " y", state.clone(),),
             r##"Root@0..2
   Text@0..1 " "
   RadioLink@1..2
     Text@1..2 "y"
-"##);
-
+"##
+        );
     }
-
 }

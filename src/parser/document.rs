@@ -44,6 +44,9 @@ pub(crate) fn document_parser<'a>()
                 children.push(c.green.clone());
                 text.push_str(&c.text);
             }
+
+            let radio_targets = e.state().radio_targets.clone();
+
             // println!("zeroth section={:#?}", section);
             let node = GreenNode::new(OrgSyntaxKind::Document.into(), children);
             // println!("{:#?}", SyntaxNode::new_root(node.clone()));

@@ -45,6 +45,7 @@ struct Converter {
     n_anonymous_label: usize,
     footnote_label_to_nid: HashMap<String, usize>,
     footnote_definitions: Vec<FootnoteDefinition>,
+    radio_targets: Vec<Object>,
 }
 
 impl Converter {
@@ -54,6 +55,7 @@ impl Converter {
             n_anonymous_label: 0,
             footnote_label_to_nid: HashMap::new(),
             footnote_definitions: vec![],
+            radio_targets: vec![],
             /* 初始化状态 */
         }
     }
@@ -321,10 +323,26 @@ impl Converter {
 
             OrgSyntaxKind::Macro => Ok(self.convert_macro(node_or_token.as_node().unwrap())?),
 
+            OrgSyntaxKind::RadioTarget => {
+                Ok(self.convert_radio_target(node_or_token.as_node().unwrap())?)
+            }
+
+            OrgSyntaxKind::RadioLink => {
+                Ok(self.convert_radio_link(node_or_token.as_node().unwrap())?)
+            }
+
             OrgSyntaxKind::LineBreak => Ok(Some(Object::LineBreak)),
 
             OrgSyntaxKind::LatexFragment => {
                 Ok(self.convert_latex_fragment(node_or_token.as_node().unwrap())?)
+            }
+
+            OrgSyntaxKind::Subscript => {
+                Ok(self.convert_subscript(node_or_token.as_node().unwrap())?)
+            }
+
+            OrgSyntaxKind::Superscript => {
+                Ok(self.convert_superscript(node_or_token.as_node().unwrap())?)
             }
 
             OrgSyntaxKind::Whitespace => Ok(Some(Object::Whitespace(String::from(" ")))),
@@ -449,10 +467,10 @@ impl Converter {
     }
 
     // object.table_cell
+    // fixme
     fn convert_table_cell(&mut self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
         let contents = node
             .children_with_tokens()
-            .filter(|e| e.kind() == OrgSyntaxKind::Text)
             .map(|e| self.convert_object(&e))
             .filter(|e| e.is_ok())
             .map(|e| e.unwrap())
@@ -489,9 +507,66 @@ impl Converter {
         }
     }
 
+    // object.radio_target
+    fn convert_radio_target(&mut self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
+        let objects = node
+            .children_with_tokens()
+            .map(|e| self.convert_object(&e))
+            .filter(|e| e.is_ok())
+            .map(|e| e.unwrap())
+            .filter(|e| e.is_some())
+            .map(|e| e.unwrap())
+            .collect::<Vec<_>>();
+
+        let radio_target = Object::RadioTarget(objects);
+        self.radio_targets.push(radio_target.clone());
+        Ok(Some(radio_target))
+    }
+
+    // object.radio_link
+    fn convert_radio_link(&mut self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
+        let objects = node
+            .children_with_tokens()
+            .map(|e| self.convert_object(&e))
+            .filter(|e| e.is_ok())
+            .map(|e| e.unwrap())
+            .filter(|e| e.is_some())
+            .map(|e| e.unwrap())
+            .collect::<Vec<_>>();
+
+        let radio_link = Object::RadioLink(objects);
+        Ok(Some(radio_link))
+    }
+
     // object.text
     fn convert_text(&self, token: &SyntaxToken) -> Result<Option<Object>, AstError> {
         Ok(Some(Object::Text(token.text().to_string())))
+    }
+
+    // object.subscript
+    fn convert_subscript(&mut self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
+        let objects = node
+            .children_with_tokens()
+            .map(|e| self.convert_object(&e))
+            .filter(|e| e.is_ok())
+            .map(|e| e.unwrap())
+            .filter(|e| e.is_some())
+            .map(|e| e.unwrap())
+            .collect();
+        Ok(Some(Object::Subscript(objects)))
+    }
+
+    // object.subscript
+    fn convert_superscript(&mut self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
+        let objects = node
+            .children_with_tokens()
+            .map(|e| self.convert_object(&e))
+            .filter(|e| e.is_ok())
+            .map(|e| e.unwrap())
+            .filter(|e| e.is_some())
+            .map(|e| e.unwrap())
+            .collect();
+        Ok(Some(Object::Superscript(objects)))
     }
 
     // object.macro

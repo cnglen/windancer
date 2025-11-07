@@ -101,7 +101,7 @@ pub(crate) fn get_parsers_output<'a>(
         Vec<S2>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
     > + Clone,
-    input: &'a str
+    input: &'a str,
 ) -> String {
     let mut state = RollbackState(ParserState::default());
     get_parsers_output_with_state(parser, input, state)
@@ -114,7 +114,7 @@ pub(crate) fn get_parsers_output_with_state<'a>(
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
     > + Clone,
     input: &'a str,
-    mut state: RollbackState<ParserState>
+    mut state: RollbackState<ParserState>,
 ) -> String {
     let ans = parser.parse_with_state(input, &mut state).unwrap();
     let mut children: Vec<NodeOrToken<GreenNode, GreenToken>> = vec![];

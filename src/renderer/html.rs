@@ -349,6 +349,26 @@ impl HtmlRenderer {
                 format!("<br>\n")
             }
 
+            Object::RadioTarget(objects) => {
+                let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
+                format!(r##"<a id="{inner}">{inner}</a>"##)
+            }
+
+            Object::RadioLink(objects) => {
+                let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
+                format!(r##"<a href="#{inner}">{inner}</a>"##)
+            }
+
+            Object::Subscript(objects) => {
+                let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
+                format!(r##"<sub>{}</sub>"##, inner)
+            }
+
+            Object::Superscript(objects) => {
+                let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
+                format!(r##"<sup>{}</sup>"##, inner)
+            }
+
             Object::LatexFragment {
                 content,
                 display_mode,

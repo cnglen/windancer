@@ -4,24 +4,24 @@
 |----|----|----|----|----|
 | entity | ✓ | ✓ | ✓ |  |
 | latex-fragment | ✓ | ✓ | ✓ |  |
-| subscript | ✓ |  |  |  |
-| superscript | ✓ |  |  |  |
+| subscript | ✓ | ✓ | ✓ |  |
+| superscript | ✓ | ✓ | ✓ |  |
 | footnote-reference | ✓ | ✓ | ✓ |  |
 | line-break | ✓ | ✓ | ✓ |  |
 | macro | ✓ | ✓ |  | todo render: collect macro replacement |
 | text-markup[^1] | ✓ | ✓ | ✓ |  |
-| radio link | ✓ |  |  |  |
+| radio link | ✓ | ✓ | ✓ |  |
 | angle link | ✓ |  |  |  |
 | plain link | ✓ |  |  |  |
 | regular link | ✓ |  |  |  |
-| table-cell |  |  |  | todo |
-| radio-target | ✓ |  |  | todo |
+| table-cell | ✓ | ✓ | ✓ |  |
+| radio-target | ✓ | ✓ | ✓ |  |
 | timestamp | ✓ |  |  | todo |
 | target | ✓ |  |  | todo |
 | statistics-cookie |  |  |  | low |
 | inline-babel-call |  |  |  | low |
 | export-snippet |  |  |  | low |
-| inline-src-block |  |  |  | low-priority |
+| inline-src-block |  |  |  | low |
 | citation |  |  |  | low |
 | citation-reference |  |  |  | low |
 

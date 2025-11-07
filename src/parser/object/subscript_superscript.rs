@@ -120,13 +120,19 @@ fn create_script_parser<'a>(
     let pair_ends = pairs.values().copied().collect::<Vec<_>>();
     let t2 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>(c)
         .then(one_of(pair_starts))
-        .map_with(|s, e| {
-            e.state().prev_char_backup = e.state().prev_char;
-            s
+        .map_with(|(a, b): (&str, char), e| {
+            let tmp = e.state().prev_char;
+            e.state().prev_char_backup.push(tmp);
+
+            // println!("t2a: r={:?}", e.state());
+            e.state().prev_char = Some(b);
+            (a, b)
         })
         .then(expression)
         .map_with(|s, e| {
-            e.state().prev_char = e.state().prev_char_backup;
+            // println!("t2b: r={:?}", e.state());
+            e.state().prev_char = e.state().prev_char_backup.pop().unwrap(); // resume prev_char
+
             s
         })
         .then(one_of(pair_ends))
@@ -135,7 +141,7 @@ fn create_script_parser<'a>(
                 .state()
                 .prev_char
                 .map_or(false, |c| !matches!(c, ' ' | '\t'));
-
+            // println!("pre_valid={pre_valid:?}, expression={expression:?}, prev_char={:?}", e.state().prev_char);
             match pre_valid {
                 false => {
                     let error = Rich::custom::<&str>(e.span(), &format!("PRE not valid"));
@@ -277,6 +283,24 @@ mod tests {
             get_parsers_output(object::objects_parser(), r"fo _{bar}"),
             r###"Root@0..9
   Text@0..9 "fo _{bar}"
+"###
+        );
+    }
+
+    #[test]
+    fn test_superscript_01_bold() {
+        assert_eq!(
+            get_parsers_output(object::objects_parser(), r"a^{*bold*}"),
+            r###"Root@0..10
+  Text@0..1 "a"
+  Superscript@1..10
+    Caret@1..2 "^"
+    LeftCurlyBracket@2..3 "{"
+    Bold@3..9
+      Asterisk@3..4 "*"
+      Text@4..8 "bold"
+      Asterisk@8..9 "*"
+    RightCurlyBracket@9..10 "}"
 "###
         );
     }

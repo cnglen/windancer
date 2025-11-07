@@ -226,182 +226,7 @@ pub(crate) fn object_in_table_cell_parser<'a>()
 }
 
 // (full_set_object, standard_set_object, minimal_set_object, object_in_regular_link, object_in_table_cell)
-pub(crate) fn get_object_parser_vok<'a>() -> (
-    impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone,
-    impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone,
-    impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone,
-    impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone,
-    impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone,
-) {
-    let mut object_parser = Recursive::declare();
-
-    // independent object (12)
-    let independent_object = Parser::boxed(choice((
-        latex_fragment_parser(),
-        entity_parser(),
-        angle_link_parser(),
-        line_break_parser(),
-        macro_parser(),
-        target_parser(),
-        timestamp_parser(),
-        // todo
-        // statistics_cookie_parser(),
-        // inline_babel_call_parser(),
-        // export_snippet_parser(),
-        // inline_src_block_parser(),
-        plain_link_parser(), // 第12个
-    )));
-
-    // minimal set object parsers (6)
-    let minimal_set_object = {
-        let latex_fragment_parser = latex_fragment_parser();
-        let entity_parser = entity_parser();
-        let subscript_parser = subscript_parser(object_parser.clone());
-        let superscript_parser = superscript_parser(object_parser.clone());
-        let text_markup_parser = text_markup_parser(object_parser.clone());
-
-        let non_plain_text_parsers = choice((
-            latex_fragment_parser.clone(),
-            entity_parser.clone(),
-            text_markup_parser.clone(),
-            subscript_parser.clone(),
-            superscript_parser.clone(),
-        ));
-
-        // minimal_set_object 中的纯文本解析器
-        let plain_text_parser = plain_text_parser(non_plain_text_parsers.clone());
-
-        Parser::boxed(choice((non_plain_text_parsers, plain_text_parser)))
-    };
-
-    // regular link :: DESCRIPTION
-    // One or more objects enclosed by square brackets. It can contain the minimal set of objects as well as export snippets, inline babel calls, inline source blocks, macros, and statistics cookies. It can also contain another link, but only when it is a plain or angle link. It can contain square brackets, but not ]].
-    let object_in_regular_link = {
-        let non_plain_text_parsers_for_regular_link = choice((
-            // minimal set
-            latex_fragment_parser().clone(),
-            entity_parser().clone(),
-            text_markup_parser(object_parser.clone()).clone(),
-            subscript_parser(object_parser.clone()).clone(),
-            superscript_parser(object_parser.clone()).clone(),
-            // other
-            // export_snippet_parser().clone(),
-            // inline_babel_call_parser().clone(),
-            // inline_src_block_parser().clone(),
-            macro_parser().clone(),
-            // statistics_cookie_parser().clone(),
-            angle_link_parser().clone(),
-            plain_link_parser().clone(),
-        ));
-
-        // minimal_set_object 中的纯文本解析器
-        let plain_text_parser = plain_text_parser(non_plain_text_parsers_for_regular_link.clone());
-        Parser::boxed(choice((
-            non_plain_text_parsers_for_regular_link,
-            plain_text_parser,
-        )))
-    };
-
-    let object_in_table_cell = {
-        let non_plain_text_parsers_for_table_cell = choice((
-            // minimal set
-            latex_fragment_parser().clone(),
-            entity_parser().clone(),
-            text_markup_parser(object_parser.clone()).clone(),
-            subscript_parser(object_parser.clone()).clone(),
-            superscript_parser(object_parser.clone()).clone(),
-            // other
-            // citation_parser(object_parser.clone()),
-            // export_snippet_parser().clone(),
-            footnote_reference_parser(object_parser.clone()).clone(),
-            angle_link_parser().clone(),
-            plain_link_parser().clone(),
-            regular_link_parser(object_parser.clone()).clone(),
-            radio_link_parser(minimal_set_object.clone()).clone(),
-            macro_parser().clone(),
-            radio_target_parser(minimal_set_object.clone()).clone(),
-            target_parser(),
-            timestamp_parser(),
-        ));
-
-        // minimal_set_object 中的纯文本解析器
-        let plain_text_parser = plain_text_parser(non_plain_text_parsers_for_table_cell.clone());
-        Parser::boxed(choice((
-            non_plain_text_parsers_for_table_cell,
-            plain_text_parser,
-        )))
-    };
-
-    // standard set object (21)
-    let standard_set_object = {
-        // 依赖 minimal_set_object 的解析器（只包含其中3个）
-        let radio_link_parser = radio_link_parser(minimal_set_object.clone());
-        let regular_link_parser = regular_link_parser(object_in_regular_link.clone());
-        let radio_target_parser = radio_target_parser(minimal_set_object.clone());
-
-        // 依赖 standard_set_object 的解析器（5个）
-        let text_markup_parser = text_markup_parser(object_parser.clone());
-        let subscript_parser = subscript_parser(object_parser.clone());
-        let superscript_parser = superscript_parser(object_parser.clone());
-        let footnote_reference_parser = footnote_reference_parser(object_parser.clone());
-        // let citation_parser = citation_parser(object_parser.clone());
-
-        // 构建不包含 plain_text 的 standard_set_object（20个）
-        let standard_set_without_plain_text = choice((
-            radio_link_parser,          // 1个
-            regular_link_parser,        // 1个
-            independent_object.clone(), // 12个
-            radio_target_parser,        // 1个
-            text_markup_parser,         // 1个
-            subscript_parser,           // 1个
-            superscript_parser,         // 1个
-            footnote_reference_parser,  // 1个
-                                        // citation_parser,             // 1个
-                                        // 总共：12 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 = 20个
-        ));
-
-        // standard_set_object 中的纯文本解析器
-        let plain_text_for_standard = plain_text_parser(standard_set_without_plain_text.clone());
-
-        // 最终的 standard_set_object（21个）
-
-        Parser::boxed(choice((
-            standard_set_without_plain_text,
-            plain_text_for_standard, // 第21个
-        )))
-    };
-
-    // the other 2 object (not in standard set object)
-    let table_cell_parser = table_cell_parser(object_in_table_cell.clone());
-    // let citation_reference_parser = citation_reference_parser(minimal_set_object.clone());
-
-    // 构建不包含 plain_text 的完整集合（22个）
-    let full_set_without_plain_text = choice((
-        standard_set_object.clone(), // 21个（包含自己的 plain_text）
-        table_cell_parser,           // 1个
-                                     // citation_reference_parser,   // 1个
-                                     // 注意：这里会有重复，但 choice 会处理
-    ));
-
-    // 最终的纯文本解析器，依赖所有其他22个对象
-    let final_plain_text = plain_text_parser(full_set_without_plain_text.clone());
-
-    // 完整的23个对象集合
-    object_parser.define(choice((
-        full_set_without_plain_text,
-        final_plain_text, // 23th
-    )));
-    let full_set_object = Parser::boxed(object_parser);
-
-    (
-        full_set_object,
-        standard_set_object,
-        minimal_set_object,
-        object_in_regular_link,
-        object_in_table_cell,
-    )
-}
-
+// - full_set_object DOES NOT include table_cell
 pub(crate) fn get_object_parser<'a>() -> (
     impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone,
     impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone,
@@ -413,9 +238,9 @@ pub(crate) fn get_object_parser<'a>() -> (
     let mut minimal_set_object = Recursive::declare();
     let mut standard_set_object = Recursive::declare();
     let mut object_in_table_cell = Recursive::declare();
-    let mut object_in_regular_link = Recursive::declare();    
+    let mut object_in_regular_link = Recursive::declare();
 
-
+    // total 22 object parsers exlucidng plain_text
     let latex_fragment = latex_fragment_parser();
     let entity = entity_parser();
     let angle_link = angle_link_parser();
@@ -427,7 +252,7 @@ pub(crate) fn get_object_parser<'a>() -> (
     // let inline_babel_call = inline_babel_call_parser();
     // let export_snippet = export_snippet_parser();
     // let inline_src_block = inline_src_block_parser();
-    let plain_link = plain_link_parser(); 
+    let plain_link = plain_link_parser();
     let subscript = subscript_parser(standard_set_object.clone());
     let superscript = superscript_parser(standard_set_object.clone());
     let text_markup = text_markup_parser(standard_set_object.clone());
@@ -436,10 +261,8 @@ pub(crate) fn get_object_parser<'a>() -> (
     let radio_target = radio_target_parser(minimal_set_object.clone());
     let footnote_reference = footnote_reference_parser(standard_set_object.clone());
     // let citation_parser = citation_parser(standard_set_object.clone());
-    let table_cell = table_cell_parser(object_in_table_cell.clone());
+    // let table_cell = table_cell_parser(object_in_table_cell.clone()); // table_cell_parser ONLY used in table.rs
     // let citation_reference = citation_reference_parser(minimal_set_object.clone());
-
-
 
     // independent object (12)
     let independent_object = Parser::boxed(choice((
@@ -456,7 +279,8 @@ pub(crate) fn get_object_parser<'a>() -> (
         // inline_src_block.clone(),
         plain_link.clone(), // 第12个
     )));
-    
+
+    // minimal set object: 6
     let non_plain_text_for_minimal = Parser::boxed(choice((
         latex_fragment.clone(),
         entity.clone(),
@@ -465,12 +289,9 @@ pub(crate) fn get_object_parser<'a>() -> (
         superscript.clone(),
     )));
     let plain_text_for_minimal = plain_text_parser(non_plain_text_for_minimal.clone());
-    minimal_set_object.define(
-        choice((
-            non_plain_text_for_minimal,
-            plain_text_for_minimal))
-    );
+    minimal_set_object.define(choice((non_plain_text_for_minimal, plain_text_for_minimal)));
 
+    // object allowed in regular link: 13
     let non_plain_text_parsers_for_regular_link = Parser::boxed(choice((
         latex_fragment.clone(),
         entity.clone(),
@@ -485,14 +306,14 @@ pub(crate) fn get_object_parser<'a>() -> (
         angle_link.clone(),
         plain_link.clone(),
     )));
-    let plain_text_parser_for_regular_link = plain_text_parser(non_plain_text_parsers_for_regular_link.clone());
-    object_in_regular_link.define(
-        choice((
-            non_plain_text_parsers_for_regular_link,
-            plain_text_parser_for_regular_link,
-        ))        
-    );
+    let plain_text_parser_for_regular_link =
+        plain_text_parser(non_plain_text_parsers_for_regular_link.clone());
+    object_in_regular_link.define(choice((
+        non_plain_text_parsers_for_regular_link,
+        plain_text_parser_for_regular_link,
+    )));
 
+    // object allowed in table cell: 17
     let non_plain_text_parsers_for_table_cell = Parser::boxed(choice((
         latex_fragment.clone(),
         entity.clone(),
@@ -511,48 +332,49 @@ pub(crate) fn get_object_parser<'a>() -> (
         target.clone(),
         timestamp.clone(),
     )));
+    let plain_text_parser_for_table_cell =
+        plain_text_parser(non_plain_text_parsers_for_table_cell.clone());
+    object_in_table_cell.define(choice((
+        non_plain_text_parsers_for_table_cell,
+        plain_text_parser_for_table_cell,
+    )));
 
-    let plain_text_parser_for_table_cell = plain_text_parser(non_plain_text_parsers_for_table_cell.clone());
-    object_in_table_cell.define(
-        choice((
-            non_plain_text_parsers_for_table_cell,
-            plain_text_parser_for_table_cell,
-        ))        
-    );
-
+    // standard set object: 21
     let standard_set_without_plain_text = Parser::boxed(choice((
-        radio_link.clone(),          // 1个
-        regular_link.clone(),        // 1个
+        radio_link.clone(),         // 1个
+        regular_link.clone(),       // 1个
         independent_object.clone(), // 12个
-        radio_target.clone(),        // 1个
-        text_markup.clone(),         // 1个
-        subscript.clone(),           // 1个
-        superscript.clone(),         // 1个
-        footnote_reference.clone(),  // 1个
-        // citation.clone(),             // 1个
+        radio_target.clone(),       // 1个
+        text_markup.clone(),        // 1个
+        subscript.clone(),          // 1个
+        superscript.clone(),        // 1个
+        footnote_reference.clone(), // 1个
+                                    // citation.clone(),             // 1个
     )));
     let plain_text_for_standard = plain_text_parser(standard_set_without_plain_text.clone());
-    standard_set_object.define(
-        choice((
-            standard_set_without_plain_text,
-            plain_text_for_standard, // 第21个
-        ))
-    );
+    standard_set_object.define(choice((
+        standard_set_without_plain_text,
+        plain_text_for_standard,
+    )));
 
-
+    // full set object: 23
     let full_set_without_plain_text = Parser::boxed(choice((
-        standard_set_object.clone(), // 21个（包含自己的 plain_text）
-        table_cell,           // 1个
-        // citation_reference,   // 1个
+        radio_link.clone(),         // 1
+        regular_link.clone(),       // 1
+        independent_object.clone(), // 12
+        radio_target.clone(),       // 1
+        text_markup.clone(),        // 1
+        subscript.clone(),          // 1
+        superscript.clone(),        // 1
+        footnote_reference.clone(), // 1
+                                    // citation.clone(),             // 1
+
+                                    // table_cell,            // table cell only in table_row of table, DONOT INCLUDE THIS
+                                    // citation_reference,
     )));
     let plain_text_for_full = plain_text_parser(full_set_without_plain_text.clone());
-    full_set_object.define(
-        choice((
-            full_set_without_plain_text,
-            plain_text_for_full,
-        ))        
-    );
-    
+    full_set_object.define(choice((full_set_without_plain_text, plain_text_for_full)));
+
     (
         full_set_object,
         standard_set_object,
