@@ -620,8 +620,9 @@ radio link: this is *bold* target, my radio target, notmyradio target and $\alph
 
 
 ** timestamp
+
 # example
-[2004-08-24 Tue]--[2004-08-26 Thu ]
+[2004-08-24 Tue]--[2004-08-26 Thu]
 <2012-02-08 Wed 20:00 ++1d>
 <2030-10-05 Sat +1m -3d>
 

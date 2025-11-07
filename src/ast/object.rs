@@ -43,6 +43,8 @@ pub enum Object {
 
     Target(String),
 
+    Timestamp(String),
+
     // if definition if found (such as inline or anonymous footnote), a FootnoteDefinition object is auto generated in addition to the FootnoteReference object
     FootnoteReference {
         // <label + label_rid> identify a unique reference id

@@ -321,6 +321,10 @@ impl Converter {
 
             OrgSyntaxKind::Entity => Ok(self.convert_entity(node_or_token.as_node().unwrap())?),
 
+            OrgSyntaxKind::Timestamp => {
+                Ok(self.convert_timestamp(node_or_token.as_node().unwrap())?)
+            }
+
             OrgSyntaxKind::Macro => Ok(self.convert_macro(node_or_token.as_node().unwrap())?),
 
             OrgSyntaxKind::RadioTarget => {
@@ -333,10 +337,8 @@ impl Converter {
 
             OrgSyntaxKind::LineBreak => Ok(Some(Object::LineBreak)),
 
-            OrgSyntaxKind::Target => {
-                Ok(self.convert_target(node_or_token.as_node().unwrap())?)
-            }
-            
+            OrgSyntaxKind::Target => Ok(self.convert_target(node_or_token.as_node().unwrap())?),
+
             OrgSyntaxKind::LatexFragment => {
                 Ok(self.convert_latex_fragment(node_or_token.as_node().unwrap())?)
             }
@@ -552,7 +554,18 @@ impl Converter {
 
         Ok(Some(Object::Target(text)))
     }
-    
+
+    // object.timestamp
+    fn convert_timestamp(&self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
+        let text = node
+            .children_with_tokens()
+            .filter(|e| e.kind() == OrgSyntaxKind::Text)
+            .map(|e| e.as_token().unwrap().text().to_string())
+            .collect::<String>();
+
+        Ok(Some(Object::Timestamp(text)))
+    }
+
     // object.text
     fn convert_text(&self, token: &SyntaxToken) -> Result<Option<Object>, AstError> {
         Ok(Some(Object::Text(token.text().to_string())))

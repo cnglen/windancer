@@ -20,7 +20,7 @@
 | regular link       | ✓           |            |             |                                        |
 | table-cell         | ✓           | ✓         | ✓          |                                        |
 | radio-target       | ✓           | ✓         | ✓          |                                        |
-| timestamp          | ✓           |            |             | todo                                   |
+| timestamp          | ✓           | ✓         | ✓          |                                        |
 | target             | ✓           | ✓         | ✓          |                                        |
 |--------------------+--------------+------------+-------------+----------------------------------------|
 | statistics-cookie  |              |            |             | low                                    |

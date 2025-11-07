@@ -30,18 +30,27 @@ pub(crate) fn timestamp_parser<'a>()
         .at_most(2)
         .then(just(":"))
         .then(one_of("0123456789").repeated().at_least(2).at_most(2));
-    let repeater_or_day = just("++")
+    let repeater_or_delay = just("++")
         .or(just(".+"))
         .or(just("+"))
         .or(just("--"))
-        .or(just("+"))
+        .or(just("-"))
         .then(one_of("0123456789").repeated().at_least(1))
-        .then(one_of("hdwmy"));
+        .then(one_of("hdwmy"))
+        .map(|s| {
+            println!("s={s:?}");
+            s
+        });
 
     let p1a = just("<")
         .then(date.clone())
         .then(whitespaces_g1().then(time).or_not())
-        .then(whitespaces_g1().then(repeater_or_day).or_not())
+        .then(
+            whitespaces_g1()
+                .then(repeater_or_delay)
+                .repeated()
+                .at_most(2),
+        )
         .then(just(">"))
         .to_slice()
         .map_with(|s, e| {
@@ -63,7 +72,12 @@ pub(crate) fn timestamp_parser<'a>()
     let p1b = just("[")
         .then(date.clone())
         .then(whitespaces_g1().then(time).or_not())
-        .then(whitespaces_g1().then(repeater_or_day).or_not())
+        .then(
+            whitespaces_g1()
+                .then(repeater_or_delay)
+                .repeated()
+                .at_most(2),
+        )
         .then(just("]"))
         .to_slice()
         .map_with(|s, e| {
@@ -127,7 +141,12 @@ pub(crate) fn timestamp_parser<'a>()
     let p3a = just("<")
         .then(date.clone())
         .then(whitespaces_g1().then(time).then(just("-").then(time)))
-        .then(whitespaces_g1().then(repeater_or_day).or_not())
+        .then(
+            whitespaces_g1()
+                .then(repeater_or_delay)
+                .repeated()
+                .at_most(2),
+        )
         .then(just(">"))
         .to_slice()
         .map_with(|s, e| {
@@ -149,7 +168,12 @@ pub(crate) fn timestamp_parser<'a>()
     let p3b = just("[")
         .then(date.clone())
         .then(whitespaces_g1().then(time).then(just("-").then(time)))
-        .then(whitespaces_g1().then(repeater_or_day).or_not())
+        .then(
+            whitespaces_g1()
+                .then(repeater_or_delay)
+                .repeated()
+                .at_most(2),
+        )
         .then(just("]"))
         .to_slice()
         .map_with(|s, e| {
@@ -169,4 +193,36 @@ pub(crate) fn timestamp_parser<'a>()
         });
 
     p2a.or(p2b).or(p3a).or(p3b).or(p1a).or(p1b)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::parser::common::{get_parser_output, get_parsers_output};
+    use crate::parser::object;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_timestamp_01() {
+        assert_eq!(
+            get_parsers_output(
+                object::objects_parser(),
+                r"[2004-08-24 Tue]--[2004-08-26 Thu]"
+            ),
+            r##"Root@0..34
+  Timestamp@0..34
+    Text@0..34 "[2004-08-24 Tue]--[20 ..."
+"##
+        );
+    }
+
+    #[test]
+    fn test_timestamp_02() {
+        assert_eq!(
+            get_parsers_output(object::objects_parser(), r"<2030-10-05 Sat +1m -3d>"),
+            r##"Root@0..24
+  Timestamp@0..24
+    Text@0..24 "<2030-10-05 Sat +1m -3d>"
+"##
+        );
+    }
 }

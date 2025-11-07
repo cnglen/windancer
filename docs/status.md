@@ -16,8 +16,8 @@
 | regular link | ✓ |  |  |  |
 | table-cell | ✓ | ✓ | ✓ |  |
 | radio-target | ✓ | ✓ | ✓ |  |
-| timestamp | ✓ |  |  | todo |
-| target | ✓ |  |  | todo |
+| timestamp | ✓ | ✓ | ✓ |  |
+| target | ✓ | ✓ | ✓ |  |
 | statistics-cookie |  |  |  | low |
 | inline-babel-call |  |  |  | low |
 | export-snippet |  |  |  | low |

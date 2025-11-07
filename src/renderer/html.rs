@@ -314,7 +314,18 @@ impl HtmlRenderer {
             Object::Target(text) => {
                 format!(r##"<a id="{text}"></a>"##)
             }
-            
+
+            Object::Timestamp(text) => {
+                format!(
+                    r##"<span class="timestamp-wrapper">
+  <span class="timestamp">{}
+  </span>
+</span>
+"##,
+                    text.replace("--", "-")
+                )
+            }
+
             Object::FootnoteReference {
                 label,
                 nid,
