@@ -17,7 +17,7 @@ use rowan::GreenNode;
 use std::collections::HashMap;
 
 use crate::ast::element::{
-    CenterBlock, CommentBlock, Document, Drawer, Element, ExampleBlock, ExportBlock,
+    CenterBlock, Comment, CommentBlock, Document, Drawer, Element, ExampleBlock, ExportBlock,
     FootnoteDefinition, HeadingSubtree, HorizontalRule, Item, Keyword, LatexEnvironment, List,
     ListType, Paragraph, QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableRow,
     TableRowType, VerseBlock,
@@ -258,6 +258,8 @@ impl Converter {
 
             OrgSyntaxKind::List => Ok(Element::List(self.convert_list(&node)?)),
             OrgSyntaxKind::Keyword => Ok(Element::Keyword(self.convert_keyword(&node)?)),
+
+            OrgSyntaxKind::Comment => Ok(Element::Comment(self.convert_comment(&node)?)),
 
             OrgSyntaxKind::HorizontalRule => Ok(Element::HorizontalRule(
                 self.convert_horizontal_rule(&node)?,
@@ -1307,6 +1309,20 @@ impl Converter {
     fn convert_horizontal_rule(&self, node: &SyntaxNode) -> Result<HorizontalRule, AstError> {
         Ok(HorizontalRule {
             syntax: node.clone(),
+        })
+    }
+
+    // element.comment
+    fn convert_comment(&self, node: &SyntaxNode) -> Result<Comment, AstError> {
+        let text = node
+            .children_with_tokens()
+            .filter(|e| e.kind() == OrgSyntaxKind::Text)
+            .map(|e| e.as_token().unwrap().text().to_string())
+            .collect::<String>();
+
+        Ok(Comment {
+            syntax: node.clone(),
+            text: text,
         })
     }
 

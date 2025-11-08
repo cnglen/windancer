@@ -1,7 +1,7 @@
-
 #+title: org test
-#+macro: color @@html:<span style="color:$1">$2</span>@@@@latex:\textcolor{$1}{$2}@@
+#+macro: color @@html:<span style="color:$1">$2</span>@@ @@latex:\textcolor{$1}{$2}@@
 #+date: 20250802[Sat] 18:43:14
+#+author: author
 #+udf_keyword: udf_value
 
 a */_bold-italic-underline_/*
@@ -578,15 +578,17 @@ b
 
 ** macro
 
+{{{color(red,text)}}}
+
 {{{title}}}
 
 {{{author()}}}
 
 {{{title(arg1, arg2)}}}
 
-  {{{color(red, word)}}}
+{{{color(red, word)}}}
 
-  {{{color(red\,1, word)}}}  
+{{{color(red\,1, word)}}}  
 
 {{{keyword(udf_keyword)}}}
 

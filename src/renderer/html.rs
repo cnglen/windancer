@@ -29,7 +29,7 @@
 //! - footnote
 
 use crate::ast::element::{
-    CenterBlock, CommentBlock, Document, Drawer, Element, ExampleBlock, ExportBlock,
+    CenterBlock, Comment, CommentBlock, Document, Drawer, Element, ExampleBlock, ExportBlock,
     FootnoteDefinition, HeadingSubtree, HorizontalRule, Item, Keyword, LatexEnvironment, List,
     ListType, Paragraph, QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableRow, VerseBlock,
 };
@@ -202,6 +202,8 @@ impl HtmlRenderer {
             Element::VerseBlock(verse_block) => self.render_verse_block(verse_block),
 
             Element::List(list) => self.render_list(list),
+            Element::Comment(comment) => self.render_comment(comment),
+
             Element::Item(item) => self.render_item(item),
             Element::FootnoteDefinition(footnote_definition) => {
                 String::from("")
@@ -250,6 +252,10 @@ impl HtmlRenderer {
             .iter()
             .map(|c| self.render_element(c))
             .collect()
+    }
+
+    fn render_comment(&self, comment: &Comment) -> String {
+        String::from("")
     }
 
     fn render_object(&self, object: &Object) -> String {

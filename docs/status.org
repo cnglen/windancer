@@ -4,65 +4,76 @@
 
 * object
 
-|                    | parser-rowan | parser-ast | html-render | comment                                |
-|--------------------+--------------+------------+-------------+----------------------------------------|
-| entity             | ✓           | ✓         | ✓          |                                        |
-| latex-fragment     | ✓           | ✓         | ✓          |                                        |
-| subscript          | ✓           | ✓         | ✓          |                                        |
-| superscript        | ✓           | ✓         | ✓          |                                        |
-| footnote-reference | ✓           | ✓         | ✓          |                                        |
-| line-break         | ✓           | ✓         | ✓          |                                        |
-| macro              | ✓           | ✓         |             | todo render: collect macro replacement |
-| text-markup[fn:1]  | ✓           | ✓         | ✓          |                                        |
-| radio link         | ✓           | ✓         | ✓          |                                        |
-| angle link         | ✓           | ✓         | ✓          |                                        |
-| plain link         | ✓           | ✓         | ✓          |                                        |
-| regular link       | ✓           | ✓         | ✓          |                                        |
-| table-cell         | ✓           | ✓         | ✓          |                                        |
-| radio-target       | ✓           | ✓         | ✓          |                                        |
-| timestamp          | ✓           | ✓         | ✓          |                                        |
-| target             | ✓           | ✓         | ✓          |                                        |
-|--------------------+--------------+------------+-------------+----------------------------------------|
-| statistics-cookie  |              |            |             | low                                    |
-| inline-babel-call  |              |            |             | low                                    |
-| export-snippet     |              |            |             | low                                    |
-| inline-src-block   |              |            |             | low                                    |
-| citation           |              |            |             | low                                    |
-| citation-reference |              |            |             | low                                    |
-
-
-
+|                    | parser-rowan | parser-ast | html-render | comment                              |
+|--------------------+--------------+------------+-------------+--------------------------------------|
+| entity             | ✓           | ✓         | ✓          |                                      |
+| latex-fragment     | ✓           | ✓         | ✓          |                                      |
+| subscript          | ✓           | ✓         | ✓          |                                      |
+| superscript        | ✓           | ✓         | ✓          |                                      |
+| footnote-reference | ✓           | ✓         | ✓          |                                      |
+| line-break         | ✓           | ✓         | ✓          |                                      |
+| macro              | ✓           | ✓         |             | collect macro defintion from keyword |
+| text-markup[fn:1]  | ✓           | ✓         | ✓          |                                      |
+| radio link         | ✓           | ✓         | ✓          |                                      |
+| angle link         | ✓           | ✓         | ✓          |                                      |
+| plain link         | ✓           | ✓         | ✓          |                                      |
+| regular link       | ✓           | ✓         | ✓          |                                      |
+| table-cell         | ✓           | ✓         | ✓          |                                      |
+| radio-target       | ✓           | ✓         | ✓          |                                      |
+| timestamp          | ✓           | ✓         | ✓          |                                      |
+| target             | ✓           | ✓         | ✓          |                                      |
+|--------------------+--------------+------------+-------------+--------------------------------------|
+| statistics-cookie  |              |            |             | low                                  |
+| inline-babel-call  |              |            |             | low                                  |
+| export-snippet     |              |            |             | low                                  |
+| inline-src-block   |              |            |             | low                                  |
+| citation           |              |            |             | low                                  |
+| citation-reference |              |            |             | low                                  |
 
 * element
 
 ** greater element
 
-|                    | parser-rowan | parser-ast | html-render | comment |
-|--------------------+--------------+------------+-------------+---------|
-| HeadingSubtree     |              |            |             |         |
-| Section            |              |            |             |         |
-| Table              |              |            |             |         |
-| Drawer             |              |            |             |         |
-| CenterBlock        |              |            |             |         |
-| QuoteBlock         |              |            |             |         |
-| SpecialBlock       |              |            |             |         |
-| List               |              |            |             |         |
-| Item               |              |            |             |         |
-| FootnoteDefinition |              |            |             |         |
-| Paragraph          |              |            |             |         |
-| SrcBlock           |              |            |             |         |
-| CommentBlock       |              |            |             |         |
-| VerseBlock         |              |            |             |         |
-| ExampleBlock       |              |            |             |         |
-| HorizontalRule     |              |            |             |         |
-| LatexEnvironment   |              |            |             |         |
-| Keyrord            |              |            |             |         |
-| TableRow           |              |            |             |         |
+|                     | parser-rowan | parser-ast | html-render | comment |
+|---------------------+--------------+------------+-------------+---------|
+| heading-subtree     |              |            |             |         |
+| section             |              |            |             |         |
+| drawer              |              |            |             |         |
+| property-drawer     |              |            |             |         |
+| center-block        |              |            |             |         |
+| quote-block         |              |            |             |         |
+| special-block       |              |            |             |         |
+| dynamic-block       |              |            |             |         |
+| item                |              |            |             |         |
+| plain-List          |              |            |             |         |
+| Table               |              |            |             |         |
+| inlinetask          |              |            |             |         |
+| footnote-definition |              |            |             |         |
 
 
 ** lesser element
 
+|                   | parser-rowan | parser-ast | html-render | comment |
+|-------------------+--------------+------------+-------------+---------|
+| comment           | ✓           | ✓         | ✓          |         |
+| table-row         |              |            |             |         |
+| clock             |              |            |             |         |
+| diary-sexp        |              |            |             |         |
+| paragraph         |              |            |             |         |
+| node-property     |              |            |             |         |
+| fixed-width       |              |            |             |         |
+| planning          |              |            |             |         |
+| blocks            |              |            |             |         |
+| horizontal-rule   |              |            |             |         |
+| latex-environment |              |            |             |         |
+| keyword           |              |            |             |         |
+| babel-call?       |              |            |             |         |
 
+| comment-block |   |   |   |   |
+| example-block |   |   |   |   |
+| src-block     |   |   |   |   |
+| verse-block   |   |   |   |   |
+| export-clock  |   |   |   |   |
 
 
 * Footnotes

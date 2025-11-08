@@ -143,6 +143,7 @@ pub enum Element {
     Keyword(Keyword),
     TableRow(TableRow),
     // BabelCall(BabelCall),
+    Comment(Comment),
 }
 
 #[derive(Debug, Clone)]
@@ -346,4 +347,10 @@ impl LatexEnvironment {
     pub fn syntax(&self) -> &SyntaxNode {
         &self.syntax
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct Comment {
+    pub(crate) syntax: SyntaxNode,
+    pub text: String,
 }
