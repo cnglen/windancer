@@ -12,41 +12,8 @@ pub(crate) fn get_parser_output<'a>(
     + Clone,
     input: &'a str,
 ) -> String {
-    let a = parser.parse(input);
-
-    let mut errors = vec![];
-    errors.push(String::from("errors:"));
-    if a.has_errors() {
-        for error in a.errors() {
-            // println!("{:?}", error);
-            errors.push(format!("{:?}", error));
-        }
-    }
-
-    if a.has_output() {
-        match parser.parse(input).unwrap() {
-            S2::Single(NodeOrToken::Node(node)) => {
-                let syntax_tree: SyntaxNode<OrgLanguage> = SyntaxNode::new_root(node);
-                // println!("{syntax_tree:#?}");
-                format!("{syntax_tree:#?}")
-            }
-
-            S2::Single(NodeOrToken::Token(token)) => {
-                let root = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                    OrgSyntaxKind::Root.into(),
-                    vec![NodeOrToken::Token(token)],
-                ));
-                let syntax_tree: SyntaxNode<OrgLanguage> =
-                    SyntaxNode::new_root(root.into_node().expect("xx"));
-
-                format!("{syntax_tree:#?}")
-            }
-
-            _ => String::from(""),
-        }
-    } else {
-        errors.join("\n")
-    }
+    let mut state = RollbackState(ParserState::default());
+    get_parser_output_with_state(parser, input, state)
 }
 
 #[allow(dead_code)]
@@ -135,4 +102,64 @@ pub(crate) fn get_parsers_output_with_state<'a>(
     let syntax_tree: SyntaxNode<OrgLanguage> = SyntaxNode::new_root(root.into_node().expect("xx"));
 
     format!("{syntax_tree:#?}")
+}
+
+#[allow(dead_code)]
+pub(crate) fn get_parser_nt_output<'a>(
+    parser: impl Parser<
+        'a,
+        &'a str,
+        NodeOrToken<GreenNode, GreenToken>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    > + Clone,
+    input: &'a str,
+) -> String {
+    let mut state = RollbackState(ParserState::default());
+    get_parser_nt_output_with_state(parser, input, state)
+}
+
+#[allow(dead_code)]
+pub(crate) fn get_parser_nt_output_with_state<'a>(
+    parser: impl Parser<
+        'a,
+        &'a str,
+        NodeOrToken<GreenNode, GreenToken>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    > + Clone,
+    input: &'a str,
+    mut state: RollbackState<ParserState>,
+) -> String {
+    let a = parser.parse_with_state(input, &mut state);
+
+    let mut errors = vec![];
+    errors.push(String::from("errors:"));
+    if a.has_errors() {
+        for error in a.errors() {
+            // println!("{:?}", error);
+            errors.push(format!("{:?}", error));
+        }
+    }
+
+    if a.has_output() {
+        match parser.parse(input).unwrap() {
+            NodeOrToken::Node(node) => {
+                let syntax_tree: SyntaxNode<OrgLanguage> = SyntaxNode::new_root(node);
+                // println!("{syntax_tree:#?}");
+                format!("{syntax_tree:#?}")
+            }
+
+            NodeOrToken::Token(token) => {
+                let root = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+                    OrgSyntaxKind::Root.into(),
+                    vec![NodeOrToken::Token(token)],
+                ));
+                let syntax_tree: SyntaxNode<OrgLanguage> =
+                    SyntaxNode::new_root(root.into_node().expect("xx"));
+
+                format!("{syntax_tree:#?}")
+            }
+        }
+    } else {
+        errors.join("\n")
+    }
 }

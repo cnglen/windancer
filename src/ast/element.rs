@@ -1,5 +1,6 @@
 //! AST node definition for element in org-mode
 use crate::ast::object::Object;
+use crate::parser::object;
 use crate::parser::syntax::SyntaxNode;
 use std::fmt;
 

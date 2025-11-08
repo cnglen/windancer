@@ -1,11 +1,13 @@
 //! Table parser
 use crate::parser::S2;
+use crate::parser::keyword::affiliated_keyword_parser;
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserState, object};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
+// Any line with ‘|’ as the first non-whitespace character, then any number of table cells
 fn table_standard_row<'a>() -> impl Parser<
     'a,
     &'a str,
@@ -18,7 +20,7 @@ fn table_standard_row<'a>() -> impl Parser<
             object::table_cell::table_cell_parser(object::object_in_table_cell_parser())
                 .repeated()
                 .collect::<Vec<_>>(),
-        ) // todo: object_parser not limited!
+        )
         .then(object::newline_or_ending())
         .map(|(((ws, pipe), cells), maybe_newline)| {
             let mut children = vec![];
@@ -57,6 +59,7 @@ fn table_standard_row<'a>() -> impl Parser<
         })
 }
 
+// Any line with ‘|’ as the first non-whitespace character, then a line starting with ‘|-’ is a horizontal rule.  It separates rows explicitly.
 fn table_rule_row<'a>() -> impl Parser<
     'a,
     &'a str,
@@ -114,14 +117,25 @@ pub(crate) fn table_parser<'a>() -> impl Parser<
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
-    table_rule_row()
+    // fixme: standard objects without footnote reference
+    let affiliated_keywords = affiliated_keyword_parser(object::standard_set_object_parser())
+        .repeated()
+        .collect::<Vec<_>>();
+    let rows = table_rule_row()
         .or(table_standard_row())
         .repeated()
         .at_least(1)
-        .collect::<Vec<_>>()
+        .collect::<Vec<_>>();
+
+    affiliated_keywords
+        .then(rows)
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
-        .map(|(rows, blanklines)| {
+        .map(|((affiliated_keywords, rows), blanklines)| {
             let mut children = vec![];
+
+            for e in affiliated_keywords {
+                children.push(e);
+            }
 
             for row in rows {
                 children.push(row);
@@ -135,13 +149,6 @@ pub(crate) fn table_parser<'a>() -> impl Parser<
                 //     }
                 //     _ => {},
             }
-
-            // println!("row={:#?}", row);
-            // match row {
-
-            //     children.push(row);
-            // }
-            // }
 
             for blankline in blanklines {
                 children.push(NodeOrToken::Token(blankline));

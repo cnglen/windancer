@@ -219,6 +219,7 @@ a ~=*/bold_italic/*=~ line
 
 * table test
 
+#+CAPTION: *bold* title
 | object kind           | object value           | supported in table cell |
 |-----------------------+------------------------+-------------------------|
 | 01 text markup        | *bold*                 | y                       |

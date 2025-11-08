@@ -34,6 +34,7 @@ pub enum OrgSyntaxKind {
     HorizontalRule,
     LatexEnvironment,
     Keyword,
+    AffiliatedKeyword,
     BabelCall,
     TableStandardRow,
     TableRuleRow,

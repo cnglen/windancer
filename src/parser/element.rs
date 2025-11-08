@@ -21,12 +21,12 @@ pub(crate) fn element_parser<'a>() -> impl Parser<
     choice((
         footnote_definition::footnote_definition_parser(),
         block::block_parser(),
+        table::table_parser(),
         keyword::keyword_parser(),
         drawer::drawer_parser(),
         horizontal_rule::horizontal_rule_parser(),
         latex_environment::latex_environment_parser(),
         comment::comment_parser(),
-        table::table_parser(),
         paragraph::paragraph_parser(),
         section::section_unknown_parser(),
     ))
