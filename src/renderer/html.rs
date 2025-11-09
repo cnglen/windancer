@@ -31,16 +31,20 @@
 use crate::ast::element::{
     CenterBlock, Comment, CommentBlock, Document, Drawer, Element, ExampleBlock, ExportBlock,
     FootnoteDefinition, HeadingSubtree, HorizontalRule, Item, Keyword, LatexEnvironment, List,
-    ListType, Paragraph, QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableRow, VerseBlock,
+    ListType, Paragraph, QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableRow,
+    TableRowType, VerseBlock,
 };
 
-use crate::ast::object::Object;
+use crate::ast::object::{Object, TableCellType};
 use crate::parser::object::entity::ENTITYNAME_TO_HTML;
 
 use std::fs;
+use std::ops::Not;
 
 pub struct HtmlRenderer {
     config: RenderConfig,
+    table_counter: usize,
+    figure_counter: usize,
 }
 
 #[derive(Clone)]
@@ -52,10 +56,14 @@ pub struct RenderConfig {
 
 impl HtmlRenderer {
     pub fn new(config: RenderConfig) -> Self {
-        Self { config }
+        Self {
+            config,
+            table_counter: 0,
+            figure_counter: 0,
+        }
     }
 
-    pub fn render_document(&self, document: &Document) -> String {
+    pub fn render_document(&mut self, document: &Document) -> String {
         let css = &fs::read_to_string("src/renderer/default.css").unwrap_or(String::new());
 
         let mut output = String::new();
@@ -120,7 +128,7 @@ impl HtmlRenderer {
         )
     }
 
-    fn render_section(&self, section: &Section) -> String {
+    fn render_section(&mut self, section: &Section) -> String {
         section
             .elements
             .iter()
@@ -128,7 +136,7 @@ impl HtmlRenderer {
             .collect::<String>()
     }
 
-    fn render_heading_subtree(&self, heading: &HeadingSubtree) -> String {
+    fn render_heading_subtree(&mut self, heading: &HeadingSubtree) -> String {
         if heading.is_commented {
             return String::from("");
         }
@@ -187,7 +195,7 @@ impl HtmlRenderer {
         )
     }
 
-    fn render_element(&self, element: &Element) -> String {
+    fn render_element(&mut self, element: &Element) -> String {
         match element {
             Element::Paragraph(paragraph) => self.render_paragraph(paragraph),
             Element::Table(table) => self.render_table(table),
@@ -221,11 +229,13 @@ impl HtmlRenderer {
         }
     }
 
-    // todo: table number
-    fn render_table(&self, table: &Table) -> String {
+    // todo: table number/css
+    fn render_table(&mut self, table: &Table) -> String {
         let caption = if table.caption.len() > 0 {
+            self.table_counter = self.table_counter + 1;
             format!(
-                r##"<caption class="t-above"> <span class="table-number">Table:</span> {} </caption>"##,
+                r##"<caption class="t-above"> <span class="table-number">Table {}:</span> {} </caption>"##,
+                self.table_counter,
                 table
                     .caption
                     .iter()
@@ -236,13 +246,33 @@ impl HtmlRenderer {
             String::from("")
         };
 
+        let header = table
+            .header
+            .is_empty()
+            .not()
+            .then(|| {
+                format!(
+                    r##"<thead>
+{}
+</thead>"##,
+                    table
+                        .header
+                        .iter()
+                        .map(|r| self.render_table_row(r))
+                        .collect::<String>()
+                )
+            })
+            .unwrap_or_default();
+
         format!(
             r##"
- <table>
+ <table border="2">
+ {}
  {}
  {}</table>
  "##,
             caption,
+            header,
             table
                 .rows
                 .iter()
@@ -252,17 +282,21 @@ impl HtmlRenderer {
     }
 
     fn render_table_row(&self, table_row: &TableRow) -> String {
-        format!(
-            "  <tr>{}</tr>\n",
-            table_row
-                .cells
-                .iter()
-                .map(|e| self.render_object(&e))
-                .collect::<String>()
-        )
+        match table_row.row_type {
+            TableRowType::Data | TableRowType::Header => format!(
+                "  <tr>{}</tr>\n",
+                table_row
+                    .cells
+                    .iter()
+                    .map(|e| self.render_object(&e))
+                    .collect::<String>()
+            ),
+
+            _ => String::new(),
+        }
     }
 
-    fn render_drawer(&self, drawer: &Drawer) -> String {
+    fn render_drawer(&mut self, drawer: &Drawer) -> String {
         drawer
             .contents
             .iter()
@@ -333,14 +367,16 @@ impl HtmlRenderer {
             }
 
             Object::TableCell(table_cell) => {
-                format!(
-                    " <td>{}</td> ",
-                    table_cell
-                        .contents
-                        .iter()
-                        .map(|e| self.render_object(e))
-                        .collect::<String>()
-                )
+                let contents = table_cell
+                    .contents
+                    .iter()
+                    .map(|e| self.render_object(e))
+                    .collect::<String>();
+
+                match table_cell.cell_type {
+                    TableCellType::Header => format!(r##" <th>{}</th> "##, contents),
+                    TableCellType::Data => format!(r##" <td>{}</td> "##, contents),
+                }
             }
 
             Object::Link { url, text } => {
@@ -472,7 +508,7 @@ impl HtmlRenderer {
     }
 
     // fixme: link: collect all footnotes into a div
-    fn render_footnote_definition(&self, footnote_definition: &FootnoteDefinition) -> String {
+    fn render_footnote_definition(&mut self, footnote_definition: &FootnoteDefinition) -> String {
         let c = if footnote_definition.rids.len() == 1 {
             format!(
                 r##"  <sup>
@@ -518,7 +554,7 @@ impl HtmlRenderer {
         )
     }
 
-    fn render_center_block(&self, block: &CenterBlock) -> String {
+    fn render_center_block(&mut self, block: &CenterBlock) -> String {
         format!(
             r##"<div class="center">
 {}</div>
@@ -531,7 +567,7 @@ impl HtmlRenderer {
         )
     }
 
-    fn render_quote_block(&self, block: &QuoteBlock) -> String {
+    fn render_quote_block(&mut self, block: &QuoteBlock) -> String {
         format!(
             r##"<blockquote>
 {}</blockquote>
@@ -544,7 +580,7 @@ impl HtmlRenderer {
         )
     }
 
-    fn render_special_block(&self, block: &SpecialBlock) -> String {
+    fn render_special_block(&mut self, block: &SpecialBlock) -> String {
         format!(
             r##"<div class="special">
 {}</div>
@@ -618,7 +654,7 @@ impl HtmlRenderer {
         format!(r##""##)
     }
 
-    fn render_list(&self, list: &List) -> String {
+    fn render_list(&mut self, list: &List) -> String {
         match list.list_type {
             ListType::Unordered => {
                 format!(
@@ -658,7 +694,7 @@ impl HtmlRenderer {
         }
     }
 
-    fn render_item(&self, item: &Item) -> String {
+    fn render_item(&mut self, item: &Item) -> String {
         match &item.tag {
             None => format!(
                 r##"  <li>

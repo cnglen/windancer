@@ -46,7 +46,7 @@
 | dynamic-block       |              |            |             |         |
 | item                |              |            |             |         |
 | plain-List          |              |            |             |         |
-| Table               |              |            |             |         |
+| Table               | ✓           | ✓         | ✓          |         |
 | inlinetask          |              |            |             |         |
 | footnote-definition |              |            |             |         |
 
@@ -56,7 +56,7 @@
 |                   | parser-rowan | parser-ast | html-render | comment |
 |-------------------+--------------+------------+-------------+---------|
 | comment           | ✓           | ✓         | ✓          |         |
-| table-row         |              |            |             |         |
+| table-row         | ✓           | ✓         | ✓          |         |
 | clock             |              |            |             |         |
 | diary-sexp        |              |            |             |         |
 | paragraph         |              |            |             |         |

@@ -219,7 +219,7 @@ a ~=*/bold_italic/*=~ line
 
 * table test
 
-#+CAPTION[short desc]: *bold* title
+#+CAPTION[object in table]: table with objects
 #+attr_html: :border 2 :rules all :frame border
 | object kind           | object value           | supported in table cell |
 |-----------------------+------------------------+-------------------------|
@@ -249,12 +249,30 @@ a ~=*/bold_italic/*=~ line
 
 
 #+CAPTION: table
-  | Name       | Phone | Age | as  |
-  | /          | <r10> | <l> | <c> |
-  |------------+-------+-----+-----|
-  | Peter Jack |   123 | 2   |  4  |
-  | Anna       | 54321 | 125 | 999 |
+| Name       | Phone | Age | as  |
+| /          | <r10> | <l> | <c> |
+|------------+-------+-----+-----|
+| Peter Jack |   123 | 2   |  4  |
+| Anna       | 54321 | 125 | 999 |
 
+#+CAPTION: table with formula
+| N | N^2 | N^3 | N^4 | sqrt(n) | sqrt[4](N) |
+|---+-----+-----+-----+---------+------------|
+| / |   < |     |   > |       < |          > |
+| 1 |   1 |   1 |   1 |       1 |          1 |
+| 2 |   4 |   8 |  16 |  1.4142 |     1.1892 |
+| 3 |   9 |  27 |  81 |  1.7321 |     1.3161 |
+#+TBLFM: $2=$1^2::$3=$1^3::$4=$1^4::$5=sqrt($1)::$6=sqrt(sqrt(($1)))
+
+#+CAPTION: table with formulas
+|   | x |    z |
+|---+---+------|
+| ! | x |   z1 |
+| # | 1 |  300 |
+| # | 6 | 1800 |
+| # | 5 | 1500 |
+#+tblfM: $3=$x*300
+#+TBLFM: $3=$x*1
 
 table cell with objects:
 

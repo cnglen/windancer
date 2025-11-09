@@ -77,6 +77,13 @@ pub enum Object {
 #[derive(Debug, Clone)]
 pub struct TableCell {
     pub contents: Vec<Object>, // 单元格内容（可以包含内联元素）
-                               // pub alignment: CellAlignment, // 对齐方式
-                               // pub span: CellSpan,           // 跨行/跨列信息
+    // pub alignment: CellAlignment, // 对齐方式
+    // pub span: CellSpan,           // 跨行/跨列信息
+    pub cell_type: TableCellType,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TableCellType {
+    Header, // 表头行
+    Data,   // 数据行
 }

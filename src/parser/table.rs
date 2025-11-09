@@ -111,6 +111,69 @@ fn table_rule_row<'a>() -> impl Parser<
         })
 }
 
+pub(crate) fn table_formula_parser<'a>() -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
+    just("#+")
+        .then(object::just_case_insensitive("TBLFM"))
+        .then(just(":"))
+        .then(object::whitespaces())
+        .then(none_of("\r\n").repeated().collect::<String>())
+        .then(object::newline_or_ending())
+        .map_with(|(((((hash_plus, tblfm), colon), ws), formula), nl), e| {
+            let mut children = vec![];
+
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::HashPlus.into(),
+                hash_plus,
+            )));
+
+            children.push(NodeOrToken::Node(GreenNode::new(
+                OrgSyntaxKind::KeywordKey.into(),
+                vec![NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Text.into(),
+                    &tblfm,
+                ))],
+            )));
+
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::Colon.into(),
+                colon,
+            )));
+
+            if ws.len() > 0 {
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Whitespace.into(),
+                    &ws,
+                )));
+            }
+
+            children.push(NodeOrToken::Node(GreenNode::new(
+                OrgSyntaxKind::TableFormulaValue.into(),
+                vec![NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Text.into(),
+                    &formula,
+                ))],
+            )));
+
+            match nl {
+                Some(newline) => {
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Newline.into(),
+                        &newline,
+                    )));
+                    e.state().prev_char = newline.chars().last();
+                }
+                None => {}
+            }
+
+            NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::TableFormula.into(), children))
+        })
+}
+
 pub(crate) fn table_parser<'a>() -> impl Parser<
     'a,
     &'a str,
@@ -126,28 +189,25 @@ pub(crate) fn table_parser<'a>() -> impl Parser<
         .repeated()
         .at_least(1)
         .collect::<Vec<_>>();
+    let formulas = table_formula_parser().repeated().collect::<Vec<_>>();
 
     affiliated_keywords
         .then(rows)
+        .then(formulas)
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
-        .map(|((affiliated_keywords, rows), blanklines)| {
+        .map(|(((affiliated_keywords, rows), formulas), blanklines)| {
             let mut children = vec![];
 
             for e in affiliated_keywords {
                 children.push(e);
             }
 
-            for row in rows {
-                children.push(row);
-                // match row {
-                //     NodeOrToken::Node(n) => {
-                //         match n.kind() {
-                //             val if val== OrgSyntaxKind::TableStandardRow.into() => {},
-                //             val if val== OrgSyntaxKind::TableRuleRow.into() => {},
-                //             _ => {}
-                //         }
-                //     }
-                //     _ => {},
+            for e in rows {
+                children.push(e);
+            }
+
+            for e in formulas {
+                children.push(e);
             }
 
             for blankline in blanklines {

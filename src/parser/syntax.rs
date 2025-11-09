@@ -43,6 +43,8 @@ pub enum OrgSyntaxKind {
     BabelCall,
     TableStandardRow,
     TableRuleRow,
+    TableFormula,
+    TableFormulaValue,
 
     // Object
     Entity,

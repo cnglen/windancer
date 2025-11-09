@@ -39,7 +39,7 @@ fn main() -> std::io::Result<()> {
         highlight_code_blocks: false,
     };
 
-    let html_renderer = HtmlRenderer::new(renderer_config);
+    let mut html_renderer = HtmlRenderer::new(renderer_config);
     let html = html_renderer.render_document(&ast);
     let _ = fs::write("tests/windancer_output.html", format!("{}", html));
 

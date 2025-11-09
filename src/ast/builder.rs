@@ -20,10 +20,10 @@ use crate::ast::element::{
     AffiliatedKeyword, CenterBlock, Comment, CommentBlock, Document, Drawer, Element, ExampleBlock,
     ExportBlock, FootnoteDefinition, HeadingSubtree, HorizontalRule, Item, Keyword,
     LatexEnvironment, List, ListType, Paragraph, QuoteBlock, Section, SpecialBlock, SrcBlock,
-    Table, TableRow, TableRowType, VerseBlock,
+    Table, TableFormula, TableRow, TableRowType, VerseBlock,
 };
 use crate::ast::error::AstError;
-use crate::ast::object::{Object, TableCell};
+use crate::ast::object::{Object, TableCell, TableCellType};
 use crate::parser::syntax::{OrgSyntaxKind, SyntaxElement, SyntaxNode, SyntaxToken};
 
 pub struct AstBuilder;
@@ -430,18 +430,34 @@ impl Converter {
     fn convert_table(&mut self, node: &SyntaxNode) -> Result<Table, AstError> {
         let mut name = None;
         let mut caption = vec![];
-        let header = None;
         let separator = None;
         let mut rows = vec![];
+        let mut header = vec![];
+        let mut formulas = vec![];
 
-        for row in node.children() {
+        let idx_rule_row = node
+            .children()
+            .enumerate()
+            .find(|(i, e)| e.kind() == OrgSyntaxKind::TableRuleRow)
+            .map(|(idx, _)| idx)
+            .unwrap_or(0);
+        for (i, row) in node.children().enumerate() {
             match row.kind() {
                 OrgSyntaxKind::TableStandardRow => {
-                    rows.push(self.convert_table_row(&row, TableRowType::Data)?);
+                    if i < idx_rule_row {
+                        header.push(self.convert_table_row(&row, TableRowType::Header)?);
+                    } else {
+                        rows.push(self.convert_table_row(&row, TableRowType::Data)?);
+                    }
                 }
                 OrgSyntaxKind::TableRuleRow => {
-                    rows.push(self.convert_table_row(&row, TableRowType::Rule)?);
+                    // rows.push(self.convert_table_row(&row, TableRowType::Rule)?);
                 }
+
+                OrgSyntaxKind::TableFormula => {
+                    formulas.push(self.convert_table_formula(&row)?);
+                }
+
                 OrgSyntaxKind::AffiliatedKeyword => {
                     let affliated_keyword = self.convert_affiliated_keyword(&row)?;
 
@@ -478,6 +494,7 @@ impl Converter {
             header,
             separator,
             rows,
+            formulas,
         })
     }
 
@@ -490,7 +507,7 @@ impl Converter {
         let cells = node
             .children()
             .filter(|e| e.kind() == OrgSyntaxKind::TableCell)
-            .map(|e| self.convert_table_cell(&e))
+            .map(|e| self.convert_table_cell(&e, row_type.clone()))
             .filter(|e| e.is_ok())
             .map(|e| e.unwrap())
             .filter(|e| e.is_some())
@@ -504,9 +521,31 @@ impl Converter {
         })
     }
 
+    // element: table_row??
+    fn convert_table_formula(&mut self, node: &SyntaxNode) -> Result<TableFormula, AstError> {
+        let data = node
+            .first_child_by_kind(&|e| e == OrgSyntaxKind::TableFormulaValue)
+            .expect("table formula value")
+            .first_child_or_token_by_kind(&|e| e == OrgSyntaxKind::Text)
+            .expect("text")
+            .as_token()
+            .unwrap()
+            .text()
+            .to_string();
+
+        Ok(TableFormula {
+            syntax: node.clone(),
+            data,
+        })
+    }
+
     // object.table_cell
     // fixme
-    fn convert_table_cell(&mut self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
+    fn convert_table_cell(
+        &mut self,
+        node: &SyntaxNode,
+        row_type: TableRowType,
+    ) -> Result<Option<Object>, AstError> {
         let contents = node
             .children_with_tokens()
             .map(|e| self.convert_object(&e))
@@ -516,7 +555,16 @@ impl Converter {
             .map(|e| e.unwrap())
             .collect();
 
-        Ok(Some(Object::TableCell(TableCell { contents })))
+        let cell_type = match row_type {
+            TableRowType::Data => TableCellType::Data,
+            TableRowType::Header => TableCellType::Header,
+            _ => TableCellType::Data,
+        };
+
+        Ok(Some(Object::TableCell(TableCell {
+            contents,
+            cell_type,
+        })))
     }
 
     // convert markup object

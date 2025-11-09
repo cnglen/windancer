@@ -49,7 +49,7 @@ fn main() {
         class_prefix: String::from(""),
         highlight_code_blocks: false,
     };
-    let html_renderer = HtmlRenderer::new(renderer_config);
+    let mut html_renderer = HtmlRenderer::new(renderer_config);
     let html = html_renderer.render_document(&ast);
     let f_html = match args.f_html {
         Some(ref file) => file,

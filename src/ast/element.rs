@@ -162,18 +162,18 @@ pub struct Table {
     pub name: Option<String>, // 表格名称 (#+NAME:)
     pub caption: Vec<Object>, // 表格标题 (#+CAPTION:)
     // pub attributes: TableAttributes,    // 表格属性
-    pub header: Option<TableRow>,    // 表头行（可选）
+    pub header: Vec<TableRow>,       // 表头行（>=0）
     pub separator: Option<TableRow>, // 分隔线行（可选）
     pub rows: Vec<TableRow>,         // 数据行
-                                     // pub formulas: Vec<TableFormula>,    // 表格公式
+    pub formulas: Vec<TableFormula>, // 表格公式
 }
 
 impl fmt::Debug for Table {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "caption={:?}\nname={:?}\n{:?}",
-            self.caption, self.name, self.rows
+            "caption={:?}\nname={:?}\nheader={:?}\nrows={:?}\nformulas={:?}",
+            self.caption, self.name, self.header, self.rows, self.formulas
         )
     }
 }
@@ -219,9 +219,11 @@ pub enum TableRowType {
 // 表格公式
 #[derive(Debug, Clone)]
 pub struct TableFormula {
-    pub target: String,         // 目标单元格/范围
-    pub formula: String,        // 公式内容
-    pub format: Option<String>, // 格式说明
+    pub(crate) syntax: SyntaxNode,
+    pub data: String,
+    // pub target: String,         // 目标单元格/范围
+    // pub formula: String,        // 公式内容
+    // pub format: Option<String>, // 格式说明
 }
 
 #[derive(Clone)]
