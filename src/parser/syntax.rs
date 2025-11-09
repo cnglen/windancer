@@ -35,6 +35,11 @@ pub enum OrgSyntaxKind {
     LatexEnvironment,
     Keyword,
     AffiliatedKeyword,
+    KeywordKey,
+    KeywordValue,
+    KeywordOptvalue,
+    KeywordAttrBackend,
+
     BabelCall,
     TableStandardRow,
     TableRuleRow,

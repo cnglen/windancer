@@ -221,12 +221,28 @@ impl HtmlRenderer {
         }
     }
 
+    // todo: table number
     fn render_table(&self, table: &Table) -> String {
+        let caption = if table.caption.len() > 0 {
+            format!(
+                r##"<caption class="t-above"> <span class="table-number">Table:</span> {} </caption>"##,
+                table
+                    .caption
+                    .iter()
+                    .map(|e| self.render_object(e))
+                    .collect::<String>()
+            )
+        } else {
+            String::from("")
+        };
+
         format!(
             r##"
  <table>
+ {}
  {}</table>
  "##,
+            caption,
             table
                 .rows
                 .iter()

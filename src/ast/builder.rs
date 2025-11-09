@@ -17,10 +17,10 @@ use rowan::GreenNode;
 use std::collections::HashMap;
 
 use crate::ast::element::{
-    CenterBlock, Comment, CommentBlock, Document, Drawer, Element, ExampleBlock, ExportBlock,
-    FootnoteDefinition, HeadingSubtree, HorizontalRule, Item, Keyword, LatexEnvironment, List,
-    ListType, Paragraph, QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableRow,
-    TableRowType, VerseBlock,
+    AffiliatedKeyword, CenterBlock, Comment, CommentBlock, Document, Drawer, Element, ExampleBlock,
+    ExportBlock, FootnoteDefinition, HeadingSubtree, HorizontalRule, Item, Keyword,
+    LatexEnvironment, List, ListType, Paragraph, QuoteBlock, Section, SpecialBlock, SrcBlock,
+    Table, TableRow, TableRowType, VerseBlock,
 };
 use crate::ast::error::AstError;
 use crate::ast::object::{Object, TableCell};
@@ -257,6 +257,7 @@ impl Converter {
             }
 
             OrgSyntaxKind::List => Ok(Element::List(self.convert_list(&node)?)),
+
             OrgSyntaxKind::Keyword => Ok(Element::Keyword(self.convert_keyword(&node)?)),
 
             OrgSyntaxKind::Comment => Ok(Element::Comment(self.convert_comment(&node)?)),
@@ -427,8 +428,8 @@ impl Converter {
 
     // element.table
     fn convert_table(&mut self, node: &SyntaxNode) -> Result<Table, AstError> {
-        let name = None;
-        let caption = None;
+        let mut name = None;
+        let mut caption = vec![];
         let header = None;
         let separator = None;
         let mut rows = vec![];
@@ -440,6 +441,32 @@ impl Converter {
                 }
                 OrgSyntaxKind::TableRuleRow => {
                     rows.push(self.convert_table_row(&row, TableRowType::Rule)?);
+                }
+                OrgSyntaxKind::AffiliatedKeyword => {
+                    let affliated_keyword = self.convert_affiliated_keyword(&row)?;
+
+                    match affliated_keyword.key.to_uppercase().as_str() {
+                        "CAPTION" => {
+                            caption = affliated_keyword.value;
+                        }
+                        "NAME" => {
+                            name = Some(
+                                affliated_keyword
+                                    .value
+                                    .into_iter()
+                                    .filter(|e| match e {
+                                        Object::Text(t) => true,
+                                        _ => false,
+                                    })
+                                    .map(|e| match e {
+                                        Object::Text(t) => t,
+                                        _ => String::from(""),
+                                    })
+                                    .collect::<String>(),
+                            );
+                        }
+                        _ => {}
+                    }
                 }
                 _ => {}
             }
@@ -1328,20 +1355,75 @@ impl Converter {
 
     // element.keyword
     fn convert_keyword(&self, node: &SyntaxNode) -> Result<Keyword, AstError> {
-        let mut iter = node
+        let key = node
+            .first_child_by_kind(&|e| e == OrgSyntaxKind::KeywordKey)
+            .unwrap()
             .children_with_tokens()
             .filter(|e| e.kind() == OrgSyntaxKind::Text)
-            .map(|e| e.into_token())
-            .filter(|e| e.is_some())
-            .map(|e| e.unwrap());
+            .map(|e| e.as_token().unwrap().text().to_string())
+            .collect::<String>();
 
-        let key = iter.next().expect("first text").text().to_string();
-        let value = iter.next().expect("second text").text().to_string();
+        let value = node
+            .first_child_by_kind(&|e| e == OrgSyntaxKind::KeywordValue)
+            .unwrap()
+            .children_with_tokens()
+            .filter(|e| e.kind() == OrgSyntaxKind::Text)
+            .map(|e| e.as_token().unwrap().text().to_string())
+            .collect::<String>();
+
+        // let key = iter.next().expect("first text").text().to_string();
+        // let value = iter.next().expect("second text").text().to_string();
 
         Ok(Keyword {
             syntax: node.clone(),
             key,
             value,
+        })
+    }
+
+    // element.affiliatedkeyword
+    fn convert_affiliated_keyword(
+        &mut self,
+        node: &SyntaxNode,
+    ) -> Result<AffiliatedKeyword, AstError> {
+        let key = node
+            .first_child_by_kind(&|e| e == OrgSyntaxKind::KeywordKey)
+            .unwrap()
+            .children_with_tokens()
+            .filter(|e| e.kind() == OrgSyntaxKind::Text)
+            .map(|e| e.as_token().unwrap().text().to_string())
+            .collect::<String>();
+
+        let optvalue = if let Some(node_optvalue) =
+            node.first_child_by_kind(&|e| e == OrgSyntaxKind::KeywordOptvalue)
+        {
+            Some(
+                node_optvalue
+                    .children_with_tokens()
+                    .filter(|e| e.kind() == OrgSyntaxKind::Text)
+                    .map(|e| e.as_token().unwrap().text().to_string())
+                    .collect::<String>(),
+            )
+        } else {
+            None
+        };
+
+        let objects = node
+            .first_child_by_kind(&|e| e == OrgSyntaxKind::KeywordValue)
+            .unwrap()
+            .children_with_tokens()
+            .map(|e| self.convert_object(&e))
+            .filter(|e| e.is_ok())
+            .map(|e| e.unwrap())
+            .filter(|e| e.is_some())
+            .map(|e| e.unwrap())
+            .collect::<Vec<_>>();
+
+        Ok(AffiliatedKeyword {
+            syntax: node.clone(),
+            key,
+            optvalue,
+            value: objects,
         })
     }
 

@@ -111,9 +111,12 @@ pub(crate) fn affiliated_keyword_parser<'a>(
                 hash_plus,
             )));
 
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                &key,
+            children.push(NodeOrToken::Node(GreenNode::new(
+                OrgSyntaxKind::KeywordKey.into(),
+                vec![NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Text.into(),
+                    &key,
+                ))],
             )));
 
             children.push(NodeOrToken::Token(GreenToken::new(
@@ -128,9 +131,12 @@ pub(crate) fn affiliated_keyword_parser<'a>(
                 )));
             }
 
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                &value,
+            children.push(NodeOrToken::Node(GreenNode::new(
+                OrgSyntaxKind::KeywordValue.into(),
+                vec![NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Text.into(),
+                    &value,
+                ))],
             )));
 
             match nl {
@@ -170,9 +176,12 @@ pub(crate) fn affiliated_keyword_parser<'a>(
                     hash_plus,
                 )));
 
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    &key,
+                children.push(NodeOrToken::Node(GreenNode::new(
+                    OrgSyntaxKind::KeywordKey.into(),
+                    vec![NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Text.into(),
+                        &key,
+                    ))],
                 )));
 
                 children.push(NodeOrToken::Token(GreenToken::new(
@@ -180,9 +189,12 @@ pub(crate) fn affiliated_keyword_parser<'a>(
                     &lsb,
                 )));
 
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    &optval,
+                children.push(NodeOrToken::Node(GreenNode::new(
+                    OrgSyntaxKind::KeywordOptvalue.into(),
+                    vec![NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Text.into(),
+                        &optval,
+                    ))],
                 )));
 
                 children.push(NodeOrToken::Token(GreenToken::new(
@@ -202,9 +214,12 @@ pub(crate) fn affiliated_keyword_parser<'a>(
                     )));
                 }
 
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    &value,
+                children.push(NodeOrToken::Node(GreenNode::new(
+                    OrgSyntaxKind::KeywordValue.into(),
+                    vec![NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Text.into(),
+                        &value,
+                    ))],
                 )));
 
                 match nl {
@@ -243,9 +258,12 @@ pub(crate) fn affiliated_keyword_parser<'a>(
                     hash_plus,
                 )));
 
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    &format!("{attr_}{backend}"),
+                children.push(NodeOrToken::Node(GreenNode::new(
+                    OrgSyntaxKind::KeywordKey.into(),
+                    vec![NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Text.into(),
+                        &format!("{attr_}{backend}"),
+                    ))],
                 )));
 
                 children.push(NodeOrToken::Token(GreenToken::new(
@@ -260,9 +278,12 @@ pub(crate) fn affiliated_keyword_parser<'a>(
                     )));
                 }
 
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    &value,
+                children.push(NodeOrToken::Node(GreenNode::new(
+                    OrgSyntaxKind::KeywordValue.into(),
+                    vec![NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Text.into(),
+                        &value,
+                    ))],
                 )));
 
                 match nl {
@@ -303,9 +324,12 @@ pub(crate) fn affiliated_keyword_parser<'a>(
                 hash_plus,
             )));
 
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                &key,
+            children.push(NodeOrToken::Node(GreenNode::new(
+                OrgSyntaxKind::KeywordKey.into(),
+                vec![NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Text.into(),
+                    &key,
+                ))],
             )));
 
             children.push(NodeOrToken::Token(GreenToken::new(
@@ -320,17 +344,24 @@ pub(crate) fn affiliated_keyword_parser<'a>(
                 )));
             }
 
+            let mut children_of_value = vec![];
             for node in value {
                 match node {
                     S2::Single(e) => {
-                        children.push(e);
+                        children_of_value.push(e);
                     }
                     S2::Double(e1, e2) => {
-                        children.push(e1);
-                        children.push(e2);
+                        children_of_value.push(e1);
+                        children_of_value.push(e2);
                     }
                     _ => {}
                 }
+            }
+            if children_of_value.len() > 0 {
+                children.push(NodeOrToken::Node(GreenNode::new(
+                    OrgSyntaxKind::KeywordValue.into(),
+                    children_of_value,
+                )));
             }
 
             match nl {
@@ -373,9 +404,12 @@ pub(crate) fn affiliated_keyword_parser<'a>(
                     hash_plus,
                 )));
 
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    &key,
+                children.push(NodeOrToken::Node(GreenNode::new(
+                    OrgSyntaxKind::KeywordKey.into(),
+                    vec![NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Text.into(),
+                        &key,
+                    ))],
                 )));
 
                 children.push(NodeOrToken::Token(GreenToken::new(
@@ -383,9 +417,12 @@ pub(crate) fn affiliated_keyword_parser<'a>(
                     &lsb,
                 )));
 
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    &optval,
+                children.push(NodeOrToken::Node(GreenNode::new(
+                    OrgSyntaxKind::KeywordOptvalue.into(),
+                    vec![NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Text.into(),
+                        &optval,
+                    ))],
                 )));
 
                 children.push(NodeOrToken::Token(GreenToken::new(
@@ -405,17 +442,24 @@ pub(crate) fn affiliated_keyword_parser<'a>(
                     )));
                 }
 
+                let mut children_of_value = vec![];
                 for node in value {
                     match node {
                         S2::Single(e) => {
-                            children.push(e);
+                            children_of_value.push(e);
                         }
                         S2::Double(e1, e2) => {
-                            children.push(e1);
-                            children.push(e2);
+                            children_of_value.push(e1);
+                            children_of_value.push(e2);
                         }
                         _ => {}
                     }
+                }
+                if children_of_value.len() > 0 {
+                    children.push(NodeOrToken::Node(GreenNode::new(
+                        OrgSyntaxKind::KeywordValue.into(),
+                        children_of_value,
+                    )));
                 }
 
                 match nl {
@@ -467,9 +511,12 @@ pub(crate) fn keyword_parser<'a>() -> impl Parser<
                     hash_plus,
                 )));
 
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    &key,
+                children.push(NodeOrToken::Node(GreenNode::new(
+                    OrgSyntaxKind::KeywordKey.into(),
+                    vec![NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Text.into(),
+                        &key,
+                    ))],
                 )));
 
                 children.push(NodeOrToken::Token(GreenToken::new(
@@ -484,9 +531,12 @@ pub(crate) fn keyword_parser<'a>() -> impl Parser<
                     )));
                 }
 
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    &value,
+                children.push(NodeOrToken::Node(GreenNode::new(
+                    OrgSyntaxKind::KeywordValue.into(),
+                    vec![NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Text.into(),
+                        &value,
+                    ))],
                 )));
 
                 match nl {
@@ -523,10 +573,12 @@ mod tests {
             get_parser_nt_output(keyword_parser(), r"#+key: value    "),
             r###"Keyword@0..16
   HashPlus@0..2 "#+"
-  Text@2..5 "key"
+  KeywordKey@2..5
+    Text@2..5 "key"
   Colon@5..6 ":"
   Whitespace@6..7 " "
-  Text@7..16 "value    "
+  KeywordValue@7..16
+    Text@7..16 "value    "
 "###
         );
     }
@@ -540,10 +592,12 @@ mod tests {
             ),
             r###"AffiliatedKeyword@0..20
   HashPlus@0..2 "#+"
-  Text@2..9 "caption"
+  KeywordKey@2..9
+    Text@2..9 "caption"
   Colon@9..10 ":"
   Whitespace@10..11 " "
-  Text@11..20 "value    "
+  KeywordValue@11..20
+    Text@11..20 "value    "
 "###
         );
     }
@@ -557,13 +611,16 @@ mod tests {
             ),
             r###"AffiliatedKeyword@0..41
   HashPlus@0..2 "#+"
-  Text@2..9 "CAPTION"
+  KeywordKey@2..9
+    Text@2..9 "CAPTION"
   LeftSquareBracket@9..10 "["
-  Text@10..23 "Short caption"
+  KeywordOptvalue@10..23
+    Text@10..23 "Short caption"
   RightSquareBracket@23..24 "]"
   Colon@24..25 ":"
   Whitespace@25..26 " "
-  Text@26..41 "Longer caption."
+  KeywordValue@26..41
+    Text@26..41 "Longer caption."
 "###
         );
     }
@@ -577,10 +634,12 @@ mod tests {
             ),
             r###"AffiliatedKeyword@0..18
   HashPlus@0..2 "#+"
-  Text@2..11 "attr_html"
+  KeywordKey@2..11
+    Text@2..11 "attr_html"
   Colon@11..12 ":"
   Whitespace@12..13 " "
-  Text@13..18 "value"
+  KeywordValue@13..18
+    Text@13..18 "value"
 "###
         );
     }
@@ -593,17 +652,20 @@ mod tests {
             ),
             r###"AffiliatedKeyword@0..43
   HashPlus@0..2 "#+"
-  Text@2..9 "CAPTION"
+  KeywordKey@2..9
+    Text@2..9 "CAPTION"
   LeftSquareBracket@9..10 "["
-  Text@10..23 "Short caption"
+  KeywordOptvalue@10..23
+    Text@10..23 "Short caption"
   RightSquareBracket@23..24 "]"
   Colon@24..25 ":"
   Whitespace@25..26 " "
-  Bold@26..34
-    Asterisk@26..27 "*"
-    Text@27..33 "Longer"
-    Asterisk@33..34 "*"
-  Text@34..43 " caption."
+  KeywordValue@26..43
+    Bold@26..34
+      Asterisk@26..27 "*"
+      Text@27..33 "Longer"
+      Asterisk@33..34 "*"
+    Text@34..43 " caption."
 "###
         );
     }

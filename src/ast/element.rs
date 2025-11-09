@@ -142,6 +142,8 @@ pub enum Element {
     HorizontalRule(HorizontalRule),
     LatexEnvironment(LatexEnvironment),
     Keyword(Keyword),
+    AffiliatedKeyword(AffiliatedKeyword),
+
     TableRow(TableRow),
     // BabelCall(BabelCall),
     Comment(Comment),
@@ -157,8 +159,8 @@ pub struct Drawer {
 #[derive(Clone)]
 pub struct Table {
     pub(crate) syntax: SyntaxNode,
-    pub name: Option<String>,    // 表格名称 (#+NAME:)
-    pub caption: Option<String>, // 表格标题 (#+CAPTION:)
+    pub name: Option<String>, // 表格名称 (#+NAME:)
+    pub caption: Vec<Object>, // 表格标题 (#+CAPTION:)
     // pub attributes: TableAttributes,    // 表格属性
     pub header: Option<TableRow>,    // 表头行（可选）
     pub separator: Option<TableRow>, // 分隔线行（可选）
@@ -168,7 +170,11 @@ pub struct Table {
 
 impl fmt::Debug for Table {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self.rows)
+        write!(
+            f,
+            "caption={:?}\nname={:?}\n{:?}",
+            self.caption, self.name, self.rows
+        )
     }
 }
 
@@ -337,6 +343,14 @@ pub struct Keyword {
     pub(crate) syntax: SyntaxNode,
     pub key: String,
     pub value: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct AffiliatedKeyword {
+    pub(crate) syntax: SyntaxNode,
+    pub key: String,
+    pub optvalue: Option<String>,
+    pub value: Vec<Object>,
 }
 
 #[derive(Debug, Clone)]

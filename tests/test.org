@@ -219,7 +219,8 @@ a ~=*/bold_italic/*=~ line
 
 * table test
 
-#+CAPTION: *bold* title
+#+CAPTION[short desc]: *bold* title
+#+attr_html: :border 2 :rules all :frame border
 | object kind           | object value           | supported in table cell |
 |-----------------------+------------------------+-------------------------|
 | 01 text markup        | *bold*                 | y                       |
