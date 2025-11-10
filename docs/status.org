@@ -51,6 +51,14 @@
 | footnote-definition |              |            |             |         |
 
 
+heading-subtree:
+- heading row
+- section (optional)
+- next-level heading subtree(son)
+
+section:
+- one or more none-heading elements
+
 ** lesser element
 
 |                   | parser-rowan | parser-ast | html-render | comment |
@@ -64,7 +72,7 @@
 | fixed-width       |              |            |             |         |
 | planning          |              |            |             |         |
 | blocks            |              |            |             |         |
-| horizontal-rule   |              |            |             |         |
+| horizontal-rule   | ✓           | ✓         | ✓          |         |
 | latex-environment |              |            |             |         |
 | keyword           |              |            |             |         |
 | babel-call?       |              |            |             |         |

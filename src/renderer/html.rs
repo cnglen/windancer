@@ -217,7 +217,7 @@ impl HtmlRenderer {
                 String::from("")
                 // self.render_footnote_definition(footnote_definition)
             }
-            Element::HorizontalRule(rule) => self.render_horizontal_rule(rule),
+            Element::HorizontalRule(rule) => self.render_horizontal_rule(),
             Element::Keyword(keyword) => self.render_keyword(keyword),
             Element::LatexEnvironment(env) => self.render_latex_environment(env),
 
@@ -720,7 +720,7 @@ impl HtmlRenderer {
         }
     }
 
-    fn render_horizontal_rule(&self, horizontal_rule: &HorizontalRule) -> String {
+    fn render_horizontal_rule(&self) -> String {
         format!(
             r##"<hr>
 "##

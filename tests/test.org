@@ -148,6 +148,13 @@ comment:
 
 -----
 
+-----
+
+horizontal must has at least 5 dashes: 
+
+----
+
+
 *** keyword
 
 #+key: value
