@@ -1,5 +1,4 @@
 //! Keyword parser
-use crate::parser::S2;
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserState, object};
 
@@ -36,7 +35,7 @@ pub(crate) fn affiliated_keyword_parser<'a>(
     object_parser: impl Parser<
         'a,
         &'a str,
-        S2,
+        NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
     > + Clone,
 ) -> impl Parser<
@@ -94,7 +93,7 @@ pub(crate) fn affiliated_keyword_parser<'a>(
         .clone()
         .repeated()
         .at_least(1)
-        .collect::<Vec<S2>>();
+        .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
 
     // #+KEY: VALUE(string)
     let p1 = just("#+")
@@ -346,16 +345,7 @@ pub(crate) fn affiliated_keyword_parser<'a>(
 
             let mut children_of_value = vec![];
             for node in value {
-                match node {
-                    S2::Single(e) => {
-                        children_of_value.push(e);
-                    }
-                    S2::Double(e1, e2) => {
-                        children_of_value.push(e1);
-                        children_of_value.push(e2);
-                    }
-                    _ => {}
-                }
+                children_of_value.push(node);
             }
             if children_of_value.len() > 0 {
                 children.push(NodeOrToken::Node(GreenNode::new(
@@ -444,16 +434,7 @@ pub(crate) fn affiliated_keyword_parser<'a>(
 
                 let mut children_of_value = vec![];
                 for node in value {
-                    match node {
-                        S2::Single(e) => {
-                            children_of_value.push(e);
-                        }
-                        S2::Double(e1, e2) => {
-                            children_of_value.push(e1);
-                            children_of_value.push(e2);
-                        }
-                        _ => {}
-                    }
+                    children_of_value.push(node);
                 }
                 if children_of_value.len() > 0 {
                     children.push(NodeOrToken::Node(GreenNode::new(
@@ -563,14 +544,14 @@ pub(crate) fn keyword_parser<'a>() -> impl Parser<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::common::get_parser_nt_output;
+    use crate::parser::common::get_parser_output;
     use crate::parser::object;
     use pretty_assertions::assert_eq;
 
     #[test]
     fn test_keyword_01() {
         assert_eq!(
-            get_parser_nt_output(keyword_parser(), r"#+key: value    "),
+            get_parser_output(keyword_parser(), r"#+key: value    "),
             r###"Keyword@0..16
   HashPlus@0..2 "#+"
   KeywordKey@2..5
@@ -586,7 +567,7 @@ mod tests {
     #[test]
     fn test_affliated_keyword_01() {
         assert_eq!(
-            get_parser_nt_output(
+            get_parser_output(
                 affiliated_keyword_parser(object::standard_set_object_parser()),
                 r"#+caption: value    "
             ),
@@ -605,7 +586,7 @@ mod tests {
     #[test]
     fn test_affliated_keyword_02() {
         assert_eq!(
-            get_parser_nt_output(
+            get_parser_output(
                 affiliated_keyword_parser(object::standard_set_object_parser()),
                 r"#+CAPTION[Short caption]: Longer caption."
             ),
@@ -628,7 +609,7 @@ mod tests {
     #[test]
     fn test_affliated_keyword_03() {
         assert_eq!(
-            get_parser_nt_output(
+            get_parser_output(
                 affiliated_keyword_parser(object::standard_set_object_parser()),
                 r"#+attr_html: value"
             ),
@@ -646,7 +627,7 @@ mod tests {
     #[test]
     fn test_affliated_keyword_04() {
         assert_eq!(
-            get_parser_nt_output(
+            get_parser_output(
                 affiliated_keyword_parser(object::standard_set_object_parser()),
                 r"#+CAPTION[Short caption]: *Longer* caption."
             ),

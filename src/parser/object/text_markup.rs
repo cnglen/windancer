@@ -1,6 +1,5 @@
 //! Text markup parser, including bold, italic, underline, strikethrough, verbatim and code.
 use crate::parser::ParserState;
-use crate::parser::S2;
 use crate::parser::syntax::OrgSyntaxKind;
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
@@ -13,11 +12,15 @@ pub(crate) fn text_markup_parser<'a>(
     object_parser: impl Parser<
         'a,
         &'a str,
-        S2,
+        NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
     > + Clone,
-) -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
+) -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
     let post = one_of(" \t​-.,;:!?)}]\"'\\\r\n").or(end().to('x'));
 
     // a string may not begin or end with whitespace.
@@ -63,7 +66,7 @@ pub(crate) fn text_markup_parser<'a>(
         .clone()
         .repeated()
         .at_least(1)
-        .collect::<Vec<S2>>();
+        .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
 
     let bold = just("*")
         .then(standard_objects_parser.clone().nested_in(get_content('*')))
@@ -82,23 +85,11 @@ pub(crate) fn text_markup_parser<'a>(
                 start_marker,
             )));
             for node in content {
-                match node {
-                    S2::Single(e) => {
-                        children.push(e);
-                    }
-                    S2::Double(e1, e2) => {
-                        children.push(e1);
-                        children.push(e2);
-                    }
-                    _ => {}
-                }
+                children.push(node);
             }
             children.push(NT::Token(GreenToken::new(OSK::Asterisk.into(), end_marker)));
 
-            Ok(S2::Single(NT::Node(GreenNode::new(
-                OSK::Bold.into(),
-                children,
-            ))))
+            Ok(NT::Node(GreenNode::new(OSK::Bold.into(), children)))
         });
 
     let italic = just("/")
@@ -112,23 +103,11 @@ pub(crate) fn text_markup_parser<'a>(
             let mut children = vec![];
             children.push(NT::Token(GreenToken::new(OSK::Slash.into(), start_marker)));
             for node in content {
-                match node {
-                    S2::Single(e) => {
-                        children.push(e);
-                    }
-                    S2::Double(e1, e2) => {
-                        children.push(e1);
-                        children.push(e2);
-                    }
-                    _ => {}
-                }
+                children.push(node);
             }
             children.push(NT::Token(GreenToken::new(OSK::Slash.into(), end_marker)));
 
-            Ok(S2::Single(NT::Node(GreenNode::new(
-                OSK::Italic.into(),
-                children,
-            ))))
+            Ok(NT::Node(GreenNode::new(OSK::Italic.into(), children)))
         });
 
     let underline = just("_")
@@ -145,26 +124,14 @@ pub(crate) fn text_markup_parser<'a>(
                 start_marker,
             )));
             for node in content {
-                match node {
-                    S2::Single(e) => {
-                        children.push(e);
-                    }
-                    S2::Double(e1, e2) => {
-                        children.push(e1);
-                        children.push(e2);
-                    }
-                    _ => {}
-                }
+                children.push(node);
             }
             children.push(NT::Token(GreenToken::new(
                 OSK::Underscore.into(),
                 end_marker,
             )));
 
-            Ok(S2::Single(NT::Node(GreenNode::new(
-                OSK::Underline.into(),
-                children,
-            ))))
+            Ok(NT::Node(GreenNode::new(OSK::Underline.into(), children)))
         });
 
     let strikethrough = just("+")
@@ -178,23 +145,14 @@ pub(crate) fn text_markup_parser<'a>(
             let mut children = vec![];
             children.push(NT::Token(GreenToken::new(OSK::Plus.into(), start_marker)));
             for node in content {
-                match node {
-                    S2::Single(e) => {
-                        children.push(e);
-                    }
-                    S2::Double(e1, e2) => {
-                        children.push(e1);
-                        children.push(e2);
-                    }
-                    _ => {}
-                }
+                children.push(node);
             }
             children.push(NT::Token(GreenToken::new(OSK::Plus.into(), end_marker)));
 
-            Ok(S2::Single(NT::Node(GreenNode::new(
+            Ok(NT::Node(GreenNode::new(
                 OSK::Strikethrough.into(),
                 children,
-            ))))
+            )))
         });
 
     let code = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>("~")
@@ -209,10 +167,7 @@ pub(crate) fn text_markup_parser<'a>(
             children.push(NT::Token(GreenToken::new(OSK::Text.into(), content)));
             children.push(NT::Token(GreenToken::new(OSK::Tilde.into(), end_marker)));
 
-            Ok(S2::Single(NT::Node(GreenNode::new(
-                OSK::Code.into(),
-                children,
-            ))))
+            Ok(NT::Node(GreenNode::new(OSK::Code.into(), children)))
         });
 
     let verbatim = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>("=")
@@ -227,10 +182,7 @@ pub(crate) fn text_markup_parser<'a>(
             children.push(NT::Token(GreenToken::new(OSK::Text.into(), content)));
             children.push(NT::Token(GreenToken::new(OSK::Equals.into(), end_marker)));
 
-            Ok(S2::Single(NT::Node(GreenNode::new(
-                OSK::Verbatim.into(),
-                children,
-            ))))
+            Ok(NT::Node(GreenNode::new(OSK::Verbatim.into(), children)))
         });
 
     bold.or(italic)

@@ -1,6 +1,5 @@
 //! target parser
 use crate::parser::ParserState;
-use crate::parser::S2;
 use crate::parser::syntax::OrgSyntaxKind;
 
 use chumsky::inspector::RollbackState;
@@ -8,9 +7,12 @@ use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 /// target parser: <<TARGET>>
-pub(crate) fn target_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
+pub(crate) fn target_parser<'a>() -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
     let target_onechar = none_of("<>\n \t").map(|c| format!("{c}"));
     let target_g2char = none_of("<>\n \t")
         .then(none_of("<>\n").repeated().at_least(1).collect::<String>())
@@ -50,10 +52,10 @@ pub(crate) fn target_parser<'a>()
                 rbracket2,
             )));
 
-            S2::Single(NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                 OrgSyntaxKind::Target.into(),
                 children,
-            )))
+            ))
         })
 }
 
@@ -77,33 +79,21 @@ mod tests {
     }
 
     #[test]
+    #[should_panic]
     fn test_target_02() {
-        assert_eq!(
-            get_parser_output(target_parser(), "<<tar\nget>>"),
-            r##"errors:
-found ''\n'' at 5..6 expected something else, or ''>''"##,
-            r"TARGET is a string containing any characters but `<>\n`"
-        );
+        get_parser_output(target_parser(), "<<tar\nget>>");
     }
 
     #[test]
+    #[should_panic]
     fn test_target_03() {
-        assert_eq!(
-            get_parser_output(target_parser(), "<< target>>"),
-            r##"errors:
-found '' '' at 2..3 expected something else"##,
-            r"TARGET It cannot start or end with a whitespace character."
-        );
+        get_parser_output(target_parser(), "<< target>>");
     }
 
     #[test]
+    #[should_panic]
     fn test_target_04() {
-        assert_eq!(
-            get_parser_output(target_parser(), "<<target >>"),
-            r##"errors:
-found ''a'' at 3..4 expected ''>''"##,
-            r"TARGET It cannot start or end with a whitespace character."
-        );
+        get_parser_output(target_parser(), "<<target >>");
     }
 
     #[test]

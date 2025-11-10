@@ -1,7 +1,6 @@
 //! text parser
 /// -> other_object parsers (lookahead)
 use crate::parser::ParserState;
-use crate::parser::S2;
 use crate::parser::syntax::OrgSyntaxKind;
 
 use chumsky::inspector::RollbackState;
@@ -13,11 +12,15 @@ pub(crate) fn plain_text_parser<'a>(
     non_plain_text_parsers: impl Parser<
         'a,
         &'a str,
-        S2,
+        NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
     > + Clone,
-) -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
+) -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
     any::<_, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>()
         .and_is(non_plain_text_parsers.not())
         // we MUST update state here: if negation lookahead successes，update state to let the object_parser work
@@ -39,8 +42,9 @@ pub(crate) fn plain_text_parser<'a>(
                 e.state().prev_char = Some(c);
             }
 
-            S2::Single(NodeOrToken::<GreenNode, GreenToken>::Token(
-                GreenToken::new(OrgSyntaxKind::Text.into(), &s),
+            NodeOrToken::<GreenNode, GreenToken>::Token(GreenToken::new(
+                OrgSyntaxKind::Text.into(),
+                &s,
             ))
         })
 }

@@ -61,13 +61,35 @@ pub(crate) fn horizontal_rule_parser<'a>() -> impl Parser<
         })
 }
 #[cfg(test)]
-mod tests{
+mod tests {
+    use crate::parser::common::get_parser_output;
+
     use super::*;
     use pretty_assertions::assert_eq;
 
     #[test]
     fn test_horizontal_rule_01() {
-        
+        assert_eq!(
+            get_parser_output(horizontal_rule_parser(), r"-----"),
+            r#"HorizontalRule@0..5
+  Text@0..5 "-----"
+"#
+        );
     }
 
+    #[test]
+    fn test_horizontal_rule_02() {
+        assert_eq!(
+            get_parser_output(horizontal_rule_parser(), r"---------"),
+            r#"HorizontalRule@0..9
+  Text@0..9 "---------"
+"#
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_horizontal_rule_03() {
+        get_parser_output(horizontal_rule_parser(), r"----");
+    }
 }

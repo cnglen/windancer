@@ -1,7 +1,5 @@
 //! Line break parser
-
 use crate::parser::ParserState;
-use crate::parser::S2;
 use crate::parser::object::whitespaces;
 use crate::parser::syntax::OrgSyntaxKind;
 
@@ -9,9 +7,12 @@ use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
-pub(crate) fn line_break_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
+pub(crate) fn line_break_parser<'a>() -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
     // // todo
     // any()
     //     .map_with(|s, e|)
@@ -51,8 +52,9 @@ pub(crate) fn line_break_parser<'a>()
                     e.state().prev_char = line_break.chars().last();
                 }
 
-                Ok(S2::Single(NodeOrToken::<GreenNode, GreenToken>::Node(
-                    GreenNode::new(OrgSyntaxKind::LineBreak.into(), children),
+                Ok(NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+                    OrgSyntaxKind::LineBreak.into(),
+                    children,
                 )))
             }
         })

@@ -30,9 +30,8 @@
 
 use crate::ast::element::{
     CenterBlock, Comment, CommentBlock, Document, Drawer, Element, ExampleBlock, ExportBlock,
-    FootnoteDefinition, HeadingSubtree, HorizontalRule, Item, Keyword, LatexEnvironment, List,
-    ListType, Paragraph, QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableRow,
-    TableRowType, VerseBlock,
+    FootnoteDefinition, HeadingSubtree, Item, Keyword, LatexEnvironment, List, ListType, Paragraph,
+    QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableRow, TableRowType, VerseBlock,
 };
 
 use crate::ast::object::{Object, TableCellType};
@@ -217,7 +216,7 @@ impl HtmlRenderer {
                 String::from("")
                 // self.render_footnote_definition(footnote_definition)
             }
-            Element::HorizontalRule(rule) => self.render_horizontal_rule(),
+            Element::HorizontalRule(_) => self.render_horizontal_rule(),
             Element::Keyword(keyword) => self.render_keyword(keyword),
             Element::LatexEnvironment(env) => self.render_latex_environment(env),
 

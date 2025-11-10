@@ -1,5 +1,4 @@
 //! Table parser
-use crate::parser::S2;
 use crate::parser::keyword::affiliated_keyword_parser;
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserState, object};
@@ -35,12 +34,7 @@ fn table_standard_row<'a>() -> impl Parser<
                 &pipe,
             )));
             for cell in cells {
-                match cell {
-                    S2::Single(node) => {
-                        children.push(node);
-                    }
-                    _ => {}
-                }
+                children.push(cell);
             }
             match maybe_newline {
                 Some(newline) => {
@@ -222,30 +216,6 @@ pub(crate) fn table_parser<'a>() -> impl Parser<
 mod tests {
     use super::*;
     use crate::parser::SyntaxNode;
-
-    // #[test]
-    // fn test_table_cell() {
-    //     let inputs = vec![" foo  |", "foo  |", "  foo|", "foo|", "foo"];
-    //     let mut state = RollbackState(ParserState::default());
-    //     for input in inputs {
-    //         let ans = object::table_cell::table_cell_parser().parse_with_state(input, &mut state);
-
-    //         match ans.into_result() {
-    //             S2::Single(x) => {
-    //                 match x {
-    //                     NodeOrToken::Node(e) => {
-    //                         let syntax_node = SyntaxNode::new_root(e.clone());
-    //                         println!("{:#?}", syntax_node);
-    //                     }
-    //                     _ => {}
-    //                 }
-    //             }
-    //             _ => {}
-    //         }
-
-    //         assert!(ans.has_output());
-    //     }
-    // }
 
     #[test]
     fn test_table() {

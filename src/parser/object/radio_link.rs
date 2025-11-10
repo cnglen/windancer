@@ -1,6 +1,5 @@
 //! radio link parser
 use crate::parser::ParserState;
-use crate::parser::S2;
 use crate::parser::syntax::{OrgLanguage, OrgSyntaxKind};
 
 use chumsky::input::InputRef;
@@ -92,16 +91,20 @@ pub(crate) fn radio_link_parser<'a>(
     object_parser: impl Parser<
         'a,
         &'a str,
-        S2,
+        NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
     > + Clone,
-) -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
+) -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
     let minimal_objects_parser = object_parser
         .clone()
         .repeated()
         .at_least(1)
-        .collect::<Vec<S2>>();
+        .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
 
     let radio = minimal_objects_parser.nested_in(radio_parser().to_slice());
     let post = any()
@@ -131,16 +134,7 @@ pub(crate) fn radio_link_parser<'a>(
                 true => {
                     let mut children = vec![];
                     for node in radio {
-                        match node {
-                            S2::Single(e) => {
-                                children.push(e);
-                            }
-                            S2::Double(e1, e2) => {
-                                children.push(e1);
-                                children.push(e2);
-                            }
-                            _ => {}
-                        }
+                        children.push(node);
                     }
 
                     let root = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
@@ -154,8 +148,9 @@ pub(crate) fn radio_link_parser<'a>(
                         .map_or(None, |x| x.text().chars().last());
                     e.state().prev_char = last_char;
 
-                    Ok(S2::Single(NodeOrToken::<GreenNode, GreenToken>::Node(
-                        GreenNode::new(OrgSyntaxKind::RadioLink.into(), children),
+                    Ok(NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+                        OrgSyntaxKind::RadioLink.into(),
+                        children,
                     )))
                 }
                 false => Err(Rich::custom(

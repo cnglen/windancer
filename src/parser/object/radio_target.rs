@@ -1,6 +1,5 @@
 //! radio target parser
 use crate::parser::ParserState;
-use crate::parser::S2;
 use crate::parser::syntax::OrgSyntaxKind;
 
 use chumsky::inspector::RollbackState;
@@ -12,16 +11,20 @@ pub(crate) fn radio_target_parser<'a>(
     object_parser: impl Parser<
         'a,
         &'a str,
-        S2,
+        NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
     > + Clone,
-) -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
+) -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
     let minimal_objects_parser = object_parser
         .clone()
         .repeated()
         .at_least(1)
-        .collect::<Vec<S2>>();
+        .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
 
     let target_onechar = none_of("<>\n \t").map(|c| format!("{c}")).to_slice();
     let target_g2char = none_of("<>\n \t")
@@ -53,16 +56,7 @@ pub(crate) fn radio_target_parser<'a>(
             )));
 
             for node in target {
-                match node {
-                    S2::Single(e) => {
-                        children.push(e);
-                    }
-                    S2::Double(e1, e2) => {
-                        children.push(e1);
-                        children.push(e2);
-                    }
-                    _ => {}
-                }
+                children.push(node);
             }
 
             children.push(NodeOrToken::Token(GreenToken::new(
@@ -70,10 +64,10 @@ pub(crate) fn radio_target_parser<'a>(
                 rbracket3,
             )));
 
-            S2::Single(NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                 OrgSyntaxKind::RadioTarget.into(),
                 children,
-            )))
+            ))
         })
 }
 

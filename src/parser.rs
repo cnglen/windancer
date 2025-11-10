@@ -123,16 +123,12 @@ impl OrgParser {
             .unwrap()
             .into_iter()
             .filter(|s| match s {
-                S2::Single(NodeOrToken::<GreenNode, GreenToken>::Node(n))
+                NodeOrToken::<GreenNode, GreenToken>::Node(n)
                     if n.kind() == OrgSyntaxKind::RadioTarget.into() =>
                 {
                     true
                 }
                 _ => false,
-            })
-            .map(|s| match s {
-                S2::Single(n) => n,
-                _ => todo!(),
             })
             .collect();
 

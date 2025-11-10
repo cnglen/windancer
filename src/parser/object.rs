@@ -16,7 +16,6 @@ mod text_markup;
 mod timestamp;
 
 use crate::parser::ParserState;
-use crate::parser::S2;
 use crate::parser::object::entity::entity_parser;
 use crate::parser::object::footnote_reference::footnote_reference_parser;
 use crate::parser::object::latex_fragment::latex_fragment_parser;
@@ -27,7 +26,7 @@ use crate::parser::object::radio_link::radio_link_parser;
 use crate::parser::object::radio_target::radio_target_parser;
 use crate::parser::object::subscript_superscript::subscript_parser;
 use crate::parser::object::subscript_superscript::superscript_parser;
-use crate::parser::object::table_cell::table_cell_parser;
+// use crate::parser::object::table_cell::table_cell_parser;
 use crate::parser::object::target::target_parser;
 use crate::parser::object::text::plain_text_parser;
 use crate::parser::object::text_markup::text_markup_parser;
@@ -36,7 +35,7 @@ use crate::parser::syntax::OrgSyntaxKind;
 
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use rowan::GreenToken;
+use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 /// 解析行终止符：换行符或输入结束
 pub(crate) fn newline_or_ending<'a>()
@@ -176,9 +175,12 @@ pub(crate) fn blank_line_parser<'a>()
 
 // ---------------------------------------------------------------------
 
-pub(crate) fn objects_parser<'a>()
--> impl Parser<'a, &'a str, Vec<S2>, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
+pub(crate) fn objects_parser<'a>() -> impl Parser<
+    'a,
+    &'a str,
+    Vec<NodeOrToken<GreenNode, GreenToken>>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
     object_parser().repeated().at_least(1).collect::<Vec<_>>()
 }
 
@@ -195,44 +197,84 @@ pub(crate) fn objects_parser<'a>()
 // 4. plain_text's parser dpendnes all other 22 object's parsers，used to lookahead NOT
 // TODO: select! use prev_char state? performance? first char
 
-pub(crate) fn object_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
+pub(crate) fn object_parser<'a>() -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
     get_object_parser().0
 }
 
-pub(crate) fn standard_set_object_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
+pub(crate) fn standard_set_object_parser<'a>() -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
     get_object_parser().1
 }
 
-pub(crate) fn minimal_set_object_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
+pub(crate) fn minimal_set_object_parser<'a>() -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
     get_object_parser().2
 }
 
-pub(crate) fn object_in_regular_link_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
+pub(crate) fn object_in_regular_link_parser<'a>() -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
     get_object_parser().3
 }
 
-pub(crate) fn object_in_table_cell_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
+pub(crate) fn object_in_table_cell_parser<'a>() -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
     get_object_parser().4
 }
 
 // (full_set_object, standard_set_object, minimal_set_object, object_in_regular_link, object_in_table_cell)
 // - full_set_object DOES NOT include table_cell
 pub(crate) fn get_object_parser<'a>() -> (
-    impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone,
-    impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone,
-    impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone,
-    impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone,
-    impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone,
+    impl Parser<
+        'a,
+        &'a str,
+        NodeOrToken<GreenNode, GreenToken>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    > + Clone,
+    impl Parser<
+        'a,
+        &'a str,
+        NodeOrToken<GreenNode, GreenToken>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    > + Clone,
+    impl Parser<
+        'a,
+        &'a str,
+        NodeOrToken<GreenNode, GreenToken>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    > + Clone,
+    impl Parser<
+        'a,
+        &'a str,
+        NodeOrToken<GreenNode, GreenToken>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    > + Clone,
+    impl Parser<
+        'a,
+        &'a str,
+        NodeOrToken<GreenNode, GreenToken>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    > + Clone,
 ) {
     let mut full_set_object = Recursive::declare();
     let mut minimal_set_object = Recursive::declare();

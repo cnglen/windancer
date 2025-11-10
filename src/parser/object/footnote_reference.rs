@@ -1,6 +1,5 @@
 //! footnote reference parser
 use crate::parser::ParserState;
-use crate::parser::S2;
 use crate::parser::syntax::OrgSyntaxKind;
 
 use chumsky::inspector::RollbackState;
@@ -15,11 +14,15 @@ pub(crate) fn footnote_reference_parser<'a>(
     object_parser: impl Parser<
         'a,
         &'a str,
-        S2,
+        NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
     > + Clone,
-) -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
+) -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
     let label = any()
         .filter(|c: &char| c.is_alphanumeric() || matches!(c, '_' | '-'))
         .repeated()
@@ -40,7 +43,10 @@ pub(crate) fn footnote_reference_parser<'a>(
             .then(just("]"))
             .to_slice()),
     );
-    let standard_objects_parser = object_parser.repeated().at_least(1).collect::<Vec<S2>>();
+    let standard_objects_parser = object_parser
+        .repeated()
+        .at_least(1)
+        .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
     let definition =
         standard_objects_parser.nested_in(single_expression.clone().repeated().to_slice());
 
@@ -77,10 +83,10 @@ pub(crate) fn footnote_reference_parser<'a>(
                 rbracket,
             )));
 
-            S2::Single(NodeOrToken::Node(GreenNode::new(
+            NodeOrToken::Node(GreenNode::new(
                 OrgSyntaxKind::FootnoteReference.into(),
                 children,
-            )))
+            ))
         });
 
     // [fn:LABEL:DEFINITION]
@@ -125,16 +131,7 @@ pub(crate) fn footnote_reference_parser<'a>(
 
                 let mut defintion_children = vec![];
                 for node in definition {
-                    match node {
-                        S2::Single(e) => {
-                            defintion_children.push(e);
-                        }
-                        S2::Double(e1, e2) => {
-                            defintion_children.push(e1);
-                            defintion_children.push(e2);
-                        }
-                        _ => {}
-                    }
+                    defintion_children.push(node);
                 }
                 children.push(NodeOrToken::Node(GreenNode::new(
                     OrgSyntaxKind::FootnoteReferenceDefintion.into(),
@@ -146,10 +143,10 @@ pub(crate) fn footnote_reference_parser<'a>(
                     rbracket,
                 )));
 
-                S2::Single(NodeOrToken::Node(GreenNode::new(
+                NodeOrToken::Node(GreenNode::new(
                     OrgSyntaxKind::FootnoteReference.into(),
                     children,
-                )))
+                ))
             },
         );
 
@@ -176,16 +173,7 @@ pub(crate) fn footnote_reference_parser<'a>(
 
             let mut defintion_children = vec![];
             for node in definition {
-                match node {
-                    S2::Single(e) => {
-                        defintion_children.push(e);
-                    }
-                    S2::Double(e1, e2) => {
-                        defintion_children.push(e1);
-                        defintion_children.push(e2);
-                    }
-                    _ => {}
-                }
+                defintion_children.push(node);
             }
             children.push(NodeOrToken::Node(GreenNode::new(
                 OrgSyntaxKind::FootnoteReferenceDefintion.into(),
@@ -197,10 +185,10 @@ pub(crate) fn footnote_reference_parser<'a>(
                 rbracket,
             )));
 
-            S2::Single(NodeOrToken::Node(GreenNode::new(
+            NodeOrToken::Node(GreenNode::new(
                 OrgSyntaxKind::FootnoteReference.into(),
                 children,
-            )))
+            ))
         },
     );
 

@@ -1,5 +1,4 @@
 use crate::parser::ParserState;
-use crate::parser::S2;
 use crate::parser::syntax::OrgSyntaxKind;
 
 use chumsky::inspector::RollbackState;
@@ -7,9 +6,12 @@ use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 /// Macro parser
-pub(crate) fn macro_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
+pub(crate) fn macro_parser<'a>() -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
     let name = any()
         .filter(|c: &char| c.is_alphabetic())
         .then(
@@ -43,10 +45,7 @@ pub(crate) fn macro_parser<'a>()
                 right_3curly,
             )));
 
-            S2::Single(NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::Macro.into(),
-                children,
-            )))
+            NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Macro.into(), children))
         });
 
     // {{{NAME(ARGUMENTS)}}}
@@ -98,10 +97,7 @@ pub(crate) fn macro_parser<'a>()
                     right_3curly,
                 )));
 
-                S2::Single(NodeOrToken::Node(GreenNode::new(
-                    OrgSyntaxKind::Macro.into(),
-                    children,
-                )))
+                NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Macro.into(), children))
             },
         );
 

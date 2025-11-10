@@ -1,6 +1,5 @@
 //! link parser, including angle/plain/regular link
 use crate::parser::ParserState;
-use crate::parser::S2;
 use crate::parser::syntax::OrgSyntaxKind;
 use std::ops::Range;
 
@@ -144,9 +143,12 @@ fn path_plain_parser<'a>()
 }
 
 /// plain link parser
-pub(crate) fn plain_link_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
+pub(crate) fn plain_link_parser<'a>() -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
     let protocol = protocol();
     let post = any()
         .filter(|c: &char| !c.is_alphanumeric())
@@ -176,8 +178,9 @@ pub(crate) fn plain_link_parser<'a>()
                         &pathplain,
                     )));
 
-                    Ok(S2::Single(NodeOrToken::<GreenNode, GreenToken>::Node(
-                        GreenNode::new(OrgSyntaxKind::PlainLink.into(), children),
+                    Ok(NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+                        OrgSyntaxKind::PlainLink.into(),
+                        children,
                     )))
                 }
                 false => Err(Rich::custom(
@@ -192,9 +195,12 @@ pub(crate) fn plain_link_parser<'a>()
 }
 
 /// angle link parser
-pub(crate) fn angle_link_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
+pub(crate) fn angle_link_parser<'a>() -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
     let path_angle = none_of(">") // . is permitted: orgmode.org, xx@xx.com
         .repeated()
         .at_least(1)
@@ -233,10 +239,10 @@ pub(crate) fn angle_link_parser<'a>()
                     right_angle,
                 )));
 
-                S2::Single(NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+                NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                     OrgSyntaxKind::AngleLink.into(),
                     children,
-                )))
+                ))
             },
         )
 }
@@ -246,16 +252,20 @@ pub(crate) fn regular_link_parser<'a>(
     object_parser: impl Parser<
         'a,
         &'a str,
-        S2,
+        NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
     > + Clone,
-) -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
+) -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
     let minimal_and_other_objects_parser = object_parser
         .clone()
         .repeated()
         .at_least(1)
-        .collect::<Vec<S2>>();
+        .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
 
     let description = just("[")
         .then(
@@ -275,16 +285,7 @@ pub(crate) fn regular_link_parser<'a>(
                 )));
 
                 for node in content {
-                    match node {
-                        S2::Single(e) => {
-                            children.push(e);
-                        }
-                        S2::Double(e1, e2) => {
-                            children.push(e1);
-                            children.push(e2);
-                        }
-                        _ => {}
-                    }
+                    children.push(node);
                 }
 
                 children.push(NodeOrToken::Token(GreenToken::new(
@@ -405,7 +406,7 @@ pub(crate) fn regular_link_parser<'a>(
                 children,
             ));
 
-            S2::Single(link)
+            link
         })
 }
 

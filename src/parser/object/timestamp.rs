@@ -1,6 +1,5 @@
 //! timestamp parser
 use crate::parser::ParserState;
-use crate::parser::S2;
 use crate::parser::syntax::OrgSyntaxKind;
 
 use chumsky::inspector::RollbackState;
@@ -10,9 +9,12 @@ use rowan::{GreenNode, GreenToken, NodeOrToken};
 use super::whitespaces_g1;
 
 /// timestamp parser: <<TIMESTAMP>>
-pub(crate) fn timestamp_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
+pub(crate) fn timestamp_parser<'a>() -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
     let yyyymmdd = one_of("0123456789")
         .repeated()
         .at_least(4)
@@ -63,10 +65,10 @@ pub(crate) fn timestamp_parser<'a>()
                 s,
             )));
 
-            S2::Single(NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                 OrgSyntaxKind::Timestamp.into(),
                 children,
-            )))
+            ))
         });
 
     let p1b = just("[")
@@ -90,10 +92,10 @@ pub(crate) fn timestamp_parser<'a>()
                 s,
             )));
 
-            S2::Single(NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                 OrgSyntaxKind::Timestamp.into(),
                 children,
-            )))
+            ))
         });
 
     let p2a = p1a
@@ -111,10 +113,10 @@ pub(crate) fn timestamp_parser<'a>()
                 s,
             )));
 
-            S2::Single(NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                 OrgSyntaxKind::Timestamp.into(),
                 children,
-            )))
+            ))
         });
 
     let p2b = p1b
@@ -132,10 +134,10 @@ pub(crate) fn timestamp_parser<'a>()
                 s,
             )));
 
-            S2::Single(NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                 OrgSyntaxKind::Timestamp.into(),
                 children,
-            )))
+            ))
         });
 
     let p3a = just("<")
@@ -159,10 +161,10 @@ pub(crate) fn timestamp_parser<'a>()
                 s,
             )));
 
-            S2::Single(NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                 OrgSyntaxKind::Timestamp.into(),
                 children,
-            )))
+            ))
         });
 
     let p3b = just("[")
@@ -186,10 +188,10 @@ pub(crate) fn timestamp_parser<'a>()
                 s,
             )));
 
-            S2::Single(NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                 OrgSyntaxKind::Timestamp.into(),
                 children,
-            )))
+            ))
         });
 
     p2a.or(p2b).or(p3a).or(p3b).or(p1a).or(p1b)

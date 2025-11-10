@@ -1,6 +1,5 @@
 //! Entity parser
 use crate::parser::ParserState;
-use crate::parser::S2;
 use crate::parser::syntax::OrgSyntaxKind;
 
 use chumsky::inspector::RollbackState;
@@ -473,9 +472,12 @@ pub(crate) static ENTITYNAME_TO_HTML: phf::Map<&'static str, &'static str> = phf
 };
 
 /// Entity parser
-pub(crate) fn entity_parser<'a>()
--> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
+pub(crate) fn entity_parser<'a>() -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
     let name_parser = any()
         .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
         .repeated()
@@ -497,7 +499,7 @@ pub(crate) fn entity_parser<'a>()
             children.push(NT::Token(GreenToken::new(OSK::BackSlash.into(), backslash)));
             children.push(NT::Token(GreenToken::new(OSK::EntityName.into(), &name)));
 
-            S2::Single(NT::Node(GreenNode::new(OSK::Entity.into(), children)))
+            NT::Node(GreenNode::new(OSK::Entity.into(), children))
         });
 
     // Pattern2: \NAME{}
@@ -516,7 +518,7 @@ pub(crate) fn entity_parser<'a>()
                 &left_right_curly[1..2],
             )));
 
-            S2::Single(NT::Node(GreenNode::new(OSK::Entity.into(), children)))
+            NT::Node(GreenNode::new(OSK::Entity.into(), children))
         },
     );
 
@@ -537,7 +539,7 @@ pub(crate) fn entity_parser<'a>()
             children.push(NT::Token(GreenToken::new(OSK::Underscore.into(), us)));
             children.push(NT::Token(GreenToken::new(OSK::Spaces.into(), &ws)));
 
-            S2::Single(NT::Node(GreenNode::new(OSK::Entity.into(), children)))
+            NT::Node(GreenNode::new(OSK::Entity.into(), children))
         });
 
     // priority: `a2` > `a1` since `a2` is longer and includes `a1`, or "\pi{}" will be parsed into <Entity(\pi) + Text({})>, while <Entity(\pi{})> is expected

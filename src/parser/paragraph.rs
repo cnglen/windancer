@@ -1,7 +1,7 @@
 //! Paragraph environment parser
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{
-    ParserState, S2, block, comment, drawer, footnote_definition, horizontal_rule, keyword,
+    ParserState, block, comment, drawer, footnote_definition, horizontal_rule, keyword,
     latex_environment, list, object, table,
 };
 use chumsky::inspector::RollbackState;
@@ -79,16 +79,7 @@ pub(crate) fn paragraph_parser<'a>() -> impl Parser<
 
             // todo: 合并连续的多个text node
             for node in lines {
-                match node {
-                    S2::Single(e) => {
-                        children.push(e);
-                    }
-                    S2::Double(e1, e2) => {
-                        children.push(e1);
-                        children.push(e2);
-                    }
-                    _ => {}
-                }
+                children.push(node);
             }
 
             for blankline in blanklines {

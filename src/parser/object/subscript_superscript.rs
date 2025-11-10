@@ -1,6 +1,5 @@
 //! Subscript and Superscript
 use crate::parser::ParserState;
-use crate::parser::S2;
 use crate::parser::syntax::OrgSyntaxKind;
 
 use chumsky::inspector::RollbackState;
@@ -65,11 +64,15 @@ fn create_script_parser<'a>(
     object_parser: impl Parser<
         'a,
         &'a str,
-        S2,
+        NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
     > + Clone,
-) -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
+) -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
     let (c, syntax_kind) = match script_type {
         ScriptType::Super => ("^", OSK::Superscript),
         ScriptType::Sub => ("_", OSK::Subscript),
@@ -83,10 +86,7 @@ fn create_script_parser<'a>(
             let mut children = vec![];
             children.push(NT::Token(GreenToken::new(OSK::Caret.into(), sup)));
             children.push(NT::Token(GreenToken::new(OSK::Text.into(), aes)));
-            S2::Single(NT::Node(GreenNode::new(
-                syntax_kind.clone().into(),
-                children,
-            )))
+            NT::Node(GreenNode::new(syntax_kind.clone().into(), children))
         });
 
     // CHAR^{expression} / CHAR^(EXPRESSION)
@@ -111,7 +111,7 @@ fn create_script_parser<'a>(
         .clone()
         .repeated()
         .at_least(1)
-        .collect::<Vec<S2>>();
+        .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
     let expression =
         standard_objects_parser.nested_in(single_expression.clone().repeated().to_slice()); // foo(bar){(def)ghi}
 
@@ -167,16 +167,7 @@ fn create_script_parser<'a>(
                         )));
 
                         for node in expression {
-                            match node {
-                                S2::Single(e) => {
-                                    children.push(e);
-                                }
-                                S2::Double(e1, e2) => {
-                                    children.push(e1);
-                                    children.push(e2);
-                                }
-                                _ => {}
-                            }
+                            children.push(node);
                         }
 
                         children.push(NT::Token(GreenToken::new(
@@ -184,10 +175,10 @@ fn create_script_parser<'a>(
                             rb.to_string().as_str(),
                         )));
 
-                        Ok(S2::Single(NT::Node(GreenNode::new(
+                        Ok(NT::Node(GreenNode::new(
                             syntax_kind.clone().into(),
                             children,
-                        ))))
+                        )))
                     }
                 }
             }
@@ -209,10 +200,7 @@ fn create_script_parser<'a>(
                 let text = sign.map_or_else(|| content.clone(), |s| format!("{s}{content}"));
                 children.push(NT::Token(GreenToken::new(OSK::Text.into(), &text)));
 
-                Ok(S2::Single(NT::Node(GreenNode::new(
-                    syntax_kind.into(),
-                    children,
-                ))))
+                Ok(NT::Node(GreenNode::new(syntax_kind.into(), children)))
             }
         },
     );
@@ -224,11 +212,15 @@ pub(crate) fn subscript_parser<'a>(
     object_parser: impl Parser<
         'a,
         &'a str,
-        S2,
+        NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
     > + Clone,
-) -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
+) -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
     create_script_parser(ScriptType::Sub, object_parser)
 }
 
@@ -236,11 +228,15 @@ pub(crate) fn superscript_parser<'a>(
     object_parser: impl Parser<
         'a,
         &'a str,
-        S2,
+        NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
     > + Clone,
-) -> impl Parser<'a, &'a str, S2, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
+) -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
     create_script_parser(ScriptType::Super, object_parser)
 }
 
