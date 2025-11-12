@@ -1,8 +1,13 @@
 //! element parser: greater? excluding heading/section
 
+pub(crate) mod comment;
+pub(crate) mod drawer;
+pub(crate) mod horizontal_rule;
+pub(crate) mod keyword;
+pub(crate) mod table;
+
 use crate::parser::{
-    ParserState, block, comment, drawer, footnote_definition, horizontal_rule, keyword,
-    latex_environment, paragraph, section, table,
+    ParserState, block, footnote_definition, latex_environment, object, paragraph, section,
 };
 
 use chumsky::inspector::RollbackState;
@@ -22,7 +27,7 @@ pub(crate) fn element_parser<'a>() -> impl Parser<
         footnote_definition::footnote_definition_parser(),
         block::block_parser(),
         table::table_parser(),
-        keyword::keyword_parser(),
+        keyword::keyword_parser(object::standard_set_object_parser()),
         drawer::drawer_parser(),
         horizontal_rule::horizontal_rule_parser(),
         latex_environment::latex_environment_parser(),

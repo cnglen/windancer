@@ -3,21 +3,16 @@
 pub(crate) mod syntax;
 
 mod block;
-mod comment;
 mod common;
 mod document;
-mod drawer;
 mod element;
 mod footnote_definition;
 mod heading;
-mod horizontal_rule;
-mod keyword;
 mod latex_environment;
 mod list;
 pub(crate) mod object;
 mod paragraph;
 mod section;
-mod table;
 
 use crate::parser::syntax::OrgSyntaxKind;
 

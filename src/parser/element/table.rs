@@ -1,5 +1,5 @@
 //! Table parser
-use crate::parser::keyword::affiliated_keyword_parser;
+use crate::parser::element::keyword::affiliated_keyword_parser;
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserState, object};
 use chumsky::inspector::RollbackState;

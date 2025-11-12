@@ -1,9 +1,7 @@
 //! Paragraph environment parser
+use crate::parser::element::{comment, drawer, horizontal_rule, keyword, table};
 use crate::parser::syntax::OrgSyntaxKind;
-use crate::parser::{
-    ParserState, block, comment, drawer, footnote_definition, horizontal_rule, keyword,
-    latex_environment, list, object, table,
-};
+use crate::parser::{ParserState, block, footnote_definition, latex_environment, list, object};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
@@ -38,7 +36,7 @@ pub(crate) fn paragraph_parser<'a>() -> impl Parser<
         .and_is(latex_environment::latex_environment_parser().not())
         .and_is(block::block_parser().not())
         .and_is(horizontal_rule::horizontal_rule_parser().not())
-        .and_is(keyword::keyword_parser().not())
+        .and_is(keyword::keyword_parser(object::standard_set_object_parser()).not())
         .and_is(drawer::drawer_parser().not())
         .and_is(comment::comment_parser().not())
         .and_is(table::table_parser().not())
@@ -104,7 +102,7 @@ pub(crate) fn paragraph_parser_old<'a>() -> impl Parser<
         .and_is(latex_environment::latex_environment_parser().not())
         .and_is(block::block_parser().not())
         .and_is(horizontal_rule::horizontal_rule_parser().not())
-        .and_is(keyword::keyword_parser().not())
+        .and_is(keyword::keyword_parser(object::standard_set_object_parser()).not())
         .and_is(drawer::drawer_parser().not())
         .and_is(comment::comment_parser().not())
         .and_is(table::table_parser().not())

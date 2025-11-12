@@ -29,7 +29,6 @@ fn latex_environment_begin_row_parser<'a>() -> impl Parser<
             (ws1, begin, name, rcurly, ws2, nl)
         })
         .map(|(ws1, begin, name, rcurly, ws2, nl)| {
-            // .map_with(|(((((ws1, begin), name), rcurly), ws2), nl), e| {
             let mut children = vec![];
 
             if ws1.len() > 0 {
@@ -53,8 +52,6 @@ fn latex_environment_begin_row_parser<'a>() -> impl Parser<
                 OrgSyntaxKind::Text.into(),
                 &name.to_lowercase(),
             )));
-
-            // e.state().latex_env_name = name.clone().to_uppercase(); // update state
 
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::RightCurlyBracket.into(),
@@ -114,7 +111,6 @@ fn latex_environment_end_row_parser<'a>() -> impl Parser<
             }
         })
         .map(|(ws1, end, name, rcurly, ws2, maybe_nl)| {
-            // .map(|(((((ws1, end), name), rcurly), ws2), maybe_nl)| {
             let mut children = vec![];
 
             if ws1.len() > 0 {
@@ -147,7 +143,7 @@ fn latex_environment_end_row_parser<'a>() -> impl Parser<
             if ws2.len() > 0 {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Whitespace.into(),
-                    &ws1,
+                    &ws2,
                 )));
             }
 

@@ -1,7 +1,7 @@
 #+title: org test
 #+macro: color @@html:<span style="color:$1">$2</span>@@ @@latex:\textcolor{$1}{$2}@@
 #+date: 20250802[Sat] 18:43:14
-#+author: author
+#+caption:asdf: value
 #+udf_keyword: udf_value
 
 a */_bold-italic-underline_/*
@@ -314,6 +314,17 @@ table cell's CONTENT can contain:
 :d1:
  this is the contents of drawer
  :end:
+
+
+:properties:
+
+:add: asd
+
+:dxx: asd
+
+
+:end:
+
 
 
 * block test

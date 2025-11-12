@@ -73,7 +73,7 @@ section:
 | planning          |              |            |             |         |
 | blocks            |              |            |             |         |
 | horizontal-rule   | ✓           | ✓         | ✓          |         |
-| latex-environment |              |            |             |         |
+| latex-environment | ✓           | ✓         | ✓          |         |
 | keyword           |              |            |             |         |
 | babel-call?       |              |            |             |         |
 

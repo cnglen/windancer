@@ -87,8 +87,17 @@ pub(crate) fn comment_parser<'a>() -> impl Parser<
 
     comment_line1
         .or(comment_line2)
+        .repeated()
+        .at_least(1)
+        .collect::<Vec<_>>()
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
-        .map(|(mut children, blanklines)| {
+        .map(|(vn, blanklines)| {
+            let mut children = vec![];
+            for e in vn {
+                for ee in e {
+                    children.push(ee);
+                }
+            }
             for blankline in blanklines {
                 children.push(NodeOrToken::Token(blankline));
             }

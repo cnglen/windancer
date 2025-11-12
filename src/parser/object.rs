@@ -127,7 +127,9 @@ pub(crate) fn blank_line_str_parser<'a>()
     whitespaces()
         .then(one_of("\r").repeated().at_most(1).collect::<String>())
         .then(just("\n"))
-        .map(|((ws, cr), nl)| {
+        .map_with(|((ws, cr), nl), e| {
+            e.state().prev_char = nl.chars().last();
+
             let mut text = String::new();
 
             if ws.len() > 0 {
