@@ -2,7 +2,6 @@
 
 pub(crate) mod syntax;
 
-mod block;
 mod common;
 mod document;
 mod element;

@@ -4,6 +4,9 @@
 #+caption:asdf: value
 #+udf_keyword: udf_value
 
+: This is a
+: fixed width area
+
 a */_bold-italic-underline_/*
 
 Zero-th Section

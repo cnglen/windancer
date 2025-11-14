@@ -99,6 +99,8 @@ pub enum OrgSyntaxKind {
     BlockContent,
     BlockEnd,
     SrcBlockLanguage,
+    SrcBlockSwitches,
+    SrcBlockHeaderArguments,
 
     //
     SectionUnknown,

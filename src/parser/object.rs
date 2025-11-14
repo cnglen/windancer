@@ -121,6 +121,33 @@ pub(crate) fn line_parser<'a>()
         })
 }
 
+/// 解析一行: 允许空行
+pub(crate) fn line_parser_allow_blank<'a>()
+-> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+{
+    let end_of_line = one_of("\r")
+        .repeated()
+        .at_most(1)
+        .collect::<String>()
+        .then(just("\n"))
+        .map(|(s, n)| {
+            let mut ans = String::from(s);
+            ans.push_str(n);
+            ans
+        });
+
+    any()
+        .and_is(end_of_line.not())
+        .repeated()
+        .collect::<String>()
+        .then(end_of_line)
+        .map(|(line, eol)| {
+            let mut ans = String::from(line);
+            ans.push_str(&eol);
+            ans
+        })
+}
+
 pub(crate) fn blank_line_str_parser<'a>()
 -> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
 {

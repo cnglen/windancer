@@ -1,5 +1,6 @@
 //! element parser: greater? excluding heading/section
 
+pub(crate) mod block;
 pub(crate) mod comment;
 pub(crate) mod drawer;
 pub(crate) mod horizontal_rule;
@@ -7,7 +8,7 @@ pub(crate) mod keyword;
 pub(crate) mod table;
 
 use crate::parser::{
-    ParserState, block, footnote_definition, latex_environment, object, paragraph, section,
+    ParserState, footnote_definition, latex_environment, object, paragraph, section,
 };
 
 use chumsky::inspector::RollbackState;
