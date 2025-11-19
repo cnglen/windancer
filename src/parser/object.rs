@@ -13,7 +13,7 @@ pub(crate) mod table_cell;
 mod target;
 mod text;
 mod text_markup;
-mod timestamp;
+pub(crate) mod timestamp;
 
 use crate::parser::ParserState;
 use crate::parser::object::entity::entity_parser;
@@ -62,7 +62,7 @@ pub(crate) fn just_case_insensitive<'a>(
             } else {
                 Err(Rich::custom(
                     e.span(),
-                    format!("Expected '{}' (case-insensitive)", t),
+                    format!("Got '{}', Expected '{}' (case-insensitive)", t, s_lower),
                 ))
             }
         })
@@ -101,19 +101,22 @@ pub(crate) fn line_parser<'a>()
         .repeated()
         .at_most(1)
         .collect::<String>()
-        .then(just("\n"))
+        .then(just("\n").or(end().to(""))) // fixme: to check end()?
         .map(|(s, n)| {
             let mut ans = String::from(s);
             ans.push_str(n);
             ans
         });
 
+    // let end_of_line = just("\n").to(String::from("\n"));
+
     any()
-        .and_is(end_of_line.not())
+        .and_is(end_of_line.clone().not())
         .repeated()
         .at_least(1)
         .collect::<String>()
         .then(end_of_line)
+        .map(|s|{println!("object:line_parser:s={s:?}"); s})
         .map(|(line, eol)| {
             let mut ans = String::from(line);
             ans.push_str(&eol);
@@ -213,11 +216,20 @@ pub(crate) fn objects_parser<'a>() -> impl Parser<
     object_parser().repeated().at_least(1).collect::<Vec<_>>()
 }
 
+pub(crate) fn standard_set_objects_parser<'a>() -> impl Parser<
+    'a,
+    &'a str,
+    Vec<NodeOrToken<GreenNode, GreenToken>>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
+    standard_set_object_parser().repeated().at_least(1).collect::<Vec<_>>()
+}
+
 /// objects_parser
 // object defintion:
 // minimal_set_object := entity + latex_fragment + subscript + superscript + text_markup + plain_text, 6 objects
 // standard_set_object := entity + latex_fragment + angle_link + line_break + macro + target + timestamp +  statistics-cookie + inline-babel-call + export_snippet + inline_src_block + radio_link + regular_link + radio-target + subscript + superscript + text_markup + footnote_reference + citation + plain_text + plain_link, 21 objects
-// Note: minimal_set_objet is subset of standard_set_object，which includes standard_set_object(12), tabel_cell and citation_reference.
+// Note: minimal_set_objet is subset of standard_set_object，full_set object includes standard_set_object(12), tabel_cell and citation_reference.
 
 // dependency:
 // 1. entity/latex_fragment/angle_link/line_break/macro/target/timestamp/statistics-cookie/inline-babel-call/export_snippet/inline_src_block/plain_link 12 objects' parser, are independent parser(独立解析器)
@@ -226,6 +238,7 @@ pub(crate) fn objects_parser<'a>() -> impl Parser<
 // 4. plain_text's parser dpendnes all other 22 object's parsers，used to lookahead NOT
 // TODO: select! use prev_char state? performance? first char
 
+// full set object
 pub(crate) fn object_parser<'a>() -> impl Parser<
     'a,
     &'a str,
@@ -271,6 +284,15 @@ pub(crate) fn object_in_table_cell_parser<'a>() -> impl Parser<
     get_object_parser().4
 }
 
+pub(crate) fn object_in_keyword_parser<'a>() -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
+    get_object_parser().5
+}
+
 // (full_set_object, standard_set_object, minimal_set_object, object_in_regular_link, object_in_table_cell)
 // - full_set_object DOES NOT include table_cell
 pub(crate) fn get_object_parser<'a>() -> (
@@ -303,13 +325,21 @@ pub(crate) fn get_object_parser<'a>() -> (
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        > + Clone,
+    impl Parser<
+        'a,
+        &'a str,
+        NodeOrToken<GreenNode, GreenToken>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
     > + Clone,
+    
 ) {
     let mut full_set_object = Recursive::declare();
     let mut minimal_set_object = Recursive::declare();
     let mut standard_set_object = Recursive::declare();
     let mut object_in_table_cell = Recursive::declare();
     let mut object_in_regular_link = Recursive::declare();
+    let mut object_in_keyword = Recursive::declare();
 
     // total 22 object parsers exlucidng plain_text
     let latex_fragment = latex_fragment_parser();
@@ -446,12 +476,25 @@ pub(crate) fn get_object_parser<'a>() -> (
     let plain_text_for_full = plain_text_parser(full_set_without_plain_text.clone());
     full_set_object.define(choice((full_set_without_plain_text, plain_text_for_full)));
 
+    let non_plain_text_parsers_for_keyword = Parser::boxed(choice((
+        radio_link.clone(),         // 1个
+        regular_link.clone(),       // 1个
+        independent_object.clone(), // 12个
+        radio_target.clone(),       // 1个
+        text_markup.clone(),        // 1个
+        subscript.clone(),          // 1个
+        superscript.clone(),        // 1个
+        // citation.clone(),             // 1个
+    )));
+    let plain_text_parser_for_keyword = plain_text_parser(non_plain_text_parsers_for_keyword.clone());
+    object_in_keyword.define(choice((non_plain_text_parsers_for_keyword, plain_text_parser_for_keyword)));
     (
         full_set_object,
         standard_set_object,
         minimal_set_object,
         object_in_regular_link,
         object_in_table_cell,
+        object_in_keyword,
     )
 }
 

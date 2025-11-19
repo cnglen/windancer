@@ -175,9 +175,7 @@ pub(crate) fn table_parser<'a>() -> impl Parser<
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     // fixme: standard objects without footnote reference
-    let affiliated_keywords = affiliated_keyword_parser(object::standard_set_object_parser())
-        .repeated()
-        .collect::<Vec<_>>();
+    let affiliated_keywords = affiliated_keyword_parser().repeated().collect::<Vec<_>>();
     let rows = table_rule_row()
         .or(table_standard_row())
         .repeated()

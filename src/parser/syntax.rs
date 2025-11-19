@@ -119,7 +119,10 @@ pub enum OrgSyntaxKind {
     FixedWhidth,
     Comment,
     Planning,
+    PlanningKeyword,
     Clock,
+
+    Unknown,
 
     LatexEnvironmentBegin,
     LatexEnvironmentEnd,

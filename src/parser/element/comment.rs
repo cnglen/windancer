@@ -1,4 +1,4 @@
-//! Footnote definition parser
+//! Comment parser
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserState, object};
 use chumsky::inspector::RollbackState;

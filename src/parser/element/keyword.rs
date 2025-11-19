@@ -33,14 +33,7 @@ pub(crate) static ORG_ELEMENT_PARSED_KEYWORDS: phf::Set<&'static str> = phf_set!
     "CAPTION"
 };
 
-pub(crate) fn affiliated_keyword_parser<'a>(
-    object_parser: impl Parser<
-        'a,
-        &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
-    > + Clone,
-) -> impl Parser<
+pub(crate) fn affiliated_keyword_parser<'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
@@ -90,9 +83,7 @@ pub(crate) fn affiliated_keyword_parser<'a>(
     );
     let optval = single_expression.clone().repeated().to_slice();
 
-    // fixme: without footnote reference
-    let objects_parser = object_parser
-        .clone()
+    let objects_parser = object::object_in_keyword_parser()
         .repeated()
         .at_least(1)
         .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
@@ -502,14 +493,7 @@ fn key_parser<'a>()
     })
 }
 
-pub(crate) fn keyword_parser<'a>(
-    object_parser: impl Parser<
-        'a,
-        &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
-    > + Clone,
-) -> impl Parser<
+pub(crate) fn keyword_parser<'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
@@ -526,9 +510,7 @@ pub(crate) fn keyword_parser<'a>(
         .collect::<String>()
         .filter(|name| ORG_ELEMENT_PARSED_KEYWORDS.contains(&name.to_uppercase()));
 
-    // fixme: without footnote reference
-    let objects_parser = object_parser
-        .clone()
+    let objects_parser = object::object_in_keyword_parser()
         .repeated()
         .at_least(1)
         .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
@@ -687,10 +669,7 @@ mod tests {
     #[test]
     fn test_keyword_01() {
         assert_eq!(
-            get_parser_output(
-                keyword_parser(object::standard_set_object_parser()),
-                r"#+key: value    "
-            ),
+            get_parser_output(keyword_parser(), r"#+key: value    "),
             r###"Keyword@0..16
   HashPlus@0..2 "#+"
   KeywordKey@2..5
@@ -706,10 +685,7 @@ mod tests {
     #[test]
     fn test_keyword_02() {
         assert_eq!(
-            get_parser_output(
-                keyword_parser(object::standard_set_object_parser()),
-                r"#+key:has:colons: value    "
-            ),
+            get_parser_output(keyword_parser(), r"#+key:has:colons: value    "),
             r###"Keyword@0..27
   HashPlus@0..2 "#+"
   KeywordKey@2..16
@@ -725,10 +701,7 @@ mod tests {
     #[test]
     fn test_affliated_keyword_01() {
         assert_eq!(
-            get_parser_output(
-                affiliated_keyword_parser(object::standard_set_object_parser()),
-                r"#+caption: value    "
-            ),
+            get_parser_output(affiliated_keyword_parser(), r"#+caption: value    "),
             r###"AffiliatedKeyword@0..20
   HashPlus@0..2 "#+"
   KeywordKey@2..9
@@ -745,7 +718,7 @@ mod tests {
     fn test_affliated_keyword_02() {
         assert_eq!(
             get_parser_output(
-                affiliated_keyword_parser(object::standard_set_object_parser()),
+                affiliated_keyword_parser(),
                 r"#+CAPTION[Short caption]: Longer caption."
             ),
             r###"AffiliatedKeyword@0..41
@@ -767,10 +740,7 @@ mod tests {
     #[test]
     fn test_affliated_keyword_03() {
         assert_eq!(
-            get_parser_output(
-                affiliated_keyword_parser(object::standard_set_object_parser()),
-                r"#+attr_html: value"
-            ),
+            get_parser_output(affiliated_keyword_parser(), r"#+attr_html: value"),
             r###"AffiliatedKeyword@0..18
   HashPlus@0..2 "#+"
   KeywordKey@2..11
@@ -786,7 +756,7 @@ mod tests {
     fn test_affliated_keyword_04() {
         assert_eq!(
             get_parser_output(
-                affiliated_keyword_parser(object::standard_set_object_parser()),
+                affiliated_keyword_parser(),
                 r"#+CAPTION[Short caption]: *Longer* caption."
             ),
             r###"AffiliatedKeyword@0..43
@@ -812,10 +782,7 @@ mod tests {
     #[test]
     fn test_affliated_keyword_05() {
         assert_eq!(
-            get_parser_output(
-                affiliated_keyword_parser(object::standard_set_object_parser()),
-                r"#+caption:value: value    "
-            ),
+            get_parser_output(affiliated_keyword_parser(), r"#+caption:value: value    "),
             r###"AffiliatedKeyword@0..26
   HashPlus@0..2 "#+"
   KeywordKey@2..9

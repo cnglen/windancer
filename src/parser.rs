@@ -6,12 +6,8 @@ mod common;
 mod document;
 mod element;
 mod footnote_definition;
-mod heading;
 mod latex_environment;
-mod list;
 pub(crate) mod object;
-mod paragraph;
-mod section;
 
 use crate::parser::syntax::OrgSyntaxKind;
 
@@ -169,11 +165,17 @@ impl OrgParser {
 
         if parse_result.has_errors() {
             for e in parse_result.errors() {
-                println!("{:?}", e);
+                println!("error: {:?}", e);
             }
         }
 
-        parse_result.into_output().expect("Parse failed")
+        ParserResult {
+            green: parse_result.into_output().expect("Parse failed"),
+            text: "todo".to_string(),
+            span: Range{start:0, end:5},
+        }
+
+
     }
 }
 
@@ -217,10 +219,14 @@ impl Default for OrgConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pretty_assertions::assert_eq;
 
-    #[test]
-    fn test_basic_headlines() {
-        let input = "* 标题1\n 测试\n** 标题1.1\n测试\n测试\ntest\n*** 1.1.1 title\nContent\n* Title\nI have a dream\n";
+
+    #[test]    
+    fn test_doc_01() {
+        let input = "* 标题1\n 测试\n** 标题1.1\n测试\n测试\ntest\n*** 1.1.1 title\nContent\n* Title\nI have a dream\n"; // (signal: 11, SIGSEGV: invalid memory reference)
+        // let input = "* 标题1\n 测试\n* 标";
+        // let input = "* 标题1\n 测试\n* ba\n"; // (signal: 6, SIGABRT: process abort signal)
         let mut parser = OrgParser::new(OrgConfig::default());
         let syntax_node = parser.parse(input).syntax();
         let answer = r###"Document@0..97
@@ -261,18 +267,28 @@ mod tests {
       Paragraph@82..97
         Text@82..97 "I have a dream\n"
 "###;
-        println!("{}", format!("{syntax_node:#?}"));
-        println!("{}", answer);
+        println!("output={}", format!("{syntax_node:#?}"));
+        println!("answer={}", answer);
 
         assert_eq!(format!("{syntax_node:#?}"), answer);
     }
 
-    #[test]
-    fn test_basic_headlines_v2() {
+    #[test]    
+    fn test_doc_02() {
         let input = "* 标题1\na";
         let mut parser = OrgParser::new(OrgConfig::default());
         let syntax_node = parser.parse(input).syntax();
-        println!("{}", format!("{syntax_node:#?}"));
+        assert_eq!(format!("{syntax_node:#?}"), r##"Document@0..11
+  HeadingSubtree@0..11
+    HeadingRow@0..10
+      HeadingRowStars@0..1 "*"
+      Whitespace@1..2 " "
+      HeadingRowTitle@2..9 "标题1"
+      Newline@9..10 "\n"
+    Section@10..11
+      Paragraph@10..11
+        Text@10..11 "a"
+"##);
     }
 }
 

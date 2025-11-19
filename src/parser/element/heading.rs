@@ -1,7 +1,8 @@
 //! Heading parser, including HeadingRow, HeadingSubtree
+use crate::parser::element::{section, element_parser};
+use crate::parser::object;
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserResult, ParserState, S2};
-use crate::parser::{object, section};
 
 use chumsky::input::InputRef;
 use chumsky::inspector::RollbackState;
@@ -49,7 +50,7 @@ pub(crate) fn heading_row_stars_parser<'a>()
                         start: *inp.cursor().inner(),
                         end: (inp.cursor().inner() + level),
                     }),
-                    "标题级别应该在 1 到 {} 之间，但得到 {} 个星号",
+                    &format!("标题级别应该在 1 到 {} 之间，但得到 {} 个星号", state_level, level)
                 );
                 return Err(error);
             }
@@ -434,65 +435,234 @@ pub(crate) fn heading_row_parser<'a>()
 
 // heading = heading_row + section + heading?
 /// HeadingSubtree parser
-pub(crate) fn heading_subtree_parser<'a>()
--> impl Parser<'a, &'a str, ParserResult, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>
-+ Clone {
-    recursive(|heading| {
-        heading_row_parser()
-            .then(
-                section::section_parser()
-                    .repeated()
-                    .at_most(1)
-                    .collect::<Vec<ParserResult>>(),
-            )
-            .then(heading.clone().repeated().collect::<Vec<ParserResult>>())
-            .map_with(|((headline_title, section), children), e| {
-                // println!(
-                //     "headline_title={:?}\nsection={:?}\nchildren={:?}",
-                //     headline_title, section, children
-                // );
+pub(crate) fn heading_subtree_parser<'a>(
+    section_parser: impl Parser<
+        'a,
+        &'a str,
+        NodeOrToken<GreenNode, GreenToken>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    > + Clone +'a
+)
+-> impl Parser<'a, &'a str, NodeOrToken<GreenNode, GreenToken>, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>
+    + Clone {
+        let mut heading = Recursive::declare();
+        heading.define(
 
-                let mut children_ = vec![];
-                children_.push(headline_title.green);
+            heading_row_parser()
+                .then(
+                    section_parser
+                        .repeated()
+                        .at_most(1)
+                        .collect::<Vec<_>>(),
+                )
+                .then(heading.clone().repeated().collect::<Vec<_>>())
 
-                let mut section_text = String::new();
-                for s in section.iter() {
-                    children_.push(s.green.clone());
-                    section_text.push_str(&s.text);
-                }
+                .map_with(|((headline_title, section), children), e| {
+                    println!(
+                        "headline_title={:?}\nsection={:?}\nchildren={:?}",
+                        headline_title, section, children
+                    );
 
-                // println!(
-                //     "title={}, section_text={}",
-                //     headline_title.text, section_text
-                // );
-                for c in children.iter() {
-                    children_.push(c.green.clone());
-                }
+                    let mut children_ = vec![];
+                    children_.push(headline_title.green);
 
-                let span: SimpleSpan = e.span();
-                e.state().0.level_stack.pop();
+                    for e in section {
+                        children_.push(e);
+                    }
+                    // let mut section_text = String::new();
+                    // for s in section.iter() {
+                    //     children_.push(s.green.clone());
+                    //     section_text.push_str(&s.text);
+                    // }
 
-                ParserResult {
-                    green: NodeOrToken::Node(GreenNode::new(
+                    // println!(
+                    //     "title={}, section_text={}",
+                    //     headline_title.text, section_text
+                    // );
+                    // for c in children.iter() {
+                    //     children_.push(c.green.clone());
+                    // }
+
+                    for c in children{
+                        children_.push(c);
+                    }
+                
+                    let span: SimpleSpan = e.span();
+                    e.state().0.level_stack.pop();
+
+                    NodeOrToken::Node(GreenNode::new(
                         OrgSyntaxKind::HeadingSubtree.into(),
                         children_,
-                    )),
-                    text: format!("{}{}", headline_title.text, section_text), // fix: children?
-                    span: Range {
-                        start: span.start,
-                        end: span.end,
-                    },
-                }
-            })
-    })
+                    ))
+                        
+                    // ParserResult {
+                    //     green: NodeOrToken::Node(GreenNode::new(
+                    //         OrgSyntaxKind::HeadingSubtree.into(),
+                    //         children_,
+                    //     )),
+                    //     text: format!("{}{}", headline_title.text, "todo"), // fix: children?
+                    //     span: Range {
+                    //         start: span.start,
+                    //         end: span.end,
+                    //     },
+                    // }
+                })
+        );
+        heading
+        
+    // recursive(|heading| {
+    //     heading_row_parser()
+    //         .then(
+    //             section_parser
+    //                 .repeated()
+    //                 .at_most(1)
+    //                 .collect::<Vec<_>>(),
+    //         )
+    //         .then(heading.clone().repeated().collect::<Vec<_>>())
+    //         .map_with(|((headline_title, section), children), e| {
+    //             println!(
+    //                 "headline_title={:?}\nsection={:?}\nchildren={:?}",
+    //                 headline_title, section, children
+    //             );
+
+    //             let mut children_ = vec![];
+    //             children_.push(headline_title.green);
+
+    //             for e in section {
+    //                 children_.push(e);
+    //             }
+    //             // let mut section_text = String::new();
+    //             // for s in section.iter() {
+    //             //     children_.push(s.green.clone());
+    //             //     section_text.push_str(&s.text);
+    //             // }
+
+    //             // println!(
+    //             //     "title={}, section_text={}",
+    //             //     headline_title.text, section_text
+    //             // );
+    //             // for c in children.iter() {
+    //             //     children_.push(c.green.clone());
+    //             // }
+
+    //             for c in children{
+    //                 children_.push(c);
+    //             }
+                
+    //             let span: SimpleSpan = e.span();
+    //             e.state().0.level_stack.pop();
+
+    //             NodeOrToken::Node(GreenNode::new(
+    //                 OrgSyntaxKind::HeadingSubtree.into(),
+    //                 children_,
+    //             ))
+                
+    //             // ParserResult {
+    //             //     green: NodeOrToken::Node(GreenNode::new(
+    //             //         OrgSyntaxKind::HeadingSubtree.into(),
+    //             //         children_,
+    //             //     )),
+    //             //     text: format!("{}{}", headline_title.text, "todo"), // fix: children?
+    //             //     span: Range {
+    //             //         start: span.start,
+    //             //         end: span.end,
+    //             //     },
+    //             // }
+    //         })
+    // })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::syntax::OrgLanguage;
+    use crate::parser::{element::section::section_parser, syntax::OrgLanguage};
     use rowan::SyntaxNode;
+    use pretty_assertions::assert_eq;
+    use crate::parser::element::element_in_section_parser;
+    use crate::parser::common::{get_parser_output, get_parsers_output};
 
+
+    #[test]
+    fn test_heading_subtree_01() {
+        // let input = "* 标题1\n 测试\n** 标题1.1\n测试\n测试\ntest\n*** 1.1.1 title\nContent\n* Title\nI have a dream\n";
+        let input = "* 标题1\n 测试\n** 标题1.1\n测试\n测试\ntest \n*** 1.1.1 title\nContent\n";
+        let parser = heading_subtree_parser(section_parser(element_in_section_parser()));
+        assert_eq!(get_parser_output(parser, input), r##"HeadingSubtree@0..75
+  HeadingRow@0..10
+    HeadingRowStars@0..1 "*"
+    Whitespace@1..2 " "
+    HeadingRowTitle@2..9 "标题1"
+    Newline@9..10 "\n"
+  Section@10..18
+    Paragraph@10..18
+      Text@10..18 " 测试\n"
+  HeadingSubtree@18..75
+    HeadingRow@18..31
+      HeadingRowStars@18..20 "**"
+      Whitespace@20..21 " "
+      HeadingRowTitle@21..30 "标题1.1"
+      Newline@30..31 "\n"
+    Section@31..51
+      Paragraph@31..51
+        Text@31..51 "测试\n测试\ntest \n"
+    HeadingSubtree@51..75
+      HeadingRow@51..67
+        HeadingRowStars@51..54 "***"
+        Whitespace@54..55 " "
+        HeadingRowTitle@55..66 "1.1.1 title"
+        Newline@66..67 "\n"
+      Section@67..75
+        Paragraph@67..75
+          Text@67..75 "Content\n"
+"##);
+    }
+
+    #[test]
+    fn test_heading_subtree_02() {
+        // let input = "* 1 \n** 1.1\n*** 1.1.1\n* Title"; // panic
+        // let input = "* 1 \n** 1.1\n*** 1.1.1\n* 2\n"; // overflow
+        let input = "* 标题1\n 测试\n** 标题1.1\n测试\n测试\ntest\n*** 1.1.1 title\nContent\n* Title\nI have a dream\n"; // overflow
+        let parser = heading_subtree_parser(section_parser(element_in_section_parser())).repeated().collect::<Vec<_>>();
+        assert_eq!(get_parsers_output(parser, input), r##"Root@0..97
+  HeadingSubtree@0..74
+    HeadingRow@0..10
+      HeadingRowStars@0..1 "*"
+      Whitespace@1..2 " "
+      HeadingRowTitle@2..9 "标题1"
+      Newline@9..10 "\n"
+    Section@10..18
+      Paragraph@10..18
+        Text@10..18 " 测试\n"
+    HeadingSubtree@18..74
+      HeadingRow@18..31
+        HeadingRowStars@18..20 "**"
+        Whitespace@20..21 " "
+        HeadingRowTitle@21..30 "标题1.1"
+        Newline@30..31 "\n"
+      Section@31..50
+        Paragraph@31..50
+          Text@31..50 "测试\n测试\ntest\n"
+      HeadingSubtree@50..74
+        HeadingRow@50..66
+          HeadingRowStars@50..53 "***"
+          Whitespace@53..54 " "
+          HeadingRowTitle@54..65 "1.1.1 title"
+          Newline@65..66 "\n"
+        Section@66..74
+          Paragraph@66..74
+            Text@66..74 "Content\n"
+  HeadingSubtree@74..97
+    HeadingRow@74..82
+      HeadingRowStars@74..75 "*"
+      Whitespace@75..76 " "
+      HeadingRowTitle@76..81 "Title"
+      Newline@81..82 "\n"
+    Section@82..97
+      Paragraph@82..97
+        Text@82..97 "I have a dream\n"
+"##);
+    }
+    
     #[test]
     fn test_heading_row_tag_3() {
         let input = ":taga:tag#:  ";

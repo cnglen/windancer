@@ -40,7 +40,6 @@ pub(crate) fn timestamp_parser<'a>() -> impl Parser<
         .then(one_of("0123456789").repeated().at_least(1))
         .then(one_of("hdwmy"))
         .map(|s| {
-            println!("s={s:?}");
             s
         });
 
@@ -199,7 +198,7 @@ pub(crate) fn timestamp_parser<'a>() -> impl Parser<
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::common::{get_parser_output, get_parsers_output};
+    use crate::parser::common::get_parsers_output;
     use crate::parser::object;
     use pretty_assertions::assert_eq;
 
