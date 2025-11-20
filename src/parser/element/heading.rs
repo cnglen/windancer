@@ -1,5 +1,5 @@
 //! Heading parser, including HeadingRow, HeadingSubtree
-use crate::parser::element::{section, element_parser};
+use crate::parser::element::{section, element_parser, heading_subtree_parser};
 use crate::parser::object;
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserResult, ParserState, S2};
@@ -435,142 +435,49 @@ pub(crate) fn heading_row_parser<'a>()
 
 // heading = heading_row + section + heading?
 /// HeadingSubtree parser
-pub(crate) fn heading_subtree_parser<'a>(
-    section_parser: impl Parser<
-        'a,
-        &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
-    > + Clone +'a
-)
--> impl Parser<'a, &'a str, NodeOrToken<GreenNode, GreenToken>, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>
-    + Clone {
-        let mut heading = Recursive::declare();
-        heading.define(
-
-            heading_row_parser()
-                .then(
-                    section_parser
-                        .repeated()
-                        .at_most(1)
-                        .collect::<Vec<_>>(),
-                )
-                .then(heading.clone().repeated().collect::<Vec<_>>())
-
-                .map_with(|((headline_title, section), children), e| {
-                    println!(
-                        "headline_title={:?}\nsection={:?}\nchildren={:?}",
-                        headline_title, section, children
-                    );
-
-                    let mut children_ = vec![];
-                    children_.push(headline_title.green);
-
-                    for e in section {
-                        children_.push(e);
-                    }
-                    // let mut section_text = String::new();
-                    // for s in section.iter() {
-                    //     children_.push(s.green.clone());
-                    //     section_text.push_str(&s.text);
-                    // }
-
-                    // println!(
-                    //     "title={}, section_text={}",
-                    //     headline_title.text, section_text
-                    // );
-                    // for c in children.iter() {
-                    //     children_.push(c.green.clone());
-                    // }
-
-                    for c in children{
-                        children_.push(c);
-                    }
-                
-                    let span: SimpleSpan = e.span();
-                    e.state().0.level_stack.pop();
-
-                    NodeOrToken::Node(GreenNode::new(
-                        OrgSyntaxKind::HeadingSubtree.into(),
-                        children_,
-                    ))
-                        
-                    // ParserResult {
-                    //     green: NodeOrToken::Node(GreenNode::new(
-                    //         OrgSyntaxKind::HeadingSubtree.into(),
-                    //         children_,
-                    //     )),
-                    //     text: format!("{}{}", headline_title.text, "todo"), // fix: children?
-                    //     span: Range {
-                    //         start: span.start,
-                    //         end: span.end,
-                    //     },
-                    // }
-                })
-        );
-        heading
-        
-    // recursive(|heading| {
-    //     heading_row_parser()
-    //         .then(
-    //             section_parser
-    //                 .repeated()
-    //                 .at_most(1)
-    //                 .collect::<Vec<_>>(),
-    //         )
-    //         .then(heading.clone().repeated().collect::<Vec<_>>())
-    //         .map_with(|((headline_title, section), children), e| {
-    //             println!(
-    //                 "headline_title={:?}\nsection={:?}\nchildren={:?}",
-    //                 headline_title, section, children
-    //             );
-
-    //             let mut children_ = vec![];
-    //             children_.push(headline_title.green);
-
-    //             for e in section {
-    //                 children_.push(e);
-    //             }
-    //             // let mut section_text = String::new();
-    //             // for s in section.iter() {
-    //             //     children_.push(s.green.clone());
-    //             //     section_text.push_str(&s.text);
-    //             // }
-
-    //             // println!(
-    //             //     "title={}, section_text={}",
-    //             //     headline_title.text, section_text
-    //             // );
-    //             // for c in children.iter() {
-    //             //     children_.push(c.green.clone());
-    //             // }
-
-    //             for c in children{
-    //                 children_.push(c);
-    //             }
-                
-    //             let span: SimpleSpan = e.span();
-    //             e.state().0.level_stack.pop();
-
-    //             NodeOrToken::Node(GreenNode::new(
-    //                 OrgSyntaxKind::HeadingSubtree.into(),
-    //                 children_,
-    //             ))
-                
-    //             // ParserResult {
-    //             //     green: NodeOrToken::Node(GreenNode::new(
-    //             //         OrgSyntaxKind::HeadingSubtree.into(),
-    //             //         children_,
-    //             //     )),
-    //             //     text: format!("{}{}", headline_title.text, "todo"), // fix: children?
-    //             //     span: Range {
-    //             //         start: span.start,
-    //             //         end: span.end,
-    //             //     },
-    //             // }
-    //         })
-    // })
-}
+// pub(crate) fn heading_subtree_parser<'a>(
+//     section_parser: impl Parser<
+//         'a,
+//         &'a str,
+//         NodeOrToken<GreenNode, GreenToken>,
+//         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+//     > + Clone +'a
+// )
+// -> impl Parser<'a, &'a str, NodeOrToken<GreenNode, GreenToken>, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>
+//     + Clone {
+//         let mut heading = Recursive::declare();
+//         heading.define(
+//             heading_row_parser()
+//                 .then(
+//                     section_parser
+//                         .repeated()
+//                         .at_most(1)
+//                         .collect::<Vec<_>>(),
+//                 )
+//                 .then(heading.clone().repeated().collect::<Vec<_>>())
+//                 .map_with(|((headline_title, section), children), e| {
+//                     // println!(
+//                     //     "headline_title={:?}\nsection={:?}\nchildren={:?}",
+//                     //     headline_title, section, children
+//                     // );
+//                     let mut children_ = vec![];
+//                     children_.push(headline_title.green);
+//                     for e in section {
+//                         children_.push(e);
+//                     }
+//                     for c in children{
+//                         children_.push(c);
+//                     }
+//                     let span: SimpleSpan = e.span();
+//                     e.state().0.level_stack.pop();
+//                     NodeOrToken::Node(GreenNode::new(
+//                         OrgSyntaxKind::HeadingSubtree.into(),
+//                         children_,
+//                     ))
+//                 })
+//         );
+//         heading
+// }
 
 #[cfg(test)]
 mod tests {
@@ -586,7 +493,8 @@ mod tests {
     fn test_heading_subtree_01() {
         // let input = "* 标题1\n 测试\n** 标题1.1\n测试\n测试\ntest\n*** 1.1.1 title\nContent\n* Title\nI have a dream\n";
         let input = "* 标题1\n 测试\n** 标题1.1\n测试\n测试\ntest \n*** 1.1.1 title\nContent\n";
-        let parser = heading_subtree_parser(section_parser(element_in_section_parser()));
+        // let parser = heading_subtree_parser(section_parser(element_in_section_parser()));
+        let parser = heading_subtree_parser();        
         assert_eq!(get_parser_output(parser, input), r##"HeadingSubtree@0..75
   HeadingRow@0..10
     HeadingRowStars@0..1 "*"
@@ -622,7 +530,8 @@ mod tests {
         // let input = "* 1 \n** 1.1\n*** 1.1.1\n* Title"; // panic
         // let input = "* 1 \n** 1.1\n*** 1.1.1\n* 2\n"; // overflow
         let input = "* 标题1\n 测试\n** 标题1.1\n测试\n测试\ntest\n*** 1.1.1 title\nContent\n* Title\nI have a dream\n"; // overflow
-        let parser = heading_subtree_parser(section_parser(element_in_section_parser())).repeated().collect::<Vec<_>>();
+        // let parser = heading_subtree_parser(section_parser(element_in_section_parser())).repeated().collect::<Vec<_>>();
+        let parser = heading_subtree_parser().repeated().collect::<Vec<_>>(); 
         assert_eq!(get_parsers_output(parser, input), r##"Root@0..97
   HeadingSubtree@0..74
     HeadingRow@0..10

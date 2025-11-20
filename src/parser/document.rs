@@ -6,12 +6,13 @@ use crate::parser::syntax::OrgSyntaxKind;
 // use crate::parser::SyntaxNode;
 
 use crate::parser::element::{section, heading};
+use crate::parser::element;
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 use std::ops::Range;
 
-use super::element;
+
 
 /// Document parser: [section]? + heading+
 /// - Document
@@ -28,9 +29,10 @@ pub(crate) fn document_parser<'a>()
         .at_most(1)
         .collect::<Vec<_>>()
         .then(
-            heading::heading_subtree_parser(
-                section::section_parser(element::element_in_section_parser())
-            )
+            // heading::heading_subtree_parser(
+            //     section::section_parser(element::element_in_section_parser())
+            // )
+                element::heading_subtree_parser()
                 .repeated()
                 .collect::<Vec<_>>(),
         )

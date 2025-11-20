@@ -6,6 +6,8 @@ use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 use std::ops::Range;
 
+use crate::parser::element::{paragraph, latex_environment, table, horizontal_rule,keyword,block, planning, comment, drawer, footnote_definition};
+
 use crate::parser::element::paragraph::simple_heading_row_parser;
 
 /// Section解析器，返回包含`GreenNode`的ParserResult
@@ -40,6 +42,8 @@ pub(crate) fn section_parser<'a>(
     // ));
     // list_parser
     //     .or(element_parser)
+    // ??
+
     element_parser
         .and_is(simple_heading_row_parser().then(any().repeated()).not()) // Section不能以<* title>开头，避免HeadingSurbtree被识别为Section
         .repeated()

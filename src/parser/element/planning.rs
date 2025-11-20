@@ -20,7 +20,7 @@ pub(crate) fn planning_parser<'a>() -> impl Parser<
         .then(just(":"))
         .then(object::whitespaces())
         .then(object::timestamp::timestamp_parser())
-        .map(|s|{println!("planning: s={s:#?}"); s})
+        // .map(|s|{println!("planning: s={s:#?}"); s})
         .map(|((((ws1, keyword), colon), ws2), ts)| {
             let mut children = vec![];
             if ws1.len() > 0 {
@@ -51,7 +51,8 @@ pub(crate) fn planning_parser<'a>() -> impl Parser<
         .at_least(1)
         .collect::<Vec<_>>()
         .then(object::whitespaces())
-        .map_with(|(s, ws), e| {
+        .then(object::newline_or_ending())
+        .map_with(|((s, ws), maybe_nl), e| {
             let mut children = vec![];
 
             for e in s {
@@ -64,6 +65,13 @@ pub(crate) fn planning_parser<'a>() -> impl Parser<
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Whitespace.into(),
                     &ws,
+                )));
+            }
+
+            if let Some(nl) = maybe_nl {
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Newline.into(),
+                    &nl,
                 )));
             }
 

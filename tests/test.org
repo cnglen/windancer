@@ -1,7 +1,7 @@
 #+title: org test
 #+macro: color @@html:<span style="color:$1">$2</span>@@ @@latex:\textcolor{$1}{$2}@@
 #+date: 20250802[Sat] 18:43:14
-#+caption:asdf: value
+#+caption: value
 #+udf_keyword: udf_value
 
 : This is a
@@ -483,11 +483,13 @@ B test:
 3) 关闭冰箱
 
 
-1. 打开冰箱
-2. 放入冰箱
-3. 关闭冰箱
+1) 打开冰箱
+2) 放入冰箱
+3) 关闭冰箱
    
 
+a. asdf
+b. df
 
 * object test
 
