@@ -1,5 +1,5 @@
 //! Heading parser, including HeadingRow, HeadingSubtree
-use crate::parser::element::{section, element_parser, heading_subtree_parser};
+use crate::parser::element::{element_parser, heading_subtree_parser, section};
 use crate::parser::object;
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserResult, ParserState, S2};
@@ -50,7 +50,10 @@ pub(crate) fn heading_row_stars_parser<'a>()
                         start: *inp.cursor().inner(),
                         end: (inp.cursor().inner() + level),
                     }),
-                    &format!("标题级别应该在 1 到 {} 之间，但得到 {} 个星号", state_level, level)
+                    &format!(
+                        "标题级别应该在 1 到 {} 之间，但得到 {} 个星号",
+                        state_level, level
+                    ),
                 );
                 return Err(error);
             }
@@ -482,20 +485,21 @@ pub(crate) fn heading_row_parser<'a>()
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::{element::section::section_parser, syntax::OrgLanguage};
-    use rowan::SyntaxNode;
-    use pretty_assertions::assert_eq;
-    use crate::parser::element::element_in_section_parser;
     use crate::parser::common::{get_parser_output, get_parsers_output};
-
+    use crate::parser::element::element_in_section_parser;
+    use crate::parser::{element::section::section_parser, syntax::OrgLanguage};
+    use pretty_assertions::assert_eq;
+    use rowan::SyntaxNode;
 
     #[test]
     fn test_heading_subtree_01() {
         // let input = "* 标题1\n 测试\n** 标题1.1\n测试\n测试\ntest\n*** 1.1.1 title\nContent\n* Title\nI have a dream\n";
         let input = "* 标题1\n 测试\n** 标题1.1\n测试\n测试\ntest \n*** 1.1.1 title\nContent\n";
         // let parser = heading_subtree_parser(section_parser(element_in_section_parser()));
-        let parser = heading_subtree_parser();        
-        assert_eq!(get_parser_output(parser, input), r##"HeadingSubtree@0..75
+        let parser = heading_subtree_parser();
+        assert_eq!(
+            get_parser_output(parser, input),
+            r##"HeadingSubtree@0..75
   HeadingRow@0..10
     HeadingRowStars@0..1 "*"
     Whitespace@1..2 " "
@@ -522,7 +526,8 @@ mod tests {
       Section@67..75
         Paragraph@67..75
           Text@67..75 "Content\n"
-"##);
+"##
+        );
     }
 
     #[test]
@@ -531,8 +536,10 @@ mod tests {
         // let input = "* 1 \n** 1.1\n*** 1.1.1\n* 2\n"; // overflow
         let input = "* 标题1\n 测试\n** 标题1.1\n测试\n测试\ntest\n*** 1.1.1 title\nContent\n* Title\nI have a dream\n"; // overflow
         // let parser = heading_subtree_parser(section_parser(element_in_section_parser())).repeated().collect::<Vec<_>>();
-        let parser = heading_subtree_parser().repeated().collect::<Vec<_>>(); 
-        assert_eq!(get_parsers_output(parser, input), r##"Root@0..97
+        let parser = heading_subtree_parser().repeated().collect::<Vec<_>>();
+        assert_eq!(
+            get_parsers_output(parser, input),
+            r##"Root@0..97
   HeadingSubtree@0..74
     HeadingRow@0..10
       HeadingRowStars@0..1 "*"
@@ -569,9 +576,10 @@ mod tests {
     Section@82..97
       Paragraph@82..97
         Text@82..97 "I have a dream\n"
-"##);
+"##
+        );
     }
-    
+
     #[test]
     fn test_heading_row_tag_3() {
         let input = ":taga:tag#:  ";

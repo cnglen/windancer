@@ -1,4 +1,7 @@
 //! Block parser
+// todo: reduce code; just::configure from another parser?, don't use state
+// can nested self:? center center
+use crate::parser::object::just_case_insensitive;
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserState, S2, object};
 use chumsky::inspector::RollbackState;
@@ -8,100 +11,40 @@ use std::collections::HashSet;
 type NT = NodeOrToken<GreenNode, GreenToken>;
 type OSK = OrgSyntaxKind;
 
-pub(crate) fn block_begin_row_parser_with_type<'a>(
-    block_type: &'a str,
-) -> impl Parser<'a, &'a str, NT, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+pub(crate) fn name_parser<'a>()
+-> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
 {
-    object::whitespaces()
-        .then(object::just_case_insensitive("#+BEGIN_"))
-        .then(object::just_case_insensitive(block_type))
-        .then(
-            object::whitespaces_g1()
-                .then(none_of("\n").repeated().collect::<String>())
-                .or_not(),
-        )
-        .then(just("\n"))
-        .validate(
-            |((((ws, begin), block_type), parameters), nl), e, _emitter| {
-                // println!("dbg@validate@begin: type@state={:?}, type@current={}", e.state().block_type, block_type.to_uppercase());
-                e.state().block_type = block_type.clone().to_uppercase(); // update state
-                (ws, begin, block_type, parameters, nl)
-            },
-        )
-        .map_with(|(ws, begin, block_type, parameters, nl), e| {
-            // println!("dbg@map_with: type={:?}", block_type.to_uppercase());
-            let mut children = vec![];
-
-            if ws.len() > 0 {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    &ws,
-                )));
+    any()
+        .filter(|c: &char| !c.is_whitespace())
+        .repeated()
+        .at_least(1)
+        .collect::<String>()
+        .try_map_with(|s, e| match s.to_uppercase().as_str() {
+            "SRC" | "EXPORT" | "EXAMPLE" | "COMMENT" | "VERSE" | "CENTER" => {
+                let error = Rich::custom::<&str>(e.span(), &format!("name is lesser block"));
+                Err(error)
             }
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                &begin,
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                &block_type.to_uppercase(),
-            )));
-
-            // println!("begin_end_row={:?}", block_type);
-            e.state().block_type = block_type.clone().to_uppercase(); // update state
-
-            match parameters {
-                None => {}
-                Some((ws, p)) => {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Whitespace.into(),
-                        &ws,
-                    )));
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Text.into(),
-                        &p,
-                    )));
-                }
-            }
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Newline.into(),
-                &nl,
-            )));
-
-            NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::BlockBegin.into(), children))
+            _ => Ok(s),
         })
 }
 
 pub(crate) fn block_begin_row_parser<'a>()
 -> impl Parser<'a, &'a str, NT, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
 {
-    let block_type = any()
-        .filter(|c: &char| !c.is_whitespace())
-        .repeated()
-        .at_least(1)
-        .collect::<String>();
-
     object::whitespaces()
-        .then(object::just_case_insensitive("#+BEGIN_"))
-        .then(block_type)
+        // .map(|s|{println!("block_begin_row_parser:s0={s:?}"); s})
+        .then(object::just_case_insensitive("#+begin_"))
+        // .map(|s|{println!("block_begin_row_parser:s1={s:?}"); s})
+        .then(name_parser())
+        // .map(|s|{println!("block_begin_row_parser:s2={s:?}"); s})
         .then(
             object::whitespaces_g1()
                 .then(none_of("\n").repeated().collect::<String>())
                 .or_not(),
         )
         .then(just("\n"))
-        .validate(
-            |((((ws, begin), block_type), parameters), nl), e, _emitter| {
-                // println!("dbg@validate@begin: type@state={:?}, type@current={}", e.state().block_type, block_type.to_uppercase());
-                e.state().block_type = block_type.clone().to_uppercase(); // update state
-                (ws, begin, block_type, parameters, nl)
-            },
-        )
-        .map_with(|(ws, begin, block_type, parameters, nl), e| {
-            // println!("dbg@map_with: type={:?}", block_type.to_uppercase());
+        .map_with(|((((ws, begin), name), maybe_ws_parameters), nl), e| {
+            // println!("block_begin_row@map_with: type={:?}", name.to_uppercase());
             let mut children = vec![];
 
             if ws.len() > 0 {
@@ -118,13 +61,14 @@ pub(crate) fn block_begin_row_parser<'a>()
 
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::Text.into(),
-                &block_type.to_uppercase(),
+                &name.to_uppercase(),
             )));
 
-            // println!("begin_end_row={:?}", block_type);
-            e.state().block_type = block_type.clone().to_uppercase(); // update state
+            // println!("begin_end_row={:?}", name);
+            // e.state().block_type = name.clone().to_uppercase(); // update state
+            e.state().block_type.push(name.clone().to_uppercase()); // update state
 
-            match parameters {
+            match maybe_ws_parameters {
                 None => {}
                 Some((ws, p)) => {
                     children.push(NodeOrToken::Token(GreenToken::new(
@@ -152,95 +96,22 @@ pub(crate) fn block_end_row_parser<'a>()
 {
     object::whitespaces()
         .then(object::just_case_insensitive("#+END_"))
-        .then(
-            any()
-                .filter(|c: &char| !c.is_whitespace())
-                .repeated()
-                .at_least(1)
-                .collect::<String>(),
-        )
+        .then(name_parser())
         .then(object::whitespaces())
         .then(object::newline_or_ending())
         .try_map_with(|((((ws1, end), block_type), ws2), nl), e| {
             // Not using validate, use try_map_with to halt when an error is generated instead of continuing
             // Not using map_with, which is not executed in and_is(block_rend_row_parser().not())
-            // println!("dbg@try_map_with@end: type@state={:?}, type@current={}", e.state().block_type, block_type.to_uppercase());
-            if e.state().block_type.to_uppercase() != block_type.to_uppercase() {
-                // println!("block type mismatched {} != {}", e.state().block_type, block_type);
-                // todo: how to display this error?
-                Err(Rich::custom(
-                    e.span(),
-                    &format!(
-                        "block type mismatched {} != {}",
-                        e.state().block_type,
-                        block_type
-                    ),
-                ))
-            } else {
-                Ok((ws1, end, block_type, ws2, nl))
-            }
-        })
-        .map(|(ws1, end, btype, ws2, nl)| {
-            let mut children = vec![];
-            if ws1.len() > 0 {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    &ws1,
-                )));
-            }
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                &end,
-            )));
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                &btype.to_uppercase(),
-            )));
-            if ws2.len() > 0 {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    &ws2,
-                )));
-            }
-            match nl {
-                Some(_nl) => {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Newline.into(),
-                        &_nl,
-                    )));
-                }
-                None => {}
-            }
-            NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::BlockEnd.into(), children))
-        })
-}
 
-pub(crate) fn block_end_row_parser_with_type<'a>(
-    block_type: &'a str,
-) -> impl Parser<'a, &'a str, NT, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
-    object::whitespaces()
-        .then(object::just_case_insensitive("#+END_"))
-        .then(object::just_case_insensitive(block_type))
-        .then(object::whitespaces())
-        .then(object::newline_or_ending())
-        .try_map_with(|((((ws1, end), block_type), ws2), nl), e| {
-            // Not using validate, use try_map_with to halt when an error is generated instead of continuing
-            // Not using map_with, which is not executed in and_is(block_rend_row_parser().not())
-            // println!("dbg@try_map_with@end: type@state={:?}, type@current={}", e.state().block_type, block_type.to_uppercase());
-            if e.state().block_type.to_uppercase() != block_type.to_uppercase() {
-                // println!("block type mismatched {} != {}", e.state().block_type, block_type);
-                // todo: how to display this error?
-                Err(Rich::custom(
-                    e.span(),
-                    &format!(
-                        "block type mismatched {} != {}",
-                        e.state().block_type,
-                        block_type
-                    ),
-                ))
-            } else {
-                Ok((ws1, end, block_type, ws2, nl))
+            let block_type_match = e
+                .state()
+                .block_type
+                .last()
+                .map_or(false, |c| *c == block_type.to_uppercase());
+            // println!("block_end_row_parser@try_map_with@end: type@state={:?}, type@current={}, block_type_match={}", e.state().block_type, block_type.to_uppercase(), block_type_match);
+            match block_type_match {
+                false => Err(Rich::custom(e.span(), &format!("block type mismatched",))),
+                true => Ok((ws1, end, block_type, ws2, nl)),
             }
         })
         .map(|(ws1, end, btype, ws2, nl)| {
@@ -827,7 +698,7 @@ pub(crate) fn verse_block_parser<'a>() -> impl Parser<
         .then(object::just_case_insensitive("#+BEGIN_"))
         .then(object::just_case_insensitive("verse")) // name
         .then(object::whitespaces_g1().then(data).or_not())
-        .then(object::whitespaces())
+        .then(object::whitespaces()) // fixme: ? delete
         .then(just("\n"))
         .map(
             |(((((ws1, begin), block_type), maybe_ws2_data), ws3), nl)| {
@@ -966,86 +837,291 @@ pub(crate) fn verse_block_parser<'a>() -> impl Parser<
         })
 }
 
-pub(crate) fn block_parser<'a>() -> impl Parser<
+#[derive(Clone, Debug)]
+enum CenterOrQuoteType {
+    Center,
+    Quote,
+}
+
+pub(crate) fn center_or_quote_block_parser<'a>(
+    element_parser: impl Parser<
+        'a,
+        &'a str,
+        NodeOrToken<GreenNode, GreenToken>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    > + Clone,
+    block_type: CenterOrQuoteType,
+) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
-    block_begin_row_parser()
-        .then(
-            any()
-                .and_is(block_end_row_parser().not())
-                .repeated()
-                .collect::<String>(),
-        )
-        .then(block_end_row_parser())
-        .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
-        .map_with(|(((begin_row, content), end_row), blank_lines), e| {
-            // println!("content={:?}", content);
+    let block_type_str = match block_type {
+        CenterOrQuoteType::Center => "center",
+        CenterOrQuoteType::Quote => "quote",
+    };
+
+    let data = none_of("\n").repeated().at_least(1).collect::<String>();
+    let begin_row = object::whitespaces()
+        .then(object::just_case_insensitive("#+begin_"))
+        .then(object::just_case_insensitive(block_type_str))
+        .then(object::whitespaces_g1().then(data).or_not())
+        .then(object::whitespaces()) // fixme: ? delete
+        .then(just("\n"))
+        .map(
+            |(((((ws1, begin), block_type), maybe_ws2_data), ws3), nl)| {
+                (ws1, begin, block_type, maybe_ws2_data, ws3, nl)
+            },
+        );
+
+    let end_row = object::whitespaces()
+        .then(object::just_case_insensitive("#+end_"))
+        .then(object::just_case_insensitive(block_type_str))
+        .then(object::whitespaces())
+        .then(object::newline_or_ending())
+        .map(|((((ws1, end), block_type), ws2), nl)| (ws1, end, block_type, ws2, nl));
+
+    let content_inner = object::line_parser()
+        .or(object::blank_line_str_parser())
+        .and_is(end_row.clone().not())
+        .and_is(just("*").not())
+        .repeated()
+        .to_slice();
+
+    let content = element_parser
+        .repeated()
+        .collect::<Vec<_>>()
+        .nested_in(content_inner)
+        .map(|s| {
             let mut children = vec![];
-            children.push(begin_row);
+            for e in s {
+                children.push(e);
+            }
+            NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::BlockContent.into(), children))
+        });
 
-            if content.len() > 0 {
-                let mut c_children = vec![];
+    begin_row // update state
+        .then(content)
+        .then(end_row)
+        .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
+        .map_with(move |(((begin_row, content), end_row), blank_lines), e| {
+            // reset state
+            let mut children = vec![];
 
-                let lesser_block_type: HashSet<String> =
-                    ["EXAMPLE", "VERSE", "SRC", "COMMENT", "EXPORT"]
-                        .iter()
-                        .map(|s| s.to_string())
-                        .collect();
-
-                if lesser_block_type.contains(&e.state().block_type) {
-                    let text =
-                        NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Text.into(), &content));
-                    c_children.push(text);
-                } else {
-                    let text =
-                        NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Text.into(), &content));
-                    let paragraph = NodeOrToken::Node(GreenNode::new(
-                        OrgSyntaxKind::Paragraph.into(),
-                        vec![text],
-                    ));
-                    c_children.push(paragraph);
+            let block_begin_node = {
+                let (ws1, begin, block_type, maybe_ws2_data, ws3, nl) = begin_row;
+                let mut children = vec![];
+                if ws1.len() > 0 {
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Whitespace.into(),
+                        &ws1,
+                    )));
                 }
 
-                let node = NodeOrToken::Node(GreenNode::new(
-                    OrgSyntaxKind::BlockContent.into(),
-                    c_children,
-                ));
-                children.push(node);
-            }
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Text.into(),
+                    &begin,
+                )));
 
-            children.push(end_row);
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Text.into(),
+                    &block_type.to_uppercase(),
+                )));
+
+                if let Some((ws2, data)) = maybe_ws2_data {
+                    if ws2.len() > 0 {
+                        children.push(NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::Whitespace.into(),
+                            &ws2,
+                        )));
+                    }
+
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Text.into(),
+                        &data,
+                    )));
+                }
+
+                if ws3.len() > 0 {
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Whitespace.into(),
+                        &ws3,
+                    )));
+                }
+
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Newline.into(),
+                    &nl,
+                )));
+                NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::BlockBegin.into(), children))
+            };
+            children.push(block_begin_node);
+
+            children.push(content);
+
+            // let mut content_children = vec![];
+            // for node in content {
+            //     content_children.push(node);
+            // }
+            // children.push(NodeOrToken::Node(GreenNode::new(
+            //     OrgSyntaxKind::BlockContent.into(),
+            //     content_children,
+            // )));
+
+            let block_end_node = {
+                let (ws1, end, block_type, ws2, nl) = end_row;
+
+                let mut children = vec![];
+                if ws1.len() > 0 {
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Whitespace.into(),
+                        &ws1,
+                    )));
+                }
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Text.into(),
+                    &end,
+                )));
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Text.into(),
+                    &block_type.to_uppercase(),
+                )));
+
+                if ws2.len() > 0 {
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Whitespace.into(),
+                        &ws2,
+                    )));
+                }
+                match nl {
+                    Some(_nl) => {
+                        children.push(NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::Newline.into(),
+                            &_nl,
+                        )));
+                    }
+                    None => {}
+                }
+                NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::BlockEnd.into(), children))
+            };
+            children.push(block_end_node);
 
             for bl in blank_lines {
                 children.push(NodeOrToken::Token(bl));
             }
 
-            let block_type = e.state().block_type.clone();
-            let kind = match block_type.as_str() {
-                // TODO: greater block vs lesser block?
-                "CENTER" => OrgSyntaxKind::CenterBlock,
-                "QUOTE" => OrgSyntaxKind::QuoteBlock,
+            match block_type {
+                CenterOrQuoteType::Center => {
+                    NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::CenterBlock.into(), children))
+                }
+                CenterOrQuoteType::Quote => {
+                    NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::QuoteBlock.into(), children))
+                }
+            }
+        })
+}
 
-                "COMMENT" => OrgSyntaxKind::CommentBlock,
-                "EXAMPLE" => OrgSyntaxKind::ExampleBlock,
-                "VERSE" => OrgSyntaxKind::VerseBlock,
-                "SRC" => OrgSyntaxKind::SrcBlock,
-                "EXPORT" => OrgSyntaxKind::ExportBlock,
+pub(crate) fn center_block_parser<'a>(
+    element_parser: impl Parser<
+        'a,
+        &'a str,
+        NodeOrToken<GreenNode, GreenToken>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    > + Clone,
+) -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
+    center_or_quote_block_parser(element_parser, CenterOrQuoteType::Center)
+}
 
-                _ => OrgSyntaxKind::SpecialBlock,
-            };
+pub(crate) fn quote_block_parser<'a>(
+    element_parser: impl Parser<
+        'a,
+        &'a str,
+        NodeOrToken<GreenNode, GreenToken>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    > + Clone,
+) -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
+    center_or_quote_block_parser(element_parser, CenterOrQuoteType::Quote)
+}
 
-            e.state().block_type = String::new(); // reset state
-            NodeOrToken::Node(GreenNode::new(kind.into(), children))
+pub(crate) fn special_block_parser<'a>(
+    element_parser: impl Parser<
+        'a,
+        &'a str,
+        NodeOrToken<GreenNode, GreenToken>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    > + Clone,
+) -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
+    // println!("greater_block parser ...");
+
+    let content_inner = object::line_parser()
+        .or(object::blank_line_str_parser())
+        .and_is(block_end_row_parser().not())
+        .repeated()
+        .to_slice();
+
+    let content = element_parser
+        .repeated()
+        .collect::<Vec<_>>()
+        .nested_in(content_inner)
+        .map(|s| {
+            let mut children = vec![];
+            for e in s {
+                children.push(e);
+            }
+            NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::BlockContent.into(), children))
+        });
+
+    block_begin_row_parser() // update state
+        // .map(|s|{println!("greater_block@s1={s:?}"); s})
+        .then(content)
+        // .map(|s|{println!("greater_block@s2={s:?}"); s})
+        .then(block_end_row_parser())
+        // .map(|s|{println!("greater_block@s3={s:?}"); s})
+        .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
+        .map_with(|(((begin_row, content), end_row), blank_lines), e| {
+            // reset state
+            // println!("greater_block@map_with: content={:?}", content);
+            let mut children = vec![];
+            children.push(begin_row);
+            children.push(content);
+            children.push(end_row);
+            for bl in blank_lines {
+                children.push(NodeOrToken::Token(bl));
+            }
+
+            let block_type = e.state().block_type.last().unwrap();
+            // let kind = match block_type.as_str() {
+            //     "CENTER" => OrgSyntaxKind::CenterBlock,
+            //     "QUOTE" => OrgSyntaxKind::QuoteBlock,
+            //     _ => OrgSyntaxKind::SpecialBlock,
+            // };
+
+            e.state().block_type.pop(); // reset state
+            NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::SpecialBlock.into(), children))
         })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::common::get_parser_output;
+    use crate::parser::common::{get_parser_output, get_parsers_output};
+    use crate::parser::element::element_parser;
     use crate::parser::object;
     use crate::parser::{ParserState, SyntaxNode};
     use pretty_assertions::assert_eq;
@@ -1204,35 +1280,25 @@ fn main() {
     }
 
     #[test]
-    fn test_block_bad() {
+    #[should_panic]
+    fn test_src_block_02() {
         let input = "#+BEGIN_SRC python
 #+END_DRC";
-        let mut state = RollbackState(ParserState::default());
-        let r = block_parser().parse_with_state(input, &mut state);
-        assert_eq!(r.has_errors(), true);
-
-        for e in r.errors() {
-            eprintln!("error: {:?}", e);
-        }
+        get_parser_output(src_block_parser(), input);
     }
 
     #[test]
-    fn test_block_src() {
+    fn test_src_block_03() {
         let input = "#+BEGIN_sRC python
 #+END_SrC";
-        let mut state = RollbackState(ParserState::default());
-        let r = block_parser().parse_with_state(input, &mut state);
-        assert_eq!(r.has_output(), true);
-        let syntax_tree = SyntaxNode::new_root(r.into_result().unwrap().into_node().expect("xxx"));
-        println!("{:#?}", syntax_tree);
         assert_eq!(
-            format!("{:#?}", syntax_tree),
+            get_parser_output(src_block_parser(), input),
             r##"SrcBlock@0..28
   BlockBegin@0..19
     Text@0..8 "#+BEGIN_"
     Text@8..11 "SRC"
     Whitespace@11..12 " "
-    Text@12..18 "python"
+    SrcBlockLanguage@12..18 "python"
     Newline@18..19 "\n"
   BlockEnd@19..28
     Text@19..25 "#+END_"
@@ -1242,26 +1308,19 @@ fn main() {
     }
 
     #[test]
-    fn test_block_src_full() {
-        let mut state = RollbackState(ParserState::default());
-
+    fn test_src_block_src_04() {
         let input = r###"#+BEGIN_sRC python
 print("hi");
 print("py");
 #+END_SrC"###;
-        let r = block_parser().parse_with_state(input, &mut state);
-        assert_eq!(r.has_output(), true);
-        let syntax_tree = SyntaxNode::new_root(r.into_result().unwrap().into_node().expect("xxx"));
-
-        println!("{:#?}", syntax_tree);
         assert_eq!(
-            format!("{:#?}", syntax_tree),
+            get_parser_output(src_block_parser(), input),
             r##"SrcBlock@0..54
   BlockBegin@0..19
     Text@0..8 "#+BEGIN_"
     Text@8..11 "SRC"
     Whitespace@11..12 " "
-    Text@12..18 "python"
+    SrcBlockLanguage@12..18 "python"
     Newline@18..19 "\n"
   BlockContent@19..45
     Text@19..45 "print(\"hi\");\nprint(\"p ..."
@@ -1273,19 +1332,11 @@ print("py");
     }
 
     #[test]
-    fn test_block_example() {
-        let mut state = RollbackState(ParserState::default());
-
+    fn test_example_block_01() {
         let input = "#+BEGIN_example
 #+END_examplE";
-        let r = block_parser().parse_with_state(input, &mut state);
-        assert_eq!(r.has_output(), true);
-
-        let syntax_tree = SyntaxNode::new_root(r.into_result().unwrap().into_node().expect("xxx"));
-        println!("{:#?}", syntax_tree);
-
         assert_eq!(
-            format!("{:#?}", syntax_tree),
+            get_parser_output(example_block_parser(), input),
             r##"ExampleBlock@0..29
   BlockBegin@0..16
     Text@0..8 "#+BEGIN_"
@@ -1294,6 +1345,292 @@ print("py");
   BlockEnd@16..29
     Text@16..22 "#+END_"
     Text@22..29 "EXAMPLE"
+"##
+        );
+    }
+
+    #[test]
+    fn test_center_block_01() {
+        assert_eq!(
+            get_parser_output(
+                center_block_parser(element_parser()),
+                r##"#+BEGIN_center
+a *bold* test
+#+END_center
+"##
+            ),
+            r##"CenterBlock@0..42
+  BlockBegin@0..15
+    Text@0..8 "#+BEGIN_"
+    Text@8..14 "CENTER"
+    Newline@14..15 "\n"
+  BlockContent@15..29
+    Paragraph@15..29
+      Text@15..17 "a "
+      Bold@17..23
+        Asterisk@17..18 "*"
+        Text@18..22 "bold"
+        Asterisk@22..23 "*"
+      Text@23..29 " test\n"
+  BlockEnd@29..42
+    Text@29..35 "#+END_"
+    Text@35..41 "CENTER"
+    Newline@41..42 "\n"
+"##
+        );
+    }
+
+    #[test]
+    fn test_center_block_02() {
+        assert_eq!(
+            get_parser_output(
+                center_block_parser(element_parser()),
+                r##"#+BEGIN_CENTER
+     Everything should be made as simple as possible, \\
+     but not any simpler
+     #+END_CENTER
+"##
+            ),
+            r##"CenterBlock@0..115
+  BlockBegin@0..15
+    Text@0..8 "#+BEGIN_"
+    Text@8..14 "CENTER"
+    Newline@14..15 "\n"
+  BlockContent@15..97
+    Paragraph@15..97
+      Text@15..69 "     Everything shoul ..."
+      LineBreak@69..71
+        BackSlash2@69..71 "\\\\"
+      Text@71..97 "\n     but not any sim ..."
+  BlockEnd@97..115
+    Whitespace@97..102 "     "
+    Text@102..108 "#+END_"
+    Text@108..114 "CENTER"
+    Newline@114..115 "\n"
+"##
+        );
+    }
+
+    #[test]
+    fn test_special_block_03() {
+        assert_eq!(
+            get_parser_output(
+                special_block_parser(element_parser()),
+                r##"#+BEGIN_xx
+special block
+#+END_xx
+"##
+            ),
+            r##"SpecialBlock@0..34
+  BlockBegin@0..11
+    Text@0..8 "#+BEGIN_"
+    Text@8..10 "XX"
+    Newline@10..11 "\n"
+  BlockContent@11..25
+    Paragraph@11..25
+      Text@11..25 "special block\n"
+  BlockEnd@25..34
+    Text@25..31 "#+END_"
+    Text@31..33 "XX"
+    Newline@33..34 "\n"
+"##
+        );
+    }
+
+    #[test]
+    fn test_special_block_04() {
+        assert_eq!(
+            get_parser_output(
+                special_block_parser(element_parser()),
+                r##"#+BEGIN_xx
+xx
+#+begin_center
+center
+#+begin_quote
+quote
+#+end_quote
+#+end_center
+#+END_xx
+"##
+            ),
+            r##"SpecialBlock@0..90
+  BlockBegin@0..11
+    Text@0..8 "#+BEGIN_"
+    Text@8..10 "XX"
+    Newline@10..11 "\n"
+  BlockContent@11..81
+    Paragraph@11..14
+      Text@11..14 "xx\n"
+    CenterBlock@14..81
+      BlockBegin@14..29
+        Text@14..22 "#+begin_"
+        Text@22..28 "CENTER"
+        Newline@28..29 "\n"
+      BlockContent@29..68
+        Paragraph@29..36
+          Text@29..36 "center\n"
+        QuoteBlock@36..68
+          BlockBegin@36..50
+            Text@36..44 "#+begin_"
+            Text@44..49 "QUOTE"
+            Newline@49..50 "\n"
+          BlockContent@50..56
+            Paragraph@50..56
+              Text@50..56 "quote\n"
+          BlockEnd@56..68
+            Text@56..62 "#+end_"
+            Text@62..67 "QUOTE"
+            Newline@67..68 "\n"
+      BlockEnd@68..81
+        Text@68..74 "#+end_"
+        Text@74..80 "CENTER"
+        Newline@80..81 "\n"
+  BlockEnd@81..90
+    Text@81..87 "#+END_"
+    Text@87..89 "XX"
+    Newline@89..90 "\n"
+"##
+        );
+    }
+
+    #[test]
+    fn test_special_block_05() {
+        assert_eq!(
+            get_parser_output(
+                center_block_parser(element_parser()),
+                r##"#+BEGIN_center
+#+begin_quote
+#+begin_xx
+qq
+#+end_xx
+#+end_quote
+#+end_center
+"##
+            ),
+            r##"CenterBlock@0..77
+  BlockBegin@0..15
+    Text@0..8 "#+BEGIN_"
+    Text@8..14 "CENTER"
+    Newline@14..15 "\n"
+  BlockContent@15..64
+    QuoteBlock@15..64
+      BlockBegin@15..29
+        Text@15..23 "#+begin_"
+        Text@23..28 "QUOTE"
+        Newline@28..29 "\n"
+      BlockContent@29..52
+        SpecialBlock@29..52
+          BlockBegin@29..40
+            Text@29..37 "#+begin_"
+            Text@37..39 "XX"
+            Newline@39..40 "\n"
+          BlockContent@40..43
+            Paragraph@40..43
+              Text@40..43 "qq\n"
+          BlockEnd@43..52
+            Text@43..49 "#+end_"
+            Text@49..51 "XX"
+            Newline@51..52 "\n"
+      BlockEnd@52..64
+        Text@52..58 "#+end_"
+        Text@58..63 "QUOTE"
+        Newline@63..64 "\n"
+  BlockEnd@64..77
+    Text@64..70 "#+end_"
+    Text@70..76 "CENTER"
+    Newline@76..77 "\n"
+"##
+        );
+    }
+
+    #[test]
+    fn test_center_block_06() {
+        // cant nested the same block
+        assert_eq!(
+            get_parsers_output(
+                element_parser().repeated().collect::<Vec<_>>(),
+                r##"#+BEGIN_center
+#+begin_center
+cc
+#+end_center
+#+end_center
+"##
+            ),
+            r##"Root@0..59
+  CenterBlock@0..46
+    BlockBegin@0..15
+      Text@0..8 "#+BEGIN_"
+      Text@8..14 "CENTER"
+      Newline@14..15 "\n"
+    BlockContent@15..33
+      Paragraph@15..33
+        Text@15..22 "#+begin"
+        Subscript@22..29
+          Caret@22..23 "_"
+          Text@23..29 "center"
+        Text@29..33 "\ncc\n"
+    BlockEnd@33..46
+      Text@33..39 "#+end_"
+      Text@39..45 "CENTER"
+      Newline@45..46 "\n"
+  Paragraph@46..59
+    Text@46..51 "#+end"
+    Subscript@51..58
+      Caret@51..52 "_"
+      Text@52..58 "center"
+    Text@58..59 "\n"
+"##
+        );
+    }
+
+    #[test]
+    fn test_center_block_07() {
+        // cant nested the same block
+        assert_eq!(
+            get_parsers_output(
+                element_parser().repeated().collect::<Vec<_>>(),
+                r##"#+BEGIN_xx
+#+begin_yy
+#+begin_z
+xyz
+#+end_z
+#+end_yy
+#+end_xx
+"##
+            ),
+            r##"Root@0..62
+  SpecialBlock@0..62
+    BlockBegin@0..11
+      Text@0..8 "#+BEGIN_"
+      Text@8..10 "XX"
+      Newline@10..11 "\n"
+    BlockContent@11..53
+      SpecialBlock@11..53
+        BlockBegin@11..22
+          Text@11..19 "#+begin_"
+          Text@19..21 "YY"
+          Newline@21..22 "\n"
+        BlockContent@22..44
+          SpecialBlock@22..44
+            BlockBegin@22..32
+              Text@22..30 "#+begin_"
+              Text@30..31 "Z"
+              Newline@31..32 "\n"
+            BlockContent@32..36
+              Paragraph@32..36
+                Text@32..36 "xyz\n"
+            BlockEnd@36..44
+              Text@36..42 "#+end_"
+              Text@42..43 "Z"
+              Newline@43..44 "\n"
+        BlockEnd@44..53
+          Text@44..50 "#+end_"
+          Text@50..52 "YY"
+          Newline@52..53 "\n"
+    BlockEnd@53..62
+      Text@53..59 "#+end_"
+      Text@59..61 "XX"
+      Newline@61..62 "\n"
 "##
         );
     }

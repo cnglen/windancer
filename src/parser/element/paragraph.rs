@@ -42,22 +42,24 @@ pub(crate) fn paragraph_parser<'a>(
     let inner = object::line_parser()
         .and_is(non_paragraph_parser.not())
         .and_is(object::blank_line_parser().not()) // 遇到\n+blankline停止
-        // .map(|s| {
-        //     println!("paragraph_parser: inner: s={s:?}");
-        //     s
-        // })
         .repeated()
         .at_least(1)
         .collect::<Vec<String>>()
-        // .map(|s| s.join("-"))
-        // .map(|s| {println!("paragraph_parser: inner: s={s:?}"); s})
+        // .map(|s| s.join(""))
+        // .map(|s| {println!("paragraph_parser@inner:s=|{s:?}|"); s})
         .to_slice();
 
     object::standard_set_objects_parser()
         .nested_in(inner)
+        // inner
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
         .map_with(|(lines, blanklines), _e| {
             let mut children = vec![];
+            // children.push(NodeOrToken::Token(GreenToken::new(
+            //     OrgSyntaxKind::Text.into(),
+            //     &lines,
+            // )));
+
             for node in lines {
                 children.push(node);
             }
@@ -65,59 +67,6 @@ pub(crate) fn paragraph_parser<'a>(
                 children.push(NodeOrToken::Token(blankline));
             }
             let node = NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Paragraph.into(), children));
-            node
-        })
-}
-
-pub(crate) fn paragraph_parser_to_replace<'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
-> + Clone {
-    let inner = object::line_parser()
-        .and_is(latex_environment::latex_environment_parser().not())
-        .and_is(block::block_parser().not())
-        .and_is(horizontal_rule::horizontal_rule_parser().not())
-        .and_is(keyword::keyword_parser().not())
-        .and_is(drawer::drawer_parser().not())
-        .and_is(comment::comment_parser().not())
-        .and_is(table::table_parser().not())
-        .and_is(footnote_definition::footnote_definition_parser().not())
-        .and_is(
-            item::item_indent_parser()
-                .then(item::item_bullet_parser())
-                .then(item::item_counter_set_parser().or_not())
-                .then(item::item_checkbox_parser().or_not())
-                .then(item::item_tag_parser().or_not())
-                .not(),
-        )
-        .and_is(simple_heading_row_parser().not()) // 遇到\n+headingRow停止
-        .and_is(object::blank_line_parser().not()) // 遇到\n+blankline停止
-        .repeated()
-        .at_least(1)
-        .collect::<Vec<String>>()
-        .map(|s| s.join(""))
-        .to_slice();
-
-    object::standard_set_objects_parser()
-        .nested_in(inner)
-        .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
-        .map_with(|(lines, blanklines), _e| {
-            // println!("lines={:?}", lines);
-            let mut children = vec![];
-
-            // todo: 合并连续的多个text node
-            for node in lines {
-                children.push(node);
-            }
-
-            for blankline in blanklines {
-                children.push(NodeOrToken::Token(blankline));
-            }
-
-            let node = NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Paragraph.into(), children));
-
             node
         })
 }
@@ -125,7 +74,9 @@ pub(crate) fn paragraph_parser_to_replace<'a>() -> impl Parser<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::{ParserState, SyntaxNode, common::get_parser_output, element};
+    use crate::parser::{
+        ParserState, SyntaxNode, common::get_parser_output, common::get_parsers_output, element,
+    };
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -217,18 +168,72 @@ bar
 "##
         );
     }
-    
+
     #[test]
-    fn test_block() {
-        let input = r##"#+begin_src python
-#+end_src
+    fn test_paragraph_07() {
+        let input = r##"text
+#+begin_center
+center
+#+end_center
 "##;
-        let mut state = RollbackState(ParserState::default());
+        //         let parser = paragraph_parser(element::element_in_paragraph_parser());
+        //         assert_eq!(
+        //             get_parser_output(parser, input),
+        //             r##"
+        // "##
+        //         );
+
         assert_eq!(
-            block::block_parser()
-                .parse_with_state(input, &mut state)
-                .has_output(),
-            true
+            get_parsers_output(
+                element::element_parser().repeated().collect::<Vec<_>>(),
+                input
+            ),
+            r##"Root@0..40
+  Paragraph@0..5
+    Text@0..5 "text\n"
+  CenterBlock@5..40
+    BlockBegin@5..20
+      Text@5..13 "#+begin_"
+      Text@13..19 "CENTER"
+      Newline@19..20 "\n"
+    BlockContent@20..27
+      Paragraph@20..27
+        Text@20..27 "center\n"
+    BlockEnd@27..40
+      Text@27..33 "#+end_"
+      Text@33..39 "CENTER"
+      Newline@39..40 "\n"
+"##
+        );
+    }
+
+    #[test]
+    fn test_paragraph_08() {
+        let input = r##"text
+#+begin_example
+example
+#+end_example
+"##;
+        assert_eq!(
+            get_parsers_output(
+                element::element_parser().repeated().collect::<Vec<_>>(),
+                input
+            ),
+            r##"Root@0..43
+  Paragraph@0..5
+    Text@0..5 "text\n"
+  ExampleBlock@5..43
+    BlockBegin@5..21
+      Text@5..13 "#+begin_"
+      Text@13..20 "EXAMPLE"
+      Newline@20..21 "\n"
+    BlockContent@21..29
+      Text@21..29 "example\n"
+    BlockEnd@29..43
+      Text@29..35 "#+end_"
+      Text@35..42 "EXAMPLE"
+      Newline@42..43 "\n"
+"##
         );
     }
 }

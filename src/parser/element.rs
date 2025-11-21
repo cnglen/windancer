@@ -72,7 +72,7 @@ pub(crate) fn get_element_parser<'a>() -> (
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
-        > + Clone,
+    > + Clone,
     impl Parser<
         'a,
         &'a str,
@@ -108,7 +108,9 @@ pub(crate) fn get_element_parser<'a>() -> (
 
     // to check
     let footnote_definition = footnote_definition::footnote_definition_parser();
-    let block = block::block_parser();
+    let center_block = block::center_block_parser(element_without_tablerow_and_item.clone());
+    let quote_block = block::quote_block_parser(element_without_tablerow_and_item.clone());
+    let special_block = block::special_block_parser(element_without_tablerow_and_item.clone());
     let drawer = drawer::drawer_parser();
     let plain_list =
         list::plain_list_parser(item::item_parser(element_without_tablerow_and_item.clone()));
@@ -131,7 +133,7 @@ pub(crate) fn get_element_parser<'a>() -> (
                 for e in section {
                     children_.push(e);
                 }
-                for c in children{
+                for c in children {
                     children_.push(c);
                 }
                 let span: SimpleSpan = e.span();
@@ -140,19 +142,20 @@ pub(crate) fn get_element_parser<'a>() -> (
                     OrgSyntaxKind::HeadingSubtree.into(),
                     children_,
                 ))
-            })
+            }),
     );
-
 
     let non_paragraph_element_parser = Parser::boxed(choice((
         heading_subtree.clone(),
         footnote_definition.clone(),
-        block.clone(),
         drawer.clone(),
         plain_list.clone(),
         horizontal_rule.clone(),
         latex_environment.clone(),
         keyword.clone(),
+        center_block.clone(),
+        quote_block.clone(),
+        special_block.clone(),
         src_block.clone(),
         export_block.clone(),
         verse_block.clone(),
@@ -172,12 +175,15 @@ pub(crate) fn get_element_parser<'a>() -> (
     // element in section: without heading
     let non_paragraph_element_parser_in_section = Parser::boxed(choice((
         footnote_definition.clone(),
-        block.clone(),
+        special_block.clone(),
         drawer.clone(),
         plain_list.clone(),
         horizontal_rule.clone(),
         latex_environment.clone(),
         keyword.clone(),
+        center_block.clone(),
+        quote_block.clone(),
+        special_block.clone(),
         src_block.clone(),
         export_block.clone(),
         verse_block.clone(),
@@ -197,7 +203,7 @@ pub(crate) fn get_element_parser<'a>() -> (
         element_without_tablerow_and_item,
         non_paragraph_element_parser,
         element_in_section,
-        heading_subtree
+        heading_subtree,
     )
 }
 

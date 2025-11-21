@@ -39,9 +39,7 @@ pub(crate) fn timestamp_parser<'a>() -> impl Parser<
         .or(just("-"))
         .then(one_of("0123456789").repeated().at_least(1))
         .then(one_of("hdwmy"))
-        .map(|s| {
-            s
-        });
+        .map(|s| s);
 
     let p1a = just("<")
         .then(date.clone())

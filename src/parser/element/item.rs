@@ -1,11 +1,11 @@
 //! Item parser
+use crate::parser::syntax::{OrgLanguage, OrgSyntaxKind};
 use crate::parser::{ParserState, object};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
+use rowan::SyntaxNode;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 use std::ops::Range;
-use crate::parser::syntax::{OrgLanguage, OrgSyntaxKind};
-use rowan::SyntaxNode;
 
 pub(crate) fn item_parser<'a>(
     element_parser: impl Parser<
@@ -20,17 +20,16 @@ pub(crate) fn item_parser<'a>(
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
-    > + Clone {
+> + Clone {
     let item_content_inner = object::line_parser() // first row, no need to test indent
         .then(
             object::line_parser()
                 .or(object::blank_line_str_parser())
                 .and_is(object::blank_line_parser().repeated().at_least(2).not())
                 .and_is(greater_indent_termination()) // 覆盖了： next item的结束条件(next_item: 属于lesser_indent)
-                .repeated()
+                .repeated(),
         )
-        .to_slice()
-        ;
+        .to_slice();
 
     let item_content_parser = element_parser
         .repeated()
@@ -46,7 +45,7 @@ pub(crate) fn item_parser<'a>(
                 children,
             ))
         });
-    
+
     item_indent_parser()
         .then(item_bullet_parser())
         .then(item_counter_set_parser().or_not())
@@ -133,12 +132,11 @@ pub(crate) fn item_parser<'a>(
 
                 let syntax_tree: SyntaxNode<OrgLanguage> = SyntaxNode::new_root(green_node);
                 // println!("item_parser: {syntax_tree:#?}");
-                
+
                 Ok(node)
             },
         )
 }
-
 
 /// Item Indent Parser
 ///
@@ -184,7 +182,8 @@ pub(crate) fn item_bullet_parser<'a>() -> impl Parser<
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
-    just("*").to(String::from("*"))
+    just("*")
+        .to(String::from("*"))
         .or(just("-").to(String::from("-")))
         .or(just("+").to(String::from("+")))
         .or(counter_parser()
@@ -393,10 +392,7 @@ mod tests {
         let input = r##"+ [@3] [X] tag :: item contents
 "##;
         assert_eq!(
-            get_parser_output(
-                item_parser(element::element_in_item_parser()),
-                input
-            ),
+            get_parser_output(item_parser(element::element_in_item_parser()), input),
             r##"ListItem@0..32
   ListItemIndent@0..0
   ListItemBullet@0..2
@@ -574,10 +570,7 @@ mod tests {
     #[test]
     fn test_item_07() {
         assert_eq!(
-            get_parser_output(
-                item_parser(element::element_in_item_parser()),
-                r##"+ foo"##
-            ),
+            get_parser_output(item_parser(element::element_in_item_parser()), r##"+ foo"##),
             r##"ListItem@0..5
   ListItemIndent@0..0
   ListItemBullet@0..2
@@ -634,19 +627,19 @@ mod tests {
             item_parser(element::element_in_item_parser()),
             r##"- foo
 bar
-"##
+"##,
         );
-
     }
 
     #[test]
     fn test_item_10_content_good_indent() {
-        assert_eq!(get_parser_output(
-            item_parser(element::element_in_item_parser()),
-            r##"- foo
+        assert_eq!(
+            get_parser_output(
+                item_parser(element::element_in_item_parser()),
+                r##"- foo
  bar
 "##
-        ),
+            ),
             r##"ListItem@0..11
   ListItemIndent@0..0
   ListItemBullet@0..2
@@ -655,16 +648,18 @@ bar
   ListItemContent@2..11
     Paragraph@2..11
       Text@2..11 "foo\n bar\n"
-"##);
+"##
+        );
     }
 
     #[test]
     fn test_item_11() {
-        assert_eq!(get_parser_output(
-            item_parser(element::element_in_item_parser()),
-            r##"- * not heading"##
-        ),
-                   r##"ListItem@0..15
+        assert_eq!(
+            get_parser_output(
+                item_parser(element::element_in_item_parser()),
+                r##"- * not heading"##
+            ),
+            r##"ListItem@0..15
   ListItemIndent@0..0
   ListItemBullet@0..2
     Text@0..1 "-"
@@ -679,18 +674,16 @@ bar
         ListItemContent@4..15
           Paragraph@4..15
             Text@4..15 "not heading"
-"##);
+"##
+        );
     }
-    
+
     #[test]
     fn test_item_99() {
         let input = r##"+ item contents
 "##;
         assert_eq!(
-            get_parser_output(
-                item_parser(element::element_in_item_parser()),
-                input
-            ),
+            get_parser_output(item_parser(element::element_in_item_parser()), input),
             r##"ListItem@0..16
   ListItemIndent@0..0
   ListItemBullet@0..2
@@ -702,5 +695,4 @@ bar
 "##,
         );
     }
-    
 }

@@ -36,8 +36,8 @@ pub enum S2 {
 #[derive(Clone, Debug)]
 pub(crate) struct ParserState {
     level_stack: Vec<usize>,
-    block_type: String,     // begin_type, end_type: 两个解析器需要相同的type数据
-    latex_env_name: String, // latex \begin{}
+    block_type: Vec<String>, // begin_type, end_type: 两个解析器需要相同的type数据
+    latex_env_name: String,  // latex \begin{}
     item_indent: Vec<usize>,
     prev_char: Option<char>,             // previous char
     prev_char_backup: Vec<Option<char>>, // previous char backup manually set for later resume back
@@ -48,7 +48,7 @@ impl Default for ParserState {
     fn default() -> Self {
         Self {
             level_stack: vec![0],
-            block_type: String::new(),
+            block_type: vec![],
             latex_env_name: String::new(),
             item_indent: vec![],
             prev_char: None,
@@ -62,7 +62,7 @@ impl ParserState {
     fn default_with_radio_targets(radio_targets: Vec<String>) -> Self {
         Self {
             level_stack: vec![0],
-            block_type: String::new(),
+            block_type: vec![],
             latex_env_name: String::new(),
             item_indent: vec![],
             prev_char: None,
@@ -172,10 +172,8 @@ impl OrgParser {
         ParserResult {
             green: parse_result.into_output().expect("Parse failed"),
             text: "todo".to_string(),
-            span: Range{start:0, end:5},
+            span: Range { start: 0, end: 5 },
         }
-
-
     }
 }
 
@@ -221,8 +219,7 @@ mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
 
-
-    #[test]    
+    #[test]
     fn test_doc_01() {
         let input = "* 标题1\n 测试\n** 标题1.1\n测试\n测试\ntest\n*** 1.1.1 title\nContent\n* Title\nI have a dream\n"; // (signal: 11, SIGSEGV: invalid memory reference)
         // let input = "* 标题1\n 测试\n* 标";
@@ -273,12 +270,14 @@ mod tests {
         assert_eq!(format!("{syntax_node:#?}"), answer);
     }
 
-    #[test]    
+    #[test]
     fn test_doc_02() {
         let input = "* 标题1\na";
         let mut parser = OrgParser::new(OrgConfig::default());
         let syntax_node = parser.parse(input).syntax();
-        assert_eq!(format!("{syntax_node:#?}"), r##"Document@0..11
+        assert_eq!(
+            format!("{syntax_node:#?}"),
+            r##"Document@0..11
   HeadingSubtree@0..11
     HeadingRow@0..10
       HeadingRowStars@0..1 "*"
@@ -288,7 +287,8 @@ mod tests {
     Section@10..11
       Paragraph@10..11
         Text@10..11 "a"
-"##);
+"##
+        );
     }
 }
 

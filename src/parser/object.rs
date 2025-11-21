@@ -116,7 +116,10 @@ pub(crate) fn line_parser<'a>()
         .at_least(1)
         .collect::<String>()
         .then(end_of_line)
-        .map(|s|{println!("object:line_parser:s={s:?}"); s})
+        // .map_with(|s, e|{
+        //     println!("object:line_parser:s={s:?}");
+        //     s
+        // })
         .map(|(line, eol)| {
             let mut ans = String::from(line);
             ans.push_str(&eol);
@@ -222,7 +225,10 @@ pub(crate) fn standard_set_objects_parser<'a>() -> impl Parser<
     Vec<NodeOrToken<GreenNode, GreenToken>>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
-    standard_set_object_parser().repeated().at_least(1).collect::<Vec<_>>()
+    standard_set_object_parser()
+        .repeated()
+        .at_least(1)
+        .collect::<Vec<_>>()
 }
 
 /// objects_parser
@@ -325,14 +331,13 @@ pub(crate) fn get_object_parser<'a>() -> (
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
-        > + Clone,
+    > + Clone,
     impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
     > + Clone,
-    
 ) {
     let mut full_set_object = Recursive::declare();
     let mut minimal_set_object = Recursive::declare();
@@ -484,10 +489,14 @@ pub(crate) fn get_object_parser<'a>() -> (
         text_markup.clone(),        // 1个
         subscript.clone(),          // 1个
         superscript.clone(),        // 1个
-        // citation.clone(),             // 1个
+                                    // citation.clone(),             // 1个
     )));
-    let plain_text_parser_for_keyword = plain_text_parser(non_plain_text_parsers_for_keyword.clone());
-    object_in_keyword.define(choice((non_plain_text_parsers_for_keyword, plain_text_parser_for_keyword)));
+    let plain_text_parser_for_keyword =
+        plain_text_parser(non_plain_text_parsers_for_keyword.clone());
+    object_in_keyword.define(choice((
+        non_plain_text_parsers_for_keyword,
+        plain_text_parser_for_keyword,
+    )));
     (
         full_set_object,
         standard_set_object,

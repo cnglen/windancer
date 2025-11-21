@@ -6,7 +6,10 @@ use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 use std::ops::Range;
 
-use crate::parser::element::{paragraph, latex_environment, table, horizontal_rule,keyword,block, planning, comment, drawer, footnote_definition};
+use crate::parser::element::{
+    block, comment, drawer, footnote_definition, horizontal_rule, keyword, latex_environment,
+    paragraph, planning, table,
+};
 
 use crate::parser::element::paragraph::simple_heading_row_parser;
 
@@ -30,10 +33,13 @@ pub(crate) fn section_parser<'a>(
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
-    > + Clone
-)
--> impl Parser<'a, &'a str, NodeOrToken<GreenNode, GreenToken>, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>
-+ Clone {
+    > + Clone,
+) -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
     // elements: children
     // 每个element实现时可通过前缀快速终止
     // let list_parser = element::list::create_list_item_content_parser(element::element_parser_in_list()).0;
@@ -68,10 +74,10 @@ pub(crate) fn section_parser<'a>(
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::element::element_in_section_parser;
-    use pretty_assertions::assert_eq;
     use super::*;
     use crate::parser::common::get_parser_output;
+    use crate::parser::element::element_in_section_parser;
+    use pretty_assertions::assert_eq;
 
     #[test]
     #[should_panic]
@@ -87,13 +93,16 @@ mod tests {
     fn test_section_02_fakedtitle() {
         let input = "0123456789 * faked_title";
         let parser = section_parser(element_in_section_parser());
-        assert_eq!(get_parser_output(parser, input), r##"Section@0..24
+        assert_eq!(
+            get_parser_output(parser, input),
+            r##"Section@0..24
   Paragraph@0..24
     Text@0..18 "0123456789 * faked"
     Subscript@18..24
       Caret@18..19 "_"
       Text@19..24 "title"
-"##);
+"##
+        );
     }
 
     #[test]
@@ -103,12 +112,14 @@ mod tests {
         let parser = section_parser(element_in_section_parser());
         get_parser_output(parser, input);
     }
-    
+
     #[test]
     fn test_section_04_with_end() {
         let input = "0123456789";
         let parser = section_parser(element_in_section_parser());
-        assert_eq!(get_parser_output(parser, input), r##"Section@0..10
+        assert_eq!(
+            get_parser_output(parser, input),
+            r##"Section@0..10
   Paragraph@0..10
     Text@0..10 "0123456789"
 "##
@@ -119,7 +130,9 @@ mod tests {
     fn test_section_05_with_newline_end() {
         let input = "0123456789\n";
         let parser = section_parser(element_in_section_parser());
-        assert_eq!(get_parser_output(parser, input), r##"Section@0..11
+        assert_eq!(
+            get_parser_output(parser, input),
+            r##"Section@0..11
   Paragraph@0..11
     Text@0..11 "0123456789\n"
 "##
@@ -130,12 +143,13 @@ mod tests {
     fn test_section_06_with_newline_end() {
         let input = "0123456789\nfoo\nbar\nhello\nnice\nto meet you\n\n";
         let parser = section_parser(element_in_section_parser());
-        assert_eq!(get_parser_output(parser, input), r##"Section@0..43
+        assert_eq!(
+            get_parser_output(parser, input),
+            r##"Section@0..43
   Paragraph@0..43
     Text@0..42 "0123456789\nfoo\nbar\nhe ..."
     BlankLine@42..43 "\n"
 "##
         );
     }
-    
 }

@@ -45,7 +45,6 @@ mod tests {
     use crate::parser::common::get_parser_output;
     use crate::parser::element;
     use pretty_assertions::assert_eq;
-    
 
     #[test]
     fn test_list_01() {
@@ -90,9 +89,8 @@ mod tests {
         Text@22..27 "four\n"
 "##;
 
-        let list_parser = element::list::plain_list_parser(element::item::item_parser(
-            element::element_parser(),
-        ));
+        let list_parser =
+            element::list::plain_list_parser(element::item::item_parser(element::element_parser()));
         assert_eq!(get_parser_output(list_parser, input), expected_output);
     }
 
@@ -141,9 +139,8 @@ mod tests {
       Paragraph@24..29
         Text@24..29 "four\n"
 "##;
-        let list_parser = element::list::plain_list_parser(element::item::item_parser(
-            element::element_parser(),
-        ));
+        let list_parser =
+            element::list::plain_list_parser(element::item::item_parser(element::element_parser()));
         assert_eq!(get_parser_output(list_parser, input), expected_output);
     }
 
@@ -157,9 +154,8 @@ mod tests {
 - One again
 - Two again
 "##;
-        let list_parser = element::list::plain_list_parser(element::item::item_parser(
-            element::element_parser(),
-        ));
+        let list_parser =
+            element::list::plain_list_parser(element::item::item_parser(element::element_parser()));
         get_parser_output(list_parser, input);
     }
 
@@ -198,9 +194,8 @@ mod tests {
   BlankLine@45..46 "\n"
   BlankLine@46..47 "\n"
 "##;
-        let list_parser = element::list::plain_list_parser(element::item::item_parser(
-            element::element_parser(),
-        ));
+        let list_parser =
+            element::list::plain_list_parser(element::item::item_parser(element::element_parser()));
         assert_eq!(get_parser_output(list_parser, input), expected_output);
     }
 
@@ -208,10 +203,11 @@ mod tests {
     fn test_list_05() {
         let input = r##"- one
      - two"##;
-        let list_parser = element::list::plain_list_parser(element::item::item_parser(
-            element::element_parser(),
-        ));
-        assert_eq!(get_parser_output(list_parser, input), r##"List@0..16
+        let list_parser =
+            element::list::plain_list_parser(element::item::item_parser(element::element_parser()));
+        assert_eq!(
+            get_parser_output(list_parser, input),
+            r##"List@0..16
   ListItem@0..16
     ListItemIndent@0..0
     ListItemBullet@0..2
@@ -230,7 +226,8 @@ mod tests {
           ListItemContent@13..16
             Paragraph@13..16
               Text@13..16 "two"
-"##);
+"##
+        );
     }
 
     #[test]
@@ -238,10 +235,11 @@ mod tests {
         let input = r##" - one
     - two
     "##;
-        let list_parser = element::list::plain_list_parser(element::item::item_parser(
-            element::element_parser(),
-        ));
-        assert_eq!(get_parser_output(list_parser, input), r#"List@0..21
+        let list_parser =
+            element::list::plain_list_parser(element::item::item_parser(element::element_parser()));
+        assert_eq!(
+            get_parser_output(list_parser, input),
+            r#"List@0..21
   ListItem@0..21
     ListItemIndent@0..1
       Whitespace@0..1 " "
@@ -263,19 +261,20 @@ mod tests {
               Text@13..17 "two\n"
       Paragraph@17..21
         Text@17..21 "    "
-"#);
+"#
+        );
     }
 
-        // FIXME: item type should match
-//         #[test]
-//         #[should_panic]
-//         fn test_list_07() {
-//             let input = r##"- one list
-// 1) another list
-//     "##;
-//             let list_parser = element::list::plain_list_parser(element::item::item_parser(
-//                 element::element_parser(),
-//             ));
-//             get_parser_output(list_parser, input);
-//         }
+    // FIXME: item type should match
+    //         #[test]
+    //         #[should_panic]
+    //         fn test_list_07() {
+    //             let input = r##"- one list
+    // 1) another list
+    //     "##;
+    //             let list_parser = element::list::plain_list_parser(element::item::item_parser(
+    //                 element::element_parser(),
+    //             ));
+    //             get_parser_output(list_parser, input);
+    //         }
 }
