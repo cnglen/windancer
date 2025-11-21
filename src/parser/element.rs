@@ -112,8 +112,6 @@ pub(crate) fn get_element_parser<'a>() -> (
     let drawer = drawer::drawer_parser();
     let plain_list =
         list::plain_list_parser(item::item_parser(element_without_tablerow_and_item.clone()));
-    // fixme: overflow!!!
-    // let heading_subtree = heading::heading_subtree_parser(element_without_tablerow_and_item.clone());
     heading_subtree.define(
         heading::heading_row_parser()
             .then(
@@ -222,6 +220,15 @@ pub(crate) fn element_in_paragraph_parser<'a>() -> impl Parser<
 }
 
 pub(crate) fn element_in_section_parser<'a>() -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
+    get_element_parser().2
+}
+
+pub(crate) fn element_in_item_parser<'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,

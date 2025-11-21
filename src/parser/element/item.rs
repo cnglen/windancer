@@ -1,12 +1,12 @@
 //! Item parser
-use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserState, object};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 use std::ops::Range;
+use crate::parser::syntax::{OrgLanguage, OrgSyntaxKind};
+use rowan::SyntaxNode;
 
-// todo: heading!
 pub(crate) fn item_parser<'a>(
     element_parser: impl Parser<
         'a,
@@ -20,84 +20,32 @@ pub(crate) fn item_parser<'a>(
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
-> + Clone {
-    let item_content_inner = object::line_parser()
-        .or(object::blank_line_str_parser())
-        .and_is(object::blank_line_parser().repeated().at_least(2).not())
-        .and_is(lesser_indent_termination().not()) // 覆盖了： next item的结束条件(next_item: 属于lesser_indent)
-        .repeated()
-        .collect::<Vec<String>>()
-        .map(|s| s.join(""))
-        .to_slice();
-
-    // // // v2
-    // ?
-    //     // thread 'parser::element::item::tests::test_item_01' panicked at src/parser/common.rs:66:9:
-    // errors:
-    // found ''\n'' at 31..32 expected something else, or ''\r''
-    // note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-    // let item_content_parser_v2 = element_parser
-    //     .repeated()
-    //     .collect::<Vec<_>>()
-    //     .nested_in(item_content_inner)
-    //     .map(|other_children| {
-    //         let mut children = vec![];
-    //         for c in other_children {
-    //             children.push(c);
-    //         }
-    //         NodeOrToken::Node(GreenNode::new(
-    //             OrgSyntaxKind::ListItemContent.into(),
-    //             children,
-    //         ))
-    //     });
-
-    // // v1: item content: 注意不从行首开始, 先消费第一行
-    let item_content_parser_v1 = any()
-        .filter(|c: &char| *c != '\n')
-        .repeated()
-        .collect::<String>()
-        .then(just("\n"))
-        .map(|(first_row, nl)| {
-            // println!("item content parser(firstline): first={:?}, nl={:?}", first_row, nl);
-            let mut first_line = String::new();
-            first_line.push_str(&first_row);
-            first_line.push_str(nl);
-
-            // fixme: object?
-            NodeOrToken::<GreenNode, GreenToken>::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                &first_line,
-            ))
-        })
+    > + Clone {
+    let item_content_inner = object::line_parser() // first row, no need to test indent
         .then(
-            // element::element_parser()
-            element_parser
-                // // FIXME: element_parser doesn't include recursive parser
-                // list_parser
-                //     .clone() // element.rs: NOT include list_item
-                //     .or(element::element_parser())
+            object::line_parser()
+                .or(object::blank_line_str_parser())
+                .and_is(object::blank_line_parser().repeated().at_least(2).not())
+                .and_is(greater_indent_termination()) // 覆盖了： next item的结束条件(next_item: 属于lesser_indent)
                 .repeated()
-                .collect::<Vec<_>>()
-                .nested_in(item_content_inner),
         )
-        .map(|(first, other_children)| {
+        .to_slice()
+        ;
+
+    let item_content_parser = element_parser
+        .repeated()
+        .collect::<Vec<_>>()
+        .nested_in(item_content_inner)
+        .map(|other_children| {
             let mut children = vec![];
-
-            let paragraph =
-                NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Paragraph.into(), vec![first]));
-
-            children.push(paragraph);
-
             for c in other_children {
                 children.push(c);
             }
-
             NodeOrToken::Node(GreenNode::new(
                 OrgSyntaxKind::ListItemContent.into(),
                 children,
             ))
         });
-
     
     item_indent_parser()
         .then(item_bullet_parser())
@@ -133,17 +81,13 @@ pub(crate) fn item_parser<'a>(
             }
             ((((indent, bullet), maybe_counter), maybe_checkbox), maybe_tag)
         })
-        // .map(|s|{println!("s1={s:?}"); s})
-        .then(item_content_parser_v1.clone().or_not())
-        // .map(|s|{println!("s2={s:?}"); s})
+        .then(item_content_parser.clone().or_not())
         .then(object::blank_line_parser().repeated().at_most(1).collect::<Vec<_>>())
-        // .map(|s|{println!("s3={s:?}"); s})        
         .try_map_with(
             |(
                 (((((indent, bullet), maybe_counter), maybe_checkbox), maybe_tag), maybe_content,),
                 blanklines,
             ), _e| {
-                // println!("xxx");
                 let mut children = vec![];
 
                 children.push(indent);
@@ -181,16 +125,20 @@ pub(crate) fn item_parser<'a>(
                     children.push(NodeOrToken::Token(blankline));
                 }
 
-                let node = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+                let green_node = GreenNode::new(
                         OrgSyntaxKind::ListItem.into(),
                         children,
-                ));
+                );
+                let node = NodeOrToken::<GreenNode, GreenToken>::Node(green_node.clone());
 
-                // println!("node={:?}", node);
+                let syntax_tree: SyntaxNode<OrgLanguage> = SyntaxNode::new_root(green_node);
+                // println!("item_parser: {syntax_tree:#?}");
+                
                 Ok(node)
             },
         )
 }
+
 
 /// Item Indent Parser
 ///
@@ -404,7 +352,7 @@ pub(crate) fn item_tag_parser<'a>() -> impl Parser<
 //   - The next item.
 //   - The first line less or equally indented than the starting line, not counting lines within other non-paragraph elements or inlinetask boundaries.
 //   - Two consecutive blank lines.
-fn lesser_indent_termination<'a>()
+fn greater_indent_termination<'a>()
 -> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
 {
     // todo: not counting non-paragraph elements or inline task boudaries
@@ -414,8 +362,8 @@ fn lesser_indent_termination<'a>()
             let current_indent = ws.len();
             let state_indent_length = e.state().item_indent.len(); // 仅在item_content时调用，必然len>0
             let last_state = e.state().item_indent[state_indent_length - 1];
-            if current_indent > last_state {
-                // println!("lesser_indent_termination: ws=|{ws}|, error 缩进不足 current_indent({current_indent}) < state_indent({last_state})");
+            if current_indent <= last_state {
+                // println!("error: lesser_indent_termination: ws=|{ws}|, error 缩进不足 current_indent({current_indent}) <= state_indent({last_state})");
                 let error = Rich::custom::<&str>(
                     SimpleSpan::from(Range {
                         start: e.span().start(),
@@ -426,7 +374,7 @@ fn lesser_indent_termination<'a>()
                 // emitter.emit(error);
                 Err(error)
             } else {
-                // println!("lesser_indent_termination: ws=|{ws}|, ok current_indent({current_indent}) < state_indent({last_state})");
+                // println!("lesser_indent_termination: ws=|{ws}|, ok current_indent({current_indent}) > state_indent({last_state})");
                 Ok(ws)
             }
         })
@@ -444,18 +392,9 @@ mod tests {
     fn test_item_01() {
         let input = r##"+ [@3] [X] tag :: item contents
 "##;
-
-//         let input = r##"+ a
-// "##;
-        
-        let mut state = RollbackState(ParserState::default());
-        let parser = item_parser(element::element_parser());
-        let x = parser.parse_with_state(input, &mut state);
-        println!(">>: {}", x.has_output());
-
         assert_eq!(
             get_parser_output(
-                item_parser(element::element_parser()),
+                item_parser(element::element_in_item_parser()),
                 input
             ),
             r##"ListItem@0..32
@@ -520,7 +459,7 @@ mod tests {
     fn test_item_03() {
         assert_eq!(
             get_parser_output(
-                item_parser(element::element_parser()),
+                item_parser(element::element_in_item_parser()),
                 r##"+ [@3] tag :: item contents
 "##
             ),
@@ -551,7 +490,7 @@ mod tests {
     fn test_item_04() {
         assert_eq!(
             get_parser_output(
-                item_parser(element::element_parser()),
+                item_parser(element::element_in_item_parser()),
                 r##"+ [@3] [X] item contents
 "##
             ),
@@ -582,7 +521,7 @@ mod tests {
     fn test_item_05() {
         assert_eq!(
             get_parser_output(
-                item_parser(element::element_parser()),
+                item_parser(element::element_in_item_parser()),
                 r##"+ [@3] [X] tag :: item contents
 "##
             ),
@@ -618,7 +557,7 @@ mod tests {
     fn test_item_06() {
         assert_eq!(
             get_parser_output(
-                item_parser(element::element_parser()),
+                item_parser(element::element_in_item_parser()),
                 r##"+ 
 "##
             ),
@@ -627,9 +566,7 @@ mod tests {
   ListItemBullet@0..2
     Text@0..1 "+"
     Whitespace@1..2 " "
-  ListItemContent@2..3
-    Paragraph@2..3
-      Text@2..3 "\n"
+  BlankLine@2..3 "\n"
 "##
         );
     }
@@ -638,18 +575,17 @@ mod tests {
     fn test_item_07() {
         assert_eq!(
             get_parser_output(
-                item_parser(element::element_parser()),
-                r##"+ foo
-"##
+                item_parser(element::element_in_item_parser()),
+                r##"+ foo"##
             ),
-            r##"ListItem@0..6
+            r##"ListItem@0..5
   ListItemIndent@0..0
   ListItemBullet@0..2
     Text@0..1 "+"
     Whitespace@1..2 " "
-  ListItemContent@2..6
-    Paragraph@2..6
-      Text@2..6 "foo\n"
+  ListItemContent@2..5
+    Paragraph@2..5
+      Text@2..5 "foo"
 "##
         );
     }
@@ -658,7 +594,7 @@ mod tests {
     fn test_item_08() {
         assert_eq!(
             get_parser_output(
-                item_parser(element::element_parser()),
+                item_parser(element::element_in_item_parser()),
                 r##"   + [@3] [X] tag :: item contents
 "##
             ),
@@ -690,4 +626,81 @@ mod tests {
 "##
         );
     }
+
+    #[test]
+    #[should_panic]
+    fn test_item_09_content_bad_indent() {
+        get_parser_output(
+            item_parser(element::element_in_item_parser()),
+            r##"- foo
+bar
+"##
+        );
+
+    }
+
+    #[test]
+    fn test_item_10_content_good_indent() {
+        assert_eq!(get_parser_output(
+            item_parser(element::element_in_item_parser()),
+            r##"- foo
+ bar
+"##
+        ),
+            r##"ListItem@0..11
+  ListItemIndent@0..0
+  ListItemBullet@0..2
+    Text@0..1 "-"
+    Whitespace@1..2 " "
+  ListItemContent@2..11
+    Paragraph@2..11
+      Text@2..11 "foo\n bar\n"
+"##);
+    }
+
+    #[test]
+    fn test_item_11() {
+        assert_eq!(get_parser_output(
+            item_parser(element::element_in_item_parser()),
+            r##"- * not heading"##
+        ),
+                   r##"ListItem@0..15
+  ListItemIndent@0..0
+  ListItemBullet@0..2
+    Text@0..1 "-"
+    Whitespace@1..2 " "
+  ListItemContent@2..15
+    List@2..15
+      ListItem@2..15
+        ListItemIndent@2..2
+        ListItemBullet@2..4
+          Text@2..3 "*"
+          Whitespace@3..4 " "
+        ListItemContent@4..15
+          Paragraph@4..15
+            Text@4..15 "not heading"
+"##);
+    }
+    
+    #[test]
+    fn test_item_99() {
+        let input = r##"+ item contents
+"##;
+        assert_eq!(
+            get_parser_output(
+                item_parser(element::element_in_item_parser()),
+                input
+            ),
+            r##"ListItem@0..16
+  ListItemIndent@0..0
+  ListItemBullet@0..2
+    Text@0..1 "+"
+    Whitespace@1..2 " "
+  ListItemContent@2..16
+    Paragraph@2..16
+      Text@2..16 "item contents\n"
+"##,
+        );
+    }
+    
 }

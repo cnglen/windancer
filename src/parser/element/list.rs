@@ -26,17 +26,13 @@ pub(crate) fn plain_list_parser<'a>(
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
         .map_with(|(items, blanklines), e| {
             let mut children = vec![];
-
             for item in items.clone() {
                 children.push(item);
             }
-
             for bl in blanklines {
                 children.push(NodeOrToken::Token(bl));
             }
-
             e.state().item_indent.pop();
-
             NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                 OrgSyntaxKind::List.into(),
                 children,
@@ -196,10 +192,8 @@ mod tests {
             Text@6..7 "-"
             Whitespace@7..8 " "
           ListItemContent@8..44
-            Paragraph@8..12
-              Text@8..12 "1.1\n"
-            Paragraph@12..44
-              Text@12..44 "    a\n         b\n     ..."
+            Paragraph@8..44
+              Text@8..44 "1.1\n    a\n         b\n ..."
     BlankLine@44..45 "\n"
   BlankLine@45..46 "\n"
   BlankLine@46..47 "\n"
@@ -226,15 +220,16 @@ mod tests {
     ListItemContent@2..16
       Paragraph@2..6
         Text@2..6 "one\n"
-      List@6..13
-        ListItem@6..13
+      List@6..16
+        ListItem@6..16
           ListItemIndent@6..11
             Whitespace@6..11 "     "
           ListItemBullet@11..13
             Text@11..12 "-"
             Whitespace@12..13 " "
-      Paragraph@13..16
-        Text@13..16 "two"
+          ListItemContent@13..16
+            Paragraph@13..16
+              Text@13..16 "two"
 "##);
     }
 
@@ -271,16 +266,16 @@ mod tests {
 "#);
     }
 
-    //     // FIXME:
-    //     #[test]
-    //     #[should_panic]
-    //     fn test_list_07() {
-    //         let input = r##"- one list
-    // 1. another list
-    // "##;
-    //         let list_parser = element::list::plain_list_parser(element::item::item_parser(
-    //             element::element_parser(),
-    //         ));
-    //         get_parser_output(list_parser, input);
-    //     }
+        // FIXME: item type should match
+//         #[test]
+//         #[should_panic]
+//         fn test_list_07() {
+//             let input = r##"- one list
+// 1) another list
+//     "##;
+//             let list_parser = element::list::plain_list_parser(element::item::item_parser(
+//                 element::element_parser(),
+//             ));
+//             get_parser_output(list_parser, input);
+//         }
 }

@@ -194,6 +194,31 @@ bar
     }
 
     #[test]
+    fn test_paragraph_05() {
+        let input = r##"paragraph"##;
+        let parser = paragraph_parser(element::element_in_paragraph_parser());
+        assert_eq!(
+            get_parser_output(parser, input),
+            r##"Paragraph@0..9
+  Text@0..9 "paragraph"
+"##
+        );
+    }
+
+    #[test]
+    fn test_paragraph_06() {
+        let input = r##"paragraph
+"##;
+        let parser = paragraph_parser(element::element_in_paragraph_parser());
+        assert_eq!(
+            get_parser_output(parser, input),
+            r##"Paragraph@0..10
+  Text@0..10 "paragraph\n"
+"##
+        );
+    }
+    
+    #[test]
     fn test_block() {
         let input = r##"#+begin_src python
 #+end_src

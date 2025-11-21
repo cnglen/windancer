@@ -116,7 +116,7 @@ pub(crate) fn line_parser<'a>()
         .at_least(1)
         .collect::<String>()
         .then(end_of_line)
-        // .map(|s|{println!("object:line_parser:s={s:?}"); s})
+        .map(|s|{println!("object:line_parser:s={s:?}"); s})
         .map(|(line, eol)| {
             let mut ans = String::from(line);
             ans.push_str(&eol);
