@@ -108,18 +108,12 @@ pub(crate) fn line_parser<'a>()
             ans
         });
 
-    // let end_of_line = just("\n").to(String::from("\n"));
-
     any()
         .and_is(end_of_line.clone().not())
         .repeated()
         .at_least(1)
         .collect::<String>()
         .then(end_of_line)
-        // .map_with(|s, e|{
-        //     println!("object:line_parser:s={s:?}");
-        //     s
-        // })
         .map(|(line, eol)| {
             let mut ans = String::from(line);
             ans.push_str(&eol);
