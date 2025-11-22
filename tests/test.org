@@ -145,6 +145,85 @@ comment:
 # this is a comment
 
 
+** greater element
+
+
+*** list test
+
+- item
+- [@3] set to three
+- [-] tag :: item contents
+  * item, note whitespace in front
+
+a:
+ 1.  asdf
+ 2.      sfd
+
+item是一项，可以含list
+- list由多个item组成
+- item的内容可以含list
+
+list: = item.repeated()
+item := - context [list]
+
+
+
++ いいよ，こいよ
++ [@1] 伊已逝，吾亦逝
++ [@4] 意易失，吾亦逝
++ [@5] 逸一时，误一世
++ [@1] 疑一时，误一世
++ [@4] こめいじ　こいし
+
+
+- 疑一时，误一世   ::   af t asf d asd as f asfd adf a df
+- a :: asfa
++ [X] tag :: item contents
+ * item, note whitespace in front
+
+
+1) 1
+   - 1.1.1
+2) 2
+   | a | b |
+   |---+---|
+   |   |   |
+
+   #+begin_src pthon
+     hi
+   #+end_src
+
+3) 3
+
+
+
+- 1
+  - 1.1.1
+- 2
+  | a | b |
+  |---+---|
+  |   |   |
+
+ #+begin_src pthon
+  hi
+ #+end_src
+
+- 3
+
+*** Greater Block 
+#+begin_center
+this is contents of a center block
+#+end_center
+
+#+begin_quote a b
+this is contents of a quote block
+#+end_quote
+
+  #+begin_xxx
+  this is contents of a special(xxx) block
+  #+end_xxx
+
+
 ** lesser element
 
 *** horizontal-rule
@@ -165,6 +244,7 @@ horizontal must has at least 5 dashes:
 # #+call: not key word
 
 
+
 *** latex environment
 
 equation with number:
@@ -180,6 +260,32 @@ equation without number:
 \[
 x = \sum_{i=1}^{n} i
 \]
+
+
+
+*** Lesser Block
+
+#+begin_comment
+comment content
+#+end_comment
+
+#+begin_example
+example content
+#+end_example
+
+#+begin_verse
+verse content
+#+end_verse
+
+    #+begin_export html
+      <span style="color:green;">hello org</span>
+    #+end_export
+
+
+#+begin_src python
+  print("hello")
+#+end_src
+
 
 * comment
 
@@ -328,112 +434,6 @@ table cell's CONTENT can contain:
 
 :end:
 
-
-
-* block test
-
-** Greater Block 
-#+begin_center
-this is contents of a center block
-#+end_center
-
-#+begin_quote a b
-this is contents of a quote block
-#+end_quote
-
-  #+begin_xxx
-  this is contents of a special(xxx) block
-  #+end_xxx
-
-** Lesster Block
-
-#+begin_comment
-comment content
-#+end_comment
-
-#+begin_example
-example content
-#+end_example
-
-#+begin_verse
-verse content
-#+end_verse
-
-    #+begin_export html
-      <span style="color:green;">hello org</span>
-    #+end_export
-
-
-#+begin_src python
-  print("hello")
-#+end_src
-  
-* list test
-
-- item
-- [@3] set to three
-- [-] tag :: item contents
-  * item, note whitespace in front
-
-a:
- 1.  asdf
- 2.      sfd
-
-item是一项，可以含list
-- list由多个item组成
-- item的内容可以含list
-
-list: = item.repeated()
-item := - context [list]
-
-
-
-+ いいよ，こいよ
-+ [@1] 伊已逝，吾亦逝
-+ [@4] 意易失，吾亦逝
-+ [@5] 逸一时，误一世
-+ [@1] 疑一时，误一世
-+ [@4] こめいじ　こいし
-
-
-
-
-
-- 疑一时，误一世   ::   af t asf d asd as f asfd adf a df
-- a :: asfa
-+ [X] tag :: item contents
- * item, note whitespace in front
-
-
-1) 1
-   - 1.1.1
-2) 2
-   | a | b |
-   |---+---|
-   |   |   |
-
-   #+begin_src pthon
-     hi
-   #+end_src
-
-3) 3
-
-(require 'org-element)
-
-(defun my-org-element-show-tree ()
-  "Parse the current Org buffer and display its element tree in a new buffer."
-  (interactive)
-  (let* ((tree (org-element-parse-buffer))
-         (buffer (generate-new-buffer "*Org Element Tree*")))
-    (with-current-buffer buffer
-      (insert (format "%S" tree))
-      (org-mode)
-      (setq-local org-element-tree-buffer t) ; Indicate this is an element tree buffer
-      (display-buffer buffer))))   
-
-
-a list hasing one element?
- - a
 
 
 ** test

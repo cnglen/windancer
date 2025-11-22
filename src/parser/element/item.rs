@@ -24,12 +24,14 @@ pub(crate) fn item_parser<'a>(
     let item_content_inner = object::line_parser() // first row, no need to test indent
         .then(
             object::line_parser()
+                .and_is(greater_indent_termination()) // 覆盖了： next item的结束条件(next_item: 属于lesser_indent)
                 .or(object::blank_line_str_parser())
                 .and_is(object::blank_line_parser().repeated().at_least(2).not())
-                .and_is(greater_indent_termination()) // 覆盖了： next item的结束条件(next_item: 属于lesser_indent)
                 .repeated(),
         )
-        .to_slice();
+        .to_slice()
+        // .map(|s|{println!("s={s:?}"); s})        
+        ;
 
     let item_content_parser = element_parser
         .repeated()
@@ -674,6 +676,43 @@ bar
         ListItemContent@4..15
           Paragraph@4..15
             Text@4..15 "not heading"
+"##
+        );
+    }
+
+    #[test]
+    fn test_item_12() {
+        assert_eq!(
+            get_parser_output(
+                item_parser(element::element_in_item_parser()),
+                r##"- item
+  |a|b|
+
+  foo bar
+"##
+            ),
+            r##"ListItem@0..26
+  ListItemIndent@0..0
+  ListItemBullet@0..2
+    Text@0..1 "-"
+    Whitespace@1..2 " "
+  ListItemContent@2..26
+    Paragraph@2..7
+      Text@2..7 "item\n"
+    Table@7..16
+      TableStandardRow@7..15
+        Whitespace@7..9 "  "
+        Pipe@9..10 "|"
+        TableCell@10..12
+          Text@10..11 "a"
+          Pipe@11..12 "|"
+        TableCell@12..14
+          Text@12..13 "b"
+          Pipe@13..14 "|"
+        Newline@14..15 "\n"
+      BlankLine@15..16 "\n"
+    Paragraph@16..26
+      Text@16..26 "  foo bar\n"
 "##
         );
     }

@@ -117,19 +117,19 @@ mod tests {
     ListItemBullet@6..8
       Text@6..7 "-"
       Whitespace@7..8 " "
-    ListItemContent@8..12
-      Paragraph@8..12
+    ListItemContent@8..13
+      Paragraph@8..13
         Text@8..12 "two\n"
-    BlankLine@12..13 "\n"
+        BlankLine@12..13 "\n"
   ListItem@13..22
     ListItemIndent@13..13
     ListItemBullet@13..15
       Text@13..14 "-"
       Whitespace@14..15 " "
-    ListItemContent@15..21
-      Paragraph@15..21
+    ListItemContent@15..22
+      Paragraph@15..22
         Text@15..21 "three\n"
-    BlankLine@21..22 "\n"
+        BlankLine@21..22 "\n"
   ListItem@22..29
     ListItemIndent@22..22
     ListItemBullet@22..24
