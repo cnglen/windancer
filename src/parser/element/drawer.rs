@@ -220,7 +220,14 @@ pub(crate) fn property_drawer_parser<'a>() -> impl Parser<
         )
 }
 
-pub(crate) fn drawer_parser<'a>() -> impl Parser<
+pub(crate) fn drawer_parser<'a>(
+    element_parser: impl Parser<
+        'a,
+        &'a str,
+        NodeOrToken<GreenNode, GreenToken>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    > + Clone,
+) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
@@ -318,12 +325,26 @@ pub(crate) fn drawer_parser<'a>() -> impl Parser<
             ))
         });
 
-    // fixme: element
-    let drawer_content = any()
+    let drawer_content_inner = object::line_parser()
         .and_is(drawer_end_row.clone().not())
+        .and_is(just("*").not())
         .repeated()
-        .collect::<String>();
+        .to_slice();
 
+    let drawer_content = element_parser
+        .repeated()
+        .collect::<Vec<_>>()
+        .nested_in(drawer_content_inner)
+        .map(|s| {
+            let mut children = vec![];
+            for c in s {
+                children.push(c);
+            }
+            NodeOrToken::Node(GreenNode::new(
+                OrgSyntaxKind::DrawerContent.into(),
+                children,
+            ))
+        });
     let blank_lines = object::blank_line_parser().repeated().collect::<Vec<_>>();
 
     drawer_name_row
@@ -335,25 +356,26 @@ pub(crate) fn drawer_parser<'a>() -> impl Parser<
 
             children.push(begin);
 
-            if content.len() > 0 {
-                let mut c_children = vec![];
+            // if content.len() > 0 {
+            //     let mut c_children = vec![];
 
-                let token =
-                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Text.into(), &content));
-                let mut content_node_children = vec![];
-                content_node_children.push(token);
+            //     let token =
+            //         NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Text.into(), &content));
+            //     let mut content_node_children = vec![];
+            //     content_node_children.push(token);
 
-                c_children.push(NodeOrToken::Node(GreenNode::new(
-                    OrgSyntaxKind::Paragraph.into(),
-                    content_node_children,
-                )));
+            //     c_children.push(NodeOrToken::Node(GreenNode::new(
+            //         OrgSyntaxKind::Paragraph.into(),
+            //         content_node_children,
+            //     )));
 
-                let node = NodeOrToken::Node(GreenNode::new(
-                    OrgSyntaxKind::DrawerContent.into(),
-                    c_children,
-                ));
-                children.push(node);
-            }
+            //     let node = NodeOrToken::Node(GreenNode::new(
+            //         OrgSyntaxKind::DrawerContent.into(),
+            //         c_children,
+            //     ));
+            //     children.push(node);
+            // }
+            children.push(content);
 
             children.push(end);
             for bl in blank_lines {
@@ -371,8 +393,89 @@ pub(crate) fn drawer_parser<'a>() -> impl Parser<
 mod tests {
     use super::*;
     use crate::parser::common::get_parser_output;
+    use crate::parser::element;
+    use crate::parser::element::element_parser;
     use crate::parser::object;
     use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_drawer_01() {
+        assert_eq!(
+            get_parser_output(
+                drawer_parser(element::element_in_drawer_parser()),
+                r##":a:
+contents :end:
+:end:
+"##
+            ),
+            r###"Drawer@0..25
+  DrawerBegin@0..4
+    Colon@0..1 ":"
+    Text@1..2 "a"
+    Colon@2..3 ":"
+    Newline@3..4 "\n"
+  DrawerContent@4..19
+    Paragraph@4..19
+      Text@4..19 "contents :end:\n"
+  DrawerEnd@19..25
+    Text@19..24 ":end:"
+    Newline@24..25 "\n"
+"###
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_drawer_02() {
+        get_parser_output(
+            drawer_parser(element::element_in_drawer_parser()),
+            r##":a:
+:b:
+b
+:end:
+:end:
+"##,
+        );
+    }
+
+    #[test]
+    fn test_drawer_03() {
+        assert_eq!(
+            get_parser_output(
+                drawer_parser(element::element_in_drawer_parser()),
+                r##":a:
+#+BEGIN_SRC python
+print("hello");
+#+END_SRC
+:end:
+"##
+            ),
+            r###"Drawer@0..55
+  DrawerBegin@0..4
+    Colon@0..1 ":"
+    Text@1..2 "a"
+    Colon@2..3 ":"
+    Newline@3..4 "\n"
+  DrawerContent@4..49
+    SrcBlock@4..49
+      BlockBegin@4..23
+        Text@4..12 "#+BEGIN_"
+        Text@12..15 "SRC"
+        Whitespace@15..16 " "
+        SrcBlockLanguage@16..22 "python"
+        Newline@22..23 "\n"
+      BlockContent@23..39
+        Text@23..39 "print(\"hello\");\n"
+      BlockEnd@39..49
+        Text@39..45 "#+END_"
+        Text@45..48 "SRC"
+        Newline@48..49 "\n"
+  DrawerEnd@49..55
+    Text@49..54 ":end:"
+    Newline@54..55 "\n"
+"###
+        );
+    }
 
     #[test]
     fn test_node_property_01() {

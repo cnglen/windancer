@@ -196,20 +196,6 @@ item := - context [list]
 3) 3
 
 
-
-- 1
-  - 1.1.1
-- 2
-  | a | b |
-  |---+---|
-  |   |   |
-
- #+begin_src pthon
-  hi
- #+end_src
-
-- 3
-
 *** Greater Block 
 #+begin_center
 this is contents of a center block

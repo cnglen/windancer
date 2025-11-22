@@ -79,10 +79,17 @@ pub(crate) fn get_element_parser<'a>() -> (
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
     > + Clone,
+    impl Parser<
+        'a,
+        &'a str,
+        NodeOrToken<GreenNode, GreenToken>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    > + Clone,
 ) {
     // let mut element_in_pagraph = Recursive::declare();
     let mut element_without_tablerow_and_item = Recursive::declare();
     let mut element_in_section = Recursive::declare();
+    let mut element_in_drawer = Recursive::declare();
     let mut heading_subtree = Recursive::declare();
 
     // item only in list; table_row only in table;
@@ -111,7 +118,7 @@ pub(crate) fn get_element_parser<'a>() -> (
     let center_block = block::center_block_parser(element_without_tablerow_and_item.clone());
     let quote_block = block::quote_block_parser(element_without_tablerow_and_item.clone());
     let special_block = block::special_block_parser(element_without_tablerow_and_item.clone());
-    let drawer = drawer::drawer_parser();
+    let drawer = drawer::drawer_parser(element_in_drawer.clone());
     let plain_list =
         list::plain_list_parser(item::item_parser(element_without_tablerow_and_item.clone()));
     heading_subtree.define(
@@ -199,11 +206,36 @@ pub(crate) fn get_element_parser<'a>() -> (
         paragraph_parser.clone(),
     )));
 
+    let non_paragraph_element_parser_in_drawer = Parser::boxed(choice((
+        heading_subtree.clone(),
+        footnote_definition.clone(),
+        plain_list.clone(),
+        horizontal_rule.clone(),
+        latex_environment.clone(),
+        keyword.clone(),
+        center_block.clone(),
+        quote_block.clone(),
+        special_block.clone(),
+        src_block.clone(),
+        export_block.clone(),
+        verse_block.clone(),
+        example_block.clone(),
+        comment_block.clone(),
+        planning.clone(),
+        comment.clone(),
+        table.clone(),
+    )));
+    element_in_drawer.define(choice((
+        non_paragraph_element_parser_in_drawer.clone(),
+        paragraph_parser.clone(),
+    )));
+
     (
         element_without_tablerow_and_item,
         non_paragraph_element_parser,
         element_in_section,
         heading_subtree,
+        element_in_drawer,
     )
 }
 
@@ -250,4 +282,13 @@ pub(crate) fn heading_subtree_parser<'a>() -> impl Parser<
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     get_element_parser().3
+}
+
+pub(crate) fn element_in_drawer_parser<'a>() -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
+    get_element_parser().4
 }
