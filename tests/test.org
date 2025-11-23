@@ -15,6 +15,17 @@ Zero-th Section
 
 
 
+* heading test
+
+** heading
+SCHEDULED: <1999-03-31 Wed>
+:PROPERTIES:
+:CUSTOM_ID: someid
+:END:
+
+
+foo bar
+
 * Another heading with section
 
 This is a section. It includes everything from "This is" down to "Last

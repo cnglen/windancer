@@ -1,5 +1,5 @@
 //! Heading parser, including HeadingRow, HeadingSubtree
-use crate::parser::element::{element_parser, heading_subtree_parser, section};
+use crate::parser::element::{drawer, element_parser, heading_subtree_parser, planning, section};
 use crate::parser::object;
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserResult, ParserState, S2};
@@ -300,20 +300,32 @@ pub(crate) fn heading_row_parser<'a>()
                 .then(heading_row_tag_parser())
                 .then(
                     just('\n')
+                        .then(planning::planning_parser().or_not())
+                        .then(drawer::property_drawer_parser().or_not())
                         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
-                        .map(|(nl, maybe_blanklines)| {
-                            let mut tokens = vec![];
-                            tokens.push(GreenToken::new(
-                                OrgSyntaxKind::Newline.into(),
-                                &nl.to_string(),
-                            ));
+                        .map(
+                            |(((nl, maybe_planning), maybe_property_drawer), maybe_blanklines)| {
+                                let mut children = vec![];
+                                children.push(NodeOrToken::Token(GreenToken::new(
+                                    OrgSyntaxKind::Newline.into(),
+                                    &nl.to_string(),
+                                )));
 
-                            for blankline_token in maybe_blanklines {
-                                tokens.push(blankline_token)
-                            }
+                                if let Some(planning) = maybe_planning {
+                                    children.push(planning);
+                                }
 
-                            Some(tokens)
-                        })
+                                if let Some(property_drawer) = maybe_property_drawer {
+                                    children.push(property_drawer);
+                                }
+
+                                for blankline_token in maybe_blanklines {
+                                    children.push(NodeOrToken::Token(blankline_token))
+                                }
+
+                                Some(children)
+                            },
+                        )
                         .or(end().to(None)),
                 ),
         )
@@ -411,7 +423,7 @@ pub(crate) fn heading_row_parser<'a>()
                     Some(maybe_nl_or_blank_tokens) => {
                         for e in maybe_nl_or_blank_tokens {
                             text.push_str(&e.to_string());
-                            children.push(NodeOrToken::Token(e))
+                            children.push(e)
                         }
                     }
                 }
@@ -435,52 +447,6 @@ pub(crate) fn heading_row_parser<'a>()
             },
         )
 }
-
-// heading = heading_row + section + heading?
-/// HeadingSubtree parser
-// pub(crate) fn heading_subtree_parser<'a>(
-//     section_parser: impl Parser<
-//         'a,
-//         &'a str,
-//         NodeOrToken<GreenNode, GreenToken>,
-//         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
-//     > + Clone +'a
-// )
-// -> impl Parser<'a, &'a str, NodeOrToken<GreenNode, GreenToken>, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>
-//     + Clone {
-//         let mut heading = Recursive::declare();
-//         heading.define(
-//             heading_row_parser()
-//                 .then(
-//                     section_parser
-//                         .repeated()
-//                         .at_most(1)
-//                         .collect::<Vec<_>>(),
-//                 )
-//                 .then(heading.clone().repeated().collect::<Vec<_>>())
-//                 .map_with(|((headline_title, section), children), e| {
-//                     // println!(
-//                     //     "headline_title={:?}\nsection={:?}\nchildren={:?}",
-//                     //     headline_title, section, children
-//                     // );
-//                     let mut children_ = vec![];
-//                     children_.push(headline_title.green);
-//                     for e in section {
-//                         children_.push(e);
-//                     }
-//                     for c in children{
-//                         children_.push(c);
-//                     }
-//                     let span: SimpleSpan = e.span();
-//                     e.state().0.level_stack.pop();
-//                     NodeOrToken::Node(GreenNode::new(
-//                         OrgSyntaxKind::HeadingSubtree.into(),
-//                         children_,
-//                     ))
-//                 })
-//         );
-//         heading
-// }
 
 #[cfg(test)]
 mod tests {

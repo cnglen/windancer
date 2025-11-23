@@ -8,7 +8,7 @@ use std::ops::Range;
 
 use crate::parser::element::{
     block, comment, drawer, footnote_definition, horizontal_rule, keyword, latex_environment,
-    paragraph, planning, table,
+    paragraph, table,
 };
 
 use crate::parser::element::paragraph::simple_heading_row_parser;
@@ -40,35 +40,14 @@ pub(crate) fn section_parser<'a>(
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
-    // elements: children
-    // 每个element实现时可通过前缀快速终止
-    // let list_parser = element::list::create_list_item_content_parser(element::element_parser_in_list()).0;
-    // let list_parser = element::list::plain_list_parser(element::item::item_parser(
-    //     element::element_parser(),
-    // ));
-    // list_parser
-    //     .or(element_parser)
-    // ??
-
     element_parser
-        .and_is(simple_heading_row_parser().then(any().repeated()).not()) // Section不能以<* title>开头，避免HeadingSurbtree被识别为Section
+        .and_is(simple_heading_row_parser().not()) // Section不能以<* title>开头，避免HeadingSurbtree被识别为Section
         .repeated()
         .at_least(1)
         .collect::<Vec<_>>()
         .labelled("section parse")
-        // .map_with(|(s, nl), e| {
         .map_with(|children, e| {
-            // let span: SimpleSpan = e.span();
-
             NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Section.into(), children))
-            // ParserResult {
-            //     green: NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Section.into(), children)),
-            //     text: "todo".to_string(),
-            //     span: Range {
-            //         start: span.start,
-            //         end: span.end,
-            //     },
-            // }
         })
 }
 
@@ -149,6 +128,23 @@ mod tests {
   Paragraph@0..43
     Text@0..42 "0123456789\nfoo\nbar\nhe ..."
     BlankLine@42..43 "\n"
+"##
+        );
+    }
+
+    #[test]
+    fn test_section_07_with_newline_end() {
+        let input = "SCHEDULED: <1999-03-31 Wed>
+"; // planning is not allowed to be in section
+        let parser = section_parser(element_in_section_parser());
+        assert_eq!(
+            get_parser_output(parser, input),
+            r##"Section@0..28
+  Paragraph@0..28
+    Text@0..11 "SCHEDULED: "
+    Timestamp@11..27
+      Text@11..27 "<1999-03-31 Wed>"
+    Text@27..28 "\n"
 "##
         );
     }

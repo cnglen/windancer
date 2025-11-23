@@ -20,7 +20,6 @@ use crate::parser::{ParserState, object};
 
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use drawer::node_property_parser;
 use paragraph::paragraph_parser;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
@@ -96,6 +95,7 @@ pub(crate) fn get_element_parser<'a>() -> (
 
     // item only in list; table_row only in table;
     // section only in heading_subtree or before first heading
+    // planning only in heading
 
     // elements_in_item: non_item; table_row;
     // elements_in_paragraph: non_item; non_table_row; non_paragraph;
@@ -111,7 +111,7 @@ pub(crate) fn get_element_parser<'a>() -> (
     let verse_block = block::verse_block_parser();
     let example_block = block::example_block_parser();
     let comment_block = block::comment_block_parser();
-    let planning = planning::planning_parser();
+    // let planning = planning::planning_parser();
     let comment = comment::comment_parser();
     let table = table::table_parser();
 
@@ -171,7 +171,6 @@ pub(crate) fn get_element_parser<'a>() -> (
         verse_block.clone(),
         example_block.clone(),
         comment_block.clone(),
-        planning.clone(),
         comment.clone(),
         table.clone(),
     )));
@@ -199,7 +198,6 @@ pub(crate) fn get_element_parser<'a>() -> (
         verse_block.clone(),
         example_block.clone(),
         comment_block.clone(),
-        planning.clone(),
         comment.clone(),
         table.clone(),
     )));
@@ -224,7 +222,6 @@ pub(crate) fn get_element_parser<'a>() -> (
         verse_block.clone(),
         example_block.clone(),
         comment_block.clone(),
-        planning.clone(),
         comment.clone(),
         table.clone(),
     )));
