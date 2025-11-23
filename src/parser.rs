@@ -5,8 +5,6 @@ pub(crate) mod syntax;
 mod common;
 mod document;
 mod element;
-mod footnote_definition;
-mod latex_environment;
 pub(crate) mod object;
 
 use crate::parser::syntax::OrgSyntaxKind;

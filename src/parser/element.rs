@@ -3,10 +3,12 @@
 pub(crate) mod block;
 pub(crate) mod comment;
 pub(crate) mod drawer;
+pub(crate) mod footnote_definition;
 pub(crate) mod heading;
 pub(crate) mod horizontal_rule;
 pub(crate) mod item;
 pub(crate) mod keyword;
+pub(crate) mod latex_environment;
 pub(crate) mod list;
 pub(crate) mod paragraph;
 pub(crate) mod planning;
@@ -14,7 +16,7 @@ pub(crate) mod section;
 pub(crate) mod table;
 use crate::parser::syntax::OrgSyntaxKind;
 
-use crate::parser::{ParserState, footnote_definition, latex_environment, object};
+use crate::parser::{ParserState, object};
 
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
@@ -114,7 +116,8 @@ pub(crate) fn get_element_parser<'a>() -> (
     let table = table::table_parser();
 
     // to check
-    let footnote_definition = footnote_definition::footnote_definition_parser();
+    let footnote_definition =
+        footnote_definition::footnote_definition_parser(element_without_tablerow_and_item.clone());
     let center_block = block::center_block_parser(element_without_tablerow_and_item.clone());
     let quote_block = block::quote_block_parser(element_without_tablerow_and_item.clone());
     let special_block = block::special_block_parser(element_without_tablerow_and_item.clone());

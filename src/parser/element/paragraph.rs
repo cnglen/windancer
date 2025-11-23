@@ -1,7 +1,10 @@
 //! Paragraph environment parser
-use crate::parser::element::{block, comment, drawer, horizontal_rule, item, keyword, list, table};
+use crate::parser::element::{
+    block, comment, drawer, footnote_definition, horizontal_rule, item, keyword, latex_environment,
+    list, table,
+};
 use crate::parser::syntax::OrgSyntaxKind;
-use crate::parser::{ParserState, footnote_definition, latex_environment, object};
+use crate::parser::{ParserState, object};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
