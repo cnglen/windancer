@@ -1,6 +1,6 @@
 //! Drawer parser
 use crate::parser::syntax::OrgSyntaxKind;
-use crate::parser::{ParserState, object};
+use crate::parser::{ParserState, element, object};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
@@ -233,6 +233,10 @@ pub(crate) fn drawer_parser<'a>(
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
+    let affiliated_keywords = element::keyword::affiliated_keyword_parser()
+        .repeated()
+        .collect::<Vec<_>>();
+
     let drawer_name_row = object::whitespaces()
         .then(just(":"))
         .then(
@@ -347,36 +351,19 @@ pub(crate) fn drawer_parser<'a>(
         });
     let blank_lines = object::blank_line_parser().repeated().collect::<Vec<_>>();
 
-    drawer_name_row
+    affiliated_keywords
+        .then(drawer_name_row)
         .then(drawer_content)
         .then(drawer_end_row)
         .then(blank_lines)
-        .map(|(((begin, content), end), blank_lines)| {
+        .map(|((((maybe_keywords, begin), content), end), blank_lines)| {
             let mut children = vec![];
 
+            for keyword in maybe_keywords {
+                children.push(keyword);
+            }
             children.push(begin);
-
-            // if content.len() > 0 {
-            //     let mut c_children = vec![];
-
-            //     let token =
-            //         NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Text.into(), &content));
-            //     let mut content_node_children = vec![];
-            //     content_node_children.push(token);
-
-            //     c_children.push(NodeOrToken::Node(GreenNode::new(
-            //         OrgSyntaxKind::Paragraph.into(),
-            //         content_node_children,
-            //     )));
-
-            //     let node = NodeOrToken::Node(GreenNode::new(
-            //         OrgSyntaxKind::DrawerContent.into(),
-            //         c_children,
-            //     ));
-            //     children.push(node);
-            // }
             children.push(content);
-
             children.push(end);
             for bl in blank_lines {
                 children.push(NodeOrToken::Token(bl));
@@ -470,6 +457,42 @@ print("hello");
         Text@39..45 "#+END_"
         Text@45..48 "SRC"
         Newline@48..49 "\n"
+  DrawerEnd@49..55
+    Text@49..54 ":end:"
+    Newline@54..55 "\n"
+"###
+        );
+    }
+
+    #[test]
+    fn test_drawer_04() {
+        assert_eq!(
+            get_parser_output(
+                drawer_parser(element::element_in_drawer_parser()),
+                r##"#+caption: affiliated keywords in drawer
+:a:
+foo
+:end:
+"##
+            ),
+            r###"Drawer@0..55
+  AffiliatedKeyword@0..41
+    HashPlus@0..2 "#+"
+    KeywordKey@2..9
+      Text@2..9 "caption"
+    Colon@9..10 ":"
+    Whitespace@10..11 " "
+    KeywordValue@11..40
+      Text@11..40 "affiliated keywords i ..."
+    Newline@40..41 "\n"
+  DrawerBegin@41..45
+    Colon@41..42 ":"
+    Text@42..43 "a"
+    Colon@43..44 ":"
+    Newline@44..45 "\n"
+  DrawerContent@45..49
+    Paragraph@45..49
+      Text@45..49 "foo\n"
   DrawerEnd@49..55
     Text@49..54 ":end:"
     Newline@54..55 "\n"

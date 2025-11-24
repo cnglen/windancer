@@ -274,6 +274,7 @@ example content
 verse content
 #+end_verse
 
+#+caption: export block test
     #+begin_export html
       <span style="color:green;">hello org</span>
     #+end_export
@@ -642,6 +643,25 @@ plain link: https://plainlink.org https://foo(bar).org
 angle link: <mailto:xx@xx.com> <https://foo(bar).org>
 
 radio link: my radio target, define three radio target <<<*bold* target>>> and <<<my radio target>>>  and <<<\alpha>>> and <<<$\alpha$>>>, then we have *bold* target, my radio target, notmyradio target and $\alpha$ and \alpha.
+
+
+
+#+name: image-name
+#+caption: This is a caption for
+#+caption: the image linked below
+[[file:some/image.png]]
+
+#+name: image-name
+#+caption: This is a keyword
+
+[[file:some/image.png]]
+
+
+
+#+caption: This is a keyword
+
+[[file:some/image.png]]
+
 
 
 ** timestamp

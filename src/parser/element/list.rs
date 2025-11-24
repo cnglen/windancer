@@ -19,13 +19,19 @@ pub(crate) fn plain_list_parser<'a>(
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
-    item_parser
+    let affiliated_keywords = element::keyword::affiliated_keyword_parser()
         .repeated()
-        .at_least(1)
-        .collect::<Vec<_>>()
+        .collect::<Vec<_>>();
+    affiliated_keywords
+        .then(item_parser.repeated().at_least(1).collect::<Vec<_>>())
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
-        .map_with(|(items, blanklines), e| {
+        .map_with(|((maybe_keywords, items), blanklines), e| {
             let mut children = vec![];
+
+            for keyword in maybe_keywords {
+                children.push(keyword);
+            }
+
             for item in items.clone() {
                 children.push(item);
             }
@@ -262,6 +268,46 @@ mod tests {
       Paragraph@17..21
         Text@17..21 "    "
 "#
+        );
+    }
+
+    #[test]
+    fn test_list_07() {
+        let input = r##"#+caption: affiliated keywords in list
+- one
+- two
+    "##;
+        let list_parser =
+            element::list::plain_list_parser(element::item::item_parser(element::element_parser()));
+        assert_eq!(
+            get_parser_output(list_parser, input),
+            r##"List@0..55
+  AffiliatedKeyword@0..39
+    HashPlus@0..2 "#+"
+    KeywordKey@2..9
+      Text@2..9 "caption"
+    Colon@9..10 ":"
+    Whitespace@10..11 " "
+    KeywordValue@11..38
+      Text@11..38 "affiliated keywords i ..."
+    Newline@38..39 "\n"
+  ListItem@39..45
+    ListItemIndent@39..39
+    ListItemBullet@39..41
+      Text@39..40 "-"
+      Whitespace@40..41 " "
+    ListItemContent@41..45
+      Paragraph@41..45
+        Text@41..45 "one\n"
+  ListItem@45..55
+    ListItemIndent@45..45
+    ListItemBullet@45..47
+      Text@45..46 "-"
+      Whitespace@46..47 " "
+    ListItemContent@47..55
+      Paragraph@47..55
+        Text@47..55 "two\n    "
+"##
         );
     }
 

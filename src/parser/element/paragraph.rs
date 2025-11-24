@@ -42,6 +42,10 @@ pub(crate) fn paragraph_parser<'a>(
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
+    let affiliated_keywords = keyword::affiliated_keyword_parser()
+        .repeated()
+        .collect::<Vec<_>>();
+
     let inner = object::line_parser()
         .and_is(non_paragraph_parser.not())
         .and_is(object::blank_line_parser().not()) // 遇到\n+blankline停止
@@ -52,17 +56,14 @@ pub(crate) fn paragraph_parser<'a>(
         // .map(|s| {println!("paragraph_parser@inner:s=|{s:?}|"); s})
         .to_slice();
 
-    object::standard_set_objects_parser()
-        .nested_in(inner)
-        // inner
+    affiliated_keywords
+        .then(object::standard_set_objects_parser().nested_in(inner))
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
-        .map_with(|(lines, blanklines), _e| {
+        .map_with(|((maybe_keywords, lines), blanklines), _e| {
             let mut children = vec![];
-            // children.push(NodeOrToken::Token(GreenToken::new(
-            //     OrgSyntaxKind::Text.into(),
-            //     &lines,
-            // )));
-
+            for keyword in maybe_keywords {
+                children.push(keyword);
+            }
             for node in lines {
                 children.push(node);
             }
@@ -236,6 +237,29 @@ example
       Text@29..35 "#+end_"
       Text@35..42 "EXAMPLE"
       Newline@42..43 "\n"
+"##
+        );
+    }
+
+    #[test]
+    fn test_paragraph_09() {
+        let input = r##"#+caption: export block test
+a paragraph
+"##;
+        let parser = paragraph_parser(element::element_in_paragraph_parser());
+        assert_eq!(
+            get_parser_output(parser, input),
+            r##"Paragraph@0..41
+  AffiliatedKeyword@0..29
+    HashPlus@0..2 "#+"
+    KeywordKey@2..9
+      Text@2..9 "caption"
+    Colon@9..10 ":"
+    Whitespace@10..11 " "
+    KeywordValue@11..28
+      Text@11..28 "export block test"
+    Newline@28..29 "\n"
+  Text@29..41 "a paragraph\n"
 "##
         );
     }

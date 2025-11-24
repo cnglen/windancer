@@ -86,12 +86,19 @@ pub(crate) fn get_element_parser<'a>() -> (
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
     > + Clone,
+    impl Parser<
+        'a,
+        &'a str,
+        NodeOrToken<GreenNode, GreenToken>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    > + Clone,
 ) {
     // let mut element_in_pagraph = Recursive::declare();
     let mut element_without_tablerow_and_item = Recursive::declare();
     let mut element_in_section = Recursive::declare();
     let mut element_in_drawer = Recursive::declare();
     let mut heading_subtree = Recursive::declare();
+    let mut element_in_keyword = Recursive::declare();
 
     // item only in list; table_row only in table;
     // section only in heading_subtree or before first heading
@@ -105,7 +112,6 @@ pub(crate) fn get_element_parser<'a>() -> (
     // checked
     let horizontal_rule = horizontal_rule::horizontal_rule_parser();
     let latex_environment = latex_environment::latex_environment_parser();
-    let keyword = keyword::keyword_parser();
     let src_block = block::src_block_parser();
     let export_block = block::export_block_parser();
     let verse_block = block::verse_block_parser();
@@ -116,6 +122,7 @@ pub(crate) fn get_element_parser<'a>() -> (
     let table = table::table_parser();
 
     // to check
+    let keyword = keyword::keyword_parser(element_in_keyword.clone());
     let footnote_definition =
         footnote_definition::footnote_definition_parser(element_without_tablerow_and_item.clone());
     let center_block = block::center_block_parser(element_without_tablerow_and_item.clone());
@@ -162,7 +169,6 @@ pub(crate) fn get_element_parser<'a>() -> (
         plain_list.clone(),
         horizontal_rule.clone(),
         latex_environment.clone(),
-        keyword.clone(),
         center_block.clone(),
         quote_block.clone(),
         special_block.clone(),
@@ -173,6 +179,7 @@ pub(crate) fn get_element_parser<'a>() -> (
         comment_block.clone(),
         comment.clone(),
         table.clone(),
+        keyword.clone(),
     )));
     let paragraph_parser = paragraph::paragraph_parser(non_paragraph_element_parser.clone()); // non_paragraph_element_parser used to negative lookehead
 
@@ -189,7 +196,6 @@ pub(crate) fn get_element_parser<'a>() -> (
         plain_list.clone(),
         horizontal_rule.clone(),
         latex_environment.clone(),
-        keyword.clone(),
         center_block.clone(),
         quote_block.clone(),
         special_block.clone(),
@@ -200,6 +206,7 @@ pub(crate) fn get_element_parser<'a>() -> (
         comment_block.clone(),
         comment.clone(),
         table.clone(),
+        keyword.clone(),
     )));
 
     element_in_section.define(choice((
@@ -213,7 +220,6 @@ pub(crate) fn get_element_parser<'a>() -> (
         plain_list.clone(),
         horizontal_rule.clone(),
         latex_environment.clone(),
-        keyword.clone(),
         center_block.clone(),
         quote_block.clone(),
         special_block.clone(),
@@ -224,10 +230,34 @@ pub(crate) fn get_element_parser<'a>() -> (
         comment_block.clone(),
         comment.clone(),
         table.clone(),
+        keyword.clone(),
     )));
     element_in_drawer.define(choice((
         non_paragraph_element_parser_in_drawer.clone(),
         paragraph_parser.clone(),
+    )));
+
+    // negative lookahead
+    let non_paragraph_element_parser_in_keyword = Parser::boxed(choice((
+        footnote_definition.clone(),
+        plain_list.clone(),
+        horizontal_rule.clone(),
+        latex_environment.clone(),
+        center_block.clone(),
+        quote_block.clone(),
+        special_block.clone(),
+        src_block.clone(),
+        export_block.clone(),
+        verse_block.clone(),
+        example_block.clone(),
+        comment_block.clone(),
+        table.clone(),
+    )));
+    let paragraph_parser_in_keyword =
+        paragraph::paragraph_parser(non_paragraph_element_parser_in_keyword.clone()); // non_paragraph_element_parser used to negative lookehead
+    element_in_keyword.define(choice((
+        non_paragraph_element_parser_in_keyword.clone(),
+        paragraph_parser_in_keyword.clone(),
     )));
 
     (
@@ -236,6 +266,7 @@ pub(crate) fn get_element_parser<'a>() -> (
         element_in_section,
         heading_subtree,
         element_in_drawer,
+        element_in_keyword,
     )
 }
 
@@ -246,6 +277,15 @@ pub(crate) fn element_parser<'a>() -> impl Parser<
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     get_element_parser().0
+}
+
+pub(crate) fn elements_parser<'a>() -> impl Parser<
+    'a,
+    &'a str,
+    Vec<NodeOrToken<GreenNode, GreenToken>>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
+    element_parser().repeated().at_least(1).collect::<Vec<_>>()
 }
 
 pub(crate) fn element_in_paragraph_parser<'a>() -> impl Parser<
@@ -291,4 +331,13 @@ pub(crate) fn element_in_drawer_parser<'a>() -> impl Parser<
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     get_element_parser().4
+}
+
+pub(crate) fn element_in_keyword_parser<'a>() -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
+    get_element_parser().5
 }

@@ -1,6 +1,6 @@
 //! Footnote definition parser
 use crate::parser::syntax::OrgSyntaxKind;
-use crate::parser::{ParserState, object};
+use crate::parser::{ParserState, element, object};
 use chumsky::prelude::*;
 use chumsky::{inspector::RollbackState, text::Char};
 use rowan::{GreenNode, GreenToken, NodeOrToken};
@@ -18,6 +18,10 @@ pub(crate) fn footnote_definition_parser<'a>(
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
+    let affiliated_keywords = element::keyword::affiliated_keyword_parser()
+        .repeated()
+        .collect::<Vec<_>>();
+
     let label = any()
         .filter(|c: &char| c.is_alphanumeric() || matches!(c, '_' | '-'))
         .repeated()
@@ -39,49 +43,56 @@ pub(crate) fn footnote_definition_parser<'a>(
         .collect::<Vec<_>>()
         .nested_in(content_inner);
 
-    just("[fn:")
+    affiliated_keywords
+        .then(just("[fn:"))
         .then(label)
         .then(just("]"))
         .then(object::whitespaces_g1())
         .then(content.clone())
-        .map(|((((_lfnc, label), rbracket), ws1), content)| {
-            let mut children = vec![];
+        .map(
+            |(((((maybe_keywords, _lfnc), label), rbracket), ws1), content)| {
+                let mut children = vec![];
 
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::LeftSquareBracket.into(),
-                "[",
-            )));
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                "fn",
-            )));
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Colon.into(),
-                ":",
-            )));
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                &label,
-            )));
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::RightSquareBracket.into(),
-                rbracket,
-            )));
+                for keyword in maybe_keywords {
+                    children.push(keyword);
+                }
 
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Whitespace.into(),
-                &ws1,
-            )));
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::LeftSquareBracket.into(),
+                    "[",
+                )));
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Text.into(),
+                    "fn",
+                )));
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Colon.into(),
+                    ":",
+                )));
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Text.into(),
+                    &label,
+                )));
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::RightSquareBracket.into(),
+                    rbracket,
+                )));
 
-            for e in content {
-                children.push(e);
-            }
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Whitespace.into(),
+                    &ws1,
+                )));
 
-            NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::FootnoteDefinition.into(),
-                children,
-            ))
-        })
+                for e in content {
+                    children.push(e);
+                }
+
+                NodeOrToken::Node(GreenNode::new(
+                    OrgSyntaxKind::FootnoteDefinition.into(),
+                    children,
+                ))
+            },
+        )
 }
 
 #[cfg(test)]
@@ -93,7 +104,7 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     #[test]
-    fn test_footnote_01() {
+    fn test_footnote_defintion_01() {
         let input = "[fn:1] A short footnote.";
         assert_eq!(
             get_parser_output(footnote_definition_parser(element::element_parser()), input),
@@ -111,12 +122,12 @@ mod tests {
     }
 
     #[test]
-    fn test_footnote_02_blankline() {
+    fn test_footnote_defintion_02_blankline() {
         let input = "[fn:2] This is a longer footnote.
 
     It even contains a single blank line.
 ";
-        let expected_outoput = r##"FootnoteDefinition@0..77
+        let expected_output = r##"FootnoteDefinition@0..77
   LeftSquareBracket@0..1 "["
   Text@1..3 "fn"
   Colon@3..4 ":"
@@ -131,16 +142,46 @@ mod tests {
 "##;
         assert_eq!(
             get_parser_output(footnote_definition_parser(element::element_parser()), input),
-            expected_outoput
+            expected_output
         );
     }
 
     #[test]
     #[should_panic]
-    fn test_footnote_03() {
+    fn test_footnote_defintion_03() {
         let input = "[fn:2] This is a longer footnote.
 [fn:3] This is a longer footnote.
 ";
         get_parser_output(footnote_definition_parser(element::element_parser()), input);
+    }
+
+    #[test]
+    fn test_footnote_defintion_04_keywords() {
+        let input = r##"#+caption: affiliated keywords in footnote defintion
+[fn:2] This is a longer footnote.
+"##;
+        let expected_output = r##"FootnoteDefinition@0..87
+  AffiliatedKeyword@0..53
+    HashPlus@0..2 "#+"
+    KeywordKey@2..9
+      Text@2..9 "caption"
+    Colon@9..10 ":"
+    Whitespace@10..11 " "
+    KeywordValue@11..52
+      Text@11..52 "affiliated keywords i ..."
+    Newline@52..53 "\n"
+  LeftSquareBracket@53..54 "["
+  Text@54..56 "fn"
+  Colon@56..57 ":"
+  Text@57..58 "2"
+  RightSquareBracket@58..59 "]"
+  Whitespace@59..60 " "
+  Paragraph@60..87
+    Text@60..87 "This is a longer foot ..."
+"##;
+        assert_eq!(
+            get_parser_output(footnote_definition_parser(element::element_parser()), input),
+            expected_output
+        );
     }
 }
