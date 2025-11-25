@@ -1,15 +1,4 @@
 #+title: org test
-#+macro: color @@html:<span style="color:$1">$2</span>@@ @@latex:\textcolor{$1}{$2}@@
-#+date: 20250802[Sat] 18:43:14
-#+caption: value
-#+udf_keyword: udf_value
-
-: This is a
-: fixed width area
-
-a */_bold-italic-underline_/*
-
-Zero-th Section
 
 * Heading without section, but with blank lines
 

@@ -132,7 +132,7 @@ pub(crate) fn item_parser<'a>(
                 );
                 let node = NodeOrToken::<GreenNode, GreenToken>::Node(green_node.clone());
 
-                let syntax_tree: SyntaxNode<OrgLanguage> = SyntaxNode::new_root(green_node);
+                // let syntax_tree: SyntaxNode<OrgLanguage> = SyntaxNode::new_root(green_node);
                 // println!("item_parser: {syntax_tree:#?}");
 
                 Ok(node)

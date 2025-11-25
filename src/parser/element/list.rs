@@ -25,10 +25,10 @@ pub(crate) fn plain_list_parser<'a>(
     affiliated_keywords
         .then(item_parser.repeated().at_least(1).collect::<Vec<_>>())
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
-        .map_with(|((maybe_keywords, items), blanklines), e| {
+        .map_with(|((keywords, items), blanklines), e| {
             let mut children = vec![];
 
-            for keyword in maybe_keywords {
+            for keyword in keywords {
                 children.push(keyword);
             }
 

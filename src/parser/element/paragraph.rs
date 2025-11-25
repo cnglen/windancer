@@ -1,4 +1,4 @@
-//! Paragraph environment parser
+//! Paragraph parser
 use crate::parser::element::{
     block, comment, drawer, footnote_definition, horizontal_rule, item, keyword, latex_environment,
     list, table,
@@ -9,9 +9,10 @@ use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
-/// A simple heading row parser WITHOUT state, used by section parser to check whether the next part is heading to stop
+/// A simple heading row parser WITHOUT state, ONLY used for look ahead
+// - section parser: to check whether the next part is heading to stop
 pub(crate) fn simple_heading_row_parser<'a>()
--> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+-> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
 {
     let stars = just('*').repeated().at_least(1).collect::<String>();
     let whitespaces = one_of(" \t").repeated().at_least(1).collect::<String>();
@@ -20,15 +21,10 @@ pub(crate) fn simple_heading_row_parser<'a>()
         .then(whitespaces)
         .then(title)
         .then(object::newline_or_ending())
-        .map(|(((stars, ws), title), nl)| match nl {
-            Some(newline_str) => format!("{}{}{}{}", stars, ws, title, newline_str),
-            None => format!("{}{}{}", stars, ws, title),
-        })
+        .to_slice()
 }
 
-/// paragraph的实现
-///
-
+// non_paragraph_parser: used for negative lookahead
 pub(crate) fn paragraph_parser<'a>(
     non_paragraph_parser: impl Parser<
         'a,
@@ -46,22 +42,20 @@ pub(crate) fn paragraph_parser<'a>(
         .repeated()
         .collect::<Vec<_>>();
 
+    // Empty lines and other elements end paragraphs
     let inner = object::line_parser()
-        .and_is(non_paragraph_parser.not())
-        .and_is(object::blank_line_parser().not()) // 遇到\n+blankline停止
+        .and_is(non_paragraph_parser.not()) // other element
+        .and_is(object::blank_line_parser().not()) // empty line
         .repeated()
         .at_least(1)
-        .collect::<Vec<String>>()
-        // .map(|s| s.join(""))
-        // .map(|s| {println!("paragraph_parser@inner:s=|{s:?}|"); s})
         .to_slice();
 
     affiliated_keywords
         .then(object::standard_set_objects_parser().nested_in(inner))
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
-        .map_with(|((maybe_keywords, lines), blanklines), _e| {
+        .map_with(|((keywords, lines), blanklines), _e| {
             let mut children = vec![];
-            for keyword in maybe_keywords {
+            for keyword in keywords {
                 children.push(keyword);
             }
             for node in lines {

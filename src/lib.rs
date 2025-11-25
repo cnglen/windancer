@@ -1,4 +1,4 @@
-#![allow(warnings)]
+// #![allow(warnings)]
 
 pub mod ast; // ?
 pub mod parser; // ?

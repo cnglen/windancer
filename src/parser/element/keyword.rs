@@ -1,16 +1,12 @@
 //! Keyword parser
+use crate::parser::object::blank_line_parser;
 use crate::parser::syntax::OrgSyntaxKind;
-use crate::parser::{ParserState, element, object};
-
-use std::ops::Range;
-
+use crate::parser::{ParserState, object};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use phf::phf_set;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
-
-use super::element_in_paragraph_parser;
-use super::paragraph::paragraph_parser;
+use std::ops::Range;
 
 pub(crate) static ORG_ELEMENT_AFFILIATED_KEYWORDS: phf::Set<&'static str> = phf_set! {
     "CAPTION",
@@ -36,6 +32,7 @@ pub(crate) static ORG_ELEMENT_PARSED_KEYWORDS: phf::Set<&'static str> = phf_set!
     "CAPTION"
 };
 
+// affliated keyword is NOT a element, it's part of some element.
 pub(crate) fn affiliated_keyword_parser<'a>() -> impl Parser<
     'a,
     &'a str,
@@ -496,6 +493,7 @@ fn key_parser<'a>()
     })
 }
 
+// element_parser: <element with affiliated word>
 pub(crate) fn keyword_parser<'a>(
     element_parser: impl Parser<
         'a,
@@ -525,24 +523,18 @@ pub(crate) fn keyword_parser<'a>(
         .at_least(1)
         .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
 
+    // FIXME: better method? element vs blankline?
     // #+KEY: VALUE(string)
-    // end()
-    // newline end()
-    // newline element
-    let p1 = just("#+")
-        .then(key_parser())
-        .then(just(":"))
-        .then(object::whitespaces())
-        .then(string_without_nl)
-        .then(object::newline_or_ending())
-        .and_is(element_parser.clone().not());
-
     let p1_part1 = just("#+")
         .then(key_parser())
         .then(just(":"))
         .then(object::whitespaces())
         .then(string_without_nl);
 
+    // part + end()
+    // part + \n + end()
+    // part + \n + blankline*
+    // (part + \n) !(element_with_affiliated_keywords)
     let p1 = choice((
         p1_part1.clone().then(end().to(None)),
         p1_part1.clone().then(
@@ -556,8 +548,16 @@ pub(crate) fn keyword_parser<'a>(
             .clone()
             .then(just('\n').map(|c| Some(String::from(c))))
             .and_is(element_parser.clone().not()),
+        p1_part1
+            .clone()
+            .then(object::newline_or_ending())
+            .then_ignore(blank_line_parser().repeated().at_least(1).rewind()),
     ))
     .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
+    .map(|s| {
+        println!("keyword_parser@s2={s:?}");
+        s
+    })
     .map_with(
         |((((((hash_plus, key), colon), ws), value), nl), blank_lines), e| {
             let mut children = vec![];
@@ -640,6 +640,10 @@ pub(crate) fn keyword_parser<'a>(
             .clone()
             .then(just('\n').map(|c| Some(String::from(c))))
             .and_is(element_parser.clone().not()),
+        p1a_part1
+            .clone()
+            .then(object::newline_or_ending())
+            .then_ignore(blank_line_parser().repeated().at_least(1).rewind()),
     ))
     .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
     .map_with(
@@ -709,7 +713,7 @@ pub(crate) fn keyword_parser<'a>(
 mod tests {
     use super::*;
     use crate::parser::common::{get_parser_output, get_parsers_output};
-    use crate::parser::element::{self};
+    use crate::parser::element;
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -727,6 +731,29 @@ mod tests {
   Whitespace@6..7 " "
   KeywordValue@7..16
     Text@7..16 "value    "
+"###
+        );
+    }
+
+    #[test]
+    fn test_keyword_91() {
+        assert_eq!(
+            get_parser_output(
+                keyword_parser(element::element_in_keyword_parser()),
+                r"#+title: org test
+
+"
+            ),
+            r###"Keyword@0..19
+  HashPlus@0..2 "#+"
+  KeywordKey@2..7
+    Text@2..7 "title"
+  Colon@7..8 ":"
+  Whitespace@8..9 " "
+  KeywordValue@9..17
+    Text@9..17 "org test"
+  Newline@17..18 "\n"
+  BlankLine@18..19 "\n"
 "###
         );
     }
@@ -766,28 +793,28 @@ mod tests {
         );
     }
 
-    //     #[test]
-    //     fn test_affliated_keyword_02() {
-    //         assert_eq!(
-    //             get_parser_output(
-    //                 affiliated_keyword_parser(),
-    //                 r"#+CAPTION[Short caption]: Longer caption."
-    //             ),
-    //             r###"AffiliatedKeyword@0..41
-    //   HashPlus@0..2 "#+"
-    //   KeywordKey@2..9
-    //     Text@2..9 "CAPTION"
-    //   LeftSquareBracket@9..10 "["
-    //   KeywordOptvalue@10..23
-    //     Text@10..23 "Short caption"
-    //   RightSquareBracket@23..24 "]"
-    //   Colon@24..25 ":"
-    //   Whitespace@25..26 " "
-    //   KeywordValue@26..41
-    //     Text@26..41 "Longer caption."
-    // "###
-    //         );
-    //     }
+    #[test]
+    fn test_affliated_keyword_02() {
+        assert_eq!(
+            get_parser_output(
+                affiliated_keyword_parser(),
+                r"#+CAPTION[Short caption]: Longer caption."
+            ),
+            r###"AffiliatedKeyword@0..41
+  HashPlus@0..2 "#+"
+  KeywordKey@2..9
+    Text@2..9 "CAPTION"
+  LeftSquareBracket@9..10 "["
+  KeywordOptvalue@10..23
+    Text@10..23 "Short caption"
+  RightSquareBracket@23..24 "]"
+  Colon@24..25 ":"
+  Whitespace@25..26 " "
+  KeywordValue@26..41
+    Text@26..41 "Longer caption."
+"###
+        );
+    }
 
     #[test]
     fn test_affliated_keyword_03() {

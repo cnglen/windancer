@@ -30,9 +30,6 @@ pub(crate) fn document_parser<'a>() -> impl Parser<
         .at_most(1)
         .collect::<Vec<_>>()
         .then(
-            // heading::heading_subtree_parser(
-            //     section::section_parser(element::element_in_section_parser())
-            // )
             element::heading_subtree_parser()
                 .repeated()
                 .collect::<Vec<_>>(),

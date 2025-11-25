@@ -181,10 +181,10 @@ pub(crate) fn export_block_parser<'a>() -> impl Parser<
         .then(end_row)
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
         .map_with(
-            |((((maybe_keywords, begin_row), content), end_row), blank_lines), e| {
+            |((((keywords, begin_row), content), end_row), blank_lines), e| {
                 let mut children = vec![];
 
-                for keyword in maybe_keywords {
+                for keyword in keywords {
                     children.push(keyword);
                 }
 
@@ -315,10 +315,10 @@ pub(crate) fn src_block_parser<'a>() -> impl Parser<
         .then(end_row)
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
         .map_with(
-            |((((maybe_keywords, begin_row), content), end_row), blank_lines), e| {
+            |((((keywords, begin_row), content), end_row), blank_lines), e| {
                 let mut children = vec![];
 
-                for keyword in maybe_keywords {
+                for keyword in keywords {
                     children.push(keyword);
                 }
 
@@ -446,10 +446,10 @@ fn comment_or_example_block_parser<'a>(
         .then(end_row)
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
         .map_with(
-            move |((((maybe_keywords, begin_row), content), end_row), blank_lines), _e| {
+            move |((((keywords, begin_row), content), end_row), blank_lines), _e| {
                 let mut children = vec![];
 
-                for keyword in maybe_keywords {
+                for keyword in keywords {
                     children.push(keyword);
                 }
 
@@ -540,10 +540,10 @@ pub(crate) fn verse_block_parser<'a>() -> impl Parser<
         .then(end_row)
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
         .map_with(
-            move |((((maybe_keywords, begin_row), content), end_row), blank_lines), _e| {
+            move |((((keywords, begin_row), content), end_row), blank_lines), _e| {
                 let mut children = vec![];
 
-                for keyword in maybe_keywords {
+                for keyword in keywords {
                     children.push(keyword);
                 }
 
@@ -744,11 +744,11 @@ fn center_or_quote_block_parser<'a>(
         .then(end_row)
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
         .map_with(
-            move |((((maybe_keywords, begin_row), content), end_row), blank_lines), e| {
+            move |((((keywords, begin_row), content), end_row), blank_lines), e| {
                 // reset state
                 let mut children = vec![];
 
-                for keyword in maybe_keywords {
+                for keyword in keywords {
                     children.push(keyword);
                 }
 
@@ -862,11 +862,11 @@ pub(crate) fn special_block_parser<'a>(
         // .map(|s|{println!("greater_block@s3={s:?}"); s})
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
         .map_with(
-            |((((maybe_keywords, begin_row), content), end_row), blank_lines), e| {
+            |((((keywords, begin_row), content), end_row), blank_lines), e| {
                 // reset state
                 // println!("greater_block@map_with: content={:?}", content);
                 let mut children = vec![];
-                for keyword in maybe_keywords {
+                for keyword in keywords {
                     children.push(keyword);
                 }
                 children.push(begin_row);

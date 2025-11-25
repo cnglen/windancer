@@ -356,10 +356,10 @@ pub(crate) fn drawer_parser<'a>(
         .then(drawer_content)
         .then(drawer_end_row)
         .then(blank_lines)
-        .map(|((((maybe_keywords, begin), content), end), blank_lines)| {
+        .map(|((((keywords, begin), content), end), blank_lines)| {
             let mut children = vec![];
 
-            for keyword in maybe_keywords {
+            for keyword in keywords {
                 children.push(keyword);
             }
             children.push(begin);

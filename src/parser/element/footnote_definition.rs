@@ -49,50 +49,48 @@ pub(crate) fn footnote_definition_parser<'a>(
         .then(just("]"))
         .then(object::whitespaces_g1())
         .then(content.clone())
-        .map(
-            |(((((maybe_keywords, _lfnc), label), rbracket), ws1), content)| {
-                let mut children = vec![];
+        .map(|(((((keywords, _lfnc), label), rbracket), ws1), content)| {
+            let mut children = vec![];
 
-                for keyword in maybe_keywords {
-                    children.push(keyword);
-                }
+            for keyword in keywords {
+                children.push(keyword);
+            }
 
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::LeftSquareBracket.into(),
-                    "[",
-                )));
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    "fn",
-                )));
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Colon.into(),
-                    ":",
-                )));
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    &label,
-                )));
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::RightSquareBracket.into(),
-                    rbracket,
-                )));
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::LeftSquareBracket.into(),
+                "[",
+            )));
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::Text.into(),
+                "fn",
+            )));
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::Colon.into(),
+                ":",
+            )));
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::Text.into(),
+                &label,
+            )));
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::RightSquareBracket.into(),
+                rbracket,
+            )));
 
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    &ws1,
-                )));
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::Whitespace.into(),
+                &ws1,
+            )));
 
-                for e in content {
-                    children.push(e);
-                }
+            for e in content {
+                children.push(e);
+            }
 
-                NodeOrToken::Node(GreenNode::new(
-                    OrgSyntaxKind::FootnoteDefinition.into(),
-                    children,
-                ))
-            },
-        )
+            NodeOrToken::Node(GreenNode::new(
+                OrgSyntaxKind::FootnoteDefinition.into(),
+                children,
+            ))
+        })
 }
 
 #[cfg(test)]
