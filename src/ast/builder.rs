@@ -46,6 +46,7 @@ struct Converter {
     footnote_label_to_nid: HashMap<String, usize>,
     footnote_definitions: Vec<FootnoteDefinition>,
     radio_targets: Vec<Object>,
+    k2v: HashMap<String, Vec<Object>>,
 }
 
 impl Converter {
@@ -56,6 +57,7 @@ impl Converter {
             footnote_label_to_nid: HashMap::new(),
             footnote_definitions: vec![],
             radio_targets: vec![],
+            k2v: HashMap::new(),
             /* 初始化状态 */
         }
     }
@@ -120,6 +122,7 @@ impl Converter {
             heading_subtrees: heading_subtrees,
             zeroth_section: zeroth_section,
             footnote_definitions: self.footnote_definitions.clone(),
+            k2v: self.k2v.clone(),
         })
     }
 
@@ -1036,10 +1039,25 @@ impl Converter {
     fn convert_special_block(&mut self, node: &SyntaxNode) -> Result<SpecialBlock, AstError> {
         let parameters = None;
         let mut contents = vec![];
+        let mut name = String::new();
 
         match node.kind() {
             OrgSyntaxKind::SpecialBlock => {
-                let q = node.first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::BlockBegin);
+                name = node
+                    .first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::BlockBegin)
+                    .expect(format!("no block begin found: {:#?}", node).as_str())
+                    .as_node()
+                    .unwrap()
+                    .children_with_tokens()
+                    .filter(|e| e.kind() == OrgSyntaxKind::Text)
+                    .nth(1)
+                    .expect("special block begin row should has at least two text")
+                    .as_token()
+                    .expect("todo")
+                    .text()
+                    .to_string()
+                    .to_lowercase();
+
                 for e in node
                     .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockContent)
                     .expect(format!("no block content found: {:#?}", node).as_str())
@@ -1057,7 +1075,7 @@ impl Converter {
             syntax: node.clone(),
             parameters: parameters,
             contents: contents,
-            name: String::from("todo"),
+            name: name,
         })
     }
 
@@ -1149,9 +1167,20 @@ impl Converter {
     fn convert_src_block(&mut self, node: &SyntaxNode) -> Result<SrcBlock, AstError> {
         let data = None;
         let mut contents = vec![];
-
+        let mut language = String::new();
         match node.kind() {
             OrgSyntaxKind::SrcBlock => {
+                language = node
+                    .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockBegin)
+                    .unwrap()
+                    .first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::SrcBlockLanguage)
+                    .unwrap()
+                    .as_token()
+                    .unwrap()
+                    .text()
+                    .to_string()
+                    .to_lowercase();
+
                 for e in node
                     .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockContent)
                     .unwrap()
@@ -1168,6 +1197,7 @@ impl Converter {
 
         Ok(SrcBlock {
             syntax: node.clone(),
+            language: language,
             data: data,
             contents: contents,
         })
@@ -1445,12 +1475,7 @@ impl Converter {
             .map(|e| e.unwrap())
             .collect::<Vec<_>>();
 
-        // .filter(|e| e.kind() == OrgSyntaxKind::Text)
-        // .map(|e| e.as_token().unwrap().text().to_string())
-        // .collect::<String>();
-
-        // let key = iter.next().expect("first text").text().to_string();
-        // let value = iter.next().expect("second text").text().to_string();
+        self.k2v.insert(key.clone(), value.clone());
 
         Ok(Keyword {
             syntax: node.clone(),

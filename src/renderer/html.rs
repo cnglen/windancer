@@ -86,6 +86,14 @@ impl HtmlRenderer {
             output.push_str(&self.render_footnote_definition(footnote_definition));
         }
 
+        let title = match document.k2v.get("title") {
+            Some(objects) => objects
+                .iter()
+                .map(|e| self.render_object(e))
+                .collect::<String>(),
+            None => String::from(""),
+        };
+
         let automatic_equation_numbering = true;
         let aen = if automatic_equation_numbering {
             r##"<script>
@@ -94,9 +102,21 @@ impl HtmlRenderer {
        tags: 'ams'
       }
     };
+
+    window.onload = function() {
+      document.querySelectorAll('div.code pre.src code').forEach(el => {
+        hljs.highlightElement(el);
+      });
+    };
     </script>"##
         } else {
-            ""
+            r##"<script>
+    window.onload = function() {
+      document.querySelectorAll('div.code pre.src code').forEach(el => {
+        hljs.highlightElement(el);
+      });
+    };
+    </script>"##
         };
 
         format!(
@@ -106,8 +126,14 @@ impl HtmlRenderer {
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Org Mode">
-    <title>Todo</title>
+
+    <title>{}</title>
+
     <script defer src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+
     <style type="text/css">
     {}
     </style>
@@ -124,7 +150,7 @@ impl HtmlRenderer {
   </div>
   </body>
 </html>"##,
-            css, aen, output
+            title, css, aen, output
         )
     }
 
@@ -557,7 +583,7 @@ impl HtmlRenderer {
 
     fn render_center_block(&mut self, block: &CenterBlock) -> String {
         format!(
-            r##"<div class="center">
+            r##"<div class="org-center">
 {}</div>
 "##,
             block
@@ -583,9 +609,10 @@ impl HtmlRenderer {
 
     fn render_special_block(&mut self, block: &SpecialBlock) -> String {
         format!(
-            r##"<div class="special">
+            r##"<div class="{}">
 {}</div>
 "##,
+            block.name,
             block
                 .contents
                 .iter()
@@ -620,18 +647,15 @@ impl HtmlRenderer {
         )
     }
 
-    // FIXME: language
     fn render_src_block(&self, block: &SrcBlock) -> String {
+        let s = block
+            .contents
+            .iter()
+            .map(|e| self.render_object(e))
+            .collect::<String>();
         format!(
-            r##"<div class="org-src-container">
-  <pre class="src src-language"> {}</pre>
-</div>
-"##,
-            block
-                .contents
-                .iter()
-                .map(|e| self.render_object(e))
-                .collect::<String>()
+            r##"<div class="code org-src-container"><pre class="src src-{}"><code class="language-{}">{}</code></pre></div>"##,
+            block.language, block.language, s
         )
     }
 

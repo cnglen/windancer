@@ -203,8 +203,8 @@ item := - context [list]
    |---+---|
    |   |   |
 
-   #+begin_src pthon
-     hi
+   #+begin_src python
+     print("hi")
    #+end_src
 
 3) 3
@@ -285,6 +285,9 @@ verse content
 
 #+begin_src python
   print("hello")
+
+  def foo(s: int) -> int:
+      s+1
 #+end_src
 
 
@@ -459,8 +462,8 @@ B test:
 
 - c
   - c
-    #+begin_src block
-      print()
+    #+begin_src python
+      print("xx")
     #+end_src
 
 ** unodered list

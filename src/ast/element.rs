@@ -2,6 +2,7 @@
 use crate::ast::object::Object;
 use crate::parser::object;
 use crate::parser::syntax::SyntaxNode;
+use std::collections::HashMap;
 use std::fmt;
 
 // 文档级结构
@@ -11,6 +12,7 @@ pub struct Document {
     pub zeroth_section: Option<Section>,
     pub heading_subtrees: Vec<HeadingSubtree>,
     pub footnote_definitions: Vec<FootnoteDefinition>,
+    pub k2v: HashMap<String, Vec<Object>>,
 }
 
 impl fmt::Debug for Document {
@@ -33,12 +35,14 @@ impl Document {
         zeroth_section: Option<Section>,
         heading_subtrees: Vec<HeadingSubtree>,
         footnote_definitions: Vec<FootnoteDefinition>,
+        k2v: HashMap<String, Vec<Object>>,
     ) -> Self {
         Self {
             syntax,
             zeroth_section,
             heading_subtrees,
             footnote_definitions,
+            k2v,
         }
     }
 
@@ -323,6 +327,7 @@ pub struct ExportBlock {
 #[derive(Debug, Clone)]
 pub struct SrcBlock {
     pub(crate) syntax: SyntaxNode,
+    pub language: String,
     pub data: Option<String>,
     pub contents: Vec<Object>,
 }

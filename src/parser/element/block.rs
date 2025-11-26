@@ -686,6 +686,7 @@ fn content_inner_parser<'a>(
 ) -> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
 {
     object::line_parser()
+        .or(object::blank_line_str_parser())
         .and_is(end_row.not()) // No line may start with #+end_NAME.
         .and_is(just("*").not())
         .repeated()
