@@ -38,14 +38,43 @@ pub(crate) fn paragraph_parser<'a>(
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
+    paragraph_parser_with_at_least_n_affiliated_keywords(non_paragraph_parser, 0)
+}
+
+pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<'a>(
+    non_paragraph_parser: impl Parser<
+        'a,
+        &'a str,
+        NodeOrToken<GreenNode, GreenToken>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    > + Clone,
+    n: usize,
+) -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
     let affiliated_keywords = keyword::affiliated_keyword_parser()
         .repeated()
+        .at_least(n)
         .collect::<Vec<_>>();
 
     // Empty lines and other elements end paragraphs
     let inner = object::line_parser()
         .and_is(non_paragraph_parser.not()) // other element
         .and_is(object::blank_line_parser().not()) // empty line
+        .and_is(
+            just("#+")
+                .then(
+                    any()
+                        .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'|'_'|']'|'['))
+                        .repeated()
+                        .at_least(1),
+                )
+                .then(just(":"))
+                .not(),
+        )
         .repeated()
         .at_least(1)
         .to_slice();

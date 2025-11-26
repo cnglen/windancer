@@ -140,6 +140,7 @@ pub(crate) fn property_drawer_parser<'a>() -> impl Parser<
     let blank_lines = object::blank_line_parser().repeated().collect::<Vec<_>>();
 
     begin_row
+        .then(blank_lines.clone())
         .then(
             node_property_parser()
                 .and_is(end_row.clone().not())
@@ -150,7 +151,10 @@ pub(crate) fn property_drawer_parser<'a>() -> impl Parser<
         .then(blank_lines)
         .map_with(
             |(
-                (((((ws1, properties), ws2), nl1), contents), (((ws3, end), ws4), nl2)),
+                (
+                    (((((ws1, properties), ws2), nl1), start_blank_lines), contents),
+                    (((ws3, end), ws4), nl2),
+                ),
                 blank_lines,
             ),
              e| {
@@ -179,6 +183,10 @@ pub(crate) fn property_drawer_parser<'a>() -> impl Parser<
                     OrgSyntaxKind::Newline.into(),
                     nl1,
                 )));
+
+                for bl in start_blank_lines {
+                    children.push(NodeOrToken::Token(bl));
+                }
 
                 for e in contents {
                     children.push(e);
@@ -330,8 +338,9 @@ pub(crate) fn drawer_parser<'a>(
         });
 
     let drawer_content_inner = object::line_parser()
+        .or(object::blank_line_str_parser())
         .and_is(drawer_end_row.clone().not())
-        .and_is(just("*").not())
+        .and_is(just("*").not()) // fixme: use heading row?
         .repeated()
         .to_slice();
 
@@ -353,27 +362,33 @@ pub(crate) fn drawer_parser<'a>(
 
     affiliated_keywords
         .then(drawer_name_row)
+        .then(blank_lines.clone())
         .then(drawer_content)
         .then(drawer_end_row)
         .then(blank_lines)
-        .map(|((((keywords, begin), content), end), blank_lines)| {
-            let mut children = vec![];
+        .map(
+            |(((((keywords, begin), start_blank_lines), content), end), blank_lines)| {
+                let mut children = vec![];
 
-            for keyword in keywords {
-                children.push(keyword);
-            }
-            children.push(begin);
-            children.push(content);
-            children.push(end);
-            for bl in blank_lines {
-                children.push(NodeOrToken::Token(bl));
-            }
+                for keyword in keywords {
+                    children.push(keyword);
+                }
+                children.push(begin);
+                for bl in start_blank_lines {
+                    children.push(NodeOrToken::Token(bl));
+                }
+                children.push(content);
+                children.push(end);
+                for bl in blank_lines {
+                    children.push(NodeOrToken::Token(bl));
+                }
 
-            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                OrgSyntaxKind::Drawer.into(),
-                children,
-            ))
-        })
+                NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+                    OrgSyntaxKind::Drawer.into(),
+                    children,
+                ))
+            },
+        )
 }
 
 #[cfg(test)]
@@ -381,8 +396,6 @@ mod tests {
     use super::*;
     use crate::parser::common::get_parser_output;
     use crate::parser::element;
-    use crate::parser::element::element_parser;
-    use crate::parser::object;
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -496,6 +509,37 @@ foo
   DrawerEnd@49..55
     Text@49..54 ":end:"
     Newline@54..55 "\n"
+"###
+        );
+    }
+
+    #[test]
+    fn test_drawer_05() {
+        assert_eq!(
+            get_parser_output(
+                drawer_parser(element::element_in_drawer_parser()),
+                r##":properties:
+:add: asd
+
+:dxx: asd
+:end:
+"##
+            ),
+            r###"Drawer@0..40
+  DrawerBegin@0..13
+    Colon@0..1 ":"
+    Text@1..11 "properties"
+    Colon@11..12 ":"
+    Newline@12..13 "\n"
+  DrawerContent@13..34
+    Paragraph@13..24
+      Text@13..23 ":add: asd\n"
+      BlankLine@23..24 "\n"
+    Paragraph@24..34
+      Text@24..34 ":dxx: asd\n"
+  DrawerEnd@34..40
+    Text@34..39 ":end:"
+    Newline@39..40 "\n"
 "###
         );
     }

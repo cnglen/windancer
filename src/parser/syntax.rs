@@ -116,7 +116,8 @@ pub enum OrgSyntaxKind {
     DiarySexp,
 
     NodeProperty,
-    FixedWhidth,
+    FixedWidth,
+    FixedWidthLine,
     Comment,
     Planning,
     PlanningKeyword,

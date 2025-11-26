@@ -143,6 +143,7 @@ pub enum Element {
     LatexEnvironment(LatexEnvironment),
     Keyword(Keyword),
     AffiliatedKeyword(AffiliatedKeyword),
+    FixedWidth(FixedWidth),
 
     TableRow(TableRow),
     // BabelCall(BabelCall),
@@ -344,7 +345,7 @@ pub struct HorizontalRule {
 pub struct Keyword {
     pub(crate) syntax: SyntaxNode,
     pub key: String,
-    pub value: String,
+    pub value: Vec<Object>,
 }
 
 #[derive(Debug, Clone)]
@@ -353,6 +354,12 @@ pub struct AffiliatedKeyword {
     pub key: String,
     pub optvalue: Option<String>,
     pub value: Vec<Object>,
+}
+
+#[derive(Debug, Clone)]
+enum KeywordValue {
+    String(String),
+    Objects(Vec<Object>),
 }
 
 #[derive(Debug, Clone)]
@@ -368,6 +375,12 @@ impl LatexEnvironment {
 
 #[derive(Clone, Debug)]
 pub struct Comment {
+    pub(crate) syntax: SyntaxNode,
+    pub text: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct FixedWidth {
     pub(crate) syntax: SyntaxNode,
     pub text: String,
 }

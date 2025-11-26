@@ -30,8 +30,9 @@
 
 use crate::ast::element::{
     CenterBlock, Comment, CommentBlock, Document, Drawer, Element, ExampleBlock, ExportBlock,
-    FootnoteDefinition, HeadingSubtree, Item, Keyword, LatexEnvironment, List, ListType, Paragraph,
-    QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableRow, TableRowType, VerseBlock,
+    FixedWidth, FootnoteDefinition, HeadingSubtree, Item, Keyword, LatexEnvironment, List,
+    ListType, Paragraph, QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableRow,
+    TableRowType, VerseBlock,
 };
 
 use crate::ast::object::{Object, TableCellType};
@@ -185,7 +186,7 @@ impl HtmlRenderer {
  {section}
  {content}
  "##,
-            level = heading.level,
+            level = heading.level + 1,
             title = escape_html(&heading.title.clone().unwrap()),
             todo = todo_html,
             tags = tags_html,
@@ -210,6 +211,7 @@ impl HtmlRenderer {
 
             Element::List(list) => self.render_list(list),
             Element::Comment(comment) => self.render_comment(comment),
+            Element::FixedWidth(fixed_width) => self.render_fixed_width(fixed_width),
 
             Element::Item(item) => self.render_item(item),
             Element::FootnoteDefinition(footnote_definition) => {
@@ -649,8 +651,26 @@ impl HtmlRenderer {
         format!(r##""##)
     }
 
+    fn render_fixed_width(&self, block: &FixedWidth) -> String {
+        format!(
+            r##"<pre class="example">{}</pre>
+"##,
+            block.text.replace("\n", "<br>\n")
+        )
+    }
+
     fn render_keyword(&self, keyword: &Keyword) -> String {
-        format!(r##""##)
+        match keyword.key.as_str() {
+            "title" => format!(
+                r##"<h1 class="title">{}</h1>"##,
+                keyword
+                    .value
+                    .iter()
+                    .map(|e| self.render_object(e))
+                    .collect::<String>()
+            ),
+            _ => format!(r##""##),
+        }
     }
 
     fn render_list(&mut self, list: &List) -> String {

@@ -101,5 +101,6 @@ pub(crate) fn macro_parser<'a>() -> impl Parser<
             },
         );
 
-    t1.or(t2)
+    Parser::boxed(choice((t1, t2)))
+    // t1.or(t2)
 }

@@ -16,7 +16,8 @@ pub(crate) fn footnote_reference_parser<'a>(
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
-    > + Clone,
+    > + Clone
+    + 'a,
 ) -> impl Parser<
     'a,
     &'a str,
@@ -192,7 +193,8 @@ pub(crate) fn footnote_reference_parser<'a>(
         },
     );
 
-    t1.or(t2).or(t3)
+    Parser::boxed(choice((t1, t2, t3)))
+    // t1.or(t2).or(t3)
 }
 
 #[cfg(test)]

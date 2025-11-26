@@ -1,0 +1,170 @@
+//! Fixed width parser
+use crate::parser::object::whitespaces_g1;
+use crate::parser::syntax::OrgSyntaxKind;
+use crate::parser::{ParserState, element, object};
+use chumsky::inspector::RollbackState;
+use chumsky::prelude::*;
+use rowan::{GreenNode, GreenToken, NodeOrToken};
+
+pub(crate) fn fixed_width_parser<'a>() -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+> + Clone {
+    let affiliated_keywords = element::keyword::affiliated_keyword_parser()
+        .repeated()
+        .collect::<Vec<_>>();
+
+    let fixed_width_line = object::whitespaces()
+        .then(just(":"))
+        .then(
+            whitespaces_g1()
+                .then(none_of("\r\n").repeated())
+                .to_slice()
+                .or_not(),
+        )
+        .then(object::newline_or_ending())
+        .map(|(((ws, colon), maybe_content), eol_or_eof)| {
+            let mut children = vec![];
+
+            if ws.len() > 0 {
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Whitespace.into(),
+                    &ws,
+                )));
+            }
+
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::Colon.into(),
+                colon,
+            )));
+
+            if let Some(content) = maybe_content {
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Text.into(),
+                    content,
+                )));
+            }
+
+            if let Some(newline) = eol_or_eof {
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Newline.into(),
+                    &newline,
+                )));
+            }
+
+            NodeOrToken::Node(GreenNode::new(
+                OrgSyntaxKind::FixedWidthLine.into(),
+                children,
+            ))
+        });
+
+    let blank_lines = object::blank_line_parser().repeated().collect::<Vec<_>>();
+
+    affiliated_keywords
+        .then(fixed_width_line.repeated().at_least(1).collect::<Vec<_>>())
+        .then(blank_lines)
+        .map(|((keywords, lines), blank_lines)| {
+            let mut children = vec![];
+            for keyword in keywords {
+                children.push(keyword);
+            }
+            for line in lines {
+                children.push(line);
+            }
+            for bl in blank_lines {
+                children.push(NodeOrToken::Token(bl));
+            }
+
+            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+                OrgSyntaxKind::FixedWidth.into(),
+                children,
+            ))
+        })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::{common::get_parser_output, common::get_parsers_output, element};
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_fixed_width_01() {
+        let input = r##": this is a
+: fixed width area
+"##;
+        let parser = fixed_width_parser();
+        assert_eq!(
+            get_parser_output(parser, input),
+            r##"FixedWidth@0..31
+  FixedWidthLine@0..12
+    Colon@0..1 ":"
+    Text@1..11 " this is a"
+    Newline@11..12 "\n"
+  FixedWidthLine@12..31
+    Colon@12..13 ":"
+    Text@13..30 " fixed width area"
+    Newline@30..31 "\n"
+"##
+        );
+    }
+
+    #[test]
+    fn test_fixed_width_02() {
+        let input = r##": this is a
+   : foo
+: fixed width area
+:
+: 
+: a   
+
+
+
+"##;
+        let parser = fixed_width_parser();
+        assert_eq!(
+            get_parser_output(parser, input),
+            r##"FixedWidth@0..55
+  FixedWidthLine@0..12
+    Colon@0..1 ":"
+    Text@1..11 " this is a"
+    Newline@11..12 "\n"
+  FixedWidthLine@12..21
+    Whitespace@12..15 "   "
+    Colon@15..16 ":"
+    Text@16..20 " foo"
+    Newline@20..21 "\n"
+  FixedWidthLine@21..40
+    Colon@21..22 ":"
+    Text@22..39 " fixed width area"
+    Newline@39..40 "\n"
+  FixedWidthLine@40..42
+    Colon@40..41 ":"
+    Newline@41..42 "\n"
+  FixedWidthLine@42..45
+    Colon@42..43 ":"
+    Text@43..44 " "
+    Newline@44..45 "\n"
+  FixedWidthLine@45..52
+    Colon@45..46 ":"
+    Text@46..51 " a   "
+    Newline@51..52 "\n"
+  BlankLine@52..53 "\n"
+  BlankLine@53..54 "\n"
+  BlankLine@54..55 "\n"
+"##
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_fixed_width_03() {
+        let input = r##": this is a
+:bad
+"##;
+        let parser = fixed_width_parser();
+        get_parser_output(parser, input);
+    }
+}

@@ -454,7 +454,7 @@ pub(crate) fn affiliated_keyword_parser<'a>() -> impl Parser<
             },
         );
 
-    p2a.or(p2).or(p1a).or(p1).or(p3)
+    Parser::boxed(choice((p2a, p2, p1a, p1, p3)))
 }
 
 // find last colon(:), all previous chars are `key`, such as "#+key:with:colon: value"
@@ -500,7 +500,8 @@ pub(crate) fn keyword_parser<'a>(
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
-    > + Clone,
+    > + Clone
+    + 'a,
 ) -> impl Parser<
     'a,
     &'a str,
@@ -547,17 +548,23 @@ pub(crate) fn keyword_parser<'a>(
         p1_part1
             .clone()
             .then(just('\n').map(|c| Some(String::from(c))))
-            .and_is(element_parser.clone().not()),
+            // .map(|s|{println!("dbg: s={s:?}"); s})
+            .and_is(
+                element_parser
+                    .clone()
+                    // .map(|s|{println!("dbg@and_is: s={s:?}"); s})
+                    .not(),
+            ),
         p1_part1
             .clone()
             .then(object::newline_or_ending())
             .then_ignore(blank_line_parser().repeated().at_least(1).rewind()),
     ))
     .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
-    .map(|s| {
-        println!("keyword_parser@s2={s:?}");
-        s
-    })
+    // .map(|s| {
+    //     println!("keyword_parser@s2={s:?}");
+    //     s
+    // })
     .map_with(
         |((((((hash_plus, key), colon), ws), value), nl), blank_lines), e| {
             let mut children = vec![];
@@ -706,7 +713,8 @@ pub(crate) fn keyword_parser<'a>(
         },
     );
 
-    p1a.or(p1)
+    Parser::boxed(choice((p1a, p1)))
+    // choice((p1a, p1))
 }
 
 #[cfg(test)]
@@ -973,6 +981,41 @@ a paragraph
     Text@29..41 "a paragraph\n"
 "###,
             "<affiliated keyword> is immediately preceding a <paragraph>"
+        );
+    }
+
+    #[test]
+    fn test_affliated_keyword_09() {
+        let input = r##"#+caption: export block test
+#+key: value
+a paragraph
+"##;
+
+        assert_eq!(
+            get_parsers_output(element::elements_parser(), input),
+            r###"Root@0..54
+  Keyword@0..29
+    HashPlus@0..2 "#+"
+    KeywordKey@2..9
+      Text@2..9 "caption"
+    Colon@9..10 ":"
+    Whitespace@10..11 " "
+    KeywordValue@11..28
+      Text@11..28 "export block test"
+    Newline@28..29 "\n"
+  Keyword@29..42
+    HashPlus@29..31 "#+"
+    KeywordKey@31..34
+      Text@31..34 "key"
+    Colon@34..35 ":"
+    Whitespace@35..36 " "
+    KeywordValue@36..41
+      Text@36..41 "value"
+    Newline@41..42 "\n"
+  Paragraph@42..54
+    Text@42..54 "a paragraph\n"
+"###,
+            "<keyword> is immediately preceding a <paragraph>"
         );
     }
 }

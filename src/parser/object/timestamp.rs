@@ -191,7 +191,8 @@ pub(crate) fn timestamp_parser<'a>() -> impl Parser<
             ))
         });
 
-    p2a.or(p2b).or(p3a).or(p3b).or(p1a).or(p1b)
+    Parser::boxed(choice((p2a, p2b, p3a, p3b, p1a, p1b)))
+    // p2a.or(p2b).or(p3a).or(p3b).or(p1a).or(p1b)
 }
 
 #[cfg(test)]

@@ -66,7 +66,8 @@ fn create_script_parser<'a>(
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
-    > + Clone,
+    > + Clone
+    + 'a,
 ) -> impl Parser<
     'a,
     &'a str,
@@ -205,7 +206,8 @@ fn create_script_parser<'a>(
         },
     );
 
-    t1.or(t3).or(t2)
+    Parser::boxed(choice((t1, t3, t2)))
+    // t1.or(t3).or(t2)
 }
 
 pub(crate) fn subscript_parser<'a>(
@@ -214,7 +216,8 @@ pub(crate) fn subscript_parser<'a>(
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
-    > + Clone,
+    > + Clone
+    + 'a,
 ) -> impl Parser<
     'a,
     &'a str,
@@ -230,7 +233,8 @@ pub(crate) fn superscript_parser<'a>(
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
-    > + Clone,
+    > + Clone
+    + 'a,
 ) -> impl Parser<
     'a,
     &'a str,

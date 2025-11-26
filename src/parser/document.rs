@@ -25,7 +25,7 @@ pub(crate) fn document_parser<'a>() -> impl Parser<
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > {
-    section::section_parser(element::element_in_section_parser())
+    let parser = section::section_parser(element::element_in_section_parser())
         .repeated()
         .at_most(1)
         .collect::<Vec<_>>()
@@ -70,5 +70,7 @@ pub(crate) fn document_parser<'a>() -> impl Parser<
             //         end: span.end,
             //     },
             // }
-        })
+        });
+
+    Parser::boxed(parser)
 }

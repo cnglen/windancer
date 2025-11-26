@@ -3,6 +3,7 @@
 pub(crate) mod block;
 pub(crate) mod comment;
 pub(crate) mod drawer;
+pub(crate) mod fixed_width;
 pub(crate) mod footnote_definition;
 pub(crate) mod heading;
 pub(crate) mod horizontal_rule;
@@ -120,6 +121,7 @@ pub(crate) fn get_element_parser<'a>() -> (
     // let planning = planning::planning_parser();
     let comment = comment::comment_parser();
     let table = table::table_parser();
+    let fixed_width = fixed_width::fixed_width_parser();
 
     // to check
     let keyword = keyword::keyword_parser(element_in_keyword.clone());
@@ -162,7 +164,7 @@ pub(crate) fn get_element_parser<'a>() -> (
             }),
     );
 
-    let non_paragraph_element_parser = Parser::boxed(choice((
+    let non_paragraph_element_parser = choice((
         heading_subtree.clone(),
         footnote_definition.clone(),
         drawer.clone(),
@@ -179,8 +181,9 @@ pub(crate) fn get_element_parser<'a>() -> (
         comment_block.clone(),
         comment.clone(),
         table.clone(),
+        fixed_width.clone(),
         keyword.clone(),
-    )));
+    ));
     let paragraph_parser = paragraph::paragraph_parser(non_paragraph_element_parser.clone()); // non_paragraph_element_parser used to negative lookehead
 
     element_without_tablerow_and_item.define(choice((
@@ -189,7 +192,7 @@ pub(crate) fn get_element_parser<'a>() -> (
     )));
 
     // element in section: without heading
-    let non_paragraph_element_parser_in_section = Parser::boxed(choice((
+    let non_paragraph_element_parser_in_section = choice((
         footnote_definition.clone(),
         special_block.clone(),
         drawer.clone(),
@@ -206,15 +209,16 @@ pub(crate) fn get_element_parser<'a>() -> (
         comment_block.clone(),
         comment.clone(),
         table.clone(),
+        fixed_width.clone(),
         keyword.clone(),
-    )));
+    ));
 
     element_in_section.define(choice((
         non_paragraph_element_parser_in_section.clone(),
         paragraph_parser.clone(),
     )));
 
-    let non_paragraph_element_parser_in_drawer = Parser::boxed(choice((
+    let non_paragraph_element_parser_in_drawer = choice((
         heading_subtree.clone(),
         footnote_definition.clone(),
         plain_list.clone(),
@@ -230,15 +234,17 @@ pub(crate) fn get_element_parser<'a>() -> (
         comment_block.clone(),
         comment.clone(),
         table.clone(),
+        fixed_width.clone(),
         keyword.clone(),
-    )));
+    ));
     element_in_drawer.define(choice((
         non_paragraph_element_parser_in_drawer.clone(),
         paragraph_parser.clone(),
     )));
 
     // negative lookahead
-    let non_paragraph_element_parser_in_keyword = Parser::boxed(choice((
+    // dont' use keyword() here, or stackoverflow.
+    let non_paragraph_element_parser_in_keyword = choice((
         footnote_definition.clone(),
         plain_list.clone(),
         horizontal_rule.clone(),
@@ -252,21 +258,25 @@ pub(crate) fn get_element_parser<'a>() -> (
         example_block.clone(),
         comment_block.clone(),
         table.clone(),
-    )));
+        fixed_width.clone(),
+    ));
     let paragraph_parser_in_keyword =
-        paragraph::paragraph_parser(non_paragraph_element_parser_in_keyword.clone()); // non_paragraph_element_parser used to negative lookehead
+        paragraph::paragraph_parser_with_at_least_n_affiliated_keywords(
+            non_paragraph_element_parser_in_keyword.clone(),
+            1,
+        ); // non_paragraph_element_parser used to negative lookehead
     element_in_keyword.define(choice((
         non_paragraph_element_parser_in_keyword.clone(),
         paragraph_parser_in_keyword.clone(),
     )));
 
     (
-        element_without_tablerow_and_item,
-        non_paragraph_element_parser,
-        element_in_section,
-        heading_subtree,
-        element_in_drawer,
-        element_in_keyword,
+        Parser::boxed(element_without_tablerow_and_item),
+        Parser::boxed(non_paragraph_element_parser),
+        Parser::boxed(element_in_section),
+        Parser::boxed(heading_subtree),
+        Parser::boxed(element_in_drawer),
+        Parser::boxed(element_in_keyword),
     )
 }
 

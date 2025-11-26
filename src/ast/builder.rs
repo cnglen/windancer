@@ -18,7 +18,7 @@ use std::collections::HashMap;
 
 use crate::ast::element::{
     AffiliatedKeyword, CenterBlock, Comment, CommentBlock, Document, Drawer, Element, ExampleBlock,
-    ExportBlock, FootnoteDefinition, HeadingSubtree, HorizontalRule, Item, Keyword,
+    ExportBlock, FixedWidth, FootnoteDefinition, HeadingSubtree, HorizontalRule, Item, Keyword,
     LatexEnvironment, List, ListType, Paragraph, QuoteBlock, Section, SpecialBlock, SrcBlock,
     Table, TableFormula, TableRow, TableRowType, VerseBlock,
 };
@@ -261,6 +261,8 @@ impl Converter {
             OrgSyntaxKind::Keyword => Ok(Element::Keyword(self.convert_keyword(&node)?)),
 
             OrgSyntaxKind::Comment => Ok(Element::Comment(self.convert_comment(&node)?)),
+
+            OrgSyntaxKind::FixedWidth => Ok(Element::FixedWidth(self.convert_fixed_width(&node)?)),
 
             OrgSyntaxKind::HorizontalRule => Ok(Element::HorizontalRule(
                 self.convert_horizontal_rule(&node)?,
@@ -1401,8 +1403,29 @@ impl Converter {
         })
     }
 
+    // element.fixed_width
+    fn convert_fixed_width(&self, node: &SyntaxNode) -> Result<FixedWidth, AstError> {
+        let text = node
+            .children_with_tokens()
+            .filter(|e| e.kind() == OrgSyntaxKind::FixedWidthLine)
+            .flat_map(|e| {
+                e.as_node()
+                    .unwrap()
+                    .children_with_tokens()
+                    .filter(|e| e.kind() == OrgSyntaxKind::Text)
+            })
+            .map(|e| e.as_token().unwrap().text().trim_start().to_string())
+            .collect::<Vec<String>>()
+            .join("\n");
+
+        Ok(FixedWidth {
+            syntax: node.clone(),
+            text: text,
+        })
+    }
+
     // element.keyword
-    fn convert_keyword(&self, node: &SyntaxNode) -> Result<Keyword, AstError> {
+    fn convert_keyword(&mut self, node: &SyntaxNode) -> Result<Keyword, AstError> {
         let key = node
             .first_child_by_kind(&|e| e == OrgSyntaxKind::KeywordKey)
             .unwrap()
@@ -1415,9 +1438,16 @@ impl Converter {
             .first_child_by_kind(&|e| e == OrgSyntaxKind::KeywordValue)
             .unwrap()
             .children_with_tokens()
-            .filter(|e| e.kind() == OrgSyntaxKind::Text)
-            .map(|e| e.as_token().unwrap().text().to_string())
-            .collect::<String>();
+            .map(|e| self.convert_object(&e))
+            .filter(|e| e.is_ok())
+            .map(|e| e.unwrap())
+            .filter(|e| e.is_some())
+            .map(|e| e.unwrap())
+            .collect::<Vec<_>>();
+
+        // .filter(|e| e.kind() == OrgSyntaxKind::Text)
+        // .map(|e| e.as_token().unwrap().text().to_string())
+        // .collect::<String>();
 
         // let key = iter.next().expect("first text").text().to_string();
         // let value = iter.next().expect("second text").text().to_string();

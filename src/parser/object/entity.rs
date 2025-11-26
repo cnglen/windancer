@@ -543,7 +543,7 @@ pub(crate) fn entity_parser<'a>() -> impl Parser<
         });
 
     // priority: `a2` > `a1` since `a2` is longer and includes `a1`, or "\pi{}" will be parsed into <Entity(\pi) + Text({})>, while <Entity(\pi{})> is expected
-    a2.or(a1).or(a3)
+    Parser::boxed(choice((a2, a1, a3)))
 }
 
 #[cfg(test)]

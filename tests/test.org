@@ -1,4 +1,17 @@
-#+title: org test
+#+title: a org test
+#+macro: color @@html:<span style="color:$1">$2</span>@@ @@latex:\textcolor{$1}{$2}@@
+#+date: 20250802[Sat] 18:43:14
+#+caption: a *bold* value
+#+OPTIONS: toc:nil
+
+
+: This is a  
+:
+: fixed width area
+
+a */_bold-italic-underline_/*
+
+Zero-th Section
 
 * Heading without section, but with blank lines
 
@@ -9,6 +22,7 @@
 ** heading
 SCHEDULED: <1999-03-31 Wed>
 :PROPERTIES:
+
 :CUSTOM_ID: someid
 :END:
 
@@ -412,11 +426,14 @@ table cell's CONTENT can contain:
  :end:
 
 
+drawer within blank lines
 :properties:
 
 :add: asd
 
+
 :dxx: asd
+
 
 
 :end:

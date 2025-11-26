@@ -14,7 +14,8 @@ pub(crate) fn text_markup_parser<'a>(
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
-    > + Clone,
+    > + Clone
+    + 'a,
 ) -> impl Parser<
     'a,
     &'a str,
@@ -185,11 +186,14 @@ pub(crate) fn text_markup_parser<'a>(
             Ok(NT::Node(GreenNode::new(OSK::Verbatim.into(), children)))
         });
 
-    bold.or(italic)
-        .or(underline)
-        .or(strikethrough)
-        .or(verbatim)
-        .or(code)
+    Parser::boxed(choice((
+        bold,
+        italic,
+        underline,
+        strikethrough,
+        verbatim,
+        code,
+    )))
 }
 
 #[cfg(test)]

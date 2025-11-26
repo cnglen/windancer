@@ -33,22 +33,25 @@ pub(crate) fn section_parser<'a>(
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
-    > + Clone,
+    > + Clone
+    + 'a,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
-    element_parser
-        .and_is(simple_heading_row_parser().not()) // Section不能以<* title>开头，避免HeadingSurbtree被识别为Section
-        .repeated()
-        .at_least(1)
-        .collect::<Vec<_>>()
-        .labelled("section parse")
-        .map_with(|children, e| {
-            NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Section.into(), children))
-        })
+    Parser::boxed(
+        element_parser
+            .and_is(simple_heading_row_parser().not()) // Section不能以<* title>开头，避免HeadingSurbtree被识别为Section
+            .repeated()
+            .at_least(1)
+            .collect::<Vec<_>>()
+            .labelled("section parse")
+            .map_with(|children, e| {
+                NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Section.into(), children))
+            }),
+    )
 }
 
 #[cfg(test)]

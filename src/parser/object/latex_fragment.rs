@@ -16,7 +16,8 @@ pub(crate) fn latex_fragment_parser<'a>() -> impl Parser<
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
-> + Clone {
+> + Clone
++ 'a {
     // \(CONTENTS\)
     let t1 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>(r##"\"##)
         .then(just("("))
@@ -207,5 +208,5 @@ pub(crate) fn latex_fragment_parser<'a>() -> impl Parser<
             NT::Node(GreenNode::new(OSK::LatexFragment.into(), children))
         });
 
-    choice((t1, t2, t3, t4, t5, t01, t02))
+    Parser::boxed(choice((t1, t2, t3, t4, t5, t01, t02)))
 }
