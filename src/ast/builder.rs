@@ -109,7 +109,7 @@ impl Converter {
                 }
                 _ => {
                     // 处理其他节点类型或忽略未知节点
-                    eprintln!("Only HeadingSubtree suppoted in Document's children!");
+                    eprintln!("Only HeadingSubtree supported in Document's children!");
                     std::process::exit(1);
                 }
             }

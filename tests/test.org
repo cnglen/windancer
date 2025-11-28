@@ -1,3 +1,11 @@
+
+# this is a comment
+
+:properties:
+:author: foo
+:key: value
+:end:
+
 #+title: a org test
 #+macro: color @@html:<span style="color:$1">$2</span>@@ @@latex:\textcolor{$1}{$2}@@
 #+date: 20250802[Sat] 18:43:14
@@ -19,7 +27,7 @@ Zero-th Section
 
 * heading test
 
-** heading
+** DONE [#A] heading  :tag:test:
 SCHEDULED: <1999-03-31 Wed>
 :PROPERTIES:
 

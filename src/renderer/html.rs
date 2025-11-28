@@ -29,14 +29,14 @@
 //! - footnote
 
 use crate::ast::element::{
-    CenterBlock, Comment, CommentBlock, Document, Drawer, Element, ExampleBlock, ExportBlock,
+    self, CenterBlock, Comment, CommentBlock, Document, Drawer, Element, ExampleBlock, ExportBlock,
     FixedWidth, FootnoteDefinition, HeadingSubtree, Item, Keyword, LatexEnvironment, List,
     ListType, Paragraph, QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableRow,
     TableRowType, VerseBlock,
 };
-
 use crate::ast::object::{Object, TableCellType};
 use crate::parser::object::entity::ENTITYNAME_TO_HTML;
+use chrono::{DateTime, Local};
 
 use std::fs;
 use std::ops::Not;
@@ -45,6 +45,7 @@ pub struct HtmlRenderer {
     config: RenderConfig,
     table_counter: usize,
     figure_counter: usize,
+    footnote_defintions: Vec<FootnoteDefinition>,
 }
 
 #[derive(Clone)]
@@ -60,11 +61,14 @@ impl HtmlRenderer {
             config,
             table_counter: 0,
             figure_counter: 0,
+            footnote_defintions: vec![],
         }
     }
 
     pub fn render_document(&mut self, document: &Document) -> String {
         let css = &fs::read_to_string("src/renderer/default.css").unwrap_or(String::new());
+
+        self.footnote_defintions = document.footnote_definitions.clone();
 
         let mut output = String::new();
 
@@ -82,9 +86,9 @@ impl HtmlRenderer {
             output.push_str(&self.render_heading_subtree(subtree));
         }
 
-        for footnote_definition in &document.footnote_definitions {
-            output.push_str(&self.render_footnote_definition(footnote_definition));
-        }
+        // for footnote_definition in &document.footnote_definitions {
+        //     output.push_str(&self.render_footnote_definition(footnote_definition));
+        // }
 
         let title = match document.k2v.get("title") {
             Some(objects) => objects
@@ -93,6 +97,29 @@ impl HtmlRenderer {
                 .collect::<String>(),
             None => String::from(""),
         };
+
+        let date_html = if let Some(date) = document.k2v.get("date") {
+            format!(
+                r##"<p class="date">Date: {}</p>"##,
+                date.iter()
+                    .map(|e| self.render_object(e))
+                    .collect::<String>()
+            )
+        } else {
+            String::from("")
+        };
+
+        let now: DateTime<Local> = Local::now();
+        let created_ts = now.format("%Y-%m-%d %H:%M:%S").to_string();
+        let post_amble = format!(
+            r##"<div id="postamble" class="status">
+    {}
+    <p class="date">Created: {}</p>
+    <p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
+  </div>
+"##,
+            date_html, created_ts
+        );
 
         let automatic_equation_numbering = true;
         let aen = if automatic_equation_numbering {
@@ -143,14 +170,10 @@ impl HtmlRenderer {
   <div id="content" class="content">
   {}
   </div>
-  <div id="postamble" class="status">
-    <p class="date">Date: 20250802[Sat] 18:43:14</p>
-    <p class="date">Created: 2025-10-19 Sun 16:01</p>
-    <p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
-  </div>
+  {}
   </body>
 </html>"##,
-            title, css, aen, output
+            title, css, aen, output, post_amble
         )
     }
 
@@ -185,7 +208,22 @@ impl HtmlRenderer {
         };
 
         let section_html = if let Some(section) = &heading.section {
-            self.render_section(section)
+            if let Some(title) = &heading.title {
+                if title == "Footnotes" {
+                    let elements = self
+                        .footnote_defintions
+                        .iter()
+                        .map(|e| element::Element::FootnoteDefinition(e.clone()))
+                        .collect::<Vec<_>>();
+                    let syntax = section.syntax.clone();
+                    let section = Section { syntax, elements };
+                    self.render_section(&section)
+                } else {
+                    self.render_section(&section)
+                }
+            } else {
+                self.render_section(&section)
+            }
         } else {
             String::new()
         };
@@ -208,9 +246,9 @@ impl HtmlRenderer {
   {title}
   {tags}
   </h{level}>
+  {section}
+  {content}
 </div>
- {section}
- {content}
  "##,
             level = heading.level + 1,
             title = escape_html(&heading.title.clone().unwrap()),
@@ -241,8 +279,8 @@ impl HtmlRenderer {
 
             Element::Item(item) => self.render_item(item),
             Element::FootnoteDefinition(footnote_definition) => {
-                String::from("")
-                // self.render_footnote_definition(footnote_definition)
+                // String::from("")
+                self.render_footnote_definition(footnote_definition)
             }
             Element::HorizontalRule(_) => self.render_horizontal_rule(),
             Element::Keyword(keyword) => self.render_keyword(keyword),
