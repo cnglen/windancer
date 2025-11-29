@@ -34,6 +34,9 @@ SCHEDULED: <1999-03-31 Wed>
 :CUSTOM_ID: someid
 :END:
 
+** TODO [#A] heading                                               :tag:test:
+
+** DOING [#A] heading                                              :tag:test:
 
 foo bar
 

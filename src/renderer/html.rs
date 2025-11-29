@@ -191,7 +191,17 @@ impl HtmlRenderer {
         }
 
         let todo_html = if let Some(todo) = &heading.keyword {
-            format!(r#"<span class="todo">{}</span> "#, escape_html(todo))
+            let class_1 = match todo.as_str().to_uppercase().as_str() {
+                "DONE" => "done",
+                "TODO" => "todo",
+                _ => "todo",
+            };
+            format!(
+                r#"<span class="{} {}">{}</span> "#,
+                class_1,
+                escape_html(todo),
+                escape_html(todo)
+            )
         } else {
             String::new()
         };
@@ -602,13 +612,14 @@ impl HtmlRenderer {
 
         format!(
             r##"<div class="footdef">
-  <a id="fn.{label}">{label}</a>: {c}
+  <a id="fn.{label}">{nid}</a>: {c}
   <div class="footpara" role="doc-footnote">
-   {def}
+   {label} := {def}
   </div>
 </div>
 "##,
             label = footnote_definition.label,
+            nid = footnote_definition.nid,
             c = c,
             def = footnote_definition
                 .contents

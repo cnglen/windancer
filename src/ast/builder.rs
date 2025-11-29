@@ -157,6 +157,9 @@ impl Converter {
                             OrgSyntaxKind::HeadingRowKeywordDone => {
                                 keyword = Some("DONE".to_string())
                             }
+                            OrgSyntaxKind::HeadingRowKeywordOther => {
+                                keyword = Some(c.as_token().unwrap().text().to_string())
+                            }
                             OrgSyntaxKind::HeadingRowPriority => {
                                 match c
                                     .as_node()

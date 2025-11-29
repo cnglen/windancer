@@ -80,13 +80,14 @@ pub enum OrgSyntaxKind {
     // 官方文档中, heading, headline 有歧义 (1) 含section (2) 仅指第一行, subtree指整体。用HeadingSubtree和HeadingRow区分。
     HeadingRow, // 标题行，只是标题本身，指一行
     HeadingRowStars,
-    HeadingRowKeywordTodo, // optional
-    HeadingRowKeywordDone, // optional
-    HeadingRowPriority,    // optional
-    HeadingRowComment,     // optional
-    HeadingRowTitle,       // optional
-    HeadingRowTags,        // optional: Node
-    HeadingRowTag,         // Token
+    HeadingRowKeywordTodo,  // optional
+    HeadingRowKeywordDone,  // optional
+    HeadingRowKeywordOther, // optional
+    HeadingRowPriority,     // optional
+    HeadingRowComment,      // optional
+    HeadingRowTitle,        // optional
+    HeadingRowTags,         // optional: Node
+    HeadingRowTag,          // Token
 
     TableCell, // Node
     HashPlus,

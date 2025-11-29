@@ -259,7 +259,7 @@ pub(crate) fn heading_row_parser<'a>()
         .then(object::whitespaces_g1())
         .or_not()
         .map(|s| match s {
-            Some((kw, ws)) => Some((
+            Some((kw, ws)) if kw.to_uppercase() == "TODO" => Some((
                 NodeOrToken::<GreenNode, GreenToken>::Token(GreenToken::new(
                     OrgSyntaxKind::HeadingRowKeywordTodo.into(),
                     kw,
@@ -269,6 +269,29 @@ pub(crate) fn heading_row_parser<'a>()
                     &ws,
                 )),
             )),
+
+            Some((kw, ws)) if kw.to_uppercase() == "DONE" => Some((
+                NodeOrToken::<GreenNode, GreenToken>::Token(GreenToken::new(
+                    OrgSyntaxKind::HeadingRowKeywordDone.into(),
+                    kw,
+                )),
+                NodeOrToken::<GreenNode, GreenToken>::Token(GreenToken::new(
+                    OrgSyntaxKind::Whitespace.into(),
+                    &ws,
+                )),
+            )),
+
+            Some((kw, ws)) => Some((
+                NodeOrToken::<GreenNode, GreenToken>::Token(GreenToken::new(
+                    OrgSyntaxKind::HeadingRowKeywordOther.into(),
+                    kw,
+                )),
+                NodeOrToken::<GreenNode, GreenToken>::Token(GreenToken::new(
+                    OrgSyntaxKind::Whitespace.into(),
+                    &ws,
+                )),
+            )),
+
             None => None,
         });
 
