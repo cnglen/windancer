@@ -278,7 +278,7 @@ pub(crate) fn item_checkbox_parser<'a>() -> impl Parser<
             )));
 
             children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::At.into(),
+                OrgSyntaxKind::Text.into(),
                 check,
             )));
 

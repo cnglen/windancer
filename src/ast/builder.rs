@@ -1240,7 +1240,7 @@ impl Converter {
     fn convert_item(&mut self, node: &SyntaxNode) -> Result<Item, AstError> {
         let mut bullet = String::new();
         let counter_set = None;
-        let checkbox = None;
+        let mut checkbox = None;
         let mut tag = None;
         let mut contents = vec![];
         for child in node.children_with_tokens() {
@@ -1259,6 +1259,21 @@ impl Converter {
                         .to_string();
                 }
 
+                OrgSyntaxKind::ListItemCheckbox => {
+                    checkbox = Some(
+                        format!("[{}]",
+                                child
+                                .as_node()
+                                .unwrap()
+                                .first_child_or_token_by_kind(&|e| e == OrgSyntaxKind::Text)
+                                .unwrap()
+                                .as_token()
+                                .unwrap()
+                                .text()
+                                .to_string(),
+                        ));
+                }
+ 
                 OrgSyntaxKind::ListItemTag => {
                     tag = Some(
                         child
@@ -1272,7 +1287,7 @@ impl Converter {
                             .to_string(),
                     );
                 }
-
+               
                 // FIXME: ListItemparser
                 //
                 OrgSyntaxKind::ListItemContent => {
@@ -1385,8 +1400,10 @@ impl Converter {
             .starts_with(|c: char| c.is_ascii_digit());
 
         let is_descriptive = node
+            .first_child_by_kind(&|e| e == OrgSyntaxKind::ListItem)
+            .expect("list must has at least one item")
             .children()
-            .filter(|e| e.kind() == OrgSyntaxKind::ListItem)
+            // .filter(|e| e.kind() == OrgSyntaxKind::ListItem)
             .any(|item| {
                 item.children()
                     .any(|e| e.kind() == OrgSyntaxKind::ListItemTag)

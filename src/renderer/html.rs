@@ -41,6 +41,7 @@ use chrono::{DateTime, Local};
 use std::fs;
 use std::ops::Not;
 
+
 pub struct HtmlRenderer {
     config: RenderConfig,
     table_counter: usize,
@@ -774,8 +775,8 @@ impl HtmlRenderer {
 
             ListType::Descriptive => {
                 format!(
-                    r##"<ul>
-{}</ul>
+                    r##"<dl>
+{}</dl>
 "##,
                     list.items
                         .iter()
@@ -786,27 +787,50 @@ impl HtmlRenderer {
         }
     }
 
+
+
+
     fn render_item(&mut self, item: &Item) -> String {
+
+        let checkbox_html = match &item.checkbox {
+            None => String::from(""),
+            Some(e) => format!("<code>{e}</code>")
+        };
+
+        let contents_html = if item.contents.len()==1 {
+            item.contents
+                .iter()
+                .map(|i| self.render_element(&i))
+                .collect::<String>()
+                .as_str()
+            // .trim_prefix("<p>")
+            // .trim_suffix("</p>")
+                .replacen("<p>", "", 1)
+                .replacen("</p>", "", 1)
+                .to_string()
+        } else {
+            item.contents
+                .iter()
+                .map(|i| self.render_element(&i))
+                .collect::<String>()
+        };
+        
         match &item.tag {
             None => format!(
                 r##"  <li>
-{}  </li>
+{} {}  </li>
 "##,
-                item.contents
-                    .iter()
-                    .map(|i| self.render_element(&i))
-                    .collect::<String>()
+                checkbox_html,
+                contents_html
             ),
 
             Some(tag) => {
                 format!(
-                    r##"  <dt>{}</dt> <dd>{}</dd>
+                    r##"  <dt>{} {}</dt> <dd>{}</dd>
 "##,
+                    checkbox_html,
                     tag,
-                    item.contents
-                        .iter()
-                        .map(|i| self.render_element(&i))
-                        .collect::<String>()
+                    contents_html,
                 )
             }
         }
