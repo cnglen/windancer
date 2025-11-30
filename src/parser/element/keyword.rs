@@ -539,15 +539,17 @@ pub(crate) fn keyword_parser<'a>(
     let p1 = choice((
         p1_part1.clone().then(end().to(None)),
         p1_part1.clone().then(
-            just('\n')
-                .map(|c| Some(String::from(c)))
+            object::newline()
                 .then(end())
-                .to_slice()
-                .to(Some(String::from('\n'))),
+                .map(|(c, _)| Some(String::from(c)))
         ),
         p1_part1
             .clone()
-            .then(just('\n').map(|c| Some(String::from(c))))
+            .then(object::newline().map(|c| Some(c)))
+            .then_ignore(blank_line_parser().repeated().at_least(1).rewind()),
+        p1_part1
+            .clone()
+            .then(object::newline().map(|c| Some(c)))
             // .map(|s|{println!("dbg: s={s:?}"); s})
             .and_is(
                 element_parser
@@ -555,10 +557,6 @@ pub(crate) fn keyword_parser<'a>(
                     // .map(|s|{println!("dbg@and_is: s={s:?}"); s})
                     .not(),
             ),
-        p1_part1
-            .clone()
-            .then(object::newline_or_ending())
-            .then_ignore(blank_line_parser().repeated().at_least(1).rewind()),
     ))
     .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
     // .map(|s| {
