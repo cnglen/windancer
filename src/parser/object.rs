@@ -37,11 +37,25 @@ use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
-/// 解析行终止符：换行符或输入结束
+/// 解析行终止符：换行符(LF/CRLF)或输入结束
 pub(crate) fn newline_or_ending<'a>()
 -> impl Parser<'a, &'a str, Option<String>, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>
-+ Clone {
-    just('\n').map(|c| Some(String::from(c))).or(end().to(None))
+    + Clone {
+	choice((
+	    just("\n").map(|c| Some(String::from(c))),
+	    just("\r\n").map(|c| Some(String::from(c))),
+	    end().to(None)
+	    ))
+}
+
+/// 解析行终止符：换行符(LF/CRLF)
+pub(crate) fn newline<'a>()
+-> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>
+    + Clone {
+	choice((
+	    just("\n").map(|c| String::from(c)),
+	    just("\r\n").map(|c| String::from(c)),
+	    ))
 }
 
 /// 创建一个不区分大小写的关键字解析器
@@ -74,7 +88,7 @@ pub(crate) fn is_ending<'a>()
 + Clone {
     any()
         .repeated()
-        .then(just('\n').map(|c| Some(String::from(c))).or(end().to(None)))
+        .then(just("\n").or(just("\r\n")).map(|c| Some(String::from(c))).or(end().to(None)))
         .map(|_| Some("OK".to_string()))
 }
 

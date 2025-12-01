@@ -408,7 +408,7 @@ mod tests {
     Whitespace@6..7 " "
   ListItemCheckbox@7..11
     LeftSquareBracket@7..8 "["
-    At@8..9 "X"
+    Text@8..9 "X"
     RightSquareBracket@9..10 "]"
     Whitespace@10..11 " "
   ListItemTag@11..18
@@ -438,7 +438,7 @@ mod tests {
     Whitespace@1..2 " "
   ListItemCheckbox@2..6
     LeftSquareBracket@2..3 "["
-    At@3..4 "X"
+    Text@3..4 "X"
     RightSquareBracket@4..5 "]"
     Whitespace@5..6 " "
   ListItemTag@6..13
@@ -505,7 +505,7 @@ mod tests {
     Whitespace@6..7 " "
   ListItemCheckbox@7..11
     LeftSquareBracket@7..8 "["
-    At@8..9 "X"
+    Text@8..9 "X"
     RightSquareBracket@9..10 "]"
     Whitespace@10..11 " "
   ListItemContent@11..25
@@ -536,7 +536,7 @@ mod tests {
     Whitespace@6..7 " "
   ListItemCheckbox@7..11
     LeftSquareBracket@7..8 "["
-    At@8..9 "X"
+    Text@8..9 "X"
     RightSquareBracket@9..10 "]"
     Whitespace@10..11 " "
   ListItemTag@11..18
@@ -607,7 +607,7 @@ mod tests {
     Whitespace@9..10 " "
   ListItemCheckbox@10..14
     LeftSquareBracket@10..11 "["
-    At@11..12 "X"
+    Text@11..12 "X"
     RightSquareBracket@12..13 "]"
     Whitespace@13..14 " "
   ListItemTag@14..21
