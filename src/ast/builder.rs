@@ -19,8 +19,8 @@ use std::collections::HashMap;
 use crate::ast::element::{
     AffiliatedKeyword, CenterBlock, Comment, CommentBlock, Document, Drawer, Element, ExampleBlock,
     ExportBlock, FixedWidth, FootnoteDefinition, HeadingSubtree, HorizontalRule, Item, Keyword,
-    LatexEnvironment, List, ListType, Paragraph, QuoteBlock, Section, SpecialBlock, SrcBlock,
-    Table, TableFormula, TableRow, TableRowType, VerseBlock,
+    LatexEnvironment, List, ListType, NodeProperty, Paragraph, PropertyDrawer, QuoteBlock, Section,
+    SpecialBlock, SrcBlock, Table, TableFormula, TableRow, TableRowType, VerseBlock,
 };
 use crate::ast::error::AstError;
 use crate::ast::object::{Object, TableCell, TableCellType};
@@ -268,6 +268,14 @@ impl Converter {
 
             OrgSyntaxKind::Comment => Ok(Element::Comment(self.convert_comment(&node)?)),
 
+            OrgSyntaxKind::NodeProperty => {
+                Ok(Element::NodeProperty(self.convert_node_property(&node)?))
+            }
+
+            OrgSyntaxKind::PropertyDrawer => Ok(Element::PropertyDrawer(
+                self.convert_property_drawer(&node)?,
+            )),
+
             OrgSyntaxKind::FixedWidth => Ok(Element::FixedWidth(self.convert_fixed_width(&node)?)),
 
             OrgSyntaxKind::HorizontalRule => Ok(Element::HorizontalRule(
@@ -432,6 +440,17 @@ impl Converter {
             name,
             contents,
         })
+    }
+
+    // element.property_drawrer
+    fn convert_property_drawer(&mut self, node: &SyntaxNode) -> Result<PropertyDrawer, AstError> {
+        let contents = node
+            .children_with_tokens()
+            .filter(|e| e.kind() == OrgSyntaxKind::NodeProperty)
+            .map(|e| self.convert_node_property(e.as_node().unwrap()).unwrap())
+            .collect::<Vec<_>>();
+
+        Ok(PropertyDrawer { contents })
     }
 
     // element.table
@@ -1260,20 +1279,20 @@ impl Converter {
                 }
 
                 OrgSyntaxKind::ListItemCheckbox => {
-                    checkbox = Some(
-                        format!("[{}]",
-                                child
-                                .as_node()
-                                .unwrap()
-                                .first_child_or_token_by_kind(&|e| e == OrgSyntaxKind::Text)
-                                .unwrap()
-                                .as_token()
-                                .unwrap()
-                                .text()
-                                .to_string(),
-                        ));
+                    checkbox = Some(format!(
+                        "[{}]",
+                        child
+                            .as_node()
+                            .unwrap()
+                            .first_child_or_token_by_kind(&|e| e == OrgSyntaxKind::Text)
+                            .unwrap()
+                            .as_token()
+                            .unwrap()
+                            .text()
+                            .to_string(),
+                    ));
                 }
- 
+
                 OrgSyntaxKind::ListItemTag => {
                     tag = Some(
                         child
@@ -1287,7 +1306,7 @@ impl Converter {
                             .to_string(),
                     );
                 }
-               
+
                 // FIXME: ListItemparser
                 //
                 OrgSyntaxKind::ListItemContent => {
@@ -1451,6 +1470,24 @@ impl Converter {
             syntax: node.clone(),
             text: text,
         })
+    }
+
+    // element.node_property
+    fn convert_node_property(&self, node: &SyntaxNode) -> Result<NodeProperty, AstError> {
+        let text = node
+            .children_with_tokens()
+            .filter(|e| e.kind() == OrgSyntaxKind::Text)
+            .map(|e| e.as_token().unwrap().text().to_string())
+            .collect::<Vec<_>>();
+
+        let name: String = text.first().expect("must have at least 1 text").to_string();
+        let value: Option<String> = if text.len() == 2 {
+            Some(text.last().expect("must have at a last text").to_string())
+        } else {
+            None
+        };
+
+        Ok(NodeProperty { name, value })
     }
 
     // element.fixed_width

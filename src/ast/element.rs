@@ -127,7 +127,7 @@ pub enum Element {
     // Greater
     Table(Table),
     Drawer(Drawer),
-    // PropertyDrawer(PropertyDrawer),
+    PropertyDrawer(PropertyDrawer),
     CenterBlock(CenterBlock),
     QuoteBlock(QuoteBlock),
     SpecialBlock(SpecialBlock),
@@ -148,6 +148,7 @@ pub enum Element {
     Keyword(Keyword),
     AffiliatedKeyword(AffiliatedKeyword),
     FixedWidth(FixedWidth),
+    NodeProperty(NodeProperty),
 
     TableRow(TableRow),
     // BabelCall(BabelCall),
@@ -159,6 +160,17 @@ pub struct Drawer {
     pub(crate) syntax: SyntaxNode,
     pub name: String,
     pub contents: Vec<Element>,
+}
+
+#[derive(Debug, Clone)]
+pub struct PropertyDrawer {
+    pub contents: Vec<NodeProperty>,
+}
+
+#[derive(Debug, Clone)]
+pub struct NodeProperty {
+    pub name: String,
+    pub value: Option<String>,
 }
 
 #[derive(Clone)]

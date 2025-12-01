@@ -41,7 +41,6 @@ use chrono::{DateTime, Local};
 use std::fs;
 use std::ops::Not;
 
-
 pub struct HtmlRenderer {
     config: RenderConfig,
     table_counter: usize,
@@ -787,24 +786,20 @@ impl HtmlRenderer {
         }
     }
 
-
-
-
     fn render_item(&mut self, item: &Item) -> String {
-
         let checkbox_html = match &item.checkbox {
             None => String::from(""),
-            Some(e) => format!("<code>{e}</code>")
+            Some(e) => format!("<code>{e}</code>"),
         };
 
-        let contents_html = if item.contents.len()==1 {
+        let contents_html = if item.contents.len() == 1 {
             item.contents
                 .iter()
                 .map(|i| self.render_element(&i))
                 .collect::<String>()
                 .as_str()
-            // .trim_prefix("<p>")
-            // .trim_suffix("</p>")
+                // .trim_prefix("<p>")
+                // .trim_suffix("</p>")
                 .replacen("<p>", "", 1)
                 .replacen("</p>", "", 1)
                 .to_string()
@@ -814,23 +809,20 @@ impl HtmlRenderer {
                 .map(|i| self.render_element(&i))
                 .collect::<String>()
         };
-        
+
         match &item.tag {
             None => format!(
                 r##"  <li>
 {} {}  </li>
 "##,
-                checkbox_html,
-                contents_html
+                checkbox_html, contents_html
             ),
 
             Some(tag) => {
                 format!(
                     r##"  <dt>{} {}</dt> <dd>{}</dd>
 "##,
-                    checkbox_html,
-                    tag,
-                    contents_html,
+                    checkbox_html, tag, contents_html,
                 )
             }
         }

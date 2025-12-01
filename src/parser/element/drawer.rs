@@ -55,6 +55,7 @@ pub(crate) fn node_property_parser<'a>() -> impl Parser<
     let value = none_of("\r\n").repeated().collect::<String>();
     let blank_lines = object::blank_line_parser().repeated().collect::<Vec<_>>();
     object::whitespaces()
+        .then(just(":"))
         .then(name)
         .then(just("+").or_not())
         .then(just(":"))
@@ -63,7 +64,11 @@ pub(crate) fn node_property_parser<'a>() -> impl Parser<
         .then(just("\n"))
         .then(blank_lines)
         .map_with(
-            |(((((((ws0, name), maybe_plus), colon), ws1), value), newline), blank_lines), e| {
+            |(
+                (((((((ws0, colon1), name), maybe_plus), colon), ws1), value), newline),
+                blank_lines,
+            ),
+             e| {
                 let mut children = vec![];
 
                 if ws0.len() > 0 {
@@ -72,6 +77,11 @@ pub(crate) fn node_property_parser<'a>() -> impl Parser<
                         &ws0,
                     )));
                 }
+
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Colon.into(),
+                    colon1,
+                )));
 
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Text.into(),
