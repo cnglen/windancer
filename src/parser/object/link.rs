@@ -1,6 +1,6 @@
 //! link parser, including angle/plain/regular link
-use crate::parser::ParserState;
 use crate::parser::syntax::OrgSyntaxKind;
+use crate::parser::{ParserState, object};
 use std::ops::Range;
 
 use chumsky::inspector::RollbackState;
@@ -377,37 +377,47 @@ pub(crate) fn regular_link_parser<'a>(
         .then(pathreg)
         .then(description)
         .then(just("]"))
-        .map_with(|(((lbracket, path), maybe_desc), rbracket), e| {
-            e.state().prev_char = rbracket.chars().last();
+        .then(object::newline().or_not())
+        .map_with(
+            |((((lbracket, path), maybe_desc), rbracket), maybe_newline), e| {
+                let mut children = vec![];
 
-            let mut children = vec![];
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::LeftSquareBracket.into(),
+                    lbracket,
+                )));
 
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::LeftSquareBracket.into(),
-                lbracket,
-            )));
+                children.push(path);
 
-            children.push(path);
-
-            match maybe_desc {
-                None => {}
-                Some(desc) => {
-                    children.push(desc);
+                match maybe_desc {
+                    None => {}
+                    Some(desc) => {
+                        children.push(desc);
+                    }
                 }
-            }
 
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::RightSquareBracket.into(),
-                rbracket,
-            )));
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::RightSquareBracket.into(),
+                    rbracket,
+                )));
 
-            let link = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                OrgSyntaxKind::Link.into(),
-                children,
-            ));
+                e.state().prev_char = rbracket.chars().last();
+                if let Some(nl) = maybe_newline {
+                    e.state().prev_char = nl.chars().last();
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Newline.into(),
+                        &nl,
+                    )));
+                }
 
-            link
-        })
+                let link = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+                    OrgSyntaxKind::Link.into(),
+                    children,
+                ));
+
+                link
+            },
+        )
 }
 
 #[cfg(test)]

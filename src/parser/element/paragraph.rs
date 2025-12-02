@@ -1,8 +1,5 @@
 //! Paragraph parser
-use crate::parser::element::{
-    block, comment, drawer, footnote_definition, horizontal_rule, item, keyword, latex_environment,
-    list, table,
-};
+use crate::parser::element::keyword;
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserState, object};
 use chumsky::inspector::RollbackState;
@@ -68,7 +65,9 @@ pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<'a>(
             just("#+")
                 .then(
                     any()
-                        .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'|'_'|']'|'['))
+                        .filter(
+                            |c: &char| matches!(c, 'a'..='z' | 'A'..='Z'| '0'..='9'|'_'|']'|'['),
+                        )
                         .repeated()
                         .at_least(1),
                 )

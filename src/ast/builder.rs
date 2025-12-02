@@ -13,15 +13,16 @@
 //! Element: Each kind of ast::Element has a convert_xxx_element(), which convert SyntaxNode to ast::Element
 //! Object: `convert_object()``, Each kind of ast::Object has a convert_xxx_object(), which convert SyntaxNode to ast::Object
 
-use rowan::GreenNode;
 use std::collections::HashMap;
+use std::env;
+use std::path::PathBuf;
 
 use crate::ast::element::{
     AffiliatedKeyword, CenterBlock, Comment, CommentBlock, Document, Drawer, Element, ExampleBlock,
-    ExportBlock, FixedWidth, FootnoteDefinition, HeadingSubtree, HorizontalRule, Item, Keyword,
-    LatexEnvironment, List, ListType, NodeProperty, Paragraph, Planning, PropertyDrawer,
-    QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableFormula, TableRow, TableRowType,
-    VerseBlock,
+    ExportBlock, FigureOnlyParagraph, FixedWidth, FootnoteDefinition, HeadingSubtree,
+    HorizontalRule, Item, Keyword, LatexEnvironment, List, ListType, NodeProperty, NormalParagraph,
+    Paragraph, Planning, PropertyDrawer, QuoteBlock, Section, SpecialBlock, SrcBlock, Table,
+    TableFormula, TableRow, TableRowType, VerseBlock,
 };
 use crate::ast::error::AstError;
 use crate::ast::object::{Object, TableCell, TableCellType};
@@ -292,9 +293,9 @@ impl Converter {
 
             OrgSyntaxKind::FixedWidth => Ok(Element::FixedWidth(self.convert_fixed_width(&node)?)),
 
-            OrgSyntaxKind::HorizontalRule => Ok(Element::HorizontalRule(
-                self.convert_horizontal_rule(&node)?,
-            )),
+            OrgSyntaxKind::HorizontalRule => {
+                Ok(Element::HorizontalRule(self.convert_horizontal_rule()?))
+            }
 
             OrgSyntaxKind::FootnoteDefinition => Ok(Element::FootnoteDefinition(
                 self.convert_footnote_definition(&node)?,
@@ -403,8 +404,43 @@ impl Converter {
 
     // element.paragraph
     fn convert_paragraph(&mut self, node: &SyntaxNode) -> Result<Paragraph, AstError> {
+        let links = node
+            .children()
+            .filter(|e| {
+                e.kind() == OrgSyntaxKind::Link
+                    && e.first_child_by_kind(&|c| c == OrgSyntaxKind::LinkDescription)
+                        .is_none()
+            })
+            .collect::<Vec<_>>();
+        let link_valid = links.len() == 1;
+
+        let type_valid = node.children_with_tokens().all(|e| {
+            matches!(
+                e.kind(),
+                OrgSyntaxKind::Link | OrgSyntaxKind::AffiliatedKeyword | OrgSyntaxKind::BlankLine
+            )
+        });
+        let is_figure_only = if link_valid && type_valid {
+            let link = links[0].clone();
+            let path = link
+                .first_child_by_kind(&|c| c == OrgSyntaxKind::LinkPath)
+                .expect("has link")
+                .first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::Text)
+                .expect("has text")
+                .as_token()
+                .unwrap()
+                .text()
+                .to_string();
+            let (protocol, path) = Self::parse_pathreg(path);
+            protocol == "file"
+                && [".jpg", ".jpeg", ".png", ".gif", ".svg"]
+                    .iter()
+                    .any(|ext| path.to_lowercase().ends_with(ext))
+        } else {
+            false
+        };
+
         let mut objects = vec![];
-        // println!("convert_paragraph: {:#?}", node.children());
         for child in node.children_with_tokens() {
             let t = self.convert_object(&child);
             match t {
@@ -417,7 +453,80 @@ impl Converter {
                 }
             }
         }
-        Ok(Paragraph { objects: objects })
+
+        let affiliated_keywords = node
+            .children()
+            .filter(|e| e.kind() == OrgSyntaxKind::AffiliatedKeyword)
+            .collect::<Vec<_>>();
+
+        let caption = affiliated_keywords
+            .iter()
+            .filter(|e| {
+                e.first_child_by_kind(&|c| c == OrgSyntaxKind::KeywordKey)
+                    .expect("affililiated keywords must have one KeywordKey")
+                    .text()
+                    .to_string()
+                    .to_uppercase()
+                    == "CAPTION"
+            })
+            .map(|e| {
+                e.first_child_by_kind(&|c| c == OrgSyntaxKind::KeywordValue)
+                    .expect("affililiated keywords must have one KeywordKey")
+                    .text()
+                    .to_string()
+                    .trim()
+                    .to_string()
+            })
+            .collect::<Vec<String>>();
+        let caption = if caption.len() >= 1 {
+            Some(caption.join(" "))
+        } else {
+            None
+        };
+
+        let attrs = affiliated_keywords
+            .iter()
+            .filter(|e| {
+                e.first_child_by_kind(&|c| c == OrgSyntaxKind::KeywordKey)
+                    .expect("affililiated keywords must have one KeywordKey")
+                    .text()
+                    .to_string()
+                    .to_uppercase()
+                    == "ATTR_HTML"
+            })
+            .map(|e| {
+                e.first_child_by_kind(&|c| c == OrgSyntaxKind::KeywordValue)
+                    .expect("affililiated keywords must have one KeywordKey")
+                    .text()
+                    .to_string()
+                    .trim()
+                    .to_string()
+            })
+            .collect::<Vec<String>>();
+
+        let kv = attrs
+            .iter()
+            .flat_map(|e| {
+                e.split(":")
+                    .map(|ee| ee.trim())
+                    .filter(|ee| ee.len() > 0)
+                    .map(|ee| ee.split_once(" "))
+            })
+            .filter(|e| e.is_some())
+            .map(|e| (e.unwrap().0.to_string(), e.unwrap().1.to_string()))
+            .collect::<HashMap<_, _>>();
+
+        if is_figure_only {
+            Ok(Paragraph::FigureOnlyParagraph(FigureOnlyParagraph {
+                caption,
+                alt: kv.get("alt").cloned(),
+                width: kv.get("width").cloned(),
+                height: kv.get("height").cloned(),
+                objects,
+            }))
+        } else {
+            Ok(Paragraph::NormalParagraph(NormalParagraph { objects }))
+        }
     }
 
     // element.drawrer
@@ -495,7 +604,7 @@ impl Converter {
         let idx_rule_row = node
             .children()
             .enumerate()
-            .find(|(i, e)| e.kind() == OrgSyntaxKind::TableRuleRow)
+            .find(|(_i, e)| e.kind() == OrgSyntaxKind::TableRuleRow)
             .map(|(idx, _)| idx)
             .unwrap_or(0);
         for (i, row) in node.children().enumerate() {
@@ -528,7 +637,7 @@ impl Converter {
                                     .value
                                     .into_iter()
                                     .filter(|e| match e {
-                                        Object::Text(t) => true,
+                                        Object::Text(_t) => true,
                                         _ => false,
                                     })
                                     .map(|e| match e {
@@ -759,7 +868,7 @@ impl Converter {
     // object.link
     fn parse_pathreg(s: String) -> (String, String) {
         if s.starts_with("./") {
-            ("file".to_string(), s.replacen("./", "file:", 1))
+            ("file".to_string(), s.replacen("./", "file:./", 1))
         } else if s.starts_with("/") {
             ("file".to_string(), s.replacen("/", "file:/", 1))
         } else if s.starts_with("#") {
@@ -778,7 +887,7 @@ impl Converter {
     fn convert_link(&mut self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
         let (pathreg, description) = match node.kind() {
             OrgSyntaxKind::Link => {
-                let path = node
+                let mut path = node
                     .first_child_by_kind(&|c| c == OrgSyntaxKind::LinkPath)
                     .expect("has link")
                     .first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::Text)
@@ -787,6 +896,13 @@ impl Converter {
                     .unwrap()
                     .text()
                     .to_string();
+
+                if path.starts_with("file:~") {
+                    path = path.replace(
+                        "file:~",
+                        format!("file://{}", env::var("HOME").unwrap()).as_str(),
+                    );
+                }
 
                 let desc_objects = if let Some(desc) =
                     node.first_child_by_kind(&|c| c == OrgSyntaxKind::LinkDescription)
@@ -817,11 +933,19 @@ impl Converter {
             }
             _ => (String::from("unreachable"), vec![]),
         };
+
         let (protocol, path) = Self::parse_pathreg(pathreg);
+
+        let is_image = protocol == "file"
+            && [".jpg", ".jpeg", ".png", ".gif", ".svg"]
+                .iter()
+                .any(|ext| path.to_lowercase().ends_with(ext));
+
         Ok(Some(Object::GeneralLink {
             protocol,
             path,
             description,
+            is_image,
         }))
     }
 
@@ -909,16 +1033,14 @@ impl Converter {
         };
 
         if let Some(definition) = raw_definition {
-            let green_node = GreenNode::new(OrgSyntaxKind::Paragraph.into(), vec![]);
-            let faked_syntax_node = SyntaxNode::new_root(green_node);
-
             let objects = definition
                 .as_node()
                 .unwrap()
                 .children_with_tokens()
                 .map(|e| self.convert_object(&e).unwrap().unwrap())
                 .collect::<Vec<_>>();
-            let element = Element::Paragraph(Paragraph { objects: objects });
+            let element =
+                Element::Paragraph(Paragraph::NormalParagraph(NormalParagraph { objects }));
 
             // definition
             let rids = self.footnote_label_to_rids.get(&label).expect("todo");
@@ -929,8 +1051,6 @@ impl Converter {
                 rids: rids.clone(),
                 nid: *nid,
             };
-
-            // println!("footnotedefinition={:?}", footnote_definition);
             self.footnote_definitions.push(footnote_definition);
         }
 
@@ -1025,7 +1145,7 @@ impl Converter {
 
         match node.kind() {
             OrgSyntaxKind::CenterBlock => {
-                let q = node.first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::BlockBegin);
+                let _q = node.first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::BlockBegin);
                 for e in node
                     .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockContent)
                     .unwrap()
@@ -1053,7 +1173,7 @@ impl Converter {
 
         match node.kind() {
             OrgSyntaxKind::QuoteBlock => {
-                let q = node.first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::BlockBegin);
+                let _q = node.first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::BlockBegin);
                 for e in node
                     .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockContent)
                     .unwrap()
@@ -1459,7 +1579,7 @@ impl Converter {
     }
 
     // element.horizontal_rule
-    fn convert_horizontal_rule(&self, node: &SyntaxNode) -> Result<HorizontalRule, AstError> {
+    fn convert_horizontal_rule(&self) -> Result<HorizontalRule, AstError> {
         Ok(HorizontalRule {})
     }
 

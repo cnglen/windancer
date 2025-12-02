@@ -29,10 +29,10 @@
 //! - footnote
 
 use crate::ast::element::{
-    self, CenterBlock, Comment, CommentBlock, Document, Drawer, Element, ExampleBlock, ExportBlock,
-    FixedWidth, FootnoteDefinition, HeadingSubtree, Item, Keyword, LatexEnvironment, List,
-    ListType, Paragraph, QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableRow,
-    TableRowType, VerseBlock,
+    self, CenterBlock, CommentBlock, Document, Drawer, Element, ExampleBlock, ExportBlock,
+    FigureOnlyParagraph, FixedWidth, FootnoteDefinition, HeadingSubtree, Item, Keyword,
+    LatexEnvironment, List, ListType, Paragraph, QuoteBlock, Section, SpecialBlock, SrcBlock,
+    Table, TableRow, TableRowType, VerseBlock,
 };
 use crate::ast::object::{Object, TableCellType};
 use crate::parser::object::entity::ENTITYNAME_TO_HTML;
@@ -283,7 +283,7 @@ impl HtmlRenderer {
             Element::VerseBlock(verse_block) => self.render_verse_block(verse_block),
 
             Element::List(list) => self.render_list(list),
-            Element::Comment(comment) => self.render_comment(comment),
+            Element::Comment(_) => self.render_comment(),
             Element::FixedWidth(fixed_width) => self.render_fixed_width(fixed_width),
 
             Element::Item(item) => self.render_item(item),
@@ -303,7 +303,6 @@ impl HtmlRenderer {
         }
     }
 
-    // todo: table number/css
     fn render_table(&mut self, table: &Table) -> String {
         let caption = if table.caption.len() > 0 {
             self.table_counter = self.table_counter + 1;
@@ -378,7 +377,7 @@ impl HtmlRenderer {
             .collect()
     }
 
-    fn render_comment(&self, comment: &Comment) -> String {
+    fn render_comment(&self) -> String {
         String::from("")
     }
 
@@ -423,6 +422,7 @@ impl HtmlRenderer {
                 protocol,
                 description,
                 path,
+                is_image,
             } => {
                 let desc = if description.len() == 0 {
                     path
@@ -435,6 +435,12 @@ impl HtmlRenderer {
 
                 if protocol == "fuzzy" {
                     format!(r##"<a href="#{}">{}</a>"##, path, desc)
+                } else if description.len() == 0 && *is_image {
+                    format!(
+                        r##"<img src="{}" alt="{}">"##,
+                        path,
+                        path.split("/").last().expect("todo")
+                    )
                 } else {
                     format!(r##"<a href="{}">{}</a>"##, path, desc)
                 }
@@ -451,17 +457,6 @@ impl HtmlRenderer {
                     TableCellType::Header => format!(r##" <th>{}</th> "##, contents),
                     TableCellType::Data => format!(r##" <td>{}</td> "##, contents),
                 }
-            }
-
-            Object::Link { url, text } => {
-                format!(
-                    r##"<a href="{}">{}</a>"##,
-                    url,
-                    match text {
-                        Some(v) => v,
-                        None => url,
-                    }
-                )
             }
 
             Object::Target(text) => {
@@ -481,7 +476,7 @@ impl HtmlRenderer {
 
             Object::FootnoteReference {
                 label,
-                nid,
+                nid: _,
                 label_rid,
             } => {
                 // superscript:label
@@ -493,15 +488,6 @@ impl HtmlRenderer {
                     label_rid = label_rid,
                     label = label,
                 )
-
-                // //  superscript: nid
-                //                 format!(
-                //                     r##"<sup>
-                //   <a id="fnr.{label}" class="footref" href="#fn.{}" role="doc-backlink">{label}</a>
-                // </sup>
-                // "##,
-                //                     label = nid
-                //                 )
             }
 
             Object::Entity { name } => {
@@ -567,18 +553,63 @@ impl HtmlRenderer {
     }
 
     // <p class=?>?
-    fn render_paragraph(&self, paragraph: &Paragraph) -> String {
-        let content: String = paragraph
-            .objects
-            .iter()
-            .map(|object| self.render_object(object))
-            .collect();
-        format!(
-            r##"<p>{}
+    // image
+    // table
+    fn render_paragraph(&mut self, paragraph: &Paragraph) -> String {
+        match paragraph {
+            Paragraph::NormalParagraph(e) => {
+                let content: String = e
+                    .objects
+                    .iter()
+                    .map(|object| self.render_object(object))
+                    .collect();
+                format!(
+                    r##"<p>{}
 </p>
 "##,
-            content
-        )
+                    content
+                )
+            }
+
+            Paragraph::FigureOnlyParagraph(FigureOnlyParagraph {
+                caption,
+                alt,
+                height,
+                width,
+                objects,
+            }) => {
+                let Object::GeneralLink { ref path, .. } = objects[0] else {
+                    todo!()
+                };
+
+                let mut attrs = vec![];
+                if let Some(h) = height {
+                    attrs.push(format!(r##"height="{h}""##))
+                }
+
+                if let Some(w) = width {
+                    attrs.push(format!(r##"height="{w}""##))
+                }
+
+                if let Some(a) = alt {
+                    attrs.push(format!(r##"alt="{a}""##))
+                }
+
+                self.figure_counter = self.figure_counter + 1;
+
+                format!(
+                    r##"<div class="figure">
+<p> <img src="{}" {}></p>
+<p> <span class="figure-number">Figure {}: </span> {}</p>
+</div>
+"##,
+                    path,
+                    attrs.join(" "),
+                    self.figure_counter,
+                    caption.clone().unwrap_or("".to_string()),
+                )
+            }
+        }
     }
 
     // fixme: link: collect all footnotes into a div
@@ -719,7 +750,7 @@ impl HtmlRenderer {
         )
     }
 
-    fn render_comment_block(&self, block: &CommentBlock) -> String {
+    fn render_comment_block(&self, _block: &CommentBlock) -> String {
         format!(r##""##)
     }
 

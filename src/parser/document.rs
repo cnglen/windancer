@@ -38,12 +38,11 @@ pub(crate) fn document_parser<'a>() -> impl Parser<
                 .repeated()
                 .collect::<Vec<_>>(),
         )
-        .map_with(
+        .map(
             |(
                 (((maybe_blank_lines, maybe_comment), maybe_property_drawer), maybe_section),
                 headings,
-            ),
-             e| {
+            )| {
                 let mut children = vec![];
                 if let Some(blank_lines) = maybe_blank_lines {
                     for blank_line in blank_lines {
@@ -75,20 +74,7 @@ pub(crate) fn document_parser<'a>() -> impl Parser<
                 for c in headings {
                     children.push(c);
                 }
-                // for c in section.iter() {
-                //     children.push(c.green.clone());
-                // }
-
-                // for c in _children.iter() {
-                //     children.push(c.green.clone());
-                //     text.push_str(&c.text);
-                // }
-
-                // let radio_targets = e.state().radio_targets.clone();
-
-                // println!("zeroth section={:#?}", section);
                 let node = GreenNode::new(OrgSyntaxKind::Document.into(), children);
-                // println!("{:#?}", SyntaxNode::new_root(node.clone()));
 
                 NodeOrToken::Node(node)
             },

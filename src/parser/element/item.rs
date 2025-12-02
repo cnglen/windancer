@@ -1,9 +1,8 @@
 //! Item parser
-use crate::parser::syntax::{OrgLanguage, OrgSyntaxKind};
+use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserState, object};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use rowan::SyntaxNode;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 use std::ops::Range;
 

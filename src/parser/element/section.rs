@@ -1,15 +1,9 @@
 //! Section parser
+use crate::parser::ParserState;
 use crate::parser::syntax::OrgSyntaxKind;
-use crate::parser::{ParserResult, ParserState, element, object};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
-use std::ops::Range;
-
-use crate::parser::element::{
-    block, comment, drawer, footnote_definition, horizontal_rule, keyword, latex_environment,
-    paragraph, table,
-};
 
 use crate::parser::element::paragraph::simple_heading_row_parser;
 
@@ -48,7 +42,7 @@ pub(crate) fn section_parser<'a>(
             .at_least(1)
             .collect::<Vec<_>>()
             .labelled("section parse")
-            .map_with(|children, e| {
+            .map(|children| {
                 NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Section.into(), children))
             }),
     )

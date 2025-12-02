@@ -17,11 +17,10 @@ pub(crate) mod section;
 pub(crate) mod table;
 use crate::parser::syntax::OrgSyntaxKind;
 
-use crate::parser::{ParserState, object};
+use crate::parser::ParserState;
 
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use paragraph::paragraph_parser;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 /// FIXME:
@@ -155,7 +154,6 @@ pub(crate) fn get_element_parser<'a>() -> (
                 for c in children {
                     children_.push(c);
                 }
-                let span: SimpleSpan = e.span();
                 e.state().0.level_stack.pop();
                 NodeOrToken::Node(GreenNode::new(
                     OrgSyntaxKind::HeadingSubtree.into(),

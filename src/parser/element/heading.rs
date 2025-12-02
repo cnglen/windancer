@@ -1,5 +1,5 @@
 //! Heading parser, including HeadingRow, HeadingSubtree
-use crate::parser::element::{drawer, element_parser, heading_subtree_parser, planning, section};
+use crate::parser::element::{drawer, planning};
 use crate::parser::object;
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserResult, ParserState, S2};

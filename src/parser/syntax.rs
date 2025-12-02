@@ -207,8 +207,8 @@ pub(crate) type SyntaxToken = rowan::SyntaxToken<OrgLanguage>;
 // NodeOrToken<SyntaxNode<OrgLanguage>, SyntaxToken<OrgLanguage>>
 pub type SyntaxElement = rowan::SyntaxElement<OrgLanguage>;
 
-pub type SyntaxNodeChildren = rowan::SyntaxNodeChildren<OrgLanguage>;
-pub type SyntaxElementChildren = rowan::SyntaxElementChildren<OrgLanguage>;
+// pub type SyntaxNodeChildren = rowan::SyntaxNodeChildren<OrgLanguage>;
+// pub type SyntaxElementChildren = rowan::SyntaxElementChildren<OrgLanguage>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum OrgLanguage {}

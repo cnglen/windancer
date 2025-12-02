@@ -235,7 +235,7 @@ pub(crate) fn affiliated_keyword_parser<'a>() -> impl Parser<
 
     // #+attr_BACKEND: VALUE
     let p3 = just("#+")
-        .then(just("attr_"))
+        .then(object::just_case_insensitive("attr_"))
         .then(backend)
         .then(just(":"))
         .then(object::whitespaces())

@@ -36,6 +36,7 @@ pub enum Object {
         protocol: String, // protocol or type, http/file/#
         path: String,     //
         description: Vec<Object>,
+        is_image: bool,
     },
 
     Superscript(Vec<Object>),

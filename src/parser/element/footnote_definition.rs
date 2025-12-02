@@ -1,8 +1,8 @@
 //! Footnote definition parser
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserState, element, object};
+use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use chumsky::{inspector::RollbackState, text::Char};
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 pub(crate) fn footnote_definition_parser<'a>(

@@ -52,7 +52,7 @@ pub(crate) fn planning_parser<'a>() -> impl Parser<
         .collect::<Vec<_>>()
         .then(object::whitespaces())
         .then(object::newline_or_ending())
-        .map_with(|((s, ws), maybe_nl), e| {
+        .map(|((s, ws), maybe_nl)| {
             let mut children = vec![];
 
             for e in s {

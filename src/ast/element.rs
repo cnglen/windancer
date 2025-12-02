@@ -243,19 +243,51 @@ pub struct TableFormula {
     // pub format: Option<String>, // 格式说明
 }
 
+#[derive(Debug, Clone)]
+pub enum Paragraph {
+    FigureOnlyParagraph(FigureOnlyParagraph),
+    NormalParagraph(NormalParagraph),
+}
+
 #[derive(Clone)]
-pub struct Paragraph {
+pub struct NormalParagraph {
     pub objects: Vec<Object>,
 }
 
-impl fmt::Debug for Paragraph {
+#[derive(Clone)]
+pub struct FigureOnlyParagraph {
+    pub caption: Option<String>,
+    pub alt: Option<String>,
+    pub width: Option<String>,
+    pub height: Option<String>,
+
+    pub objects: Vec<Object>,
+}
+
+impl fmt::Debug for NormalParagraph {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            r##"Section {{
+            r##"Paragraph {{
     objects: {:#?}
 }}"##,
             self.objects
+        )
+    }
+}
+
+impl fmt::Debug for FigureOnlyParagraph {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            r##"Paragraph {{
+    caption = {:#?},
+    alt = {:#?},
+    width = {:#?},
+    height = {:#?},
+    objects: {:#?}
+}}"##,
+            self.caption, self.alt, self.width, self.height, self.objects,
         )
     }
 }
@@ -355,12 +387,6 @@ pub struct AffiliatedKeyword {
     pub key: String,
     pub optvalue: Option<String>,
     pub value: Vec<Object>,
-}
-
-#[derive(Debug, Clone)]
-enum KeywordValue {
-    String(String),
-    Objects(Vec<Object>),
 }
 
 #[derive(Debug, Clone)]

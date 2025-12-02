@@ -15,7 +15,7 @@ pub(crate) fn get_parser_output<'a>(
     > + Clone,
     input: &'a str,
 ) -> String {
-    let mut state = RollbackState(ParserState::default());
+    let state = RollbackState(ParserState::default());
     get_parser_output_with_state(parser, input, state)
 }
 
@@ -59,8 +59,6 @@ pub(crate) fn get_parser_output_with_state<'a>(
 
                 format!("{syntax_tree:#?}")
             }
-
-            _ => String::from(""),
         }
     } else {
         panic!("{}", errors.join("\n"));
@@ -77,7 +75,7 @@ pub(crate) fn get_parsers_output<'a>(
     > + Clone,
     input: &'a str,
 ) -> String {
-    let mut state = RollbackState(ParserState::default());
+    let state = RollbackState(ParserState::default());
     get_parsers_output_with_state(parser, input, state)
 }
 pub(crate) fn get_parsers_output_with_state<'a>(

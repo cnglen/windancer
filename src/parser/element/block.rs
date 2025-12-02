@@ -10,6 +10,7 @@ use rowan::{GreenNode, GreenToken, NodeOrToken};
 type NT = NodeOrToken<GreenNode, GreenToken>;
 type OSK = OrgSyntaxKind;
 
+#[allow(unused)]
 #[derive(Clone, Debug)]
 enum BlockType {
     Verse,
@@ -180,8 +181,8 @@ pub(crate) fn export_block_parser<'a>() -> impl Parser<
         .then(content)
         .then(end_row)
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
-        .map_with(
-            |((((keywords, begin_row), content), end_row), blank_lines), e| {
+        .map(
+            |((((keywords, begin_row), content), end_row), blank_lines)| {
                 let mut children = vec![];
 
                 for keyword in keywords {
@@ -314,8 +315,8 @@ pub(crate) fn src_block_parser<'a>() -> impl Parser<
         .then(content)
         .then(end_row)
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
-        .map_with(
-            |((((keywords, begin_row), content), end_row), blank_lines), e| {
+        .map(
+            |((((keywords, begin_row), content), end_row), blank_lines)| {
                 let mut children = vec![];
 
                 for keyword in keywords {
@@ -445,8 +446,8 @@ fn comment_or_example_block_parser<'a>(
         .then(content)
         .then(end_row)
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
-        .map_with(
-            move |((((keywords, begin_row), content), end_row), blank_lines), _e| {
+        .map(
+            move |((((keywords, begin_row), content), end_row), blank_lines)| {
                 let mut children = vec![];
 
                 for keyword in keywords {
@@ -539,8 +540,8 @@ pub(crate) fn verse_block_parser<'a>() -> impl Parser<
         .then(content)
         .then(end_row)
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
-        .map_with(
-            move |((((keywords, begin_row), content), end_row), blank_lines), _e| {
+        .map(
+            move |((((keywords, begin_row), content), end_row), blank_lines)| {
                 let mut children = vec![];
 
                 for keyword in keywords {
@@ -744,8 +745,8 @@ fn center_or_quote_block_parser<'a>(
         .then(content)
         .then(end_row)
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
-        .map_with(
-            move |((((keywords, begin_row), content), end_row), blank_lines), e| {
+        .map(
+            move |((((keywords, begin_row), content), end_row), blank_lines)| {
                 // reset state
                 let mut children = vec![];
 
@@ -877,7 +878,7 @@ pub(crate) fn special_block_parser<'a>(
                     children.push(NodeOrToken::Token(bl));
                 }
 
-                let block_type = e.state().block_type.last().unwrap();
+                let _block_type = e.state().block_type.last().unwrap();
                 // let kind = match block_type.as_str() {
                 //     "CENTER" => OSK::CenterBlock,
                 //     "QUOTE" => OSK::QuoteBlock,
@@ -895,8 +896,6 @@ mod tests {
     use super::*;
     use crate::parser::common::{get_parser_output, get_parsers_output};
     use crate::parser::element::element_parser;
-    use crate::parser::object;
-    use crate::parser::{ParserState, SyntaxNode};
     use pretty_assertions::assert_eq;
 
     #[test]

@@ -1,21 +1,12 @@
 //! radio link parser
 use crate::parser::ParserState;
 use crate::parser::syntax::{OrgLanguage, OrgSyntaxKind};
-
 use chumsky::input::InputRef;
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::SyntaxNode;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
-
-use chumsky::prelude::*;
 use std::ops::Range;
-use std::sync::Arc;
-
-#[derive(Clone)]
-pub struct DynamicStringParser {
-    strings: Arc<Vec<String>>,
-}
 
 fn try_match_string<'a>(
     stream: &mut InputRef<

@@ -63,12 +63,11 @@ pub(crate) fn node_property_parser<'a>() -> impl Parser<
         .then(value)
         .then(just("\n"))
         .then(blank_lines)
-        .map_with(
+        .map(
             |(
                 (((((((ws0, colon1), name), maybe_plus), colon), ws1), value), newline),
                 blank_lines,
-            ),
-             e| {
+            )| {
                 let mut children = vec![];
 
                 if ws0.len() > 0 {
@@ -159,15 +158,14 @@ pub(crate) fn property_drawer_parser<'a>() -> impl Parser<
         )
         .then(end_row)
         .then(blank_lines)
-        .map_with(
+        .map(
             |(
                 (
                     (((((ws1, properties), ws2), nl1), start_blank_lines), contents),
                     (((ws3, end), ws4), nl2),
                 ),
                 blank_lines,
-            ),
-             e| {
+            )| {
                 let mut children = vec![];
 
                 if ws1.len() > 0 {
