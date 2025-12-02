@@ -541,7 +541,7 @@ pub(crate) fn keyword_parser<'a>(
         p1_part1.clone().then(
             object::newline()
                 .then(end())
-                .map(|(c, _)| Some(String::from(c)))
+                .map(|(c, _)| Some(String::from(c))),
         ),
         p1_part1
             .clone()

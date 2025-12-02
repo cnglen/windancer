@@ -19,8 +19,9 @@ use std::collections::HashMap;
 use crate::ast::element::{
     AffiliatedKeyword, CenterBlock, Comment, CommentBlock, Document, Drawer, Element, ExampleBlock,
     ExportBlock, FixedWidth, FootnoteDefinition, HeadingSubtree, HorizontalRule, Item, Keyword,
-    LatexEnvironment, List, ListType, NodeProperty, Paragraph, PropertyDrawer, QuoteBlock, Section,
-    SpecialBlock, SrcBlock, Table, TableFormula, TableRow, TableRowType, VerseBlock,
+    LatexEnvironment, List, ListType, NodeProperty, Paragraph, Planning, PropertyDrawer,
+    QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableFormula, TableRow, TableRowType,
+    VerseBlock,
 };
 use crate::ast::error::AstError;
 use crate::ast::object::{Object, TableCell, TableCellType};
@@ -139,6 +140,8 @@ impl Converter {
         let mut keyword = None;
         let mut title = None;
         let mut tags = vec![];
+        let mut planning = None;
+        let mut property_drawer = None;
         for child in node.children() {
             match child.kind() {
                 OrgSyntaxKind::Section => match self.convert_section(&child) {
@@ -189,6 +192,20 @@ impl Converter {
                                     }
                                 }
                             }
+                            OrgSyntaxKind::Planning => {
+                                planning = Some(
+                                    self.convert_planning(c.as_node().unwrap())
+                                        .expect("planning"),
+                                );
+                            }
+
+                            OrgSyntaxKind::PropertyDrawer => {
+                                property_drawer = Some(
+                                    self.convert_property_drawer(c.as_node().unwrap())
+                                        .expect("property drawer"),
+                                );
+                            }
+
                             _ => {}
                         }
                     }
@@ -212,6 +229,8 @@ impl Converter {
             priority: priority,
             tags: tags,
             title: title,
+            planning,
+            property_drawer,
             sub_heading_subtrees: subtrees,
         })
     }
@@ -289,6 +308,8 @@ impl Converter {
             OrgSyntaxKind::LatexEnvironment => Ok(Element::LatexEnvironment(
                 self.convert_latex_environment(&node)?,
             )),
+
+            OrgSyntaxKind::Planning => Ok(Element::Planning(self.convert_planning(&node)?)),
 
             _ => Err(AstError::UnknownNodeType {
                 kind: node.kind(),
@@ -451,6 +472,27 @@ impl Converter {
             .collect::<Vec<_>>();
 
         Ok(PropertyDrawer { contents })
+    }
+
+    // element.planning
+    fn convert_planning(&mut self, node: &SyntaxNode) -> Result<Planning, AstError> {
+        let keyword = node
+            .first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::PlanningKeyword)
+            .expect("planning must has one text")
+            .as_token()
+            .unwrap()
+            .text()
+            .to_string();
+
+        let timestamp = node
+            .first_child_by_kind(&|c| c == OrgSyntaxKind::Timestamp)
+            .expect("planning must has one timestamp");
+        let timestamp = self
+            .convert_timestamp(&timestamp)
+            .expect("timestamp")
+            .expect("timestamp");
+
+        Ok(Planning { keyword, timestamp })
     }
 
     // element.table

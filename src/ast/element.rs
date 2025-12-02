@@ -71,6 +71,8 @@ pub struct HeadingSubtree {
     pub title: Option<String>,
     pub tags: Vec<String>,
 
+    pub planning: Option<Planning>,
+    pub property_drawer: Option<PropertyDrawer>,
     pub section: Option<Section>,
     pub sub_heading_subtrees: Vec<HeadingSubtree>,
 }
@@ -86,6 +88,8 @@ impl fmt::Debug for HeadingSubtree {
     is_commented: {:#?},
     title: {:#?},
     tags: {:#?},
+    planning: {:#?},
+    property_drawer: {:#?},
 
     section: {:#?},
     sub_heading_subtrees: {:#?}
@@ -96,6 +100,8 @@ impl fmt::Debug for HeadingSubtree {
             self.is_commented,
             self.title,
             self.tags,
+            self.planning,
+            self.property_drawer,
             self.section,
             self.sub_heading_subtrees
         )
@@ -149,6 +155,7 @@ pub enum Element {
     AffiliatedKeyword(AffiliatedKeyword),
     FixedWidth(FixedWidth),
     NodeProperty(NodeProperty),
+    Planning(Planning),
 
     TableRow(TableRow),
     // BabelCall(BabelCall),
@@ -171,6 +178,12 @@ pub struct PropertyDrawer {
 pub struct NodeProperty {
     pub name: String,
     pub value: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Planning {
+    pub keyword: String,
+    pub timestamp: Object,
 }
 
 #[derive(Clone)]
