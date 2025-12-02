@@ -563,7 +563,8 @@ foo
 "
             ),
             r###"NodeProperty@0..38
-  Text@0..14 ":header-args:R"
+  Colon@0..1 ":"
+  Text@1..14 "header-args:R"
   Colon@14..15 ":"
   Whitespace@15..25 "          "
   Text@25..37 ":session *R*"
@@ -582,7 +583,8 @@ foo
             ),
             r###"NodeProperty@0..42
   Whitespace@0..4 "    "
-  Text@4..18 ":header-args:R"
+  Colon@4..5 ":"
+  Text@5..18 "header-args:R"
   Colon@18..19 ":"
   Whitespace@19..29 "          "
   Text@29..41 ":session *R*"
@@ -601,7 +603,8 @@ foo
             ),
             r###"NodeProperty@0..44
   Whitespace@0..4 "    "
-  Text@4..19 ":header-args+:R"
+  Colon@4..5 ":"
+  Text@5..19 "header-args+:R"
   Plus@19..20 "+"
   Colon@20..21 ":"
   Whitespace@21..31 "          "
@@ -621,7 +624,8 @@ foo
             ),
             r###"NodeProperty@0..21
   Whitespace@0..4 "    "
-  Text@4..18 ":header-args:R"
+  Colon@4..5 ":"
+  Text@5..18 "header-args:R"
   Colon@18..19 ":"
   Whitespace@19..20 " "
   Newline@20..21 "\n"
@@ -638,7 +642,8 @@ foo
 "
             ),
             r###"NodeProperty@0..7
-  Text@0..5 ":name"
+  Colon@0..1 ":"
+  Text@1..5 "name"
   Colon@5..6 ":"
   Newline@6..7 "\n"
 "###
@@ -669,28 +674,32 @@ foo
   Newline@21..22 "\n"
   NodeProperty@22..63
     Whitespace@22..31 "         "
-    Text@31..37 ":Title"
+    Colon@31..32 ":"
+    Text@32..37 "Title"
     Colon@37..38 ":"
     Whitespace@38..43 "     "
     Text@43..62 "Goldberg Variations"
     Newline@62..63 "\n"
   NodeProperty@63..94
     Whitespace@63..72 "         "
-    Text@72..81 ":Composer"
+    Colon@72..73 ":"
+    Text@73..81 "Composer"
     Colon@81..82 ":"
     Whitespace@82..84 "  "
     Text@84..93 "J.S. Bach"
     Newline@93..94 "\n"
   NodeProperty@94..127
     Whitespace@94..103 "         "
-    Text@103..110 ":Artist"
+    Colon@103..104 ":"
+    Text@104..110 "Artist"
     Colon@110..111 ":"
     Whitespace@111..115 "    "
     Text@115..126 "Glenn Gould"
     Newline@126..127 "\n"
   NodeProperty@127..170
     Whitespace@127..136 "         "
-    Text@136..146 ":Publisher"
+    Colon@136..137 ":"
+    Text@137..146 "Publisher"
     Colon@146..147 ":"
     Whitespace@147..148 " "
     Text@148..167 "Deutsche Grammophon"
@@ -699,7 +708,8 @@ foo
     BlankLine@169..170 "\n"
   NodeProperty@170..194
     Whitespace@170..179 "         "
-    Text@179..186 ":NDisks"
+    Colon@179..180 ":"
+    Text@180..186 "NDisks"
     Colon@186..187 ":"
     Whitespace@187..191 "    "
     Text@191..192 "1"
