@@ -1,5 +1,4 @@
 //! Document parser
-use crate::parser::ParserResult;
 use crate::parser::ParserState;
 use crate::parser::syntax::OrgSyntaxKind;
 
@@ -92,14 +91,6 @@ pub(crate) fn document_parser<'a>() -> impl Parser<
                 // println!("{:#?}", SyntaxNode::new_root(node.clone()));
 
                 NodeOrToken::Node(node)
-                // ParserResult {
-                //     green: NodeOrToken::Node(node),
-                //     text: format!("{}", text),
-                //     span: Range {
-                //         start: span.start,
-                //         end: span.end,
-                //     },
-                // }
             },
         );
 

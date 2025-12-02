@@ -1,14 +1,11 @@
 //! AST node definition for element in org-mode
 use crate::ast::object::Object;
-use crate::parser::object;
-use crate::parser::syntax::SyntaxNode;
 use std::collections::HashMap;
 use std::fmt;
 
 // 文档级结构
 #[derive(Clone)]
 pub struct Document {
-    pub(crate) syntax: SyntaxNode,
     pub zeroth_section: Option<Section>,
     pub heading_subtrees: Vec<HeadingSubtree>,
     pub footnote_definitions: Vec<FootnoteDefinition>,
@@ -31,14 +28,12 @@ footnote_definitions: {:#?}
 
 impl Document {
     pub fn new(
-        syntax: SyntaxNode,
         zeroth_section: Option<Section>,
         heading_subtrees: Vec<HeadingSubtree>,
         footnote_definitions: Vec<FootnoteDefinition>,
         k2v: HashMap<String, Vec<Object>>,
     ) -> Self {
         Self {
-            syntax,
             zeroth_section,
             heading_subtrees,
             footnote_definitions,
@@ -61,8 +56,6 @@ impl Document {
 
 #[derive(Clone)]
 pub struct HeadingSubtree {
-    pub(crate) syntax: SyntaxNode,
-
     // heading row info
     pub level: u8,
     pub keyword: Option<String>,
@@ -110,8 +103,6 @@ impl fmt::Debug for HeadingSubtree {
 
 #[derive(Clone)]
 pub struct Section {
-    pub(crate) syntax: SyntaxNode,
-
     pub elements: Vec<Element>,
 }
 impl fmt::Debug for Section {
@@ -164,7 +155,6 @@ pub enum Element {
 
 #[derive(Debug, Clone)]
 pub struct Drawer {
-    pub(crate) syntax: SyntaxNode,
     pub name: String,
     pub contents: Vec<Element>,
 }
@@ -188,7 +178,6 @@ pub struct Planning {
 
 #[derive(Clone)]
 pub struct Table {
-    pub(crate) syntax: SyntaxNode,
     pub name: Option<String>, // 表格名称 (#+NAME:)
     pub caption: Vec<Object>, // 表格标题 (#+CAPTION:)
     // pub attributes: TableAttributes,    // 表格属性
@@ -210,7 +199,6 @@ impl fmt::Debug for Table {
 
 #[derive(Clone)]
 pub struct TableRow {
-    pub(crate) syntax: SyntaxNode,
     pub cells: Vec<Object>,
     pub row_type: TableRowType,
 }
@@ -249,7 +237,6 @@ pub enum TableRowType {
 // 表格公式
 #[derive(Debug, Clone)]
 pub struct TableFormula {
-    pub(crate) syntax: SyntaxNode,
     pub data: String,
     // pub target: String,         // 目标单元格/范围
     // pub formula: String,        // 公式内容
@@ -258,7 +245,6 @@ pub struct TableFormula {
 
 #[derive(Clone)]
 pub struct Paragraph {
-    pub(crate) syntax: SyntaxNode,
     pub objects: Vec<Object>,
 }
 
@@ -276,7 +262,6 @@ impl fmt::Debug for Paragraph {
 
 #[derive(Debug, Clone)]
 pub struct List {
-    pub(crate) syntax: SyntaxNode,
     pub list_type: ListType,
     pub items: Vec<Item>,
 }
@@ -290,7 +275,6 @@ pub enum ListType {
 
 #[derive(Debug, Clone)]
 pub struct Item {
-    pub(crate) syntax: SyntaxNode,
     pub bullet: String,
     pub counter_set: Option<String>,
     pub checkbox: Option<String>,
@@ -300,21 +284,18 @@ pub struct Item {
 
 #[derive(Debug, Clone)]
 pub struct CenterBlock {
-    pub(crate) syntax: SyntaxNode,
     pub parameters: Option<String>,
     pub contents: Vec<Element>,
 }
 
 #[derive(Debug, Clone)]
 pub struct QuoteBlock {
-    pub(crate) syntax: SyntaxNode,
     pub parameters: Option<String>,
     pub contents: Vec<Element>,
 }
 
 #[derive(Debug, Clone)]
 pub struct SpecialBlock {
-    pub(crate) syntax: SyntaxNode,
     pub name: String,
     pub parameters: Option<String>,
     pub contents: Vec<Element>,
@@ -323,35 +304,30 @@ pub struct SpecialBlock {
 // Lesser
 #[derive(Debug, Clone)]
 pub struct ExampleBlock {
-    pub(crate) syntax: SyntaxNode,
     pub data: Option<String>,
     pub contents: Vec<Object>,
 }
 
 #[derive(Debug, Clone)]
 pub struct CommentBlock {
-    pub(crate) syntax: SyntaxNode,
     pub data: Option<String>,
     pub contents: Vec<Object>,
 }
 
 #[derive(Debug, Clone)]
 pub struct VerseBlock {
-    pub(crate) syntax: SyntaxNode,
     pub data: Option<String>,
     pub contents: Vec<Object>,
 }
 
 #[derive(Debug, Clone)]
 pub struct ExportBlock {
-    pub(crate) syntax: SyntaxNode,
     pub data: Option<String>,
     pub contents: Vec<Object>,
 }
 
 #[derive(Debug, Clone)]
 pub struct SrcBlock {
-    pub(crate) syntax: SyntaxNode,
     pub language: String,
     pub data: Option<String>,
     pub contents: Vec<Object>,
@@ -363,24 +339,19 @@ pub struct FootnoteDefinition {
     pub label: String, // the actual id of a footnote definition
     pub rids: Vec<usize>, // all rids of footnote references related to current definiton, used to link back to reference.
     pub contents: Vec<Element>,
-    pub(crate) syntax: SyntaxNode,
 }
 
 #[derive(Debug, Clone)]
-pub struct HorizontalRule {
-    pub(crate) syntax: SyntaxNode,
-}
+pub struct HorizontalRule {}
 
 #[derive(Debug, Clone)]
 pub struct Keyword {
-    pub(crate) syntax: SyntaxNode,
     pub key: String,
     pub value: Vec<Object>,
 }
 
 #[derive(Debug, Clone)]
 pub struct AffiliatedKeyword {
-    pub(crate) syntax: SyntaxNode,
     pub key: String,
     pub optvalue: Option<String>,
     pub value: Vec<Object>,
@@ -394,23 +365,15 @@ enum KeywordValue {
 
 #[derive(Debug, Clone)]
 pub struct LatexEnvironment {
-    pub(crate) syntax: SyntaxNode,
-}
-
-impl LatexEnvironment {
-    pub fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
+    pub(crate) text: String,
 }
 
 #[derive(Clone, Debug)]
 pub struct Comment {
-    pub(crate) syntax: SyntaxNode,
     pub text: String,
 }
 
 #[derive(Clone, Debug)]
 pub struct FixedWidth {
-    pub(crate) syntax: SyntaxNode,
     pub text: String,
 }

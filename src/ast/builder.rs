@@ -119,7 +119,6 @@ impl Converter {
         self.footnote_definitions.sort_by(|a, b| a.nid.cmp(&b.nid));
 
         Ok(Document {
-            syntax: node.clone(),
             heading_subtrees: heading_subtrees,
             zeroth_section: zeroth_section,
             footnote_definitions: self.footnote_definitions.clone(),
@@ -221,7 +220,6 @@ impl Converter {
         }
 
         Ok(HeadingSubtree {
-            syntax: node.clone(),
             section: section,
             level: level,
             is_commented: is_commented,
@@ -244,10 +242,7 @@ impl Converter {
             }
         }
 
-        Ok(Section {
-            syntax: node.clone(),
-            elements: elements,
-        })
+        Ok(Section { elements: elements })
     }
 
     /// Conver SyntaxTree(RedTree) to ast::Element
@@ -422,10 +417,7 @@ impl Converter {
                 }
             }
         }
-        Ok(Paragraph {
-            syntax: node.clone(),
-            objects: objects,
-        })
+        Ok(Paragraph { objects: objects })
     }
 
     // element.drawrer
@@ -456,11 +448,7 @@ impl Converter {
             }
         }
 
-        Ok(Drawer {
-            syntax: node.clone(),
-            name,
-            contents,
-        })
+        Ok(Drawer { name, contents })
     }
 
     // element.property_drawrer
@@ -557,7 +545,6 @@ impl Converter {
             }
         }
         Ok(Table {
-            syntax: node.clone(),
             name,
             caption,
             header,
@@ -583,11 +570,7 @@ impl Converter {
             .map(|e| e.unwrap())
             .collect::<Vec<_>>();
 
-        Ok(TableRow {
-            syntax: node.clone(),
-            cells,
-            row_type,
-        })
+        Ok(TableRow { cells, row_type })
     }
 
     // element: table_row??
@@ -602,10 +585,7 @@ impl Converter {
             .text()
             .to_string();
 
-        Ok(TableFormula {
-            syntax: node.clone(),
-            data,
-        })
+        Ok(TableFormula { data })
     }
 
     // object.table_cell
@@ -938,10 +918,7 @@ impl Converter {
                 .children_with_tokens()
                 .map(|e| self.convert_object(&e).unwrap().unwrap())
                 .collect::<Vec<_>>();
-            let element = Element::Paragraph(Paragraph {
-                objects: objects,
-                syntax: faked_syntax_node.clone(),
-            });
+            let element = Element::Paragraph(Paragraph { objects: objects });
 
             // definition
             let rids = self.footnote_label_to_rids.get(&label).expect("todo");
@@ -949,7 +926,6 @@ impl Converter {
             let footnote_definition = FootnoteDefinition {
                 label: label.clone(),
                 contents: vec![element],
-                syntax: faked_syntax_node,
                 rids: rids.clone(),
                 nid: *nid,
             };
@@ -1065,7 +1041,6 @@ impl Converter {
         }
 
         Ok(CenterBlock {
-            syntax: node.clone(),
             parameters: parameters,
             contents: contents,
         })
@@ -1093,7 +1068,6 @@ impl Converter {
         }
 
         Ok(QuoteBlock {
-            syntax: node.clone(),
             parameters: parameters,
             contents: contents,
         })
@@ -1136,7 +1110,6 @@ impl Converter {
         }
 
         Ok(SpecialBlock {
-            syntax: node.clone(),
             parameters: parameters,
             contents: contents,
             name: name,
@@ -1165,7 +1138,6 @@ impl Converter {
         }
 
         Ok(ExampleBlock {
-            syntax: node.clone(),
             data: data,
             contents: contents,
         })
@@ -1193,7 +1165,6 @@ impl Converter {
         }
 
         Ok(CommentBlock {
-            syntax: node.clone(),
             data: data,
             contents: contents,
         })
@@ -1221,7 +1192,6 @@ impl Converter {
         }
 
         Ok(VerseBlock {
-            syntax: node.clone(),
             data: data,
             contents: contents,
         })
@@ -1260,7 +1230,6 @@ impl Converter {
         }
 
         Ok(SrcBlock {
-            syntax: node.clone(),
             language: language,
             data: data,
             contents: contents,
@@ -1289,7 +1258,6 @@ impl Converter {
         }
 
         Ok(ExportBlock {
-            syntax: node.clone(),
             data: data,
             contents: contents,
         })
@@ -1391,7 +1359,6 @@ impl Converter {
 
         // println!("bullet={:?}, contents={:?}", bullet, contents);
         Ok(Item {
-            syntax: node.clone(),
             bullet,
             counter_set,
             checkbox,
@@ -1429,7 +1396,6 @@ impl Converter {
         let nid = self.footnote_label_to_nid.get(&label).expect("todo");
 
         let footnote_definition = FootnoteDefinition {
-            syntax: node.clone(),
             rids: rids.clone(),
             nid: *nid,
             label,
@@ -1481,7 +1447,6 @@ impl Converter {
     // element.list
     fn convert_list(&mut self, node: &SyntaxNode) -> Result<List, AstError> {
         Ok(List {
-            syntax: node.clone(),
             list_type: self.get_list_type(node),
             items: node
                 .children()
@@ -1495,9 +1460,7 @@ impl Converter {
 
     // element.horizontal_rule
     fn convert_horizontal_rule(&self, node: &SyntaxNode) -> Result<HorizontalRule, AstError> {
-        Ok(HorizontalRule {
-            syntax: node.clone(),
-        })
+        Ok(HorizontalRule {})
     }
 
     // element.comment
@@ -1508,10 +1471,7 @@ impl Converter {
             .map(|e| e.as_token().unwrap().text().to_string())
             .collect::<String>();
 
-        Ok(Comment {
-            syntax: node.clone(),
-            text: text,
-        })
+        Ok(Comment { text: text })
     }
 
     // element.node_property
@@ -1547,10 +1507,7 @@ impl Converter {
             .collect::<Vec<String>>()
             .join("\n");
 
-        Ok(FixedWidth {
-            syntax: node.clone(),
-            text: text,
-        })
+        Ok(FixedWidth { text: text })
     }
 
     // element.keyword
@@ -1576,11 +1533,7 @@ impl Converter {
 
         self.k2v.insert(key.clone(), value.clone());
 
-        Ok(Keyword {
-            syntax: node.clone(),
-            key,
-            value,
-        })
+        Ok(Keyword { key, value })
     }
 
     // element.affiliatedkeyword
@@ -1622,7 +1575,6 @@ impl Converter {
             .collect::<Vec<_>>();
 
         Ok(AffiliatedKeyword {
-            syntax: node.clone(),
             key,
             optvalue,
             value: objects,
@@ -1632,7 +1584,7 @@ impl Converter {
     // element.latex_environment
     fn convert_latex_environment(&self, node: &SyntaxNode) -> Result<LatexEnvironment, AstError> {
         Ok(LatexEnvironment {
-            syntax: node.clone(),
+            text: format!("{}", node.clone()),
         })
     }
 

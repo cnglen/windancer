@@ -225,8 +225,7 @@ impl HtmlRenderer {
                         .iter()
                         .map(|e| element::Element::FootnoteDefinition(e.clone()))
                         .collect::<Vec<_>>();
-                    let syntax = section.syntax.clone();
-                    let section = Section { syntax, elements };
+                    let section = Section { elements };
                     self.render_section(&section)
                 } else {
                     self.render_section(&section)
@@ -839,7 +838,7 @@ impl HtmlRenderer {
         format!(
             r##"{}
 "##,
-            latex_environment.syntax()
+            latex_environment.text
         )
     }
 }
