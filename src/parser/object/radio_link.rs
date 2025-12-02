@@ -159,13 +159,9 @@ pub(crate) fn radio_link_parser<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::common::{
-        get_parser_output, get_parser_output_with_state, get_parsers_output,
-        get_parsers_output_with_state,
-    };
-    use crate::parser::{OrgConfig, OrgParser, object};
+    use crate::parser::common::get_parsers_output_with_state;
+    use crate::parser::object;
     use pretty_assertions::assert_eq;
-    use rowan::GreenToken;
 
     #[test]
     fn test_radio_link() {

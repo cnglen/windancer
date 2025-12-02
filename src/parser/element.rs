@@ -278,6 +278,7 @@ pub(crate) fn get_element_parser<'a>() -> (
     )
 }
 
+#[allow(unused)]
 pub(crate) fn element_parser<'a>() -> impl Parser<
     'a,
     &'a str,
@@ -287,6 +288,7 @@ pub(crate) fn element_parser<'a>() -> impl Parser<
     get_element_parser().0
 }
 
+#[allow(unused)]
 pub(crate) fn elements_parser<'a>() -> impl Parser<
     'a,
     &'a str,
@@ -296,6 +298,7 @@ pub(crate) fn elements_parser<'a>() -> impl Parser<
     element_parser().repeated().at_least(1).collect::<Vec<_>>()
 }
 
+#[allow(unused)]
 pub(crate) fn element_in_paragraph_parser<'a>() -> impl Parser<
     'a,
     &'a str,
@@ -305,6 +308,7 @@ pub(crate) fn element_in_paragraph_parser<'a>() -> impl Parser<
     get_element_parser().1
 }
 
+#[allow(unused)]
 pub(crate) fn element_in_section_parser<'a>() -> impl Parser<
     'a,
     &'a str,
@@ -314,6 +318,7 @@ pub(crate) fn element_in_section_parser<'a>() -> impl Parser<
     get_element_parser().2
 }
 
+#[allow(unused)]
 pub(crate) fn element_in_item_parser<'a>() -> impl Parser<
     'a,
     &'a str,
@@ -323,6 +328,7 @@ pub(crate) fn element_in_item_parser<'a>() -> impl Parser<
     get_element_parser().2
 }
 
+#[allow(unused)]
 pub(crate) fn heading_subtree_parser<'a>() -> impl Parser<
     'a,
     &'a str,
@@ -332,6 +338,7 @@ pub(crate) fn heading_subtree_parser<'a>() -> impl Parser<
     get_element_parser().3
 }
 
+#[allow(unused)]
 pub(crate) fn element_in_drawer_parser<'a>() -> impl Parser<
     'a,
     &'a str,
@@ -341,6 +348,7 @@ pub(crate) fn element_in_drawer_parser<'a>() -> impl Parser<
     get_element_parser().4
 }
 
+#[allow(unused)]
 pub(crate) fn element_in_keyword_parser<'a>() -> impl Parser<
     'a,
     &'a str,

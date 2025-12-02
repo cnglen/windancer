@@ -276,6 +276,7 @@ pub(crate) fn standard_set_object_parser<'a>() -> impl Parser<
     get_object_parser().1
 }
 
+#[allow(unused)]
 pub(crate) fn minimal_set_object_parser<'a>() -> impl Parser<
     'a,
     &'a str,
@@ -285,6 +286,7 @@ pub(crate) fn minimal_set_object_parser<'a>() -> impl Parser<
     get_object_parser().2
 }
 
+#[allow(unused)]
 pub(crate) fn object_in_regular_link_parser<'a>() -> impl Parser<
     'a,
     &'a str,
@@ -848,14 +850,15 @@ L3
     Text@479..486 "foo@bar"
     RightAngleBracket@486..487 ">"
   Text@487..527 ", radio link radio ta ..."
-  Link@527..537
+  Link@527..538
     LeftSquareBracket@527..528 "["
     LinkPath@528..536
       LeftSquareBracket@528..529 "["
       Text@529..535 "target"
       RightSquareBracket@535..536 "]"
     RightSquareBracket@536..537 "]"
-  Text@537..749 "\n\n17 statistics-cooki ..."
+    Newline@537..538 "\n"
+  Text@538..749 "\n17 statistics-cookie ..."
 "##
         );
     }

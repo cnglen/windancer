@@ -515,7 +515,7 @@ mod tests {
 "
             ),
             r###"Root@0..91
-  Link@0..49
+  Link@0..50
     LeftSquareBracket@0..1 "["
     LinkPath@1..22
       LeftSquareBracket@1..2 "["
@@ -526,23 +526,23 @@ mod tests {
       Text@23..47 "The Org project homepage"
       RightSquareBracket@47..48 "]"
     RightSquareBracket@48..49 "]"
-  Text@49..50 "\n"
-  Link@50..72
+    Newline@49..50 "\n"
+  Link@50..73
     LeftSquareBracket@50..51 "["
     LinkPath@51..71
       LeftSquareBracket@51..52 "["
       Text@52..70 "file:orgmanual.org"
       RightSquareBracket@70..71 "]"
     RightSquareBracket@71..72 "]"
-  Text@72..73 "\n"
-  Link@73..90
+    Newline@72..73 "\n"
+  Link@73..91
     LeftSquareBracket@73..74 "["
     LinkPath@74..89
       LeftSquareBracket@74..75 "["
       Text@75..88 "Regular links"
       RightSquareBracket@88..89 "]"
     RightSquareBracket@89..90 "]"
-  Text@90..91 "\n"
+    Newline@90..91 "\n"
 "###
         );
 

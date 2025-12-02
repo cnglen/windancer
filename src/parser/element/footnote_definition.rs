@@ -98,7 +98,6 @@ mod tests {
     use super::*;
     use crate::parser::common::get_parser_output;
     use crate::parser::element;
-    use crate::parser::{ParserState, SyntaxNode};
     use pretty_assertions::assert_eq;
 
     #[test]

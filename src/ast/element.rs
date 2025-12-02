@@ -157,6 +157,7 @@ pub enum Element {
 pub struct Drawer {
     pub name: String,
     pub contents: Vec<Element>,
+    pub affiliated_keywords: Vec<AffiliatedKeyword>,
 }
 
 #[derive(Debug, Clone)]
@@ -244,52 +245,9 @@ pub struct TableFormula {
 }
 
 #[derive(Debug, Clone)]
-pub enum Paragraph {
-    FigureOnlyParagraph(FigureOnlyParagraph),
-    NormalParagraph(NormalParagraph),
-}
-
-#[derive(Clone)]
-pub struct NormalParagraph {
+pub struct Paragraph {
+    pub affiliated_keywords: Vec<AffiliatedKeyword>,
     pub objects: Vec<Object>,
-}
-
-#[derive(Clone)]
-pub struct FigureOnlyParagraph {
-    pub caption: Option<String>,
-    pub alt: Option<String>,
-    pub width: Option<String>,
-    pub height: Option<String>,
-
-    pub objects: Vec<Object>,
-}
-
-impl fmt::Debug for NormalParagraph {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            r##"Paragraph {{
-    objects: {:#?}
-}}"##,
-            self.objects
-        )
-    }
-}
-
-impl fmt::Debug for FigureOnlyParagraph {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            r##"Paragraph {{
-    caption = {:#?},
-    alt = {:#?},
-    width = {:#?},
-    height = {:#?},
-    objects: {:#?}
-}}"##,
-            self.caption, self.alt, self.width, self.height, self.objects,
-        )
-    }
 }
 
 #[derive(Debug, Clone)]

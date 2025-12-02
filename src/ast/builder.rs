@@ -15,14 +15,13 @@
 
 use std::collections::HashMap;
 use std::env;
-use std::path::PathBuf;
 
 use crate::ast::element::{
     AffiliatedKeyword, CenterBlock, Comment, CommentBlock, Document, Drawer, Element, ExampleBlock,
-    ExportBlock, FigureOnlyParagraph, FixedWidth, FootnoteDefinition, HeadingSubtree,
-    HorizontalRule, Item, Keyword, LatexEnvironment, List, ListType, NodeProperty, NormalParagraph,
-    Paragraph, Planning, PropertyDrawer, QuoteBlock, Section, SpecialBlock, SrcBlock, Table,
-    TableFormula, TableRow, TableRowType, VerseBlock,
+    ExportBlock, FixedWidth, FootnoteDefinition, HeadingSubtree, HorizontalRule, Item, Keyword,
+    LatexEnvironment, List, ListType, NodeProperty, Paragraph, Planning, PropertyDrawer,
+    QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableFormula, TableRow, TableRowType,
+    VerseBlock,
 };
 use crate::ast::error::AstError;
 use crate::ast::object::{Object, TableCell, TableCellType};
@@ -307,10 +306,14 @@ impl Converter {
 
             OrgSyntaxKind::Planning => Ok(Element::Planning(self.convert_planning(&node)?)),
 
-            _ => Err(AstError::UnknownNodeType {
-                kind: node.kind(),
-                position: None,
-            }),
+            _ => {
+                println!("node: {node:#?}");
+
+                Err(AstError::UnknownNodeType {
+                    kind: node.kind(),
+                    position: None,
+                })
+            }
         }
     }
 
@@ -404,138 +407,53 @@ impl Converter {
 
     // element.paragraph
     fn convert_paragraph(&mut self, node: &SyntaxNode) -> Result<Paragraph, AstError> {
-        let links = node
-            .children()
-            .filter(|e| {
-                e.kind() == OrgSyntaxKind::Link
-                    && e.first_child_by_kind(&|c| c == OrgSyntaxKind::LinkDescription)
-                        .is_none()
-            })
-            .collect::<Vec<_>>();
-        let link_valid = links.len() == 1;
-
-        let type_valid = node.children_with_tokens().all(|e| {
-            matches!(
-                e.kind(),
-                OrgSyntaxKind::Link | OrgSyntaxKind::AffiliatedKeyword | OrgSyntaxKind::BlankLine
-            )
-        });
-        let is_figure_only = if link_valid && type_valid {
-            let link = links[0].clone();
-            let path = link
-                .first_child_by_kind(&|c| c == OrgSyntaxKind::LinkPath)
-                .expect("has link")
-                .first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::Text)
-                .expect("has text")
-                .as_token()
-                .unwrap()
-                .text()
-                .to_string();
-            let (protocol, path) = Self::parse_pathreg(path);
-            protocol == "file"
-                && [".jpg", ".jpeg", ".png", ".gif", ".svg"]
-                    .iter()
-                    .any(|ext| path.to_lowercase().ends_with(ext))
-        } else {
-            false
-        };
-
         let mut objects = vec![];
+        let mut affiliated_keywords: Vec<AffiliatedKeyword> = vec![];
         for child in node.children_with_tokens() {
-            let t = self.convert_object(&child);
-            match t {
-                Ok(Some(e)) => {
-                    objects.push(e);
+            match child.kind() {
+                OrgSyntaxKind::AffiliatedKeyword => {
+                    if let Ok(affiliated_keyword) =
+                        self.convert_affiliated_keyword(&child.as_node().unwrap())
+                    {
+                        affiliated_keywords.push(affiliated_keyword)
+                    }
                 }
-                Ok(None) => {}
-                Err(e) => {
-                    eprintln!("error={:?}", e);
+                _ => {
+                    let t = self.convert_object(&child);
+                    match t {
+                        Ok(Some(e)) => {
+                            objects.push(e);
+                        }
+                        Ok(None) => {}
+                        Err(e) => {
+                            eprintln!("error={:?}", e);
+                        }
+                    }
                 }
             }
         }
 
-        let affiliated_keywords = node
-            .children()
-            .filter(|e| e.kind() == OrgSyntaxKind::AffiliatedKeyword)
-            .collect::<Vec<_>>();
-
-        let caption = affiliated_keywords
-            .iter()
-            .filter(|e| {
-                e.first_child_by_kind(&|c| c == OrgSyntaxKind::KeywordKey)
-                    .expect("affililiated keywords must have one KeywordKey")
-                    .text()
-                    .to_string()
-                    .to_uppercase()
-                    == "CAPTION"
-            })
-            .map(|e| {
-                e.first_child_by_kind(&|c| c == OrgSyntaxKind::KeywordValue)
-                    .expect("affililiated keywords must have one KeywordKey")
-                    .text()
-                    .to_string()
-                    .trim()
-                    .to_string()
-            })
-            .collect::<Vec<String>>();
-        let caption = if caption.len() >= 1 {
-            Some(caption.join(" "))
-        } else {
-            None
-        };
-
-        let attrs = affiliated_keywords
-            .iter()
-            .filter(|e| {
-                e.first_child_by_kind(&|c| c == OrgSyntaxKind::KeywordKey)
-                    .expect("affililiated keywords must have one KeywordKey")
-                    .text()
-                    .to_string()
-                    .to_uppercase()
-                    == "ATTR_HTML"
-            })
-            .map(|e| {
-                e.first_child_by_kind(&|c| c == OrgSyntaxKind::KeywordValue)
-                    .expect("affililiated keywords must have one KeywordKey")
-                    .text()
-                    .to_string()
-                    .trim()
-                    .to_string()
-            })
-            .collect::<Vec<String>>();
-
-        let kv = attrs
-            .iter()
-            .flat_map(|e| {
-                e.split(":")
-                    .map(|ee| ee.trim())
-                    .filter(|ee| ee.len() > 0)
-                    .map(|ee| ee.split_once(" "))
-            })
-            .filter(|e| e.is_some())
-            .map(|e| (e.unwrap().0.to_string(), e.unwrap().1.to_string()))
-            .collect::<HashMap<_, _>>();
-
-        if is_figure_only {
-            Ok(Paragraph::FigureOnlyParagraph(FigureOnlyParagraph {
-                caption,
-                alt: kv.get("alt").cloned(),
-                width: kv.get("width").cloned(),
-                height: kv.get("height").cloned(),
-                objects,
-            }))
-        } else {
-            Ok(Paragraph::NormalParagraph(NormalParagraph { objects }))
-        }
+        Ok(Paragraph {
+            objects,
+            affiliated_keywords,
+        })
     }
 
     // element.drawrer
     fn convert_drawer(&mut self, node: &SyntaxNode) -> Result<Drawer, AstError> {
         let mut name = String::new();
         let mut contents: Vec<Element> = vec![];
+        let mut affiliated_keywords = vec![];
 
         for child in node.children_with_tokens() {
             match child.kind() {
+                OrgSyntaxKind::AffiliatedKeyword => {
+                    if let Ok(affiliated_keyword) =
+                        self.convert_affiliated_keyword(&child.as_node().unwrap())
+                    {
+                        affiliated_keywords.push(affiliated_keyword);
+                    }
+                }
                 OrgSyntaxKind::DrawerBegin => {
                     name = child
                         .as_node()
@@ -553,11 +471,16 @@ impl Converter {
                         }
                     }
                 }
+
                 _ => {}
             }
         }
 
-        Ok(Drawer { name, contents })
+        Ok(Drawer {
+            name,
+            contents,
+            affiliated_keywords,
+        })
     }
 
     // element.property_drawrer
@@ -1037,10 +960,24 @@ impl Converter {
                 .as_node()
                 .unwrap()
                 .children_with_tokens()
+                .filter(|e| e.kind() != OrgSyntaxKind::AffiliatedKeyword)
                 .map(|e| self.convert_object(&e).unwrap().unwrap())
                 .collect::<Vec<_>>();
-            let element =
-                Element::Paragraph(Paragraph::NormalParagraph(NormalParagraph { objects }));
+            let affiliated_keywords = definition
+                .as_node()
+                .unwrap()
+                .children_with_tokens()
+                .filter(|e| e.kind() == OrgSyntaxKind::AffiliatedKeyword)
+                .map(|e| {
+                    self.convert_affiliated_keyword(&e.as_node().unwrap())
+                        .unwrap()
+                })
+                .collect::<Vec<_>>();
+
+            let element = Element::Paragraph(Paragraph {
+                objects,
+                affiliated_keywords,
+            });
 
             // definition
             let rids = self.footnote_label_to_rids.get(&label).expect("todo");

@@ -87,7 +87,7 @@ pub(crate) fn fixed_width_parser<'a>() -> impl Parser<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::{common::get_parser_output, common::get_parsers_output, element};
+    use crate::parser::common::get_parser_output;
     use pretty_assertions::assert_eq;
 
     #[test]

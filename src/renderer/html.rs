@@ -30,14 +30,15 @@
 
 use crate::ast::element::{
     self, CenterBlock, CommentBlock, Document, Drawer, Element, ExampleBlock, ExportBlock,
-    FigureOnlyParagraph, FixedWidth, FootnoteDefinition, HeadingSubtree, Item, Keyword,
-    LatexEnvironment, List, ListType, Paragraph, QuoteBlock, Section, SpecialBlock, SrcBlock,
-    Table, TableRow, TableRowType, VerseBlock,
+    FixedWidth, FootnoteDefinition, HeadingSubtree, Item, Keyword, LatexEnvironment, List,
+    ListType, Paragraph, QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableRow,
+    TableRowType, VerseBlock,
 };
 use crate::ast::object::{Object, TableCellType};
 use crate::parser::object::entity::ENTITYNAME_TO_HTML;
 use chrono::{DateTime, Local};
 
+use std::collections::HashMap;
 use std::fs;
 use std::ops::Not;
 
@@ -556,59 +557,103 @@ impl HtmlRenderer {
     // image
     // table
     fn render_paragraph(&mut self, paragraph: &Paragraph) -> String {
-        match paragraph {
-            Paragraph::NormalParagraph(e) => {
-                let content: String = e
-                    .objects
+        let caption = paragraph
+            .affiliated_keywords
+            .iter()
+            .filter(|e| e.key.to_uppercase() == "CAPTION")
+            .map(|e| {
+                e.value
                     .iter()
-                    .map(|object| self.render_object(object))
-                    .collect();
-                format!(
-                    r##"<p>{}
-</p>
-"##,
-                    content
-                )
-            }
+                    .map(|ee| self.render_object(ee))
+                    .collect::<Vec<String>>()
+                    .join("")
+            })
+            .collect::<Vec<String>>()
+            .join(" ");
 
-            Paragraph::FigureOnlyParagraph(FigureOnlyParagraph {
-                caption,
-                alt,
-                height,
-                width,
-                objects,
-            }) => {
-                let Object::GeneralLink { ref path, .. } = objects[0] else {
-                    todo!()
-                };
+        let is_figure_only_paragrah = paragraph.objects.iter().count() == 1
+            && paragraph
+                .objects
+                .iter()
+                .filter(|e| match e {
+                    Object::GeneralLink {
+                        protocol,
+                        path,
+                        description,
+                        is_image,
+                    } if protocol == "file"
+                        && description.len() == 0
+                        && [".jpg", ".jpeg", ".png", ".gif", ".svg"]
+                            .iter()
+                            .any(|ext| path.to_lowercase().ends_with(ext)) =>
+                    {
+                        true
+                    }
+                    _ => false,
+                })
+                .count()
+                == 1
+            && paragraph
+                .objects
+                .iter()
+                .all(|e| matches!(e, Object::GeneralLink { .. }));
 
-                let mut attrs = vec![];
-                if let Some(h) = height {
-                    attrs.push(format!(r##"height="{h}""##))
-                }
+        let contents: String = paragraph
+            .objects
+            .iter()
+            .map(|object| self.render_object(object))
+            .collect();
 
-                if let Some(w) = width {
-                    attrs.push(format!(r##"height="{w}""##))
-                }
+        if is_figure_only_paragrah {
+            let attr_html = paragraph
+                .affiliated_keywords
+                .iter()
+                .filter(|e| e.key.to_uppercase() == "ATTR_HTML")
+                .map(|e| {
+                    e.value
+                        .iter()
+                        .map(|ee| self.render_object(ee))
+                        .collect::<Vec<String>>()
+                        .join("")
+                })
+                .collect::<Vec<String>>()
+                .iter()
+                .flat_map(|e| {
+                    e.split(":")
+                        .map(|ee| ee.trim())
+                        .filter(|ee| ee.len() > 0)
+                        .map(|ee| ee.split_once(" "))
+                })
+                .filter(|e| e.is_some())
+                .map(|e| (e.unwrap().0.to_string(), e.unwrap().1.to_string()))
+                .collect::<HashMap<String, String>>()
+                .iter()
+                .map(|(k, v)| format!(r##"{k}="{v}""##))
+                .collect::<Vec<String>>()
+                .join(" ");
 
-                if let Some(a) = alt {
-                    attrs.push(format!(r##"alt="{a}""##))
-                }
+            self.figure_counter = self.figure_counter + 1;
 
-                self.figure_counter = self.figure_counter + 1;
+            let path = match &paragraph.objects[0] {
+                Object::GeneralLink { path, .. } => path,
+                _ => unreachable!(),
+            };
 
-                format!(
-                    r##"<div class="figure">
+            format!(
+                r##"<div class="figure">
 <p> <img src="{}" {}></p>
 <p> <span class="figure-number">Figure {}: </span> {}</p>
 </div>
 "##,
-                    path,
-                    attrs.join(" "),
-                    self.figure_counter,
-                    caption.clone().unwrap_or("".to_string()),
-                )
-            }
+                path, attr_html, self.figure_counter, caption,
+            )
+        } else {
+            format!(
+                r##"<p>{}
+</p>
+"##,
+                contents
+            )
         }
     }
 

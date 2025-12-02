@@ -475,8 +475,8 @@ pub(crate) fn heading_row_parser<'a>()
 mod tests {
     use super::*;
     use crate::parser::common::{get_parser_output, get_parsers_output};
-    use crate::parser::element::element_in_section_parser;
-    use crate::parser::{element::section::section_parser, syntax::OrgLanguage};
+    use crate::parser::element::heading_subtree_parser;
+    use crate::parser::syntax::OrgLanguage;
     use pretty_assertions::assert_eq;
     use rowan::SyntaxNode;
 
