@@ -82,11 +82,11 @@ pub(crate) fn item_parser<'a>(
             ((((indent, bullet), maybe_counter), maybe_checkbox), maybe_tag)
         })
         .then(item_content_parser.clone().or_not())
-        .then(object::blank_line_parser().repeated().at_most(1).collect::<Vec<_>>())
+        .then(object::blank_line_parser().or_not())
         .try_map_with(
             |(
                 (((((indent, bullet), maybe_counter), maybe_checkbox), maybe_tag), maybe_content,),
-                blanklines,
+                maybe_blankline,
             ), _e| {
                 let mut children = vec![];
 
@@ -121,7 +121,7 @@ pub(crate) fn item_parser<'a>(
                     None => {}
                 }
 
-                for blankline in blanklines {
+                if let Some(blankline) = maybe_blankline {
                     children.push(NodeOrToken::Token(blankline));
                 }
 

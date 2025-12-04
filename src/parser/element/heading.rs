@@ -581,7 +581,7 @@ mod tests {
         assert_eq!(matches!(ans, S2::Double(_, _)), true);
 
         match ans {
-            S2::Single(NodeOrToken::Node(g)) => {
+            S2::Single(NodeOrToken::Node(_g)) => {
                 panic!("error");
                 // let syntax_node: SyntaxNode<OrgLanguage> = SyntaxNode::new_root(g);
                 // println!("{:#?}", syntax_node);
@@ -616,7 +616,7 @@ mod tests {
         assert_eq!(matches!(ans, S2::Double(_, _)), true);
 
         match ans {
-            S2::Single(NodeOrToken::Node(g)) => {
+            S2::Single(NodeOrToken::Node(_g)) => {
                 panic!("error");
                 // let syntax_node: SyntaxNode<OrgLanguage> = SyntaxNode::new_root(g);
                 // println!("{:#?}", syntax_node);

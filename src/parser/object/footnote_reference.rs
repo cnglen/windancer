@@ -199,8 +199,7 @@ pub(crate) fn footnote_reference_parser<'a>(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::parser::common::{get_parser_output, get_parsers_output};
+    use crate::parser::common::get_parsers_output;
     use crate::parser::object;
     use pretty_assertions::assert_eq;
 

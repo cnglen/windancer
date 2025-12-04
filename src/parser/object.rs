@@ -116,13 +116,13 @@ pub(crate) fn whitespaces_g1<'a>()
 pub(crate) fn line_parser<'a>()
 -> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
 {
-    let end_of_line = one_of("\r")
-        .repeated()
-        .at_most(1)
-        .collect::<String>()
+    let end_of_line = (just("\r").or_not())
         .then(just("\n").or(end().to(""))) // fixme: to check end()?
         .map(|(s, n)| {
-            let mut ans = String::from(s);
+            let mut ans = String::new();
+            if let Some(cr) = s {
+                ans.push_str(cr);
+            }
             ans.push_str(n);
             ans
         });
@@ -144,16 +144,14 @@ pub(crate) fn line_parser<'a>()
 pub(crate) fn line_parser_allow_blank<'a>()
 -> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
 {
-    let end_of_line = one_of("\r")
-        .repeated()
-        .at_most(1)
-        .collect::<String>()
-        .then(just("\n"))
-        .map(|(s, n)| {
-            let mut ans = String::from(s);
-            ans.push_str(n);
-            ans
-        });
+    let end_of_line = (just("\r").or_not()).then(just("\n")).map(|(s, n)| {
+        let mut ans = String::new();
+        if let Some(cr) = s {
+            ans.push_str(cr);
+        }
+        ans.push_str(n);
+        ans
+    });
 
     any()
         .and_is(end_of_line.not())
@@ -171,9 +169,9 @@ pub(crate) fn blank_line_str_parser<'a>()
 -> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
 {
     whitespaces()
-        .then(one_of("\r").repeated().at_most(1).collect::<String>())
+        .then(just("\r").or_not())
         .then(just("\n"))
-        .map_with(|((ws, cr), nl), e| {
+        .map_with(|((ws, maybe_cr), nl), e| {
             e.state().prev_char = nl.chars().last();
 
             let mut text = String::new();
@@ -182,8 +180,8 @@ pub(crate) fn blank_line_str_parser<'a>()
                 text.push_str(&ws);
             }
 
-            if cr.len() > 0 {
-                text.push_str(&cr);
+            if let Some(cr) = maybe_cr {
+                text.push_str(cr);
             }
 
             text.push_str(nl);
@@ -202,17 +200,17 @@ pub(crate) fn blank_line_parser<'a>()
 -> impl Parser<'a, &'a str, GreenToken, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>
 + Clone {
     whitespaces()
-        .then(one_of("\r").repeated().at_most(1).collect::<String>())
+        .then(just("\r").or_not())
         .then(just("\n"))
-        .map(|((ws, cr), nl)| {
+        .map(|((ws, maybe_cr), nl)| {
             let mut text = String::new();
 
             if ws.len() > 0 {
                 text.push_str(&ws);
             }
 
-            if cr.len() > 0 {
-                text.push_str(&cr);
+            if let Some(cr) = maybe_cr {
+                text.push_str(cr);
             }
 
             text.push_str(nl);
@@ -633,57 +631,6 @@ other objects (2):
         let input = "a row\n";
         let s = line_parser().parse_with_state(input, &mut state);
         println!("{:?}", s);
-    }
-
-    #[test]
-    fn test_line_lookahead() {
-        let mut state = RollbackState(ParserState::default());
-        let input = r##"L1
-L2
-L3
-
-"##;
-
-        // How to debug?
-        // x.repeated().collect().then_ignore(y.rewind().not()) BAD
-        // x.then_ignore(y.rewind().not()).repeated().collect() OK
-        // L1 L2 L3 BL
-        let parser = line_parser()
-            .then_ignore(blank_line_parser().rewind().not())
-            .repeated()
-            .collect::<Vec<String>>()
-            .then(line_parser())
-            .then(blank_line_parser())
-            .then(end())
-            .map(|s| {
-                // println!("s={:?}", s);
-                Some(1u32)
-            });
-
-        // collect()后似乎不能回退!!
-        let parser_bad = line_parser()
-            .repeated()
-            .collect::<Vec<String>>()
-            .then_ignore(blank_line_parser().rewind().not())
-            .then(any().repeated())
-            .then(end())
-            .map(|s| {
-                // println!("s={:?}", s);
-                Some(1u32)
-            });
-
-        // println!("input={:?}", input);
-        // let s = parser.lazy().parse_with_state(input, & mut state);
-        // println!("{:?}, has_output={:?}, has_errors={:?}", s, s.has_output(), s.has_errors());
-
-        println!("input={:?}", input);
-        let s = parser_bad.lazy().parse_with_state(input, &mut state);
-        println!(
-            "{:?}, has_output={:?}, has_errors={:?}",
-            s,
-            s.has_output(),
-            s.has_errors()
-        );
     }
 
     #[test]

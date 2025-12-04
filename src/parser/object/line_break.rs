@@ -21,14 +21,7 @@ pub(crate) fn line_break_parser<'a>() -> impl Parser<
     // PRE\\SPACE
     just(r##"\\"##)
         .then(whitespaces())
-        .then_ignore(
-            one_of("\r")
-                .repeated()
-                .at_most(1)
-                .collect::<String>()
-                .then(just("\n"))
-                .rewind(),
-        )
+        .then_ignore(just("\r").or_not().then(just("\n")).rewind())
         .try_map_with(|(line_break, maybe_ws), e| {
             if let Some('\\') = e.state().prev_char {
                 let error =

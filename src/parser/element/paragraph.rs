@@ -11,9 +11,9 @@ use rowan::{GreenNode, GreenToken, NodeOrToken};
 pub(crate) fn simple_heading_row_parser<'a>()
 -> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
 {
-    let stars = just('*').repeated().at_least(1).collect::<String>();
-    let whitespaces = one_of(" \t").repeated().at_least(1).collect::<String>();
-    let title = none_of("\n\r").repeated().collect::<String>();
+    let stars = just('*').repeated().at_least(1);
+    let whitespaces = one_of(" \t").repeated().at_least(1);
+    let title = none_of("\n\r").repeated();
     stars
         .then(whitespaces)
         .then(title)
@@ -100,9 +100,7 @@ pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::{
-        ParserState, SyntaxNode, common::get_parser_output, common::get_parsers_output, element,
-    };
+    use crate::parser::{common::get_parser_output, common::get_parsers_output, element};
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -159,15 +157,14 @@ abc
         let input = r##"foo
 bar
 "##;
-        let mut state = RollbackState(ParserState::default());
-        let r = paragraph_parser(element::element_in_paragraph_parser())
-            .parse_with_state(input, &mut state);
+        let parser = paragraph_parser(element::element_in_paragraph_parser());
 
-        for e in r.errors() {
-            println!("error={:?}", e);
-        }
-
-        let syntax_tree = SyntaxNode::new_root(r.into_result().unwrap().into_node().expect("xxx"));
+        assert_eq!(
+            get_parser_output(parser, input),
+            r##"Paragraph@0..8
+  Text@0..8 "foo\nbar\n"
+"##
+        );
     }
 
     #[test]

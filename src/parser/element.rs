@@ -134,30 +134,26 @@ pub(crate) fn get_element_parser<'a>() -> (
         list::plain_list_parser(item::item_parser(element_without_tablerow_and_item.clone()));
     heading_subtree.define(
         heading::heading_row_parser()
-            .then(
-                section::section_parser(element_without_tablerow_and_item.clone())
-                    .repeated()
-                    .at_most(1)
-                    .collect::<Vec<_>>(),
-            )
+            .then(section::section_parser(element_without_tablerow_and_item.clone()).or_not())
             .then(heading_subtree.clone().repeated().collect::<Vec<_>>())
-            .map_with(|((headline_title, section), children), e| {
+            .map_with(|((headline_title, section), headings), e| {
                 // println!(
                 //     "headline_title={:?}\nsection={:?}\nchildren={:?}",
                 //     headline_title, section, children
                 // );
-                let mut children_ = vec![];
-                children_.push(headline_title.green);
-                for e in section {
-                    children_.push(e);
+                let mut children = vec![];
+                children.push(headline_title.green);
+
+                if let Some(e) = section {
+                    children.push(e);
                 }
-                for c in children {
-                    children_.push(c);
+                for c in headings {
+                    children.push(c);
                 }
                 e.state().0.level_stack.pop();
                 NodeOrToken::Node(GreenNode::new(
                     OrgSyntaxKind::HeadingSubtree.into(),
-                    children_,
+                    children,
                 ))
             }),
     );

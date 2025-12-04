@@ -150,20 +150,23 @@ impl OrgParser {
     }
 
     pub fn parse(&mut self, input: &str) -> ParserResult {
-        let radio_targets = self.get_radio_targets(input);
-        println!("radio_targets={:?}", radio_targets);
-
+        let radio_target_lines = input
+            .lines()
+            .filter(|s| s.contains("<<<") && s.contains(">>>"))
+            .collect::<String>();
+        let radio_targets = if radio_target_lines.len() > 0 {
+            self.get_radio_targets(radio_target_lines.as_str()) // only use radio target related lines to speed up get the radio targets
+        } else {
+            vec![]
+        };
         let parse_result = document::document_parser().parse_with_state(
             input,
             &mut RollbackState(ParserState::default_with_radio_targets(radio_targets)),
         );
 
-        // let parse_result = document::document_parser()
-        //     .parse_with_state(input, &mut RollbackState(ParserState::default()));
-
         if parse_result.has_errors() {
             for e in parse_result.errors() {
-                println!("error: {:?}", e);
+                eprintln!("error: {:?}", e);
             }
         }
 
