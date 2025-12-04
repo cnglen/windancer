@@ -1,5 +1,5 @@
 // #![allow(warnings)]
-//! cargo run --example main -- --show-output
+//! `cargo run --example main -- --show-output`
 use orgize::{Org, rowan::ast::AstNode};
 use std::fs;
 use windancer::ast::builder::AstBuilder;
@@ -7,7 +7,6 @@ use windancer::parser::{OrgConfig, OrgParser};
 use windancer::renderer::html::{HtmlRenderer, RenderConfig};
 
 fn main() -> std::io::Result<()> {
-    // let f_org = "/home/touch/note/src/git-20250802184314.org";
     let f_org = "tests/test.org";
     let input = &fs::read_to_string(f_org).unwrap_or(String::new());
 
@@ -33,12 +32,7 @@ fn main() -> std::io::Result<()> {
     let ast = ast_builder.build(&syntax_tree).unwrap();
     let _ = fs::write("tests/windancer_ast.json", format!("{:#?}", ast));
 
-    let renderer_config = RenderConfig {
-        include_css: false,
-        class_prefix: String::from(""),
-        highlight_code_blocks: false,
-    };
-
+    let renderer_config = RenderConfig::default();
     let mut html_renderer = HtmlRenderer::new(renderer_config);
     let html = html_renderer.render_document(&ast);
     let _ = fs::write("tests/windancer_output.html", format!("{}", html));

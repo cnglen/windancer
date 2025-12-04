@@ -24,7 +24,6 @@
 //!
 //! Todo
 //! - css: better apperance
-//! - source code highlight
 //! - title: property
 //! - footnote
 
@@ -49,17 +48,25 @@ pub struct HtmlRenderer {
     footnote_defintions: Vec<FootnoteDefinition>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct RenderConfig {
-    pub include_css: bool,
-    pub class_prefix: String,
-    pub highlight_code_blocks: bool,
+    pub f_css: String, // path of css file
+                       // pub class_prefix: String,
+                       // pub highlight_code_blocks: bool,
+}
+
+impl Default for RenderConfig {
+    fn default() -> Self {
+        Self {
+            f_css: String::from("src/renderer/default.css"),
+        }
+    }
 }
 
 impl HtmlRenderer {
     pub fn new(config: RenderConfig) -> Self {
         Self {
-            config,
+            config: config,
             table_counter: 0,
             figure_counter: 0,
             footnote_defintions: vec![],
@@ -67,7 +74,7 @@ impl HtmlRenderer {
     }
 
     pub fn render_document(&mut self, document: &Document) -> String {
-        let css = &fs::read_to_string("src/renderer/default.css").unwrap_or(String::new());
+        let css = &fs::read_to_string(self.config.f_css.clone()).unwrap_or(String::new());
 
         self.footnote_defintions = document.footnote_definitions.clone();
 

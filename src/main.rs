@@ -44,11 +44,7 @@ fn main() {
     let syntax_tree = parser_output.syntax();
     let ast_builder = AstBuilder::new();
     let ast = ast_builder.build(&syntax_tree).unwrap();
-    let renderer_config = RenderConfig {
-        include_css: false,
-        class_prefix: String::from(""),
-        highlight_code_blocks: false,
-    };
+    let renderer_config = RenderConfig::default();
     let mut html_renderer = HtmlRenderer::new(renderer_config);
     let html = html_renderer.render_document(&ast);
     let f_html = match args.f_html {
