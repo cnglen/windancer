@@ -34,5 +34,5 @@ pretty_assertions = "1.4.1"
 debug = true
 
 [[bench]]
-name = "benchmark"
+name = "doc_parse"              # benches/doc_parse.rs
 harness = false

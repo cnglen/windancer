@@ -3,8 +3,14 @@ An [org-mode](https://orgmode.org/) toolkit, including parser, renderer.
 # Usage
 
 ``` bash
+# user
 cargo install windancer
 windancer --help
+
+# developer
+cargo test -r
+cargo run -r  --example main
+cargo bench
 ```
 
 see [status](docs/status.md) for status.
