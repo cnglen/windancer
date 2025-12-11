@@ -72,7 +72,8 @@ fn special_block_begin_row_parser<'a>()
                 &name.to_uppercase(),
             )));
 
-            e.state().block_type.push(name.clone().to_uppercase()); // update state
+            // e.state().block_type.push(name.clone().to_uppercase()); // update state
+            e.state().push_block_type(name.to_uppercase().as_str());
 
             match maybe_ws_parameters {
                 None => {}
@@ -106,11 +107,17 @@ fn special_block_end_row_parser<'a>()
             // Not using validate, use try_map_with to halt when an error is generated instead of continuing
             // Not using map_with, which is not executed in and_is(block_rend_row_parser().not())
 
+            // let block_type_match = e
+            //     .state()
+            //     .block_type
+            //     .last()
+            //     .map_or(false, |c| *c == block_type.to_uppercase());
+
             let block_type_match = e
                 .state()
-                .block_type
-                .last()
+                .last_block_type()
                 .map_or(false, |c| *c == block_type.to_uppercase());
+
             // println!("special_block_end_row_parser@try_map_with@end: type@state={:?}, type@current={}, block_type_match={}", e.state().block_type, block_type.to_uppercase(), block_type_match);
             match block_type_match {
                 false => Err(Rich::custom(e.span(), &format!("block type mismatched",))),
@@ -885,7 +892,8 @@ pub(crate) fn special_block_parser<'a>(
                 //     _ => OSK::SpecialBlock,
                 // };
 
-                e.state().block_type.pop(); // reset state
+                // e.state().block_type.pop(); // reset state
+                e.state().pop_block_type();
                 NodeOrToken::Node(GreenNode::new(OSK::SpecialBlock.into(), children))
             },
         )

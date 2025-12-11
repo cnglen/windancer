@@ -455,6 +455,7 @@ pub(crate) fn heading_row_parser<'a>()
 
                 // 仅当构造HeadingRow成功时，更新state
                 e.state().level_stack.push(level);
+                // e.state().level_stack.push_back(level);
 
                 ParserResult {
                     green: NodeOrToken::Node(GreenNode::new(

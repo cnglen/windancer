@@ -151,6 +151,7 @@ pub(crate) fn get_element_parser<'a>() -> (
                     children.push(c);
                 }
                 e.state().0.level_stack.pop();
+                // e.state().0.level_stack.pop_back();
                 NodeOrToken::Node(GreenNode::new(
                     OrgSyntaxKind::HeadingSubtree.into(),
                     children,

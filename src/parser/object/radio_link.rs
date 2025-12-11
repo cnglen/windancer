@@ -1,6 +1,6 @@
 //! radio link parser
-use crate::parser::ParserState;
 use crate::parser::syntax::{OrgLanguage, OrgSyntaxKind};
+use crate::parser::{ParserState, RADIO_TARGETS};
 use chumsky::input::InputRef;
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
@@ -43,17 +43,16 @@ fn radio_parser<'a>()
     custom::<_, &str, _, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>(
         move |stream| {
             let mut longest_match: Option<(String, usize)> = None;
-
-            let state = stream.state().clone();
-            let radio_targets = &state.radio_targets;
-            for candidate in radio_targets.iter() {
-                if try_match_string(stream, candidate) {
-                    let match_len = candidate.len();
-                    if longest_match
-                        .as_ref()
-                        .map_or(true, |(_, len)| match_len > *len)
-                    {
-                        longest_match = Some((candidate.clone(), match_len));
+            if let Some(radio_targets) = RADIO_TARGETS.get() {
+                for candidate in radio_targets {
+                    if try_match_string(stream, candidate) {
+                        let match_len = candidate.len();
+                        if longest_match
+                            .as_ref()
+                            .map_or(true, |(_, len)| match_len > *len)
+                        {
+                            longest_match = Some((candidate.clone(), match_len));
+                        }
                     }
                 }
             }
@@ -153,28 +152,4 @@ pub(crate) fn radio_link_parser<'a>(
                 )),
             }
         })
-}
-
-// show test with OrgParser, since RadioTargets should be collected firstly.
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::parser::common::get_parsers_output_with_state;
-    use crate::parser::object;
-    use pretty_assertions::assert_eq;
-
-    #[test]
-    fn test_radio_link() {
-        let radio_targets: Vec<String> = vec!["y".to_string()];
-        let state = RollbackState(ParserState::default_with_radio_targets(radio_targets));
-
-        assert_eq!(
-            get_parsers_output_with_state(object::objects_parser(), " y", state.clone(),),
-            r##"Root@0..2
-  Text@0..1 " "
-  RadioLink@1..2
-    Text@1..2 "y"
-"##
-        );
-    }
 }

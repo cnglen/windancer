@@ -4,6 +4,7 @@ use crate::parser::{ParserState, element, object};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
+use std::rc::Rc;
 
 fn latex_environment_begin_row_parser<'a>() -> impl Parser<
     'a,
@@ -25,7 +26,9 @@ fn latex_environment_begin_row_parser<'a>() -> impl Parser<
         .then(object::whitespaces())
         .then(just("\n"))
         .validate(|(((((ws1, begin), name), rcurly), ws2), nl), e, _emitter| {
-            e.state().latex_env_name = name.clone().to_uppercase(); // update state
+            // e.state().latex_env_name = name.clone().to_uppercase(); // update state
+            e.state().latex_env_name = Rc::from(name.clone().to_uppercase()); // update state
+
             (ws1, begin, name, rcurly, ws2, nl)
         })
         .map(|(ws1, begin, name, rcurly, ws2, nl)| {
@@ -204,7 +207,8 @@ pub(crate) fn latex_environment_parser<'a>() -> impl Parser<
                 for bl in blank_lines {
                     children.push(NodeOrToken::Token(bl));
                 }
-                e.state().latex_env_name = String::new(); // reset state
+                // e.state().latex_env_name = String::new(); // reset state
+                e.state().latex_env_name = Rc::from(""); // reset state                
                 NodeOrToken::Node(GreenNode::new(
                     OrgSyntaxKind::LatexEnvironment.into(),
                     children,

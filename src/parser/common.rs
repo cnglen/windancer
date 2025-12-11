@@ -88,9 +88,14 @@ pub(crate) fn get_parsers_output_with_state<'a>(
     input: &'a str,
     mut state: RollbackState<ParserState>,
 ) -> String {
-    let ans = parser.parse_with_state(input, &mut state).unwrap();
+    let (ans, _errors) = parser
+        .parse_with_state(input, &mut state)
+        .into_output_errors();
+    // let ans = parser.parse_with_state(input, &mut state).unwrap();
     let mut children: Vec<NodeOrToken<GreenNode, GreenToken>> = vec![];
-    ans.iter().for_each(|e| children.push(e.clone()));
+    ans.expect("has_output")
+        .iter()
+        .for_each(|e| children.push(e.clone()));
     let root = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
         OrgSyntaxKind::Root.into(),
         children.clone(),

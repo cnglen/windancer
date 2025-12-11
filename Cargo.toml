@@ -24,6 +24,7 @@ rowan = "0.16.1"
 thiserror = "2.0.17"
 clap = { version = "4.5.50", features = ["derive"] }
 chrono = { version = "0.4.42", features = ["serde"] }
+smallvec = "1.15.1"
 
 [dev-dependencies]
 criterion = "0.8.0"
