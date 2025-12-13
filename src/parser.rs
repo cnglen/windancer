@@ -37,14 +37,19 @@ pub enum S2 {
 }
 
 // 上下文状态：当前解析的标题级别
+// - level_stack: heading level
+// - block_type: #+begin_{block_type} #+end_{block_type}
+// - latex_env_name: latex \begin{latex_env_name} \end{latex_env_name}
+// - item_indent:
+// - prev_char: previous char
+// - prev_char_backup: previous char backup manually set for later resume back
 #[derive(Clone, Debug)]
-pub(crate) struct ParserState {
+pub struct ParserState {
     // level_stack: Vec<usize>,
     // block_type: Vec<String>, // begin_type, end_type: 两个解析器需要相同的type数据
-    // latex_env_name: String,  // latex \begin{}
     // item_indent: Vec<usize>,
     // prev_char: Option<char>,             // previous char
-    // prev_char_backup: Vec<Option<char>>, // previous char backup manually set for later resume back
+    // prev_char_backup: Vec<Option<char>>, //
 
     // Rc and samllvec
     prev_char: Option<char>, // previous char
@@ -52,14 +57,12 @@ pub(crate) struct ParserState {
     item_indent: smallvec::SmallVec<[usize; 8]>,
     prev_char_backup: smallvec::SmallVec<[Option<char>; 4]>,
     block_type: Rc<[Rc<str>]>,
-    latex_env_name: Rc<str>,
     // // small vec only
     // prev_char: Option<char>,             // previous char
     // level_stack: smallvec::SmallVec<[usize; 8]>,
     // item_indent: smallvec::SmallVec<[usize; 8]>,
     // prev_char_backup: smallvec::SmallVec<[Option<char>; 4]>,
     // block_type: Vec<String>, // begin_type, end_type: 两个解析器需要相同的type数据
-    // latex_env_name: String,  // latex \begin{}
 }
 
 impl Default for ParserState {
@@ -79,7 +82,7 @@ impl Default for ParserState {
             item_indent: smallvec::smallvec![],
             prev_char_backup: smallvec::smallvec![None],
             block_type: Rc::new([]),
-            latex_env_name: Rc::from(""),
+            // latex_env_name: Rc::from(""),
             // // small vec only
             // prev_char: None,
             // level_stack: smallvec::smallvec![0],

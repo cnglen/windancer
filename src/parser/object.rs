@@ -58,6 +58,28 @@ pub(crate) fn newline<'a>()
     ))
 }
 
+pub const CR: &str = "\r";
+pub const LF: &str = "\n";
+pub const CRLF: &str = "\r\n";
+
+/// 解析行终止符：换行符(LF/CRLF)或输入结束
+pub(crate) fn newline_or_ending_v2<'a>()
+-> impl Parser<'a, &'a str, Option<&'a str>, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>
++ Clone {
+    choice((
+        just(LF).to(Some(LF)),
+        just(CRLF).to(Some(CRLF)),
+        end().to(None),
+    ))
+}
+
+/// 解析行终止符：换行符(LF/CRLF)
+pub(crate) fn newline_v2<'a>()
+-> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+{
+    choice((just(LF), just(CRLF)))
+}
+
 /// 创建一个不区分大小写的关键字解析器
 pub(crate) fn just_case_insensitive<'a>(
     s: &'a str,
@@ -77,6 +99,30 @@ pub(crate) fn just_case_insensitive<'a>(
                 Err(Rich::custom(
                     e.span(),
                     format!("Got '{}', Expected '{}' (case-insensitive)", t, s_lower),
+                ))
+            }
+        })
+}
+
+pub(crate) fn just_case_insensitive_v2<'a>(
+    s: &'a str,
+) -> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+{
+    any()
+        .repeated()
+        .exactly(s.chars().count())
+        .to_slice()
+        .try_map_with(move |t: &str, e| {
+            if t.eq_ignore_ascii_case(s) {
+                Ok(t)
+            } else {
+                Err(Rich::custom(
+                    e.span(),
+                    format!(
+                        "Got '{}', Expected '{}' (case-insensitive)",
+                        t.to_ascii_lowercase(),
+                        s.to_ascii_lowercase()
+                    ),
                 ))
             }
         })
@@ -108,6 +154,19 @@ pub(crate) fn whitespaces_g1<'a>()
 -> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
 {
     one_of(" \t").repeated().at_least(1).collect::<String>()
+}
+
+/// zero or more whitespaces(including space, \tab)
+pub(crate) fn whitespaces_v2<'a>()
+-> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+{
+    one_of(" \t").repeated().to_slice()
+}
+/// one or more whitespaces(including space, \tab)
+pub(crate) fn whitespaces_g1_v2<'a>()
+-> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+{
+    one_of(" \t").repeated().at_least(1).to_slice()
 }
 
 /// 解析一行:
@@ -588,6 +647,20 @@ other objects (2):
 
 23 citation-reference: todo
 "##.to_owned()
+    }
+
+    #[test]
+    fn test_just_ignore_case() {
+        let test_cases = vec![
+            r##"\BEGIN{test}"##,
+            r##"\begin{test}"##,
+            r##"\Begin{test}"##,
+            r##"\BeGiN{test}"##,
+        ];
+        let parser = just_case_insensitive_v2(r"\BeGiN{test}");
+        for case in test_cases {
+            assert!(!parser.parse(case).has_errors());
+        }
     }
 
     #[test]

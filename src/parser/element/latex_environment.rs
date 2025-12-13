@@ -4,168 +4,6 @@ use crate::parser::{ParserState, element, object};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
-use std::rc::Rc;
-
-fn latex_environment_begin_row_parser<'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
-> + Clone {
-    object::whitespaces()
-        .then(object::just_case_insensitive(r##"\BEGIN{"##))
-        .then(
-            // name
-            any()
-                .filter(|c: &char| c.is_ascii_alphanumeric() || *c == '*')
-                .repeated()
-                .at_least(1)
-                .collect::<String>(),
-        )
-        .then(just("}"))
-        .then(object::whitespaces())
-        .then(just("\n"))
-        .validate(|(((((ws1, begin), name), rcurly), ws2), nl), e, _emitter| {
-            // e.state().latex_env_name = name.clone().to_uppercase(); // update state
-            e.state().latex_env_name = Rc::from(name.clone().to_uppercase()); // update state
-
-            (ws1, begin, name, rcurly, ws2, nl)
-        })
-        .map(|(ws1, begin, name, rcurly, ws2, nl)| {
-            let mut children = vec![];
-
-            if ws1.len() > 0 {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    &ws1,
-                )));
-            }
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                &begin[0..begin.len() - 1],
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::LeftCurlyBracket.into(),
-                &begin[begin.len() - 1..],
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                &name.to_lowercase(),
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::RightCurlyBracket.into(),
-                rcurly,
-            )));
-
-            if ws2.len() > 0 {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    &ws2,
-                )));
-            }
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Newline.into(),
-                &nl,
-            )));
-
-            NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::LatexEnvironmentBegin.into(),
-                children,
-            ))
-        })
-}
-
-fn latex_environment_end_row_parser<'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
-> + Clone {
-    object::whitespaces()
-        .then(object::just_case_insensitive(r##"\END{"##))
-        .then(
-            any()
-                .filter(|c: &char| c.is_ascii_alphanumeric() || *c == '*')
-                .repeated()
-                .at_least(1)
-                .collect::<String>(),
-        )
-        // .then(latex_environment_end_row_name_parser())
-        .then(just("}"))
-        .then(object::whitespaces())
-        .then(object::newline_or_ending())
-        .try_map_with(|(((((ws1, end), name), rcurly), ws2), maybe_nl), e| {
-            if e.state().latex_env_name.to_uppercase() != name.to_uppercase() {
-                Err(Rich::custom(
-                    e.span(),
-                    format!(
-                        "latex env name mismatched {} != {}",
-                        e.state().latex_env_name,
-                        name
-                    ),
-                ))
-            } else {
-                Ok((ws1, end, name, rcurly, ws2, maybe_nl))
-            }
-        })
-        .map(|(ws1, end, name, rcurly, ws2, maybe_nl)| {
-            let mut children = vec![];
-
-            if ws1.len() > 0 {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    &ws1,
-                )));
-            }
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                &end[0..end.len() - 1],
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::LeftCurlyBracket.into(),
-                &end[end.len() - 1..],
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                &name.to_lowercase(),
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::RightCurlyBracket.into(),
-                rcurly,
-            )));
-
-            if ws2.len() > 0 {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    &ws2,
-                )));
-            }
-
-            match maybe_nl {
-                Some(nl) => {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Newline.into(),
-                        &nl,
-                    )));
-                }
-                None => {}
-            }
-
-            NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::LatexEnvironmentEnd.into(),
-                children,
-            ))
-        })
-}
 
 pub(crate) fn latex_environment_parser<'a>() -> impl Parser<
     'a,
@@ -177,38 +15,236 @@ pub(crate) fn latex_environment_parser<'a>() -> impl Parser<
         .repeated()
         .collect::<Vec<_>>();
 
-    affiliated_keywords
-        .then(latex_environment_begin_row_parser())
+    let begin_row = object::whitespaces_v2()
+        .then(object::just_case_insensitive_v2(r##"\BEGIN{"##))
         .then(
             any()
-                .and_is(latex_environment_end_row_parser().not())
+                .filter(|c: &char| c.is_ascii_alphanumeric() || *c == '*')
                 .repeated()
-                .collect::<String>(),
+                .at_least(1)
+                .to_slice(),
         )
-        .then(latex_environment_end_row_parser())
-        .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
-        .map_with(
-            |((((keywords, begin_row), content), end_row), blank_lines), e| {
-                let mut children = vec![];
+        .then(just("}"))
+        .then(object::whitespaces_v2())
+        .then(object::newline_v2())
+        .map(
+            |(
+                (
+                    (((begin_whitespaces1, begin_left_curly), begin_name), begin_right_curly),
+                    begin_whitespaces2,
+                ),
+                begin_newline,
+            )| {
+                (
+                    begin_whitespaces1,
+                    begin_left_curly,
+                    begin_name,
+                    begin_right_curly,
+                    begin_whitespaces2,
+                    begin_newline,
+                )
+            },
+        );
 
+    let end_row = one_of(" \t")
+        .repeated()
+        .to_slice()
+        .then(
+            any()
+                .filter(|c: &char| c.is_ascii())
+                .repeated()
+                .exactly(r##"\END{"##.chars().count())
+                .collect::<String>()
+                .try_map_with(move |t, e| {
+                    if t.to_ascii_lowercase() == r##"\END{"##.to_ascii_lowercase() {
+                        Ok(t)
+                    } else {
+                        Err(Rich::custom(
+                            e.span(),
+                            format!(
+                                "Got '{}', Expected '{}' (case-insensitive)",
+                                t, r##"\end{"##
+                            ),
+                        ))
+                    }
+                }),
+        )
+        .then(
+            just("").configure(|cfg, ctx: &(&str, &str, &str, &str, &str, &str)| cfg.seq((*ctx).2)),
+        )
+        .then(just("}"))
+        .then(one_of(" \t").repeated().to_slice())
+        .then(choice((
+            just(object::LF).to(Some(object::LF)),
+            just(object::CRLF).to(Some(object::CRLF)),
+            end().to(None),
+        )))
+        .map(
+            |(
+                (
+                    (((end_whitespaces1, end_left_curly), end_name), end_right_curly),
+                    end_whitespaces2,
+                ),
+                end_maybe_newline,
+            )| {
+                (
+                    end_whitespaces1,
+                    end_left_curly,
+                    end_name,
+                    end_right_curly,
+                    end_whitespaces2,
+                    end_maybe_newline,
+                )
+            },
+        );
+
+    let contents = any().and_is(end_row.not()).repeated().to_slice();
+
+    affiliated_keywords
+        .then(begin_row.then_with_ctx(contents.then(end_row)))
+        .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
+        .map(
+            |(
+                (
+                    keywords,
+                    (
+                        (
+                            begin_whitespaces1,
+                            begin_left_curly,
+                            begin_name,
+                            begin_right_curly,
+                            begin_whitespaces2,
+                            begin_newline,
+                        ),
+                        (
+                            contents,
+                            (
+                                end_whitespaces1,
+                                end_left_curly,
+                                end_name,
+                                end_right_curly,
+                                end_whitespaces2,
+                                end_maybe_newline,
+                            ),
+                        ),
+                    ),
+                ),
+                blank_lines,
+            )| {
+                let mut children = vec![];
                 for keyword in keywords {
                     children.push(keyword);
                 }
 
-                children.push(begin_row);
+                let begin_row_node = {
+                    let mut children = vec![];
+                    if begin_whitespaces1.len() > 0 {
+                        children.push(NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::Whitespace.into(),
+                            begin_whitespaces1,
+                        )));
+                    }
 
-                if content.len() > 0 {
                     children.push(NodeOrToken::Token(GreenToken::new(
                         OrgSyntaxKind::Text.into(),
-                        &content,
+                        &begin_left_curly[0..begin_left_curly.len() - 1],
+                    )));
+
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::LeftCurlyBracket.into(),
+                        &begin_left_curly[begin_left_curly.len() - 1..],
+                    )));
+
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Text.into(),
+                        begin_name,
+                    )));
+
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::RightCurlyBracket.into(),
+                        begin_right_curly,
+                    )));
+
+                    if begin_whitespaces2.len() > 0 {
+                        children.push(NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::Whitespace.into(),
+                            begin_whitespaces2,
+                        )));
+                    }
+
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Newline.into(),
+                        begin_newline,
+                    )));
+
+                    NodeOrToken::Node(GreenNode::new(
+                        OrgSyntaxKind::LatexEnvironmentBegin.into(),
+                        children,
+                    ))
+                };
+                children.push(begin_row_node);
+
+                if contents.len() > 0 {
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Text.into(),
+                        contents,
                     )));
                 }
-                children.push(end_row);
-                for bl in blank_lines {
-                    children.push(NodeOrToken::Token(bl));
+
+                let end_row_node = {
+                    let mut children = vec![];
+                    if end_whitespaces1.len() > 0 {
+                        children.push(NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::Whitespace.into(),
+                            end_whitespaces1,
+                        )));
+                    }
+
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Text.into(),
+                        &end_left_curly[0..end_left_curly.len() - 1],
+                    )));
+
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::LeftCurlyBracket.into(),
+                        &end_left_curly[end_left_curly.len() - 1..],
+                    )));
+
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Text.into(),
+                        end_name,
+                    )));
+
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::RightCurlyBracket.into(),
+                        end_right_curly,
+                    )));
+
+                    if end_whitespaces2.len() > 0 {
+                        children.push(NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::Whitespace.into(),
+                            end_whitespaces2,
+                        )));
+                    }
+
+                    if let Some(newline) = end_maybe_newline {
+                        children.push(NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::Newline.into(),
+                            newline,
+                        )));
+                    }
+
+                    NodeOrToken::Node(GreenNode::new(
+                        OrgSyntaxKind::LatexEnvironmentEnd.into(),
+                        children,
+                    ))
+                };
+                children.push(end_row_node);
+
+                for blankline in blank_lines {
+                    children.push(NodeOrToken::Token(blankline));
                 }
-                // e.state().latex_env_name = String::new(); // reset state
-                e.state().latex_env_name = Rc::from(""); // reset state                
+
                 NodeOrToken::Node(GreenNode::new(
                     OrgSyntaxKind::LatexEnvironment.into(),
                     children,

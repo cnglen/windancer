@@ -11,7 +11,7 @@ fn windancer_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("org-doc-parse");
     group
         .significance_level(0.05)
-        .sample_size(10)
+        .sample_size(100)
         .measurement_time(Duration::from_secs(5));
     group.throughput(Throughput::Bytes(doc_raw.len() as u64));
     group.bench_with_input(BenchmarkId::new("windancer", "test"), &doc_raw, |b, &s| {
