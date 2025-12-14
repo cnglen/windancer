@@ -1,4 +1,5 @@
 //! Object paser (todo)
+extern crate test;
 
 pub mod entity;
 mod footnote_reference;
@@ -63,9 +64,10 @@ pub const LF: &str = "\n";
 pub const CRLF: &str = "\r\n";
 
 /// 解析行终止符：换行符(LF/CRLF)或输入结束
-pub(crate) fn newline_or_ending_v2<'a>()
--> impl Parser<'a, &'a str, Option<&'a str>, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>
-+ Clone {
+pub(crate) fn newline_or_ending_v2<'a, C: 'a>()
+-> impl Parser<'a, &'a str, Option<&'a str>, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>
++ Clone
++ Copy {
     choice((
         just(LF).to(Some(LF)),
         just(CRLF).to(Some(CRLF)),
@@ -104,28 +106,48 @@ pub(crate) fn just_case_insensitive<'a>(
         })
 }
 
-pub(crate) fn just_case_insensitive_v2<'a>(
+use chumsky::input::InputRef;
+
+pub(crate) fn just_case_insensitive_v2<'a, C: 'a>(
     s: &'a str,
-) -> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
-    any()
-        .repeated()
-        .exactly(s.chars().count())
-        .to_slice()
-        .try_map_with(move |t: &str, e| {
-            if t.eq_ignore_ascii_case(s) {
-                Ok(t)
-            } else {
-                Err(Rich::custom(
-                    e.span(),
-                    format!(
-                        "Got '{}', Expected '{}' (case-insensitive)",
-                        t.to_ascii_lowercase(),
-                        s.to_ascii_lowercase()
-                    ),
-                ))
+) -> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>
++ Clone
++ Copy {
+    custom(
+        |inp: &mut InputRef<
+            'a,
+            '_,
+            &'a str,
+            extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
+        >| {
+            let n = s.chars().count();
+            let before = &inp.cursor();
+            let remaining = inp.slice_from(std::ops::RangeFrom { start: before });
+
+            let mut remaining_chars = remaining.chars();
+            let mut bound = 0;
+            for (i, expected_char) in s.char_indices() {
+                match remaining_chars.next() {
+                    Some(r) if r.eq_ignore_ascii_case(&expected_char) => {
+                        bound = i;
+                    }
+                    _ => {
+                        let error = Rich::custom::<&str>(
+                            SimpleSpan::from(inp.span_since(before)),
+                            &format!("mismatched"),
+                        );
+                        return Err(error);
+                    }
+                }
             }
-        })
+            let t = &remaining[..bound + 1];
+            for _ in 0..n {
+                inp.next();
+            }
+
+            Ok(t)
+        },
+    )
 }
 
 #[allow(dead_code)]
@@ -157,24 +179,27 @@ pub(crate) fn whitespaces_g1<'a>()
 }
 
 /// zero or more whitespaces(including space, \tab)
-pub(crate) fn whitespaces_v2<'a>()
--> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
+pub(crate) fn whitespaces_v2<'a, C: 'a>()
+-> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>
++ Clone
++ Copy {
     one_of(" \t").repeated().to_slice()
 }
 /// one or more whitespaces(including space, \tab)
 pub(crate) fn whitespaces_g1_v2<'a>()
--> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
+-> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>
++ Clone
++ Copy {
     one_of(" \t").repeated().at_least(1).to_slice()
 }
 
 /// 解析一行:
 /// Line <- (!EOL .)+
 /// EOL <- '\r'? '\n'
-pub(crate) fn line_parser<'a>()
--> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
+pub(crate) fn line_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>
++ Clone
++ Copy {
     let end_of_line = (just("\r").or_not())
         .then(just("\n").or(end().to(""))) // fixme: to check end()?
         .map(|(s, n)| {
@@ -197,6 +222,20 @@ pub(crate) fn line_parser<'a>()
             ans.push_str(&eol);
             ans
         })
+}
+
+pub(crate) fn line_parser_v2<'a, C: 'a>()
+-> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>
++ Clone
++ Copy {
+    let end_of_line = (just(CR).or_not()).then(just(LF).or(end().to("")));
+
+    any()
+        .and_is(end_of_line.clone().not())
+        .repeated()
+        .at_least(1)
+        .then(end_of_line)
+        .to_slice()
 }
 
 /// 解析一行: 允许空行
@@ -222,6 +261,20 @@ pub(crate) fn line_parser_allow_blank<'a>()
             ans.push_str(&eol);
             ans
         })
+}
+
+pub(crate) fn blank_line_str_parser_v2<'a, C: 'a>()
+-> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>
++ Clone
++ Copy {
+    whitespaces_v2()
+        .then(just(CR).or_not())
+        .then(just(LF))
+        .map_with(|((ws, maybe_cr), nl), e| {
+            e.state().prev_char = nl.chars().last();
+            ((ws, maybe_cr), nl)
+        })
+        .to_slice()
 }
 
 pub(crate) fn blank_line_str_parser<'a>()
@@ -596,6 +649,7 @@ mod tests {
     use crate::parser::{OrgConfig, OrgParser};
     use pretty_assertions::assert_eq;
     use rowan::GreenToken;
+    use test::Bencher;
 
     fn get_objects_string() -> String {
         r##"
@@ -657,10 +711,26 @@ other objects (2):
             r##"\Begin{test}"##,
             r##"\BeGiN{test}"##,
         ];
-        let parser = just_case_insensitive_v2(r"\BeGiN{test}");
+        let parser = just_case_insensitive_v2::<()>(r"\BeGiN{test}");
         for case in test_cases {
             assert!(!parser.parse(case).has_errors());
         }
+    }
+
+    #[bench]
+    fn bench_just_ignore_case(b: &mut Bencher) {
+        let test_cases = vec![
+            r##"\BEGIN{test}"##,
+            r##"\begin{test}"##,
+            r##"\Begin{test}"##,
+            r##"\BeGiN{test}"##,
+        ];
+        let parser = just_case_insensitive_v2::<()>(r"\BeGiN{test}");
+        b.iter(|| {
+            for case in &test_cases {
+                assert!(!parser.parse(case).has_errors());
+            }
+        })
     }
 
     #[test]
@@ -702,7 +772,7 @@ other objects (2):
     fn test_line() {
         let mut state = RollbackState(ParserState::default());
         let input = "a row\n";
-        let s = line_parser().parse_with_state(input, &mut state);
+        let s = line_parser::<()>().parse_with_state(input, &mut state);
         println!("{:?}", s);
     }
 

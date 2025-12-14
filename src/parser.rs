@@ -6,6 +6,7 @@ mod common;
 mod document;
 mod element;
 pub(crate) mod object;
+// pub mod object;
 
 use crate::parser::syntax::OrgSyntaxKind;
 
@@ -16,7 +17,6 @@ use std::ops::Range;
 
 use crate::parser::syntax::SyntaxNode;
 use smallvec;
-use std::rc::Rc;
 
 use std::collections::HashSet;
 use std::sync::OnceLock;
@@ -38,88 +38,26 @@ pub enum S2 {
 
 // 上下文状态：当前解析的标题级别
 // - level_stack: heading level
-// - block_type: #+begin_{block_type} #+end_{block_type}
-// - latex_env_name: latex \begin{latex_env_name} \end{latex_env_name}
 // - item_indent:
 // - prev_char: previous char
 // - prev_char_backup: previous char backup manually set for later resume back
 #[derive(Clone, Debug)]
 pub struct ParserState {
-    // level_stack: Vec<usize>,
-    // block_type: Vec<String>, // begin_type, end_type: 两个解析器需要相同的type数据
-    // item_indent: Vec<usize>,
-    // prev_char: Option<char>,             // previous char
-    // prev_char_backup: Vec<Option<char>>, //
-
-    // Rc and samllvec
     prev_char: Option<char>, // previous char
     level_stack: smallvec::SmallVec<[usize; 8]>,
     item_indent: smallvec::SmallVec<[usize; 8]>,
     prev_char_backup: smallvec::SmallVec<[Option<char>; 4]>,
-    block_type: Rc<[Rc<str>]>,
-    // // small vec only
-    // prev_char: Option<char>,             // previous char
-    // level_stack: smallvec::SmallVec<[usize; 8]>,
-    // item_indent: smallvec::SmallVec<[usize; 8]>,
-    // prev_char_backup: smallvec::SmallVec<[Option<char>; 4]>,
-    // block_type: Vec<String>, // begin_type, end_type: 两个解析器需要相同的type数据
 }
 
 impl Default for ParserState {
     fn default() -> Self {
         Self {
-            // // raw
-            // level_stack: vec![0],
-            // item_indent: vec![],
-            // prev_char_backup: vec![None],
-            // block_type: vec![],
-            // latex_env_name: String::new(),
-            // prev_char: None,
-
             // smallvec and rc
             prev_char: None,
             level_stack: smallvec::smallvec![0],
             item_indent: smallvec::smallvec![],
             prev_char_backup: smallvec::smallvec![None],
-            block_type: Rc::new([]),
-            // latex_env_name: Rc::from(""),
-            // // small vec only
-            // prev_char: None,
-            // level_stack: smallvec::smallvec![0],
-            // item_indent: smallvec::smallvec![],
-            // prev_char_backup: smallvec::smallvec![None],
-            // block_type: vec![],
-            // latex_env_name: String::new(),
         }
-    }
-}
-
-impl ParserState {
-    pub fn push_block_type(&mut self, ty: &str) {
-        let new_vec: Vec<Rc<str>> = self
-            .block_type
-            .iter()
-            .cloned()
-            .chain(std::iter::once(Rc::from(ty)))
-            .collect();
-        self.block_type = Rc::from(new_vec);
-    }
-
-    pub fn pop_block_type(&mut self) -> Option<Rc<str>> {
-        if self.block_type.is_empty() {
-            return None;
-        }
-
-        let split_index = self.block_type.len() - 1;
-        let (rest, last) = self.block_type.split_at(split_index);
-        let popped_element = last[0].clone();
-        let new_block_type: Rc<[Rc<str>]> = Rc::from(rest);
-        self.block_type = new_block_type;
-        Some(popped_element)
-    }
-
-    pub fn last_block_type(&self) -> Option<&str> {
-        self.block_type.last().map(|s| &**s)
     }
 }
 

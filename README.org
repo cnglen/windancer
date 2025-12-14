@@ -10,6 +10,16 @@ An [[https://orgmode.org/][org-mode]] toolkit, including parser, renderer.
 
 see [[file:docs/status.org][status]] for status.
 
+** dev
+
+RUST_MIN_STACK=8388608 cargo bench --profile dev
+
+cargo flamegraph --example main
+cargo flamegraph --example main --dev
+perf report
+
+cargo bench
+
 * Reference
 
 - [[https://orgmode.org/worg/org-syntax.html][org-syntax]]

@@ -1,4 +1,5 @@
 // #![allow(warnings)]
+#![feature(test)]
 
 pub mod ast; // ?
 pub mod parser; // ?

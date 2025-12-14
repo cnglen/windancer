@@ -46,39 +46,14 @@ pub(crate) fn latex_environment_parser<'a>() -> impl Parser<
             },
         );
 
-    let end_row = one_of(" \t")
-        .repeated()
-        .to_slice()
-        .then(
-            any()
-                .filter(|c: &char| c.is_ascii())
-                .repeated()
-                .exactly(r##"\END{"##.chars().count())
-                .collect::<String>()
-                .try_map_with(move |t, e| {
-                    if t.to_ascii_lowercase() == r##"\END{"##.to_ascii_lowercase() {
-                        Ok(t)
-                    } else {
-                        Err(Rich::custom(
-                            e.span(),
-                            format!(
-                                "Got '{}', Expected '{}' (case-insensitive)",
-                                t, r##"\end{"##
-                            ),
-                        ))
-                    }
-                }),
-        )
+    let end_row = object::whitespaces_v2()
+        .then(object::just_case_insensitive_v2(r##"\END{"##))
         .then(
             just("").configure(|cfg, ctx: &(&str, &str, &str, &str, &str, &str)| cfg.seq((*ctx).2)),
         )
         .then(just("}"))
-        .then(one_of(" \t").repeated().to_slice())
-        .then(choice((
-            just(object::LF).to(Some(object::LF)),
-            just(object::CRLF).to(Some(object::CRLF)),
-            end().to(None),
-        )))
+        .then(object::whitespaces_v2())
+        .then(object::newline_or_ending_v2())
         .map(
             |(
                 (

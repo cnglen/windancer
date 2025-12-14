@@ -1,13 +1,10 @@
 //! Block parser
-// todo: reduce code; just::configure from another parser?, don't use state
-// can nested self:? center center
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserState, element, object};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
-type NT = NodeOrToken<GreenNode, GreenToken>;
 type OSK = OrgSyntaxKind;
 
 #[allow(unused)]
@@ -23,14 +20,14 @@ enum BlockType {
 }
 
 fn special_name_parser<'a>()
--> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+-> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
 {
     any()
         .filter(|c: &char| !c.is_whitespace())
         .repeated()
         .at_least(1)
-        .collect::<String>()
-        .try_map_with(|s, e| match s.to_uppercase().as_str() {
+        .to_slice()
+        .try_map_with(|s: &str, e| match s.to_uppercase().as_str() {
             "SRC" | "EXPORT" | "EXAMPLE" | "COMMENT" | "VERSE" | "CENTER" | "QUOTE" => {
                 let error =
                     Rich::custom::<&str>(e.span(), &format!("{s} is not special block name"));
@@ -38,122 +35,7 @@ fn special_name_parser<'a>()
             }
             _ => Ok(s),
         })
-}
-
-fn special_block_begin_row_parser<'a>()
--> impl Parser<'a, &'a str, NT, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
-    object::whitespaces()
-        .then(object::just_case_insensitive("#+begin_"))
-        .then(special_name_parser())
-        .then(
-            object::whitespaces_g1()
-                .then(none_of("\n").repeated().collect::<String>())
-                .or_not(),
-        )
-        .then(just("\n"))
-        .map_with(|((((ws, begin), name), maybe_ws_parameters), nl), e| {
-            let mut children = vec![];
-
-            if ws.len() > 0 {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OSK::Whitespace.into(),
-                    &ws,
-                )));
-            }
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OSK::Text.into(),
-                &begin,
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OSK::Text.into(),
-                &name.to_uppercase(),
-            )));
-
-            // e.state().block_type.push(name.clone().to_uppercase()); // update state
-            e.state().push_block_type(name.to_uppercase().as_str());
-
-            match maybe_ws_parameters {
-                None => {}
-                Some((ws, p)) => {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OSK::Whitespace.into(),
-                        &ws,
-                    )));
-                    children.push(NodeOrToken::Token(GreenToken::new(OSK::Text.into(), &p)));
-                }
-            }
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OSK::Newline.into(),
-                &nl,
-            )));
-
-            NodeOrToken::Node(GreenNode::new(OSK::BlockBegin.into(), children))
-        })
-}
-
-fn special_block_end_row_parser<'a>()
--> impl Parser<'a, &'a str, NT, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
-    object::whitespaces()
-        .then(object::just_case_insensitive("#+END_"))
-        .then(special_name_parser())
-        .then(object::whitespaces())
-        .then(object::newline_or_ending())
-        .try_map_with(|((((ws1, end), block_type), ws2), nl), e| {
-            // Not using validate, use try_map_with to halt when an error is generated instead of continuing
-            // Not using map_with, which is not executed in and_is(block_rend_row_parser().not())
-
-            // let block_type_match = e
-            //     .state()
-            //     .block_type
-            //     .last()
-            //     .map_or(false, |c| *c == block_type.to_uppercase());
-
-            let block_type_match = e
-                .state()
-                .last_block_type()
-                .map_or(false, |c| *c == block_type.to_uppercase());
-
-            // println!("special_block_end_row_parser@try_map_with@end: type@state={:?}, type@current={}, block_type_match={}", e.state().block_type, block_type.to_uppercase(), block_type_match);
-            match block_type_match {
-                false => Err(Rich::custom(e.span(), &format!("block type mismatched",))),
-                true => Ok((ws1, end, block_type, ws2, nl)),
-            }
-        })
-        .map(|(ws1, end, btype, ws2, nl)| {
-            let mut children = vec![];
-            if ws1.len() > 0 {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OSK::Whitespace.into(),
-                    &ws1,
-                )));
-            }
-            children.push(NodeOrToken::Token(GreenToken::new(OSK::Text.into(), &end)));
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OSK::Text.into(),
-                &btype.to_uppercase(),
-            )));
-            if ws2.len() > 0 {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OSK::Whitespace.into(),
-                    &ws2,
-                )));
-            }
-            match nl {
-                Some(_nl) => {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OSK::Newline.into(),
-                        &_nl,
-                    )));
-                }
-                None => {}
-            }
-            NodeOrToken::Node(GreenNode::new(OSK::BlockEnd.into(), children))
-        })
+        .to_slice()
 }
 
 /// export block
@@ -831,69 +713,180 @@ pub(crate) fn special_block_parser<'a>(
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
-    > + Clone,
+    > + Clone
+    + 'a,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
-    // println!("greater_block parser ...");
-
-    let content_inner = object::line_parser()
-        .or(object::blank_line_str_parser())
-        .and_is(special_block_end_row_parser().not())
-        .repeated()
-        .to_slice();
-
-    let content = element_parser
-        .repeated()
-        .collect::<Vec<_>>()
-        .nested_in(content_inner)
-        .map(|s| {
-            let mut children = vec![];
-            for e in s {
-                children.push(e);
-            }
-            NodeOrToken::Node(GreenNode::new(OSK::BlockContent.into(), children))
-        });
-
     let affiliated_keywords = element::keyword::affiliated_keyword_parser()
         .repeated()
         .collect::<Vec<_>>();
 
+    let begin_row = object::whitespaces_v2()
+        .then(object::just_case_insensitive_v2("#+begin_"))
+        .then(special_name_parser())
+        .then(
+            object::whitespaces_g1_v2()
+                .then(none_of("\n").repeated().to_slice())
+                .or_not(),
+        )
+        .then(object::newline_v2())
+        .map(
+            |((((begin_whitespaces1, begin), begin_name), maybe_ws_parameters), begin_newline)| {
+                (
+                    begin_whitespaces1,
+                    begin,
+                    begin_name,
+                    maybe_ws_parameters,
+                    begin_newline,
+                )
+            },
+        );
+
+    let end_row = object::whitespaces_v2()
+        .then(object::just_case_insensitive_v2("#+end_"))
+        .then(just("").configure(
+            |cfg, ctx: &(&str, &str, &str, Option<(&str, &str)>, &str)| cfg.seq((*ctx).2),
+        ))
+        .then(object::whitespaces_v2())
+        .then(object::newline_or_ending_v2())
+        .map(
+            |((((end_whitespaces1, end_), end_name), end_whitespaces2), end_maybe_newline)| {
+                (
+                    end_whitespaces1,
+                    end_,
+                    end_name,
+                    end_whitespaces2,
+                    end_maybe_newline,
+                )
+            },
+        );
+
+    let content_inner = object::line_parser_v2()
+        .or(object::blank_line_str_parser_v2())
+        .and_is(end_row.not())
+        .repeated()
+        .to_slice();
+
     affiliated_keywords
-        .then(special_block_begin_row_parser())
-        // .map(|s|{println!("greater_block@s1={s:?}"); s})
-        .then(content)
-        // .map(|s|{println!("greater_block@s2={s:?}"); s})
-        .then(special_block_end_row_parser())
-        // .map(|s|{println!("greater_block@s3={s:?}"); s})
+        .then(
+            begin_row // element_parser can't be used here since element_parser's context is ()!!! move to the final map()
+                .then_with_ctx(content_inner.then(end_row)),
+        )
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
         .map_with(
-            |((((keywords, begin_row), content), end_row), blank_lines), e| {
-                // reset state
-                // println!("greater_block@map_with: content={:?}", content);
+            move |(
+                (
+                    keywords,
+                    (
+                        (begin_whitespaces1, begin, begin_name, maybe_ws_parameters, begin_newline),
+                        (
+                            contents,
+                            (end_whitespaces1, end_, end_name, end_whitespaces2, end_maybe_newline),
+                        ),
+                    ),
+                ),
+                blanklines,
+            ),
+                  e| {
                 let mut children = vec![];
                 for keyword in keywords {
                     children.push(keyword);
                 }
-                children.push(begin_row);
-                children.push(content);
-                children.push(end_row);
-                for bl in blank_lines {
-                    children.push(NodeOrToken::Token(bl));
+
+                let begin_node = {
+                    let mut children = vec![];
+                    if begin_whitespaces1.len() > 0 {
+                        children.push(NodeOrToken::Token(GreenToken::new(
+                            OSK::Whitespace.into(),
+                            begin_whitespaces1,
+                        )));
+                    }
+                    children.push(NodeOrToken::Token(GreenToken::new(OSK::Text.into(), begin)));
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OSK::Text.into(),
+                        &begin_name.to_uppercase(),
+                    )));
+
+                    if let Some((ws, parameters)) = maybe_ws_parameters {
+                        if ws.len() > 0 {
+                            children.push(NodeOrToken::Token(GreenToken::new(
+                                OSK::Whitespace.into(),
+                                &ws,
+                            )));
+                        }
+
+                        children.push(NodeOrToken::Token(GreenToken::new(
+                            OSK::Text.into(),
+                            parameters,
+                        )));
+                    }
+
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OSK::Newline.into(),
+                        begin_newline,
+                    )));
+
+                    NodeOrToken::Node(GreenNode::new(OSK::BlockBegin.into(), children))
+                };
+                children.push(begin_node);
+
+                // element_parser is here to avoid context error
+                let mut state = e.state();
+                let content_node = element_parser
+                    .clone()
+                    .repeated()
+                    .collect::<Vec<_>>()
+                    .map(|s| {
+                        NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+                            OSK::BlockContent.into(),
+                            s,
+                        ))
+                    })
+                    .parse_with_state(contents, &mut state)
+                    .into_output()
+                    .unwrap();
+                children.push(content_node);
+
+                let end_node = {
+                    let mut children = vec![];
+                    if end_whitespaces1.len() > 0 {
+                        children.push(NodeOrToken::Token(GreenToken::new(
+                            OSK::Whitespace.into(),
+                            end_whitespaces1,
+                        )));
+                    }
+
+                    children.push(NodeOrToken::Token(GreenToken::new(OSK::Text.into(), &end_)));
+
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OSK::Text.into(),
+                        &end_name.to_uppercase(),
+                    )));
+
+                    if end_whitespaces2.len() > 0 {
+                        children.push(NodeOrToken::Token(GreenToken::new(
+                            OSK::Whitespace.into(),
+                            end_whitespaces2,
+                        )));
+                    }
+
+                    if let Some(newline) = end_maybe_newline {
+                        children.push(NodeOrToken::Token(GreenToken::new(
+                            OSK::Newline.into(),
+                            &newline,
+                        )));
+                    }
+                    NodeOrToken::Node(GreenNode::new(OSK::BlockEnd.into(), children))
+                };
+                children.push(end_node);
+                for blankline in blanklines {
+                    children.push(NodeOrToken::Token(blankline));
                 }
 
-                let _block_type = e.state().block_type.last().unwrap();
-                // let kind = match block_type.as_str() {
-                //     "CENTER" => OSK::CenterBlock,
-                //     "QUOTE" => OSK::QuoteBlock,
-                //     _ => OSK::SpecialBlock,
-                // };
-
-                // e.state().block_type.pop(); // reset state
-                e.state().pop_block_type();
                 NodeOrToken::Node(GreenNode::new(OSK::SpecialBlock.into(), children))
             },
         )

@@ -34,6 +34,10 @@ pretty_assertions = "1.4.1"
 [profile.release]
 debug = true
 
+[profile.bench]
+debug = true
+
 [[bench]]
-name = "doc_parse"              # benches/doc_parse.rs
+name = "doc_parse"              # filename: benches/doc_parse.rs
 harness = false
+

@@ -1,4 +1,5 @@
 //! org -> html
+#![feature(test)]
 #![allow(warnings)]
 use clap::Parser;
 
