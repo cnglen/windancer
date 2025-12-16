@@ -8,20 +8,20 @@ use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 // plain text Parser
-pub(crate) fn plain_text_parser<'a>(
+pub(crate) fn plain_text_parser<'a, C: 'a>(
     non_plain_text_parsers: impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
-    any::<_, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>()
+    any::<_, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>()
         .and_is(non_plain_text_parsers.not())
         // we MUST update state here: if negation lookahead successes，update state to let the object_parser work
         // input: fox_bar

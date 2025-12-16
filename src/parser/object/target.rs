@@ -7,11 +7,11 @@ use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 /// target parser: <<TARGET>>
-pub(crate) fn target_parser<'a>() -> impl Parser<
+pub(crate) fn target_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let target_onechar = none_of("<>\n \t").map(|c| format!("{c}"));
     let target_g2char = none_of("<>\n \t")
@@ -29,7 +29,7 @@ pub(crate) fn target_parser<'a>() -> impl Parser<
 
     let target = choice((target_g2char, target_onechar)); // target_g2char > target_onechar
 
-    just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>("<<")
+    just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("<<")
         .then(target)
         .then(just(">>"))
         .map_with(|((lbracket2, target), rbracket2), e| {
@@ -69,7 +69,7 @@ mod tests {
     #[test]
     fn test_target_01() {
         assert_eq!(
-            get_parser_output(target_parser(), "<<target>>"),
+            get_parser_output(target_parser::<()>(), "<<target>>"),
             r##"Target@0..10
   LeftAngleBracket2@0..2 "<<"
   Text@2..8 "target"
@@ -81,25 +81,25 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_target_02() {
-        get_parser_output(target_parser(), "<<tar\nget>>");
+        get_parser_output(target_parser::<()>(), "<<tar\nget>>");
     }
 
     #[test]
     #[should_panic]
     fn test_target_03() {
-        get_parser_output(target_parser(), "<< target>>");
+        get_parser_output(target_parser::<()>(), "<< target>>");
     }
 
     #[test]
     #[should_panic]
     fn test_target_04() {
-        get_parser_output(target_parser(), "<<target >>");
+        get_parser_output(target_parser::<()>(), "<<target >>");
     }
 
     #[test]
     fn test_target_05() {
         assert_eq!(
-            get_parser_output(target_parser(), "<<t>>"),
+            get_parser_output(target_parser::<()>(), "<<t>>"),
             r##"Target@0..5
   LeftAngleBracket2@0..2 "<<"
   Text@2..3 "t"

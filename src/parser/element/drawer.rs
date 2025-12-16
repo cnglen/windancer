@@ -8,10 +8,10 @@ use std::ops::Range;
 
 use crate::parser::object::just_case_insensitive;
 
-fn name_parser<'a>()
--> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+fn name_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
 {
-    custom::<_, &str, _, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>(|inp| {
+    custom::<_, &str, _, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>(|inp| {
         let remaining = inp.slice_from(std::ops::RangeFrom {
             start: &inp.cursor(),
         });
@@ -45,11 +45,11 @@ fn name_parser<'a>()
     })
 }
 
-pub(crate) fn node_property_parser<'a>() -> impl Parser<
+pub(crate) fn node_property_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let name = name_parser();
     let value = none_of("\r\n").repeated().collect::<String>();
@@ -130,11 +130,11 @@ pub(crate) fn node_property_parser<'a>() -> impl Parser<
         )
 }
 
-pub(crate) fn property_drawer_parser<'a>() -> impl Parser<
+pub(crate) fn property_drawer_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let begin_row = object::whitespaces()
         .then(just_case_insensitive(":properties:"))
@@ -236,18 +236,18 @@ pub(crate) fn property_drawer_parser<'a>() -> impl Parser<
         )
 }
 
-pub(crate) fn drawer_parser<'a>(
+pub(crate) fn drawer_parser<'a, C: 'a>(
     element_parser: impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let affiliated_keywords = element::keyword::affiliated_keyword_parser()
         .repeated()
@@ -410,7 +410,7 @@ mod tests {
     fn test_drawer_01() {
         assert_eq!(
             get_parser_output(
-                drawer_parser(element::element_in_drawer_parser()),
+                drawer_parser(element::element_in_drawer_parser::<()>()),
                 r##":a:
 contents :end:
 :end:
@@ -436,7 +436,7 @@ contents :end:
     #[should_panic]
     fn test_drawer_02() {
         get_parser_output(
-            drawer_parser(element::element_in_drawer_parser()),
+            drawer_parser(element::element_in_drawer_parser::<()>()),
             r##":a:
 :b:
 b
@@ -450,7 +450,7 @@ b
     fn test_drawer_03() {
         assert_eq!(
             get_parser_output(
-                drawer_parser(element::element_in_drawer_parser()),
+                drawer_parser(element::element_in_drawer_parser::<()>()),
                 r##":a:
 #+BEGIN_SRC python
 print("hello");
@@ -489,7 +489,7 @@ print("hello");
     fn test_drawer_04() {
         assert_eq!(
             get_parser_output(
-                drawer_parser(element::element_in_drawer_parser()),
+                drawer_parser(element::element_in_drawer_parser::<()>()),
                 r##"#+caption: affiliated keywords in drawer
 :a:
 foo
@@ -525,7 +525,7 @@ foo
     fn test_drawer_05() {
         assert_eq!(
             get_parser_output(
-                drawer_parser(element::element_in_drawer_parser()),
+                drawer_parser(element::element_in_drawer_parser::<()>()),
                 r##":properties:
 :add: asd
 
@@ -556,7 +556,7 @@ foo
     fn test_node_property_01() {
         assert_eq!(
             get_parser_output(
-                node_property_parser(),
+                node_property_parser::<()>(),
                 r":header-args:R:          :session *R*
 "
             ),
@@ -575,7 +575,7 @@ foo
     fn test_node_property_02() {
         assert_eq!(
             get_parser_output(
-                node_property_parser(),
+                node_property_parser::<()>(),
                 r"    :header-args:R:          :session *R*
 "
             ),
@@ -595,7 +595,7 @@ foo
     fn test_node_property_03() {
         assert_eq!(
             get_parser_output(
-                node_property_parser(),
+                node_property_parser::<()>(),
                 r"    :header-args+:R+:          :session *R*
 "
             ),
@@ -616,7 +616,7 @@ foo
     fn test_node_property_04() {
         assert_eq!(
             get_parser_output(
-                node_property_parser(),
+                node_property_parser::<()>(),
                 r"    :header-args:R: 
 "
             ),
@@ -635,7 +635,7 @@ foo
     fn test_node_property_05() {
         assert_eq!(
             get_parser_output(
-                node_property_parser(),
+                node_property_parser::<()>(),
                 r":name:
 "
             ),
@@ -652,7 +652,7 @@ foo
     fn test_property_drawer_01() {
         assert_eq!(
             get_parser_output(
-                property_drawer_parser(),
+                property_drawer_parser::<()>(),
                 r"         :PROPERTIES:
          :Title:     Goldberg Variations
          :Composer:  J.S. Bach

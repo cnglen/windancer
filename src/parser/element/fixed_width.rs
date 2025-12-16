@@ -6,11 +6,11 @@ use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
-pub(crate) fn fixed_width_parser<'a>() -> impl Parser<
+pub(crate) fn fixed_width_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let affiliated_keywords = element::keyword::affiliated_keyword_parser()
         .repeated()
@@ -95,7 +95,7 @@ mod tests {
         let input = r##": this is a
 : fixed width area
 "##;
-        let parser = fixed_width_parser();
+        let parser = fixed_width_parser::<()>();
         assert_eq!(
             get_parser_output(parser, input),
             r##"FixedWidth@0..31
@@ -123,7 +123,7 @@ mod tests {
 
 
 "##;
-        let parser = fixed_width_parser();
+        let parser = fixed_width_parser::<()>();
         assert_eq!(
             get_parser_output(parser, input),
             r##"FixedWidth@0..55
@@ -164,7 +164,7 @@ mod tests {
         let input = r##": this is a
 :bad
 "##;
-        let parser = fixed_width_parser();
+        let parser = fixed_width_parser::<()>();
         get_parser_output(parser, input);
     }
 }

@@ -8,8 +8,8 @@ use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 /// A simple heading row parser WITHOUT state, ONLY used for look ahead
 // - section parser: to check whether the next part is heading to stop
-pub(crate) fn simple_heading_row_parser<'a>()
--> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+pub(crate) fn simple_heading_row_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
 {
     let stars = just('*').repeated().at_least(1);
     let whitespaces = one_of(" \t").repeated().at_least(1);
@@ -22,35 +22,35 @@ pub(crate) fn simple_heading_row_parser<'a>()
 }
 
 // non_paragraph_parser: used for negative lookahead
-pub(crate) fn paragraph_parser<'a>(
+pub(crate) fn paragraph_parser<'a, C: 'a>(
     non_paragraph_parser: impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     paragraph_parser_with_at_least_n_affiliated_keywords(non_paragraph_parser, 0)
 }
 
-pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<'a>(
+pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<'a, C: 'a>(
     non_paragraph_parser: impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone,
     n: usize,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let affiliated_keywords = keyword::affiliated_keyword_parser()
         .repeated()
@@ -60,6 +60,7 @@ pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<'a>(
     // Empty lines and other elements end paragraphs
     let inner = object::line_parser()
         .and_is(non_paragraph_parser.not()) // other element
+        .and_is(simple_heading_row_parser().not()) // heading_tree is recursive, we use simple heading row for lookahead to avoid stackoverflow
         .and_is(object::blank_line_parser().not()) // empty line
         .and_is(
             just("#+")
@@ -109,7 +110,7 @@ mod tests {
 foo
 bar
 "##;
-        let parser = paragraph_parser(element::element_in_paragraph_parser());
+        let parser = paragraph_parser(element::element_in_paragraph_parser::<()>());
         assert_eq!(
             get_parser_output(parser, input),
             r##"Paragraph@0..18
@@ -126,7 +127,7 @@ bar
 abc
 :end:
 "##;
-        let parser = paragraph_parser(element::element_in_paragraph_parser());
+        let parser = paragraph_parser(element::element_in_paragraph_parser::<()>());
         get_parser_output(parser, input);
     }
 
@@ -137,7 +138,7 @@ abc
 #+begin_src python
 #+end_src
 "##;
-        let parser = paragraph_parser(element::element_in_paragraph_parser());
+        let parser = paragraph_parser(element::element_in_paragraph_parser::<()>());
         get_parser_output(parser, input);
     }
 
@@ -148,7 +149,7 @@ abc
 - a
 - b
 "##;
-        let parser = paragraph_parser(element::element_in_paragraph_parser());
+        let parser = paragraph_parser(element::element_in_paragraph_parser::<()>());
         get_parser_output(parser, input);
     }
 
@@ -157,7 +158,7 @@ abc
         let input = r##"foo
 bar
 "##;
-        let parser = paragraph_parser(element::element_in_paragraph_parser());
+        let parser = paragraph_parser(element::element_in_paragraph_parser::<()>());
 
         assert_eq!(
             get_parser_output(parser, input),
@@ -170,7 +171,7 @@ bar
     #[test]
     fn test_paragraph_05() {
         let input = r##"paragraph"##;
-        let parser = paragraph_parser(element::element_in_paragraph_parser());
+        let parser = paragraph_parser(element::element_in_paragraph_parser::<()>());
         assert_eq!(
             get_parser_output(parser, input),
             r##"Paragraph@0..9
@@ -183,7 +184,7 @@ bar
     fn test_paragraph_06() {
         let input = r##"paragraph
 "##;
-        let parser = paragraph_parser(element::element_in_paragraph_parser());
+        let parser = paragraph_parser(element::element_in_paragraph_parser::<()>());
         assert_eq!(
             get_parser_output(parser, input),
             r##"Paragraph@0..10
@@ -199,7 +200,7 @@ bar
 center
 #+end_center
 "##;
-        //         let parser = paragraph_parser(element::element_in_paragraph_parser());
+        //         let parser = paragraph_parser(element::element_in_paragraph_parser::<()>());
         //         assert_eq!(
         //             get_parser_output(parser, input),
         //             r##"
@@ -208,7 +209,9 @@ center
 
         assert_eq!(
             get_parsers_output(
-                element::element_parser().repeated().collect::<Vec<_>>(),
+                element::element_parser::<()>()
+                    .repeated()
+                    .collect::<Vec<_>>(),
                 input
             ),
             r##"Root@0..40
@@ -239,7 +242,9 @@ example
 "##;
         assert_eq!(
             get_parsers_output(
-                element::element_parser().repeated().collect::<Vec<_>>(),
+                element::element_parser::<()>()
+                    .repeated()
+                    .collect::<Vec<_>>(),
                 input
             ),
             r##"Root@0..43
@@ -265,7 +270,7 @@ example
         let input = r##"#+caption: export block test
 a paragraph
 "##;
-        let parser = paragraph_parser(element::element_in_paragraph_parser());
+        let parser = paragraph_parser(element::element_in_paragraph_parser::<()>());
         assert_eq!(
             get_parser_output(parser, input),
             r##"Paragraph@0..41

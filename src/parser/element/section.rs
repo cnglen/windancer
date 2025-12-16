@@ -18,22 +18,22 @@ use crate::parser::element::paragraph::simple_heading_row_parser;
 /// - 开头不能以`* Text`开头, 否则部分标题会被识别为Section
 
 // block_parser
-// blank_line
+// blank_line``
 // other_parser
 // S2? 是否合适?
-pub(crate) fn section_parser<'a>(
+pub(crate) fn section_parser<'a, C: 'a>(
     element_parser: impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone
     + 'a,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     Parser::boxed(
         element_parser
@@ -61,14 +61,14 @@ mod tests {
         let input = "section content
 * heading
 ";
-        let parser = section_parser(element_in_section_parser());
+        let parser = section_parser(element_in_section_parser::<()>());
         get_parser_output(parser, input);
     }
 
     #[test]
     fn test_section_02_fakedtitle() {
         let input = "0123456789 * faked_title";
-        let parser = section_parser(element_in_section_parser());
+        let parser = section_parser(element_in_section_parser::<()>());
         assert_eq!(
             get_parser_output(parser, input),
             r##"Section@0..24
@@ -85,14 +85,14 @@ mod tests {
     #[should_panic]
     fn test_section_03_vs_heading_subtree() {
         let input = "* title\n asf\n";
-        let parser = section_parser(element_in_section_parser());
+        let parser = section_parser(element_in_section_parser::<()>());
         get_parser_output(parser, input);
     }
 
     #[test]
     fn test_section_04_with_end() {
         let input = "0123456789";
-        let parser = section_parser(element_in_section_parser());
+        let parser = section_parser(element_in_section_parser::<()>());
         assert_eq!(
             get_parser_output(parser, input),
             r##"Section@0..10
@@ -105,7 +105,7 @@ mod tests {
     #[test]
     fn test_section_05_with_newline_end() {
         let input = "0123456789\n";
-        let parser = section_parser(element_in_section_parser());
+        let parser = section_parser(element_in_section_parser::<()>());
         assert_eq!(
             get_parser_output(parser, input),
             r##"Section@0..11
@@ -118,7 +118,7 @@ mod tests {
     #[test]
     fn test_section_06_with_newline_end() {
         let input = "0123456789\nfoo\nbar\nhello\nnice\nto meet you\n\n";
-        let parser = section_parser(element_in_section_parser());
+        let parser = section_parser(element_in_section_parser::<()>());
         assert_eq!(
             get_parser_output(parser, input),
             r##"Section@0..43
@@ -133,7 +133,7 @@ mod tests {
     fn test_section_07_with_newline_end() {
         let input = "SCHEDULED: <1999-03-31 Wed>
 "; // planning is not allowed to be in section
-        let parser = section_parser(element_in_section_parser());
+        let parser = section_parser(element_in_section_parser::<()>());
         assert_eq!(
             get_parser_output(parser, input),
             r##"Section@0..28

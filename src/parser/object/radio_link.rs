@@ -8,12 +8,12 @@ use rowan::SyntaxNode;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 use std::ops::Range;
 
-fn try_match_string<'a>(
+fn try_match_string<'a, C: 'a>(
     stream: &mut InputRef<
         'a,
         '_,
         &'a str,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     >,
     s: &str,
 ) -> bool {
@@ -37,10 +37,10 @@ fn try_match_string<'a>(
     success
 }
 
-fn radio_parser<'a>()
--> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+fn radio_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
 {
-    custom::<_, &str, _, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>(
+    custom::<_, &str, _, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>(
         move |stream| {
             let mut longest_match: Option<(String, usize)> = None;
             if let Some(radio_targets) = RADIO_TARGETS.get() {
@@ -77,18 +77,18 @@ fn radio_parser<'a>()
 }
 
 /// radio link parser: PRE RADIO POST
-pub(crate) fn radio_link_parser<'a>(
+pub(crate) fn radio_link_parser<'a, C: 'a>(
     object_parser: impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let minimal_objects_parser = object_parser
         .clone()
@@ -101,7 +101,7 @@ pub(crate) fn radio_link_parser<'a>(
         .filter(|c: &char| !c.is_alphanumeric())
         .or(end().to('x'));
 
-    let backup_prev_char = any::<_, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>()
+    let backup_prev_char = any::<_, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>()
         .map_with(|s, e| {
             let tmp = e.state().prev_char;
             e.state().prev_char_backup.push(tmp);

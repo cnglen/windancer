@@ -5,15 +5,15 @@ use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
-pub(crate) fn horizontal_rule_parser<'a>() -> impl Parser<
+pub(crate) fn horizontal_rule_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
-    object::whitespaces()
+    object::whitespaces_v2()
         .then(just("-").repeated().at_least(5).collect::<Vec<&str>>()) //todo: collect as String failed
-        .then(object::whitespaces())
+        .then(object::whitespaces_v2())
         .then(object::newline_or_ending())
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
         .map(|((((ws1, dashes), ws2), nl), blanklines)| {
@@ -70,7 +70,7 @@ mod tests {
     #[test]
     fn test_horizontal_rule_01() {
         assert_eq!(
-            get_parser_output(horizontal_rule_parser(), r"-----"),
+            get_parser_output(horizontal_rule_parser::<()>(), r"-----"),
             r#"HorizontalRule@0..5
   Text@0..5 "-----"
 "#
@@ -80,7 +80,7 @@ mod tests {
     #[test]
     fn test_horizontal_rule_02() {
         assert_eq!(
-            get_parser_output(horizontal_rule_parser(), r"---------"),
+            get_parser_output(horizontal_rule_parser::<()>(), r"---------"),
             r#"HorizontalRule@0..9
   Text@0..9 "---------"
 "#
@@ -90,6 +90,6 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_horizontal_rule_03() {
-        get_parser_output(horizontal_rule_parser(), r"----");
+        get_parser_output(horizontal_rule_parser::<()>(), r"----");
     }
 }

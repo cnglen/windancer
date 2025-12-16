@@ -7,18 +7,18 @@ use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 /// radio target parser: <<<TARGET>>>
-pub(crate) fn radio_target_parser<'a>(
+pub(crate) fn radio_target_parser<'a, C: 'a>(
     object_parser: impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let minimal_objects_parser = object_parser
         .clone()
@@ -42,7 +42,7 @@ pub(crate) fn radio_target_parser<'a>(
         .to_slice();
     let target = minimal_objects_parser.nested_in(choice((target_g2char, target_onechar)));
 
-    just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>("<<<")
+    just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("<<<")
         .then(target)
         .then(just(">>>"))
         .map_with(|((lbracket3, target), rbracket3), e| {
@@ -79,7 +79,7 @@ mod tests {
     #[test]
     fn test_radio_target_01() {
         assert_eq!(
-            get_parsers_output(object::objects_parser(), "<<<target>>>"),
+            get_parsers_output(object::objects_parser::<()>(), "<<<target>>>"),
             r##"Root@0..12
   RadioTarget@0..12
     LeftAngleBracket3@0..3 "<<<"
@@ -92,7 +92,7 @@ mod tests {
     #[test]
     fn test_radio_target_02() {
         assert_eq!(
-            get_parsers_output(object::objects_parser(), "<<<tar\nget>>>"),
+            get_parsers_output(object::objects_parser::<()>(), "<<<tar\nget>>>"),
             r##"Root@0..13
   Text@0..13 "<<<tar\nget>>>"
 "##
@@ -102,7 +102,7 @@ mod tests {
     #[test]
     fn test_radio_target_03() {
         assert_eq!(
-            get_parsers_output(object::objects_parser(), "<<< target>>>"),
+            get_parsers_output(object::objects_parser::<()>(), "<<< target>>>"),
             r##"Root@0..13
   Text@0..13 "<<< target>>>"
 "##,
@@ -113,7 +113,7 @@ mod tests {
     #[test]
     fn test_radio_target_04() {
         assert_eq!(
-            get_parsers_output(object::objects_parser(), "<<<target >>>"),
+            get_parsers_output(object::objects_parser::<()>(), "<<<target >>>"),
             r##"Root@0..13
   Text@0..13 "<<<target >>>"
 "##,
@@ -124,7 +124,7 @@ mod tests {
     #[test]
     fn test_radio_target_05() {
         assert_eq!(
-            get_parsers_output(object::objects_parser(), "<<<t>>>"),
+            get_parsers_output(object::objects_parser::<()>(), "<<<t>>>"),
             r##"Root@0..7
   RadioTarget@0..7
     LeftAngleBracket3@0..3 "<<<"
@@ -138,7 +138,7 @@ mod tests {
     #[test]
     fn test_radio_target_06() {
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"<<<\alpha $a+b$ foo>>>"),
+            get_parsers_output(object::objects_parser::<()>(), r"<<<\alpha $a+b$ foo>>>"),
             r##"Root@0..22
   RadioTarget@0..22
     LeftAngleBracket3@0..3 "<<<"

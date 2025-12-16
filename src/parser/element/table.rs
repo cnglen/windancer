@@ -7,11 +7,11 @@ use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 // Any line with ‘|’ as the first non-whitespace character, then any number of table cells
-fn table_standard_row<'a>() -> impl Parser<
+fn table_standard_row<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     object::whitespaces()
         .then(just("|"))
@@ -54,11 +54,11 @@ fn table_standard_row<'a>() -> impl Parser<
 }
 
 // Any line with ‘|’ as the first non-whitespace character, then a line starting with ‘|-’ is a horizontal rule.  It separates rows explicitly.
-fn table_rule_row<'a>() -> impl Parser<
+fn table_rule_row<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     object::whitespaces()
         .then(just("|"))
@@ -105,11 +105,11 @@ fn table_rule_row<'a>() -> impl Parser<
         })
 }
 
-pub(crate) fn table_formula_parser<'a>() -> impl Parser<
+pub(crate) fn table_formula_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     just("#+")
         .then(object::just_case_insensitive("TBLFM"))
@@ -168,11 +168,11 @@ pub(crate) fn table_formula_parser<'a>() -> impl Parser<
         })
 }
 
-pub(crate) fn table_parser<'a>() -> impl Parser<
+pub(crate) fn table_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     // fixme: standard objects without footnote reference
     let affiliated_keywords = affiliated_keyword_parser().repeated().collect::<Vec<_>>();
@@ -223,7 +223,7 @@ mod tests {
   | Anna  |  4321 |  25 |
 "##;
         let mut state = RollbackState(ParserState::default());
-        let t = table_parser().parse_with_state(input, &mut state);
+        let t = table_parser::<()>().parse_with_state(input, &mut state);
         let syntax_tree = SyntaxNode::new_root(t.into_result().unwrap().into_node().expect("xxx"));
 
         println!("{:#?}", syntax_tree);

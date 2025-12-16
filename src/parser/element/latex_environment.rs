@@ -5,11 +5,11 @@ use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
-pub(crate) fn latex_environment_parser<'a>() -> impl Parser<
+pub(crate) fn latex_environment_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let affiliated_keywords = element::keyword::affiliated_keyword_parser()
         .repeated()
@@ -259,7 +259,7 @@ mod tests {
     Newline@64..65 "\n"
 "##;
 
-        let parser = element::latex_environment::latex_environment_parser();
+        let parser = element::latex_environment::latex_environment_parser::<()>();
         assert_eq!(get_parser_output(parser, input), expected_output);
     }
 
@@ -299,7 +299,7 @@ mod tests {
     Newline@117..118 "\n"
 "##;
 
-        let parser = element::latex_environment::latex_environment_parser();
+        let parser = element::latex_environment::latex_environment_parser::<()>();
         assert_eq!(get_parser_output(parser, input), expected_output);
     }
 }

@@ -10,19 +10,19 @@ use rowan::{GreenNode, GreenToken, NodeOrToken};
 // - [fn:LABEL]
 // - [fn:LABEL:DEFINITION]
 // - [fn::DEFINITION]
-pub(crate) fn footnote_reference_parser<'a>(
+pub(crate) fn footnote_reference_parser<'a, C: 'a>(
     object_parser: impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone
     + 'a,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let label = any()
         .filter(|c: &char| c.is_alphanumeric() || matches!(c, '_' | '-'))
@@ -31,12 +31,11 @@ pub(crate) fn footnote_reference_parser<'a>(
         .collect::<String>();
 
     // defintion must in oneline
-    let var = none_of::<&str, &str, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>(
-        "[]\r\n",
-    )
-    .repeated()
-    .at_least(1)
-    .to_slice();
+    let var =
+        none_of::<&str, &str, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("[]\r\n")
+            .repeated()
+            .at_least(1)
+            .to_slice();
     let mut single_expression = Recursive::declare(); // foo / (foo) / (((foo)))
     single_expression.define(
         var.or(just("[")
@@ -52,7 +51,7 @@ pub(crate) fn footnote_reference_parser<'a>(
         standard_objects_parser.nested_in(single_expression.clone().repeated().to_slice());
 
     // [fn:LABEL]
-    let t1 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>("[fn:")
+    let t1 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("[fn:")
         .then(label)
         .then(just("]"))
         .map_with(|((_left_fn_c, label), rbracket), e| {
@@ -206,7 +205,7 @@ mod tests {
     #[test]
     fn test_01_fn_label() {
         assert_eq!(
-            get_parsers_output(object::objects_parser(), "this is a org [fn:1]."),
+            get_parsers_output(object::objects_parser::<()>(), "this is a org [fn:1]."),
             r##"Root@0..21
   Text@0..14 "this is a org "
   FootnoteReference@14..20
@@ -223,7 +222,10 @@ mod tests {
     #[test]
     fn test_02_fn_label_defintion() {
         assert_eq!(
-            get_parsers_output(object::objects_parser(), "this is a org [fn:1:*bold*]."),
+            get_parsers_output(
+                object::objects_parser::<()>(),
+                "this is a org [fn:1:*bold*]."
+            ),
             r##"Root@0..28
   Text@0..14 "this is a org "
   FootnoteReference@14..27
@@ -247,7 +249,7 @@ mod tests {
     fn test_03_fn_defintion() {
         assert_eq!(
             get_parsers_output(
-                object::objects_parser(),
+                object::objects_parser::<()>(),
                 "this is a org [fn::*org* is a good format]."
             ),
             r##"Root@0..43

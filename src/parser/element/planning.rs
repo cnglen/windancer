@@ -5,20 +5,20 @@ use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
-pub(crate) fn planning_parser<'a>() -> impl Parser<
+pub(crate) fn planning_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
-    object::whitespaces()
+    object::whitespaces_v2()
         .then(choice((
             just("DEADLINE"),
             just("SCHEDULED"),
             just("CLOSED"),
         )))
         .then(just(":"))
-        .then(object::whitespaces())
+        .then(object::whitespaces_v2())
         .then(object::timestamp::timestamp_parser())
         // .map(|s|{println!("planning: s={s:#?}"); s})
         .map(|((((ws1, keyword), colon), ws2), ts)| {
@@ -50,7 +50,7 @@ pub(crate) fn planning_parser<'a>() -> impl Parser<
         .repeated()
         .at_least(1)
         .collect::<Vec<_>>()
-        .then(object::whitespaces())
+        .then(object::whitespaces_v2())
         .then(object::newline_or_ending())
         .map(|((s, ws), maybe_nl)| {
             let mut children = vec![];
@@ -88,7 +88,7 @@ mod tests {
     #[test]
     fn test_planning_01() {
         assert_eq!(
-            get_parser_output(planning_parser(), r"   SCHEDULED: <1999-03-31 Wed>"),
+            get_parser_output(planning_parser::<()>(), r"   SCHEDULED: <1999-03-31 Wed>"),
             r##"Planning@0..30
   Whitespace@0..3 "   "
   PlanningKeyword@3..12 "SCHEDULED"
@@ -104,7 +104,7 @@ mod tests {
     fn test_planning_02() {
         assert_eq!(
             get_parser_output(
-                planning_parser(),
+                planning_parser::<()>(),
                 r"     SCHEDULED: <2006-03-12 Sun> DEADLINE: <2034-03-22 Wed>  "
             ),
             r##"Planning@0..61

@@ -7,18 +7,18 @@ use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 /// table cell parser
-pub(crate) fn table_cell_parser<'a>(
+pub(crate) fn table_cell_parser<'a, C: 'a>(
     object_parser: impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let minimal_and_other_objects_parser = object_parser
         .clone()
@@ -81,7 +81,7 @@ mod tests {
     fn test_table_cell_01() {
         assert_eq!(
             get_parser_output(
-                table_cell_parser(object::object_in_table_cell_parser()),
+                table_cell_parser(object::object_in_table_cell_parser::<()>()),
                 " foo |"
             ),
             r##"TableCell@0..6
@@ -96,7 +96,7 @@ mod tests {
     fn test_table_cell_02() {
         assert_eq!(
             get_parser_output(
-                table_cell_parser(object::object_in_table_cell_parser()),
+                table_cell_parser(object::object_in_table_cell_parser::<()>()),
                 " |"
             ),
             r##"TableCell@0..2
@@ -110,7 +110,7 @@ mod tests {
     fn test_table_cell_03() {
         assert_eq!(
             get_parser_output(
-                table_cell_parser(object::object_in_table_cell_parser()),
+                table_cell_parser(object::object_in_table_cell_parser::<()>()),
                 "|"
             ),
             r##"TableCell@0..1
@@ -123,7 +123,7 @@ mod tests {
     fn test_table_cell_04() {
         assert_eq!(
             get_parser_output(
-                table_cell_parser(object::object_in_table_cell_parser()),
+                table_cell_parser(object::object_in_table_cell_parser::<()>()),
                 "foo  |"
             ),
             r##"TableCell@0..6
@@ -138,7 +138,7 @@ mod tests {
     fn test_table_cell_05() {
         assert_eq!(
             get_parser_output(
-                table_cell_parser(object::object_in_table_cell_parser()),
+                table_cell_parser(object::object_in_table_cell_parser::<()>()),
                 "  foo|"
             ),
             r##"TableCell@0..6
@@ -152,7 +152,7 @@ mod tests {
     fn test_table_cell_06() {
         assert_eq!(
             get_parser_output(
-                table_cell_parser(object::object_in_table_cell_parser()),
+                table_cell_parser(object::object_in_table_cell_parser::<()>()),
                 "foo|"
             ),
             r##"TableCell@0..4
@@ -167,7 +167,7 @@ mod tests {
     fn test_table_cell_07() {
         assert_eq!(
             get_parser_output(
-                table_cell_parser(object::object_in_table_cell_parser()),
+                table_cell_parser(object::object_in_table_cell_parser::<()>()),
                 "foo"
             ),
             r##"TableCell@0..6

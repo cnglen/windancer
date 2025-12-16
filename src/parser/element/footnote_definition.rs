@@ -5,18 +5,18 @@ use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
-pub(crate) fn footnote_definition_parser<'a>(
+pub(crate) fn footnote_definition_parser<'a, C: 'a>(
     element_parser: impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let affiliated_keywords = element::keyword::affiliated_keyword_parser()
         .repeated()
@@ -104,7 +104,10 @@ mod tests {
     fn test_footnote_defintion_01() {
         let input = "[fn:1] A short footnote.";
         assert_eq!(
-            get_parser_output(footnote_definition_parser(element::element_parser()), input),
+            get_parser_output(
+                footnote_definition_parser(element::element_parser::<()>()),
+                input
+            ),
             r##"FootnoteDefinition@0..24
   LeftSquareBracket@0..1 "["
   Text@1..3 "fn"
@@ -138,7 +141,10 @@ mod tests {
     Text@35..77 "    It even contains  ..."
 "##;
         assert_eq!(
-            get_parser_output(footnote_definition_parser(element::element_parser()), input),
+            get_parser_output(
+                footnote_definition_parser(element::element_parser::<()>()),
+                input
+            ),
             expected_output
         );
     }
@@ -149,7 +155,10 @@ mod tests {
         let input = "[fn:2] This is a longer footnote.
 [fn:3] This is a longer footnote.
 ";
-        get_parser_output(footnote_definition_parser(element::element_parser()), input);
+        get_parser_output(
+            footnote_definition_parser(element::element_parser::<()>()),
+            input,
+        );
     }
 
     #[test]
@@ -177,7 +186,10 @@ mod tests {
     Text@60..87 "This is a longer foot ..."
 "##;
         assert_eq!(
-            get_parser_output(footnote_definition_parser(element::element_parser()), input),
+            get_parser_output(
+                footnote_definition_parser(element::element_parser::<()>()),
+                input
+            ),
             expected_output
         );
     }

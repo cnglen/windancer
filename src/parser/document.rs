@@ -19,11 +19,11 @@ use super::object;
 ///   - ...
 ///   - HeadingSubtree
 
-pub(crate) fn document_parser<'a>() -> impl Parser<
+pub(crate) fn document_parser<'a, C: 'a + std::default::Default>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, usize>,
 > {
     let parser = object::blank_line_parser()
         .repeated()
@@ -32,9 +32,10 @@ pub(crate) fn document_parser<'a>() -> impl Parser<
         .or_not()
         .then(element::comment::comment_parser().or_not())
         .then(element::drawer::property_drawer_parser().or_not())
-        .then(section::section_parser(element::element_in_section_parser()).or_not())
+        .then(section::section_parser(element::element_in_section_parser::<C>()).or_not())
         .then(
-            element::heading_subtree_parser()
+            // element::heading_subtree_parser::<C>()
+            element::heading::heading_subtree_parser(element::element_parser::<usize>(), 0)
                 .repeated()
                 .collect::<Vec<_>>(),
         )

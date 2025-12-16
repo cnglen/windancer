@@ -18,8 +18,8 @@ pub(crate) static LINK_PROTOCOLS: phf::Set<&'static str> = phf_set! {
 
 /// PROTOCOL: A string which is one of the link type strings in org-link-parameters
 #[allow(unused)]
-pub(crate) fn protocol<'a>()
--> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+pub(crate) fn protocol<'a, C: 'a>()
+-> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
 {
     any()
         .filter(|c: &char| matches!(c, 'a'..'z' | '+'))
@@ -30,10 +30,10 @@ pub(crate) fn protocol<'a>()
 }
 
 // pathplain parser
-fn path_plain_parser<'a>()
--> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+fn path_plain_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
 {
-    custom::<_, &str, _, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>(|inp| {
+    custom::<_, &str, _, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>(|inp| {
         let remaining = inp.slice_from(std::ops::RangeFrom {
             start: &inp.cursor(),
         });
@@ -143,11 +143,11 @@ fn path_plain_parser<'a>()
 }
 
 /// plain link parser
-pub(crate) fn plain_link_parser<'a>() -> impl Parser<
+pub(crate) fn plain_link_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let protocol = protocol();
     let post = any()
@@ -195,11 +195,11 @@ pub(crate) fn plain_link_parser<'a>() -> impl Parser<
 }
 
 /// angle link parser
-pub(crate) fn angle_link_parser<'a>() -> impl Parser<
+pub(crate) fn angle_link_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let path_angle = none_of(">") // . is permitted: orgmode.org, xx@xx.com
         .repeated()
@@ -248,18 +248,18 @@ pub(crate) fn angle_link_parser<'a>() -> impl Parser<
 }
 
 /// regular link parser
-pub(crate) fn regular_link_parser<'a>(
+pub(crate) fn regular_link_parser<'a, C: 'a>(
     object_parser: impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let minimal_and_other_objects_parser = object_parser
         .clone()
@@ -373,7 +373,7 @@ pub(crate) fn regular_link_parser<'a>(
             ))
         });
 
-    just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>("[")
+    just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("[")
         .then(pathreg)
         .then(description)
         .then(just("]"))
@@ -429,7 +429,7 @@ mod tests {
     #[test]
     fn test_plain_link_01_http() {
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"https://foo.bar"),
+            get_parsers_output(object::objects_parser::<()>(), r"https://foo.bar"),
             r###"Root@0..15
   PlainLink@0..15
     Text@0..5 "https"
@@ -442,7 +442,7 @@ mod tests {
     #[test]
     fn test_plain_link_02_http() {
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"https://foo...bar"),
+            get_parsers_output(object::objects_parser::<()>(), r"https://foo...bar"),
             r###"Root@0..17
   PlainLink@0..17
     Text@0..5 "https"
@@ -452,7 +452,7 @@ mod tests {
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"https://bar..."),
+            get_parsers_output(object::objects_parser::<()>(), r"https://bar..."),
             r###"Root@0..14
   PlainLink@0..11
     Text@0..5 "https"
@@ -467,7 +467,7 @@ mod tests {
     fn test_plain_link_03_http() {
         // 1 layer nested
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"https://foo(bar)"),
+            get_parsers_output(object::objects_parser::<()>(), r"https://foo(bar)"),
             r###"Root@0..16
   PlainLink@0..16
     Text@0..5 "https"
@@ -478,7 +478,7 @@ mod tests {
 
         // 2 layer nested
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"https://foo(bar(dfk))"),
+            get_parsers_output(object::objects_parser::<()>(), r"https://foo(bar(dfk))"),
             r###"Root@0..21
   PlainLink@0..21
     Text@0..5 "https"
@@ -489,7 +489,7 @@ mod tests {
 
         // 3 layer nested
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"https://f(b(d(q)))"),
+            get_parsers_output(object::objects_parser::<()>(), r"https://f(b(d(q)))"),
             r###"Root@0..18
   Text@0..18 "https://f(b(d(q)))"
 "###
@@ -497,7 +497,7 @@ mod tests {
 
         // not matched round bracket
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"https://foo(bar"),
+            get_parsers_output(object::objects_parser::<()>(), r"https://foo(bar"),
             r###"Root@0..15
   Text@0..15 "https://foo(bar"
 "###
@@ -508,7 +508,7 @@ mod tests {
     fn test_regular_link_01_http() {
         assert_eq!(
             get_parsers_output(
-                object::objects_parser(),
+                object::objects_parser::<()>(),
                 r"[[https://orgmode.org][The Org project homepage]]
 [[file:orgmanual.org]]
 [[Regular links]]
@@ -547,7 +547,7 @@ mod tests {
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"[[http://orgmode.org/]]"),
+            get_parsers_output(object::objects_parser::<()>(), r"[[http://orgmode.org/]]"),
             r##"Root@0..23
   Link@0..23
     LeftSquareBracket@0..1 "["
@@ -559,7 +559,7 @@ mod tests {
 "##
         );
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"[[https://orgmode.org/]]"),
+            get_parsers_output(object::objects_parser::<()>(), r"[[https://orgmode.org/]]"),
             r##"Root@0..24
   Link@0..24
     LeftSquareBracket@0..1 "["
@@ -574,7 +574,7 @@ mod tests {
     #[test]
     fn test_regular_link_02_doi() {
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"[[doi:10.1000/182]]"),
+            get_parsers_output(object::objects_parser::<()>(), r"[[doi:10.1000/182]]"),
             r##"Root@0..19
   Link@0..19
     LeftSquareBracket@0..1 "["
@@ -587,7 +587,7 @@ mod tests {
         );
         assert_eq!(
             get_parsers_output(
-                object::objects_parser(),
+                object::objects_parser::<()>(),
                 r"[[file:/home/dominik/images/jupiter.jpg]]"
             ),
             r##"Root@0..41
@@ -606,7 +606,7 @@ mod tests {
     fn test_regular_link_03_file() {
         assert_eq!(
             get_parsers_output(
-                object::objects_parser(),
+                object::objects_parser::<()>(),
                 r"[[/home/dominik/images/jupiter.jpg]]"
             ),
             r##"Root@0..36
@@ -621,7 +621,7 @@ mod tests {
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"[[file:papers/last.pdf]]"),
+            get_parsers_output(object::objects_parser::<()>(), r"[[file:papers/last.pdf]]"),
             r##"Root@0..24
   Link@0..24
     LeftSquareBracket@0..1 "["
@@ -633,7 +633,7 @@ mod tests {
 "##
         );
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"[[./papers/last.pdf]]"),
+            get_parsers_output(object::objects_parser::<()>(), r"[[./papers/last.pdf]]"),
             r##"Root@0..21
   Link@0..21
     LeftSquareBracket@0..1 "["
@@ -646,7 +646,7 @@ mod tests {
         );
         assert_eq!(
             get_parsers_output(
-                object::objects_parser(),
+                object::objects_parser::<()>(),
                 r"[[file:/ssh:me@some.where:papers/last.pdf]]"
             ),
             r##"Root@0..43
@@ -661,7 +661,7 @@ mod tests {
         );
         assert_eq!(
             get_parsers_output(
-                object::objects_parser(),
+                object::objects_parser::<()>(),
                 r"[[/ssh:me@some.where:papers/last.pdf]]"
             ),
             r##"Root@0..38
@@ -675,7 +675,10 @@ mod tests {
 "##
         );
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"[[file:sometextfile::NNN]]"),
+            get_parsers_output(
+                object::objects_parser::<()>(),
+                r"[[file:sometextfile::NNN]]"
+            ),
             r##"Root@0..26
   Link@0..26
     LeftSquareBracket@0..1 "["
@@ -687,7 +690,7 @@ mod tests {
 "##
         );
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"[[file:projects.org]]"),
+            get_parsers_output(object::objects_parser::<()>(), r"[[file:projects.org]]"),
             r##"Root@0..21
   Link@0..21
     LeftSquareBracket@0..1 "["
@@ -700,7 +703,7 @@ mod tests {
         );
         assert_eq!(
             get_parsers_output(
-                object::objects_parser(),
+                object::objects_parser::<()>(),
                 r"[[file:projects.org::some words]]"
             ),
             r##"Root@0..33
@@ -716,7 +719,7 @@ mod tests {
 
         assert_eq!(
             get_parsers_output(
-                object::objects_parser(),
+                object::objects_parser::<()>(),
                 r"[[file:projects.org::*task title]]"
             ),
             r##"Root@0..34
@@ -731,7 +734,7 @@ mod tests {
         );
         assert_eq!(
             get_parsers_output(
-                object::objects_parser(),
+                object::objects_parser::<()>(),
                 r"[[file:projects.org::#custom-id]]"
             ),
             r##"Root@0..33
@@ -748,7 +751,10 @@ mod tests {
     #[test]
     fn test_regular_link_04_attachment() {
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"[[attachment:projects.org]]"),
+            get_parsers_output(
+                object::objects_parser::<()>(),
+                r"[[attachment:projects.org]]"
+            ),
             r##"Root@0..27
   Link@0..27
     LeftSquareBracket@0..1 "["
@@ -761,92 +767,92 @@ mod tests {
         );
         //         assert_eq!(
         //             get_parsers_output(
-        //                 object::objects_parser(),
+        //                 object::objects_parser::<()>(),
         //                 r"[[attachment:projects.org::some words]]"
         //             ),
         //             r##"
         // "##
         //         );
         //         assert_eq!(
-        //             get_parsers_output(object::objects_parser(), r"[[docview:papers/last.pdf::NNN]]"),
+        //             get_parsers_output(object::objects_parser::<()>(), r"[[docview:papers/last.pdf::NNN]]"),
         //             r##"
         // "##
         //         );
         //         assert_eq!(
         //             get_parsers_output(
-        //                 object::objects_parser(),
+        //                 object::objects_parser::<()>(),
         //                 r"[[id:B7423F4D-2E8A-471B-8810-C40F074717E9]]"
         //             ),
         //             r##""##
         //         );
         //         assert_eq!(
         //             get_parsers_output(
-        //                 object::objects_parser(),
+        //                 object::objects_parser::<()>(),
         //                 r"[[id:B7423F4D-2E8A-471B-8810-C40F074717E9::*task]]"
         //             ),
         //             r##""##
         //         );
         //         assert_eq!(
-        //             get_parsers_output(object::objects_parser(), r"[[news:comp.emacs]]"),
+        //             get_parsers_output(object::objects_parser::<()>(), r"[[news:comp.emacs]]"),
         //             r##""##
         //         );
         //         assert_eq!(
-        //             get_parsers_output(object::objects_parser(), r"[[mailto:adent@galaxy.net]]"),
+        //             get_parsers_output(object::objects_parser::<()>(), r"[[mailto:adent@galaxy.net]]"),
         //             r##""##
         //         );
         //         assert_eq!(
-        //             get_parsers_output(object::objects_parser(), r"[[mhe:folder]]"),
+        //             get_parsers_output(object::objects_parser::<()>(), r"[[mhe:folder]]"),
         //             r##""##
         //         );
         //         assert_eq!(
-        //             get_parsers_output(object::objects_parser(), r"[[mhe:folder#id]]"),
+        //             get_parsers_output(object::objects_parser::<()>(), r"[[mhe:folder#id]]"),
         //             r##""##
         //         );
         //         assert_eq!(
-        //             get_parsers_output(object::objects_parser(), r"[[rmail:folder]]"),
+        //             get_parsers_output(object::objects_parser::<()>(), r"[[rmail:folder]]"),
         //             r##""##
         //         );
         //         assert_eq!(
-        //             get_parsers_output(object::objects_parser(), r"[[rmail:folder#id]]"),
+        //             get_parsers_output(object::objects_parser::<()>(), r"[[rmail:folder#id]]"),
         //             r##""##
         //         );
         //         assert_eq!(
-        //             get_parsers_output(object::objects_parser(), r"[[gnus:group]]"),
+        //             get_parsers_output(object::objects_parser::<()>(), r"[[gnus:group]]"),
         //             r##""##
         //         );
         //         assert_eq!(
-        //             get_parsers_output(object::objects_parser(), r"[[gnus:group#id]]"),
+        //             get_parsers_output(object::objects_parser::<()>(), r"[[gnus:group#id]]"),
         //             r##""##
         //         );
         //         assert_eq!(
-        //             get_parsers_output(object::objects_parser(), r"[[bbdb:R.*Stallman]]"),
+        //             get_parsers_output(object::objects_parser::<()>(), r"[[bbdb:R.*Stallman]]"),
         //             r##""##
         //         );
         //         assert_eq!(
-        //             get_parsers_output(object::objects_parser(), r"[[irc:/irc.com/#emacs/bob]]"),
+        //             get_parsers_output(object::objects_parser::<()>(), r"[[irc:/irc.com/#emacs/bob]]"),
         //             r##""##
         //         );
         //         assert_eq!(
-        //             get_parsers_output(object::objects_parser(), r"[[help:org-store-link]]"),
+        //             get_parsers_output(object::objects_parser::<()>(), r"[[help:org-store-link]]"),
         //             r##""##
         //         );
         //         assert_eq!(
-        //             get_parsers_output(object::objects_parser(), r"[[info:org#External links]]"),
+        //             get_parsers_output(object::objects_parser::<()>(), r"[[info:org#External links]]"),
         //             r##""##
         //         );
         //         assert_eq!(
-        //             get_parsers_output(object::objects_parser(), r"[[shell:ls *.org]]"),
+        //             get_parsers_output(object::objects_parser::<()>(), r"[[shell:ls *.org]]"),
         //             r##""##
         //         );
         //         assert_eq!(
         //             get_parsers_output(
-        //                 object::objects_parser(),
+        //                 object::objects_parser::<()>(),
         //                 r##"[[elisp:(find-file "Elisp.org")]]"##
         //             ),
         //             r##""##
         //         );
         //         assert_eq!(
-        //             get_parsers_output(object::objects_parser(), r"[[elisp:org-agenda]]"),
+        //             get_parsers_output(object::objects_parser::<()>(), r"[[elisp:org-agenda]]"),
         //             r##""##
         //         );
     }
@@ -855,7 +861,7 @@ mod tests {
     fn test_regular_link_97_escape() {
         // allow ] in DESCRIPTION
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"[[http://foo.bar][jac]k]]"),
+            get_parsers_output(object::objects_parser::<()>(), r"[[http://foo.bar][jac]k]]"),
             r##"Root@0..25
   Link@0..25
     LeftSquareBracket@0..1 "["
@@ -875,7 +881,7 @@ mod tests {
     #[test]
     fn test_regular_link_98_escape() {
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"[[http://foo.ba\]r]]"),
+            get_parsers_output(object::objects_parser::<()>(), r"[[http://foo.ba\]r]]"),
             r##"Root@0..20
   Link@0..20
     LeftSquareBracket@0..1 "["
@@ -892,7 +898,7 @@ mod tests {
     fn test_regular_link_99_objects() {
         assert_eq!(
             get_parsers_output(
-                object::objects_parser(),
+                object::objects_parser::<()>(),
                 r"[[http://foo.bar][\alpha $a+b$ the_subscript *foo* bar {{{title}}} https:://foo.bar <https://angle.bar> <<not-supported-target>> txt]]"
             ),
             r##"Root@0..134

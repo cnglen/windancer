@@ -6,14 +6,14 @@ use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
-use super::whitespaces_g1;
+use super::whitespaces_g1_v2 as whitespaces_g1;
 
 /// timestamp parser: <<TIMESTAMP>>
-pub(crate) fn timestamp_parser<'a>() -> impl Parser<
+pub(crate) fn timestamp_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let yyyymmdd = one_of("0123456789")
         .repeated()
@@ -191,7 +191,8 @@ pub(crate) fn timestamp_parser<'a>() -> impl Parser<
             ))
         });
 
-    Parser::boxed(choice((p2a, p2b, p3a, p3b, p1a, p1b)))
+    choice((p2a, p2b, p3a, p3b, p1a, p1b))
+    // Parser::boxed(choice((p2a, p2b, p3a, p3b, p1a, p1b)))
     // p2a.or(p2b).or(p3a).or(p3b).or(p1a).or(p1b)
 }
 
@@ -205,7 +206,7 @@ mod tests {
     fn test_timestamp_01() {
         assert_eq!(
             get_parsers_output(
-                object::objects_parser(),
+                object::objects_parser::<()>(),
                 r"[2004-08-24 Tue]--[2004-08-26 Thu]"
             ),
             r##"Root@0..34
@@ -218,7 +219,7 @@ mod tests {
     #[test]
     fn test_timestamp_02() {
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"<2030-10-05 Sat +1m -3d>"),
+            get_parsers_output(object::objects_parser::<()>(), r"<2030-10-05 Sat +1m -3d>"),
             r##"Root@0..24
   Timestamp@0..24
     Text@0..24 "<2030-10-05 Sat +1m -3d>"

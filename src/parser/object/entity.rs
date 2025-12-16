@@ -472,11 +472,11 @@ pub(crate) static ENTITYNAME_TO_HTML: phf::Map<&'static str, &'static str> = phf
 };
 
 /// Entity parser
-pub(crate) fn entity_parser<'a>() -> impl Parser<
+pub(crate) fn entity_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let name_parser = any()
         .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
@@ -490,7 +490,7 @@ pub(crate) fn entity_parser<'a>() -> impl Parser<
         .or(end().to('x'));
 
     // pattern1: \NAME POST
-    let a1 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>(r"\")
+    let a1 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>(r"\")
         .then(name_parser) // NAME
         .then_ignore(post_parser.rewind()) // POST
         .map_with(|(backslash, name), e| {
@@ -523,7 +523,7 @@ pub(crate) fn entity_parser<'a>() -> impl Parser<
     );
 
     // pattern3:  \_SPACES
-    let a3 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>(r"\")
+    let a3 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>(r"\")
         .then(just("_"))
         .then(
             one_of(" ")
@@ -557,7 +557,7 @@ mod tests {
     fn test_01_name_post() {
         // \NAME POST(where POST=EOF)
         assert_eq!(
-            get_parser_output(entity_parser(), r"\alpha"),
+            get_parser_output(entity_parser::<()>(), r"\alpha"),
             r###"Entity@0..6
   BackSlash@0..1 "\\"
   EntityName@1..6 "alpha"
@@ -565,7 +565,7 @@ mod tests {
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"\alpha foo \beta"),
+            get_parsers_output(object::objects_parser::<()>(), r"\alpha foo \beta"),
             format!(
                 r###"Root@0..16
   Entity@0..6
@@ -581,7 +581,7 @@ mod tests {
 
         assert_eq!(
             get_parsers_output(
-                object::objects_parser(),
+                object::objects_parser::<()>(),
                 r"\alpha
 "
             ),
@@ -596,7 +596,7 @@ mod tests {
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"\alphafoo"),
+            get_parsers_output(object::objects_parser::<()>(), r"\alphafoo"),
             format!(
                 r###"Root@0..9
   Text@0..9 "\\alphafoo"
@@ -609,7 +609,7 @@ mod tests {
     fn test_02_name_curly_bracket() {
         // \NAME{}
         assert_eq!(
-            get_parser_output(entity_parser(), r"\beta{}"),
+            get_parser_output(entity_parser::<()>(), r"\beta{}"),
             r###"Entity@0..7
   BackSlash@0..1 "\\"
   EntityName@1..5 "beta"
@@ -619,7 +619,7 @@ mod tests {
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"\pi{}d"),
+            get_parsers_output(object::objects_parser::<()>(), r"\pi{}d"),
             r###"Root@0..6
   Entity@0..5
     BackSlash@0..1 "\\"
@@ -631,7 +631,7 @@ mod tests {
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"\pid"),
+            get_parsers_output(object::objects_parser::<()>(), r"\pid"),
             r###"Root@0..4
   Text@0..4 "\\pid"
 "###
@@ -642,7 +642,7 @@ mod tests {
     fn test_03_spaces() {
         // \_SPACES
         assert_eq!(
-            get_parser_output(entity_parser(), r"\_ "),
+            get_parser_output(entity_parser::<()>(), r"\_ "),
             r###"Entity@0..3
   BackSlash@0..1 "\\"
   Underscore@1..2 "_"
@@ -650,7 +650,7 @@ mod tests {
 "###
         );
         assert_eq!(
-            get_parser_output(entity_parser(), r"\_          "),
+            get_parser_output(entity_parser::<()>(), r"\_          "),
             r###"Entity@0..12
   BackSlash@0..1 "\\"
   Underscore@1..2 "_"
@@ -659,7 +659,7 @@ mod tests {
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"\_          \n"),
+            get_parsers_output(object::objects_parser::<()>(), r"\_          \n"),
             r###"Root@0..14
   Entity@0..12
     BackSlash@0..1 "\\"
@@ -673,7 +673,7 @@ mod tests {
     #[test]
     fn test_04_bad_entity() {
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"\alphA \deltab "),
+            get_parsers_output(object::objects_parser::<()>(), r"\alphA \deltab "),
             r###"Root@0..15
   Text@0..15 "\\alphA \\deltab "
 "###

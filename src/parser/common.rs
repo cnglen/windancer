@@ -6,12 +6,12 @@ use rowan::SyntaxNode;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 #[allow(dead_code)]
-pub(crate) fn get_parser_output<'a>(
+pub(crate) fn get_parser_output<'a, C: 'a + std::default::Default>(
     parser: impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone,
     input: &'a str,
 ) -> String {
@@ -20,12 +20,12 @@ pub(crate) fn get_parser_output<'a>(
 }
 
 #[allow(dead_code)]
-pub(crate) fn get_parser_output_with_state<'a>(
+pub(crate) fn get_parser_output_with_state<'a, C: 'a + std::default::Default>(
     parser: impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone,
     input: &'a str,
     mut state: RollbackState<ParserState>,
@@ -66,24 +66,24 @@ pub(crate) fn get_parser_output_with_state<'a>(
 }
 
 #[allow(dead_code)]
-pub(crate) fn get_parsers_output<'a>(
+pub(crate) fn get_parsers_output<'a, C: 'a + std::default::Default>(
     parser: impl Parser<
         'a,
         &'a str,
         Vec<NodeOrToken<GreenNode, GreenToken>>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone,
     input: &'a str,
 ) -> String {
     let state = RollbackState(ParserState::default());
     get_parsers_output_with_state(parser, input, state)
 }
-pub(crate) fn get_parsers_output_with_state<'a>(
+pub(crate) fn get_parsers_output_with_state<'a, C: 'a + std::default::Default>(
     parser: impl Parser<
         'a,
         &'a str,
         Vec<NodeOrToken<GreenNode, GreenToken>>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone,
     input: &'a str,
     mut state: RollbackState<ParserState>,

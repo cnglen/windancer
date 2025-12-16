@@ -37,14 +37,12 @@ pub enum S2 {
 }
 
 // 上下文状态：当前解析的标题级别
-// - level_stack: heading level
 // - item_indent:
 // - prev_char: previous char
 // - prev_char_backup: previous char backup manually set for later resume back
 #[derive(Clone, Debug)]
 pub struct ParserState {
     prev_char: Option<char>, // previous char
-    level_stack: smallvec::SmallVec<[usize; 8]>,
     item_indent: smallvec::SmallVec<[usize; 8]>,
     prev_char_backup: smallvec::SmallVec<[Option<char>; 4]>,
 }
@@ -54,7 +52,6 @@ impl Default for ParserState {
         Self {
             // smallvec and rc
             prev_char: None,
-            level_stack: smallvec::smallvec![0],
             item_indent: smallvec::smallvec![],
             prev_char_backup: smallvec::smallvec![None],
         }
@@ -97,7 +94,7 @@ impl OrgParser {
     }
 
     pub fn get_radio_targets(&self, input: &str) -> &'static HashSet<String> {
-        let radio_targets: Vec<NodeOrToken<GreenNode, GreenToken>> = object::objects_parser()
+        let radio_targets: Vec<NodeOrToken<GreenNode, GreenToken>> = object::objects_parser::<()>()
             .parse(input)
             .unwrap()
             .into_iter()
@@ -155,7 +152,7 @@ impl OrgParser {
             self.get_radio_targets(radio_target_lines.as_str()); // only use radio target related lines to speed up get the radio targets
         }
 
-        let parse_result = document::document_parser().parse_with_state(
+        let parse_result = document::document_parser::<()>().parse_with_state(
             input,
             // &mut RollbackState(ParserState::default_with_radio_targets(radio_targets)),
             &mut RollbackState(ParserState::default()),

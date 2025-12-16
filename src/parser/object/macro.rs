@@ -6,11 +6,11 @@ use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 /// Macro parser
-pub(crate) fn macro_parser<'a>() -> impl Parser<
+pub(crate) fn macro_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let name = any()
         .filter(|c: &char| c.is_alphabetic())
@@ -23,7 +23,7 @@ pub(crate) fn macro_parser<'a>() -> impl Parser<
         .map(|(first, remaining)| format!("{first}{remaining}"));
 
     // {{{NAME}}}
-    let t1 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>("{{{")
+    let t1 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("{{{")
         .then(name)
         .then(just("}}}"))
         .map_with(|((left_3curly, name), right_3curly), e| {

@@ -11,15 +11,15 @@ type NT = NodeOrToken<GreenNode, GreenToken>;
 type OSK = OrgSyntaxKind;
 
 // Latex Frament parser
-pub(crate) fn latex_fragment_parser<'a>() -> impl Parser<
+pub(crate) fn latex_fragment_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone
 + 'a {
     // \(CONTENTS\)
-    let t1 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>(r##"\"##)
+    let t1 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>(r##"\"##)
         .then(just("("))
         .then(
             any()
@@ -46,7 +46,7 @@ pub(crate) fn latex_fragment_parser<'a>() -> impl Parser<
         });
 
     // \[CONTENTS\]
-    let t2 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>(r##"\"##)
+    let t2 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>(r##"\"##)
         .then(just("["))
         .then(
             any()
@@ -76,7 +76,7 @@ pub(crate) fn latex_fragment_parser<'a>() -> impl Parser<
         });
 
     // $$CONTENTS$$
-    let t3 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>("$$")
+    let t3 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("$$")
         .then(
             any()
                 .and_is(just("$$").not())
@@ -99,7 +99,7 @@ pub(crate) fn latex_fragment_parser<'a>() -> impl Parser<
     let post = any()
         .filter(|c: &char| c.is_ascii_punctuation() || matches!(c, ' ' | '\t' | '\r' | '\n'))
         .or(end().to('x'));
-    let t4 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>("$")
+    let t4 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("$")
         .then(none_of(".,?;\" \t"))
         .then(just("$"))
         .then_ignore(post.rewind())
@@ -167,7 +167,7 @@ pub(crate) fn latex_fragment_parser<'a>() -> impl Parser<
         .at_least(1)
         .collect::<String>()
         .filter(|name| !ENTITYNAME_TO_HTML.contains_key(name));
-    let t01 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>(r##"\"##)
+    let t01 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>(r##"\"##)
         .then(name)
         .then(just("["))
         .then(

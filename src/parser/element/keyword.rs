@@ -33,11 +33,11 @@ pub(crate) static ORG_ELEMENT_PARSED_KEYWORDS: phf::Set<&'static str> = phf_set!
 };
 
 // affliated keyword is NOT a element, it's part of some element.
-pub(crate) fn affiliated_keyword_parser<'a>() -> impl Parser<
+pub(crate) fn affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let key = any()
         .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
@@ -68,12 +68,11 @@ pub(crate) fn affiliated_keyword_parser<'a>() -> impl Parser<
 
     let string_without_nl = none_of("\n\r").repeated().collect::<String>();
 
-    let var = none_of::<&str, &str, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>(
-        "[]\r\n",
-    )
-    .repeated()
-    .at_least(1)
-    .to_slice();
+    let var =
+        none_of::<&str, &str, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("[]\r\n")
+            .repeated()
+            .at_least(1)
+            .to_slice();
     let mut single_expression = Recursive::declare(); // foo / (foo) / (((foo)))
     single_expression.define(
         var.or(just("[")
@@ -458,10 +457,10 @@ pub(crate) fn affiliated_keyword_parser<'a>() -> impl Parser<
 }
 
 // find last colon(:), all previous chars are `key`, such as "#+key:with:colon: value"
-fn key_parser<'a>()
--> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+fn key_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
 {
-    custom::<_, &str, _, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>(|inp| {
+    custom::<_, &str, _, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>(|inp| {
         let remaining = inp.slice_from(std::ops::RangeFrom {
             start: &inp.cursor(),
         });
@@ -494,19 +493,19 @@ fn key_parser<'a>()
 }
 
 // element_parser: <element with affiliated word>
-pub(crate) fn keyword_parser<'a>(
+pub(crate) fn keyword_parser<'a, C: 'a>(
     element_parser: impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone
     + 'a,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     // PEG: !whitespace any()*
     // last if not :
@@ -726,7 +725,7 @@ mod tests {
     fn test_keyword_01() {
         assert_eq!(
             get_parser_output(
-                keyword_parser(element::element_in_keyword_parser()),
+                keyword_parser(element::element_in_keyword_parser::<()>()),
                 r"#+key: value    "
             ),
             r###"Keyword@0..16
@@ -745,7 +744,7 @@ mod tests {
     fn test_keyword_91() {
         assert_eq!(
             get_parser_output(
-                keyword_parser(element::element_in_keyword_parser()),
+                keyword_parser(element::element_in_keyword_parser::<()>()),
                 r"#+title: org test
 
 "
@@ -768,7 +767,7 @@ mod tests {
     fn test_keyword_02() {
         assert_eq!(
             get_parser_output(
-                keyword_parser(element::element_in_keyword_parser()),
+                keyword_parser(element::element_in_keyword_parser::<()>()),
                 r"#+key:has:colons: value    "
             ),
             r###"Keyword@0..27
@@ -786,7 +785,7 @@ mod tests {
     #[test]
     fn test_affliated_keyword_01() {
         assert_eq!(
-            get_parser_output(affiliated_keyword_parser(), r"#+caption: value    "),
+            get_parser_output(affiliated_keyword_parser::<()>(), r"#+caption: value    "),
             r###"AffiliatedKeyword@0..20
   HashPlus@0..2 "#+"
   KeywordKey@2..9
@@ -803,7 +802,7 @@ mod tests {
     fn test_affliated_keyword_02() {
         assert_eq!(
             get_parser_output(
-                affiliated_keyword_parser(),
+                affiliated_keyword_parser::<()>(),
                 r"#+CAPTION[Short caption]: Longer caption."
             ),
             r###"AffiliatedKeyword@0..41
@@ -825,7 +824,7 @@ mod tests {
     #[test]
     fn test_affliated_keyword_03() {
         assert_eq!(
-            get_parser_output(affiliated_keyword_parser(), r"#+attr_html: value"),
+            get_parser_output(affiliated_keyword_parser::<()>(), r"#+attr_html: value"),
             r###"AffiliatedKeyword@0..18
   HashPlus@0..2 "#+"
   KeywordKey@2..11
@@ -841,7 +840,7 @@ mod tests {
     fn test_affliated_keyword_04() {
         assert_eq!(
             get_parser_output(
-                affiliated_keyword_parser(),
+                affiliated_keyword_parser::<()>(),
                 r"#+CAPTION[Short caption]: *Longer* caption."
             ),
             r###"AffiliatedKeyword@0..43
@@ -867,7 +866,10 @@ mod tests {
     #[test]
     fn test_affliated_keyword_05() {
         assert_eq!(
-            get_parser_output(affiliated_keyword_parser(), r"#+caption:value: value    "),
+            get_parser_output(
+                affiliated_keyword_parser::<()>(),
+                r"#+caption:value: value    "
+            ),
             r###"AffiliatedKeyword@0..26
   HashPlus@0..2 "#+"
   KeywordKey@2..9
@@ -888,7 +890,7 @@ mod tests {
 "##;
 
         assert_eq!(
-            get_parsers_output(element::elements_parser(), input),
+            get_parsers_output(element::elements_parser::<()>(), input),
             r###"Root@0..106
   ExportBlock@0..106
     AffiliatedKeyword@0..29
@@ -927,7 +929,7 @@ mod tests {
 "##;
 
         assert_eq!(
-            get_parsers_output(element::elements_parser(), input),
+            get_parsers_output(element::elements_parser::<()>(), input),
             r###"Root@0..107
   Keyword@0..30
     HashPlus@0..2 "#+"
@@ -964,7 +966,7 @@ a paragraph
 "##;
 
         assert_eq!(
-            get_parsers_output(element::elements_parser(), input),
+            get_parsers_output(element::elements_parser::<()>(), input),
             r###"Root@0..41
   Paragraph@0..41
     AffiliatedKeyword@0..29
@@ -990,7 +992,7 @@ a paragraph
 "##;
 
         assert_eq!(
-            get_parsers_output(element::elements_parser(), input),
+            get_parsers_output(element::elements_parser::<()>(), input),
             r###"Root@0..54
   Keyword@0..29
     HashPlus@0..2 "#+"

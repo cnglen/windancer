@@ -6,19 +6,19 @@ use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 use std::ops::Range;
 
-pub(crate) fn item_parser<'a>(
+pub(crate) fn item_parser<'a, C: 'a>(
     element_parser: impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone
     + 'a,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let item_content_inner = object::line_parser() // first row, no need to test indent
         .then(
@@ -147,11 +147,11 @@ pub(crate) fn item_parser<'a>(
 ///   - 仅当是“任意一个List的第一个item”时才更新state["item_indent"]: push
 ///   - ItemIndent状态不能在这里更新，避免任意一行content的数据，更新状态，导致状态混乱
 ///   - 保证ItemIndent状态在item_content前更新
-pub(crate) fn item_indent_parser<'a>() -> impl Parser<
+pub(crate) fn item_indent_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     object::whitespaces().map(|ws| {
         let mut children = vec![];
@@ -168,8 +168,8 @@ pub(crate) fn item_indent_parser<'a>() -> impl Parser<
     })
 }
 
-pub(crate) fn counter_parser<'a>()
--> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+pub(crate) fn counter_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
 {
     text::int(10)
         .to_slice()
@@ -177,11 +177,11 @@ pub(crate) fn counter_parser<'a>()
 }
 
 /// Item Bullet Parser
-pub(crate) fn item_bullet_parser<'a>() -> impl Parser<
+pub(crate) fn item_bullet_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     just("*")
         .to(String::from("*"))
@@ -212,11 +212,11 @@ pub(crate) fn item_bullet_parser<'a>() -> impl Parser<
 }
 
 /// Item Counter Parser
-pub(crate) fn item_counter_set_parser<'a>() -> impl Parser<
+pub(crate) fn item_counter_set_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     just("[@")
         .then(text::int(10))
@@ -258,11 +258,11 @@ pub(crate) fn item_counter_set_parser<'a>() -> impl Parser<
 }
 
 /// Item Checkbox Parser
-pub(crate) fn item_checkbox_parser<'a>() -> impl Parser<
+pub(crate) fn item_checkbox_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     just("[")
         .then(just(" ").or(just("-")).or(just("X")))
@@ -299,11 +299,11 @@ pub(crate) fn item_checkbox_parser<'a>() -> impl Parser<
 }
 
 /// Item Tag Parser
-pub(crate) fn item_tag_parser<'a>() -> impl Parser<
+pub(crate) fn item_tag_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     any()
         .filter(|c: &char| *c != '\n')
@@ -352,8 +352,8 @@ pub(crate) fn item_tag_parser<'a>() -> impl Parser<
 //   - The next item.
 //   - The first line less or equally indented than the starting line, not counting lines within other non-paragraph elements or inlinetask boundaries.
 //   - Two consecutive blank lines.
-fn greater_indent_termination<'a>()
--> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+fn greater_indent_termination<'a, C: 'a>()
+-> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
 {
     // todo: not counting non-paragraph elements or inline task boudaries
     object::whitespaces()
@@ -393,7 +393,7 @@ mod tests {
         let input = r##"+ [@3] [X] tag :: item contents
 "##;
         assert_eq!(
-            get_parser_output(item_parser(element::element_in_item_parser()), input),
+            get_parser_output(item_parser(element::element_in_item_parser::<()>()), input),
             r##"ListItem@0..32
   ListItemIndent@0..0
   ListItemBullet@0..2
@@ -426,7 +426,7 @@ mod tests {
     fn test_item_02() {
         assert_eq!(
             get_parser_output(
-                item_parser(element::element_parser()),
+                item_parser(element::element_parser::<()>()),
                 r##"+ [X] tag :: item contents
 "##
             ),
@@ -456,7 +456,7 @@ mod tests {
     fn test_item_03() {
         assert_eq!(
             get_parser_output(
-                item_parser(element::element_in_item_parser()),
+                item_parser(element::element_in_item_parser::<()>()),
                 r##"+ [@3] tag :: item contents
 "##
             ),
@@ -487,7 +487,7 @@ mod tests {
     fn test_item_04() {
         assert_eq!(
             get_parser_output(
-                item_parser(element::element_in_item_parser()),
+                item_parser(element::element_in_item_parser::<()>()),
                 r##"+ [@3] [X] item contents
 "##
             ),
@@ -518,7 +518,7 @@ mod tests {
     fn test_item_05() {
         assert_eq!(
             get_parser_output(
-                item_parser(element::element_in_item_parser()),
+                item_parser(element::element_in_item_parser::<()>()),
                 r##"+ [@3] [X] tag :: item contents
 "##
             ),
@@ -554,7 +554,7 @@ mod tests {
     fn test_item_06() {
         assert_eq!(
             get_parser_output(
-                item_parser(element::element_in_item_parser()),
+                item_parser(element::element_in_item_parser::<()>()),
                 r##"+ 
 "##
             ),
@@ -571,7 +571,10 @@ mod tests {
     #[test]
     fn test_item_07() {
         assert_eq!(
-            get_parser_output(item_parser(element::element_in_item_parser()), r##"+ foo"##),
+            get_parser_output(
+                item_parser(element::element_in_item_parser::<()>()),
+                r##"+ foo"##
+            ),
             r##"ListItem@0..5
   ListItemIndent@0..0
   ListItemBullet@0..2
@@ -588,7 +591,7 @@ mod tests {
     fn test_item_08() {
         assert_eq!(
             get_parser_output(
-                item_parser(element::element_in_item_parser()),
+                item_parser(element::element_in_item_parser::<()>()),
                 r##"   + [@3] [X] tag :: item contents
 "##
             ),
@@ -625,7 +628,7 @@ mod tests {
     #[should_panic]
     fn test_item_09_content_bad_indent() {
         get_parser_output(
-            item_parser(element::element_in_item_parser()),
+            item_parser(element::element_in_item_parser::<()>()),
             r##"- foo
 bar
 "##,
@@ -636,7 +639,7 @@ bar
     fn test_item_10_content_good_indent() {
         assert_eq!(
             get_parser_output(
-                item_parser(element::element_in_item_parser()),
+                item_parser(element::element_in_item_parser::<()>()),
                 r##"- foo
  bar
 "##
@@ -657,7 +660,7 @@ bar
     fn test_item_11() {
         assert_eq!(
             get_parser_output(
-                item_parser(element::element_in_item_parser()),
+                item_parser(element::element_in_item_parser::<()>()),
                 r##"- * not heading"##
             ),
             r##"ListItem@0..15
@@ -683,7 +686,7 @@ bar
     fn test_item_12() {
         assert_eq!(
             get_parser_output(
-                item_parser(element::element_in_item_parser()),
+                item_parser(element::element_in_item_parser::<()>()),
                 r##"- item
   |a|b|
 
@@ -721,7 +724,7 @@ bar
         let input = r##"+ item contents
 "##;
         assert_eq!(
-            get_parser_output(item_parser(element::element_in_item_parser()), input),
+            get_parser_output(item_parser(element::element_in_item_parser::<()>()), input),
             r##"ListItem@0..16
   ListItemIndent@0..0
   ListItemBullet@0..2

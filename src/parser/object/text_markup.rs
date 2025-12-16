@@ -8,25 +8,25 @@ type NT = NodeOrToken<GreenNode, GreenToken>;
 type OSK = OrgSyntaxKind;
 
 /// text markup parser
-pub(crate) fn text_markup_parser<'a>(
+pub(crate) fn text_markup_parser<'a, C: 'a>(
     object_parser: impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone
     + 'a,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let post = one_of(" \t​-.,;:!?)}]\"'\\\r\n").or(end().to('x'));
 
     // a string may not begin or end with whitespace.
     let get_content = |marker: char| {
-        none_of::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>(" \t​")
+        none_of::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>(" \t​")
             .then(any()
                   .and_is(just(marker).then(post).not().rewind())
                   .repeated()
@@ -156,7 +156,7 @@ pub(crate) fn text_markup_parser<'a>(
             )))
         });
 
-    let code = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>("~")
+    let code = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("~")
         .then(get_content('~'))
         .then(just("~"))
         .then_ignore(post.rewind())
@@ -171,7 +171,7 @@ pub(crate) fn text_markup_parser<'a>(
             Ok(NT::Node(GreenNode::new(OSK::Code.into(), children)))
         });
 
-    let verbatim = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>("=")
+    let verbatim = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("=")
         .then(get_content('='))
         .then(just("="))
         .then_ignore(post.rewind())
@@ -206,7 +206,7 @@ mod tests {
     fn test_markup_01_basic_en() {
         assert_eq!(
             get_parsers_output(
-                object::objects_parser(),
+                object::objects_parser::<()>(),
                 "a *bold*, a /italic/, a _underline_, a +strikethrough+, a ~code~, and a =verbatim= text"
             ),
             r##"Root@0..87
@@ -249,7 +249,7 @@ mod tests {
     fn test_markup_02_basic_cn() {
         assert_eq!(
             get_parsers_output(
-                object::objects_parser(),
+                object::objects_parser::<()>(),
                 "一个​*粗体*​、​/斜体/​、​_下划线_​、​+横划线+​、​~编程~​和​=字面=​文本"
             ),
             r##"Root@0..117
@@ -291,21 +291,24 @@ mod tests {
     #[test]
     fn test_markup_03_basic_negative() {
         assert_eq!(
-            get_parsers_output(object::objects_parser(), "Not*bold* bad PRE"),
+            get_parsers_output(object::objects_parser::<()>(), "Not*bold* bad PRE"),
             r##"Root@0..17
   Text@0..17 "Not*bold* bad PRE"
 "##
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser(), "Not *bold*( bad POST"),
+            get_parsers_output(object::objects_parser::<()>(), "Not *bold*( bad POST"),
             r##"Root@0..20
   Text@0..20 "Not *bold*( bad POST"
 "##
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser(), "Not * bold* *bold * bad content"),
+            get_parsers_output(
+                object::objects_parser::<()>(),
+                "Not * bold* *bold * bad content"
+            ),
             r##"Root@0..31
   Text@0..31 "Not * bold* *bold * b ..."
 "##
@@ -315,7 +318,7 @@ mod tests {
     #[test]
     fn test_markup_04_nested() {
         assert_eq!(
-            get_parsers_output(object::objects_parser(), "*/_+=all=+_/*"),
+            get_parsers_output(object::objects_parser::<()>(), "*/_+=all=+_/*"),
             r##"Root@0..13
   Bold@0..13
     Asterisk@0..1 "*"
@@ -337,7 +340,7 @@ mod tests {
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"//ab//"),
+            get_parsers_output(object::objects_parser::<()>(), r"//ab//"),
             r##"Root@0..6
   Italic@0..6
     Slash@0..1 "/"
@@ -353,7 +356,7 @@ mod tests {
     #[test]
     fn test_markup_05_nested() {
         assert_eq!(
-            get_parsers_output(object::objects_parser(), "~=*_/inner-most/_*=~"),
+            get_parsers_output(object::objects_parser::<()>(), "~=*_/inner-most/_*=~"),
             r##"Root@0..20
   Code@0..20
     Tilde@0..1 "~"
@@ -367,7 +370,7 @@ mod tests {
     fn test_markup_06_nested() {
         assert_eq!(
             get_parsers_output(
-                object::objects_parser(),
+                object::objects_parser::<()>(),
                 r##"a */bold-italic/* text
 a *bold NOT/italic/* text
 */This text is bold and italic, _and this part is also underlined_./*
@@ -419,7 +422,7 @@ a */bold-italic/ *bold*
     fn test_markup_07_nested() {
         assert_eq!(
             get_parsers_output(
-                object::objects_parser(),
+                object::objects_parser::<()>(),
                 r##"*/_bold-italic-underline_/*
 
 *_/bold-underline-italic/_*
@@ -601,14 +604,14 @@ _*/underline-bold-italic/*_
     #[test]
     fn test_markup_08_nested() {
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r##" */abc/ "##),
+            get_parsers_output(object::objects_parser::<()>(), r##" */abc/ "##),
             r##"Root@0..8
   Text@0..8 " */abc/ "
 "##
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r##" */abc/ _adf_"##),
+            get_parsers_output(object::objects_parser::<()>(), r##" */abc/ _adf_"##),
             r##"Root@0..13
   Text@0..8 " */abc/ "
   Underline@8..13
@@ -619,7 +622,7 @@ _*/underline-bold-italic/*_
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r##" */_abc/* bar_"##),
+            get_parsers_output(object::objects_parser::<()>(), r##" */_abc/* bar_"##),
             r##"Root@0..14
   Text@0..1 " "
   Bold@1..9
@@ -634,7 +637,7 @@ _*/underline-bold-italic/*_
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r##" /*+/"##),
+            get_parsers_output(object::objects_parser::<()>(), r##" /*+/"##),
             r##"Root@0..5
   Text@0..1 " "
   Italic@1..5
@@ -645,7 +648,7 @@ _*/underline-bold-italic/*_
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r##" ** a **"##),
+            get_parsers_output(object::objects_parser::<()>(), r##" ** a **"##),
             r##"Root@0..8
   Text@0..1 " "
   Bold@1..8
@@ -656,7 +659,7 @@ _*/underline-bold-italic/*_
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r##" **a bold** : 2b"##),
+            get_parsers_output(object::objects_parser::<()>(), r##" **a bold** : 2b"##),
             r##"Root@0..16
   Text@0..1 " "
   Bold@1..11
@@ -671,7 +674,7 @@ _*/underline-bold-italic/*_
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r##" ***a bold** : 2b"##),
+            get_parsers_output(object::objects_parser::<()>(), r##" ***a bold** : 2b"##),
             r##"Root@0..17
   Text@0..1 " "
   Bold@1..12
@@ -686,7 +689,7 @@ _*/underline-bold-italic/*_
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r##" ***a bold*** : 3b"##),
+            get_parsers_output(object::objects_parser::<()>(), r##" ***a bold*** : 3b"##),
             r##"Root@0..18
   Text@0..1 " "
   Bold@1..13
@@ -707,7 +710,7 @@ _*/underline-bold-italic/*_
     #[test]
     fn test_markup_09_code() {
         assert_eq!(
-            get_parsers_output(object::objects_parser(), "~code~"),
+            get_parsers_output(object::objects_parser::<()>(), "~code~"),
             r##"Root@0..6
   Code@0..6
     Tilde@0..1 "~"
@@ -717,7 +720,7 @@ _*/underline-bold-italic/*_
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser(), "~code ~end~"),
+            get_parsers_output(object::objects_parser::<()>(), "~code ~end~"),
             r##"Root@0..11
   Code@0..11
     Tilde@0..1 "~"
@@ -727,7 +730,7 @@ _*/underline-bold-italic/*_
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser(), "~code end~ other~"),
+            get_parsers_output(object::objects_parser::<()>(), "~code end~ other~"),
             r##"Root@0..17
   Code@0..10
     Tilde@0..1 "~"
@@ -738,7 +741,7 @@ _*/underline-bold-italic/*_
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser(), "~~code end~ other~"),
+            get_parsers_output(object::objects_parser::<()>(), "~~code end~ other~"),
             r##"Root@0..18
   Code@0..11
     Tilde@0..1 "~"
@@ -753,7 +756,7 @@ _*/underline-bold-italic/*_
     fn test_markup_10_bad_nested() {
         assert_eq!(
             get_parsers_output(
-                object::objects_parser(),
+                object::objects_parser::<()>(),
                 "_underline_ */_underline_ italic/"
             ),
             r##"Root@0..33
@@ -774,7 +777,7 @@ _*/underline-bold-italic/*_
     fn test_markup_11_object() {
         assert_eq!(
             get_parsers_output(
-                object::objects_parser(),
+                object::objects_parser::<()>(),
                 "a *[[https://www.foo.org][foo]]* link"
             ),
             r##"Root@0..37

@@ -19,8 +19,8 @@ enum BlockType {
     Quote,
 }
 
-fn special_name_parser<'a>()
--> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+fn special_name_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
 {
     any()
         .filter(|c: &char| !c.is_whitespace())
@@ -39,11 +39,11 @@ fn special_name_parser<'a>()
 }
 
 /// export block
-pub(crate) fn export_block_parser<'a>() -> impl Parser<
+pub(crate) fn export_block_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let data = none_of("\n \t").repeated().at_least(1).collect::<String>();
     let begin_row = object::whitespaces()
@@ -145,11 +145,11 @@ pub(crate) fn export_block_parser<'a>() -> impl Parser<
 }
 
 /// src block
-pub(crate) fn src_block_parser<'a>() -> impl Parser<
+pub(crate) fn src_block_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let language = none_of(" \t\n").repeated().at_least(1).collect::<String>();
     let switch_p1 = just("-l")
@@ -307,13 +307,13 @@ pub(crate) fn src_block_parser<'a>() -> impl Parser<
         )
 }
 
-fn comment_or_example_block_parser<'a>(
+fn comment_or_example_block_parser<'a, C: 'a>(
     block_type: BlockType,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let name = match block_type {
         BlockType::Comment => "comment",
@@ -378,31 +378,31 @@ fn comment_or_example_block_parser<'a>(
 }
 
 /// comment block
-pub(crate) fn comment_block_parser<'a>() -> impl Parser<
+pub(crate) fn comment_block_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     comment_or_example_block_parser(BlockType::Comment)
 }
 
 /// example block
-pub(crate) fn example_block_parser<'a>() -> impl Parser<
+pub(crate) fn example_block_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     comment_or_example_block_parser(BlockType::Example)
 }
 
 /// verse block
-pub(crate) fn verse_block_parser<'a>() -> impl Parser<
+pub(crate) fn verse_block_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let begin_row = begin_row_parser("verse");
     let end_row = end_row_parser("verse");
@@ -461,13 +461,13 @@ pub(crate) fn verse_block_parser<'a>() -> impl Parser<
 
 // begin_row: #+begin_name[ data][ ]\n
 // for quote/center/comment/example
-fn begin_row_parser<'a>(
+fn begin_row_parser<'a, C: 'a>(
     name: &'a str,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let data = none_of("\n").repeated().at_least(1).collect::<String>();
     object::whitespaces()
@@ -525,13 +525,13 @@ fn begin_row_parser<'a>(
 }
 
 // for non-special block
-fn end_row_parser<'a>(
+fn end_row_parser<'a, C: 'a>(
     name: &'a str,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     object::whitespaces()
         .then(object::just_case_insensitive("#+end_"))
@@ -566,14 +566,14 @@ fn end_row_parser<'a>(
         })
 }
 
-fn content_inner_parser<'a>(
+fn content_inner_parser<'a, C: 'a>(
     end_row: impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone,
-) -> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+) -> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
 {
     object::line_parser()
         .or(object::blank_line_str_parser())
@@ -583,19 +583,19 @@ fn content_inner_parser<'a>(
         .to_slice()
 }
 
-fn center_or_quote_block_parser<'a>(
+fn center_or_quote_block_parser<'a, C: 'a>(
     element_parser: impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone,
     block_type: BlockType,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let name = match block_type {
         BlockType::Center => "center",
@@ -675,51 +675,51 @@ fn center_or_quote_block_parser<'a>(
         )
 }
 
-pub(crate) fn center_block_parser<'a>(
+pub(crate) fn center_block_parser<'a, C: 'a>(
     element_parser: impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     center_or_quote_block_parser(element_parser, BlockType::Center)
 }
 
-pub(crate) fn quote_block_parser<'a>(
+pub(crate) fn quote_block_parser<'a, C: 'a>(
     element_parser: impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     center_or_quote_block_parser(element_parser, BlockType::Quote)
 }
 
-pub(crate) fn special_block_parser<'a>(
+pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
     element_parser: impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone
     + 'a,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let affiliated_keywords = element::keyword::affiliated_keyword_parser()
         .repeated()
@@ -903,7 +903,7 @@ mod tests {
     fn test_export_block_01() {
         assert_eq!(
             get_parser_output(
-                export_block_parser(),
+                export_block_parser::<()>(),
                 r##"#+BEGIN_export html 
 #+END_export
 "##
@@ -928,7 +928,7 @@ mod tests {
     #[should_panic]
     fn test_export_block_02() {
         get_parser_output(
-            export_block_parser(),
+            export_block_parser::<()>(),
             r##"#+BEGIN_export 
 #+END_export
 "##,
@@ -939,7 +939,7 @@ mod tests {
     #[should_panic]
     fn test_export_block_03() {
         get_parser_output(
-            export_block_parser(),
+            export_block_parser::<()>(),
             r##"#+BEGIN_export html latex
 #+END_export
 "##,
@@ -950,7 +950,7 @@ mod tests {
     #[should_panic]
     fn test_export_block_04() {
         get_parser_output(
-            export_block_parser(),
+            export_block_parser::<()>(),
             r##"#+BEGIN_export html
 * head
 #+END_export
@@ -962,7 +962,7 @@ mod tests {
     fn test_verse_block_01() {
         assert_eq!(
             get_parser_output(
-                verse_block_parser(),
+                verse_block_parser::<()>(),
                 r##"#+BEGIN_verse
 
 example
@@ -988,7 +988,7 @@ example
     fn test_verse_block_02() {
         assert_eq!(
             get_parser_output(
-                verse_block_parser(),
+                verse_block_parser::<()>(),
                 r##"  #+BEGIN_VERSE
      Great clouds   overhead
      Tiny black birds rise and fall
@@ -1024,7 +1024,7 @@ example
     fn test_src_block_01() {
         assert_eq!(
             get_parser_output(
-                src_block_parser(),
+                src_block_parser::<()>(),
                 r##"#+BEGIN_src rust -l -n :var foo=bar  
 fn main() {
 }
@@ -1057,7 +1057,7 @@ fn main() {
     fn test_src_block_02() {
         let input = "#+BEGIN_SRC python
 #+END_DRC";
-        get_parser_output(src_block_parser(), input);
+        get_parser_output(src_block_parser::<()>(), input);
     }
 
     #[test]
@@ -1065,7 +1065,7 @@ fn main() {
         let input = "#+BEGIN_sRC python
 #+END_SrC";
         assert_eq!(
-            get_parser_output(src_block_parser(), input),
+            get_parser_output(src_block_parser::<()>(), input),
             r##"SrcBlock@0..28
   BlockBegin@0..19
     Text@0..8 "#+BEGIN_"
@@ -1087,7 +1087,7 @@ print("hi");
 print("py");
 #+END_SrC"###;
         assert_eq!(
-            get_parser_output(src_block_parser(), input),
+            get_parser_output(src_block_parser::<()>(), input),
             r##"SrcBlock@0..54
   BlockBegin@0..19
     Text@0..8 "#+BEGIN_"
@@ -1109,7 +1109,7 @@ print("py");
         let input = "#+BEGIN_example
 #+END_examplE";
         assert_eq!(
-            get_parser_output(example_block_parser(), input),
+            get_parser_output(example_block_parser::<()>(), input),
             r##"ExampleBlock@0..29
   BlockBegin@0..16
     Text@0..8 "#+BEGIN_"
@@ -1126,7 +1126,7 @@ print("py");
     fn test_center_block_01() {
         assert_eq!(
             get_parser_output(
-                center_block_parser(element_parser()),
+                center_block_parser(element_parser::<()>()),
                 r##"#+BEGIN_center
 a *bold* test
 #+END_center
@@ -1157,7 +1157,7 @@ a *bold* test
     fn test_center_block_02() {
         assert_eq!(
             get_parser_output(
-                center_block_parser(element_parser()),
+                center_block_parser(element_parser::<()>()),
                 r##"#+BEGIN_CENTER
      Everything should be made as simple as possible, \\
      but not any simpler
@@ -1188,7 +1188,7 @@ a *bold* test
     fn test_special_block_03() {
         assert_eq!(
             get_parser_output(
-                special_block_parser(element_parser()),
+                special_block_parser(element_parser::<()>()),
                 r##"#+BEGIN_xx
 special block
 #+END_xx
@@ -1214,7 +1214,7 @@ special block
     fn test_special_block_04() {
         assert_eq!(
             get_parser_output(
-                special_block_parser(element_parser()),
+                special_block_parser(element_parser::<()>()),
                 r##"#+BEGIN_xx
 xx
 #+begin_center
@@ -1270,7 +1270,7 @@ quote
     fn test_special_block_05() {
         assert_eq!(
             get_parser_output(
-                center_block_parser(element_parser()),
+                center_block_parser(element_parser::<()>()),
                 r##"#+BEGIN_center
 #+begin_quote
 #+begin_xx
@@ -1321,7 +1321,7 @@ qq
         // cant nested the same block
         assert_eq!(
             get_parsers_output(
-                element_parser().repeated().collect::<Vec<_>>(),
+                element_parser::<()>().repeated().collect::<Vec<_>>(),
                 r##"#+BEGIN_center
 #+begin_center
 cc
@@ -1361,7 +1361,7 @@ cc
         // cant nested the same block
         assert_eq!(
             get_parsers_output(
-                element_parser().repeated().collect::<Vec<_>>(),
+                element_parser::<()>().repeated().collect::<Vec<_>>(),
                 r##"#+BEGIN_xx
 #+begin_yy
 #+begin_z

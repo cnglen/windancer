@@ -5,19 +5,19 @@ use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
-pub(crate) fn plain_list_parser<'a>(
+pub(crate) fn plain_list_parser<'a, C: 'a>(
     item_parser: impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone
     + 'a,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let affiliated_keywords = element::keyword::affiliated_keyword_parser()
         .repeated()
@@ -95,8 +95,9 @@ mod tests {
         Text@22..27 "four\n"
 "##;
 
-        let list_parser =
-            element::list::plain_list_parser(element::item::item_parser(element::element_parser()));
+        let list_parser = element::list::plain_list_parser(element::item::item_parser(
+            element::element_parser::<()>(),
+        ));
         assert_eq!(get_parser_output(list_parser, input), expected_output);
     }
 
@@ -145,8 +146,9 @@ mod tests {
       Paragraph@24..29
         Text@24..29 "four\n"
 "##;
-        let list_parser =
-            element::list::plain_list_parser(element::item::item_parser(element::element_parser()));
+        let list_parser = element::list::plain_list_parser(element::item::item_parser(
+            element::element_parser::<()>(),
+        ));
         assert_eq!(get_parser_output(list_parser, input), expected_output);
     }
 
@@ -160,8 +162,9 @@ mod tests {
 - One again
 - Two again
 "##;
-        let list_parser =
-            element::list::plain_list_parser(element::item::item_parser(element::element_parser()));
+        let list_parser = element::list::plain_list_parser(element::item::item_parser(
+            element::element_parser::<()>(),
+        ));
         get_parser_output(list_parser, input);
     }
 
@@ -200,8 +203,9 @@ mod tests {
   BlankLine@45..46 "\n"
   BlankLine@46..47 "\n"
 "##;
-        let list_parser =
-            element::list::plain_list_parser(element::item::item_parser(element::element_parser()));
+        let list_parser = element::list::plain_list_parser(element::item::item_parser(
+            element::element_parser::<()>(),
+        ));
         assert_eq!(get_parser_output(list_parser, input), expected_output);
     }
 
@@ -209,8 +213,9 @@ mod tests {
     fn test_list_05() {
         let input = r##"- one
      - two"##;
-        let list_parser =
-            element::list::plain_list_parser(element::item::item_parser(element::element_parser()));
+        let list_parser = element::list::plain_list_parser(element::item::item_parser(
+            element::element_parser::<()>(),
+        ));
         assert_eq!(
             get_parser_output(list_parser, input),
             r##"List@0..16
@@ -241,8 +246,9 @@ mod tests {
         let input = r##" - one
     - two
     "##;
-        let list_parser =
-            element::list::plain_list_parser(element::item::item_parser(element::element_parser()));
+        let list_parser = element::list::plain_list_parser(element::item::item_parser(
+            element::element_parser::<()>(),
+        ));
         assert_eq!(
             get_parser_output(list_parser, input),
             r#"List@0..21
@@ -277,8 +283,9 @@ mod tests {
 - one
 - two
     "##;
-        let list_parser =
-            element::list::plain_list_parser(element::item::item_parser(element::element_parser()));
+        let list_parser = element::list::plain_list_parser(element::item::item_parser(
+            element::element_parser::<()>(),
+        ));
         assert_eq!(
             get_parser_output(list_parser, input),
             r##"List@0..55
@@ -319,7 +326,7 @@ mod tests {
     // 1) another list
     //     "##;
     //             let list_parser = element::list::plain_list_parser(element::item::item_parser(
-    //                 element::element_parser(),
+    //                 element::element_parser::<()>(),
     //             ));
     //             get_parser_output(list_parser, input);
     //         }

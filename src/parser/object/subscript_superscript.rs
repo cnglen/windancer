@@ -14,10 +14,10 @@ type OSK = OrgSyntaxKind;
 // CHARS FINAL parser:
 // - find the longest string consisting of <alphanumeric characters, commas, backslashes, and dots>, whose length>=1
 // - find the last alphnumeric character as FINAL
-fn chars_final_parser<'a>()
--> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+fn chars_final_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
 {
-    custom::<_, &str, _, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>>(|inp| {
+    custom::<_, &str, _, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>(|inp| {
         let remaining = inp.slice_from(std::ops::RangeFrom {
             start: &inp.cursor(),
         });
@@ -59,20 +59,20 @@ enum ScriptType {
     Sub,
 }
 
-fn create_script_parser<'a>(
+fn create_script_parser<'a, C: 'a>(
     script_type: ScriptType,
     object_parser: impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone
     + 'a,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     let (c, syntax_kind) = match script_type {
         ScriptType::Super => ("^", OSK::Superscript),
@@ -80,7 +80,7 @@ fn create_script_parser<'a>(
     };
 
     // ^* or _*
-    let t1 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>(c)
+    let t1 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>(c)
         .then(just("*"))
         .map_with(move |(sup, aes), e| {
             e.state().prev_char = Some('*');
@@ -91,7 +91,7 @@ fn create_script_parser<'a>(
         });
 
     // CHAR^{expression} / CHAR^(EXPRESSION)
-    let var = none_of::<&str, &str, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>(
+    let var = none_of::<&str, &str, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>(
         "{}()\r\n",
     )
     .repeated()
@@ -119,7 +119,7 @@ fn create_script_parser<'a>(
     let pairs = HashMap::from([('(', ')'), ('{', '}')]);
     let pair_starts = pairs.keys().copied().collect::<Vec<_>>();
     let pair_ends = pairs.values().copied().collect::<Vec<_>>();
-    let t2 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, ()>>(c)
+    let t2 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>(c)
         .then(one_of(pair_starts))
         .map_with(|(a, b): (&str, char), e| {
             let tmp = e.state().prev_char;
@@ -210,36 +210,36 @@ fn create_script_parser<'a>(
     // t1.or(t3).or(t2)
 }
 
-pub(crate) fn subscript_parser<'a>(
+pub(crate) fn subscript_parser<'a, C: 'a>(
     object_parser: impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone
     + 'a,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     create_script_parser(ScriptType::Sub, object_parser)
 }
 
-pub(crate) fn superscript_parser<'a>(
+pub(crate) fn superscript_parser<'a, C: 'a>(
     object_parser: impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone
     + 'a,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     create_script_parser(ScriptType::Super, object_parser)
 }
@@ -255,7 +255,7 @@ mod tests {
         // fox_bar
         // 否定前瞻过程中, markup解析，中间步骤解析standard_objects.nested(content)成功, 会更新prev_char, 后续marker_end解析失败，但状态不恢复，导致状态混乱
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"fox_bar"),
+            get_parsers_output(object::objects_parser::<()>(), r"fox_bar"),
             r###"Root@0..7
   Text@0..3 "fox"
   Subscript@3..7
@@ -265,7 +265,7 @@ mod tests {
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"fox_{bar}"),
+            get_parsers_output(object::objects_parser::<()>(), r"fox_{bar}"),
             r###"Root@0..9
   Text@0..3 "fox"
   Subscript@3..9
@@ -280,7 +280,7 @@ mod tests {
     #[test]
     fn test_subscript_02_bad() {
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"fo _{bar}"),
+            get_parsers_output(object::objects_parser::<()>(), r"fo _{bar}"),
             r###"Root@0..9
   Text@0..9 "fo _{bar}"
 "###
@@ -290,7 +290,7 @@ mod tests {
     #[test]
     fn test_superscript_01_bold() {
         assert_eq!(
-            get_parsers_output(object::objects_parser(), r"a^{*bold*}"),
+            get_parsers_output(object::objects_parser::<()>(), r"a^{*bold*}"),
             r###"Root@0..10
   Text@0..1 "a"
   Superscript@1..10
