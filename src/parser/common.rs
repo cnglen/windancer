@@ -92,13 +92,10 @@ pub(crate) fn get_parsers_output_with_state<'a, C: 'a + std::default::Default>(
         .parse_with_state(input, &mut state)
         .into_output_errors();
     // let ans = parser.parse_with_state(input, &mut state).unwrap();
-    let mut children: Vec<NodeOrToken<GreenNode, GreenToken>> = vec![];
-    ans.expect("has_output")
-        .iter()
-        .for_each(|e| children.push(e.clone()));
+    let children = ans.expect("has_output");
     let root = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
         OrgSyntaxKind::Root.into(),
-        children.clone(),
+        children,
     ));
     println!("c={root:?}");
     let syntax_tree: SyntaxNode<OrgLanguage> = SyntaxNode::new_root(root.into_node().expect("xx"));

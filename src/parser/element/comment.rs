@@ -17,9 +17,9 @@ pub(crate) fn comment_parser<'a, C: 'a>() -> impl Parser<
         .then(none_of("\n").repeated().collect::<String>())
         .then(object::newline_or_ending())
         .map(|((((ws1, hash), ws2), content), maybe_nl)| {
-            let mut children = vec![];
+            let mut children = Vec::with_capacity(5);
 
-            if ws1.len() > 0 {
+            if !ws1.is_empty() {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Whitespace.into(),
                     &ws1,
@@ -31,24 +31,23 @@ pub(crate) fn comment_parser<'a, C: 'a>() -> impl Parser<
                 hash,
             )));
 
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Whitespace.into(),
-                &ws2,
-            )));
+            if !ws2.is_empty() {
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Whitespace.into(),
+                    &ws2,
+                )));
+            }
 
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::Text.into(),
                 &content,
             )));
 
-            match maybe_nl {
-                Some(nl) => {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Newline.into(),
-                        &nl,
-                    )));
-                }
-                None => {}
+            if let Some(nl) = maybe_nl {
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Newline.into(),
+                    &nl,
+                )));
             }
 
             children
@@ -92,16 +91,12 @@ pub(crate) fn comment_parser<'a, C: 'a>() -> impl Parser<
         .collect::<Vec<_>>()
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
         .map(|(vn, blanklines)| {
-            let mut children = vec![];
-            for e in vn {
-                for ee in e {
-                    children.push(ee);
-                }
-            }
-            for blankline in blanklines {
-                children.push(NodeOrToken::Token(blankline));
-            }
+            let mut children =
+                Vec::with_capacity(vn.iter().map(|e| e.len()).sum::<usize>() + blanklines.len());
+            children.extend(vn.into_iter().flatten());
+            children.extend(blanklines.into_iter().map(NodeOrToken::Token));
 
             NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Comment.into(), children))
-        }).boxed()
+        })
+        .boxed()
 }

@@ -207,7 +207,8 @@ pub(crate) fn table_parser<'a, C: 'a>() -> impl Parser<
             }
 
             NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Table.into(), children))
-        }).boxed()
+        })
+        .boxed()
 }
 
 #[cfg(test)]

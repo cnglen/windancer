@@ -139,7 +139,8 @@ fn path_plain_parser<'a, C: 'a>()
         }
 
         Ok(pathplain)
-    }).boxed()
+    })
+    .boxed()
 }
 
 /// plain link parser
@@ -164,23 +165,19 @@ pub(crate) fn plain_link_parser<'a, C: 'a>() -> impl Parser<
                 true => {
                     e.state().prev_char = pathplain.chars().last();
 
-                    let mut children = vec![];
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Text.into(),
-                        &protocol,
-                    )));
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Colon.into(),
-                        colon,
-                    )));
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Text.into(),
-                        &pathplain,
-                    )));
-
                     Ok(NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                         OrgSyntaxKind::PlainLink.into(),
-                        children,
+                        vec![
+                            NodeOrToken::Token(GreenToken::new(
+                                OrgSyntaxKind::Text.into(),
+                                &protocol,
+                            )),
+                            NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Colon.into(), colon)),
+                            NodeOrToken::Token(GreenToken::new(
+                                OrgSyntaxKind::Text.into(),
+                                &pathplain,
+                            )),
+                        ],
                     )))
                 }
                 false => Err(Rich::custom(
@@ -191,7 +188,8 @@ pub(crate) fn plain_link_parser<'a, C: 'a>() -> impl Parser<
                     ),
                 )),
             }
-        }).boxed()
+        })
+        .boxed()
 }
 
 /// angle link parser
@@ -213,38 +211,28 @@ pub(crate) fn angle_link_parser<'a, C: 'a>() -> impl Parser<
         .then(just(">"))
         .map(
             |((((left_angle, protocol), colon), path_angle), right_angle)| {
-                let mut children = vec![];
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::LeftAngleBracket.into(),
-                    left_angle,
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    &protocol,
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Colon.into(),
-                    colon,
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    &path_angle,
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::RightAngleBracket.into(),
-                    right_angle,
-                )));
-
                 NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                     OrgSyntaxKind::AngleLink.into(),
-                    children,
+                    vec![
+                        NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::LeftAngleBracket.into(),
+                            left_angle,
+                        )),
+                        NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Text.into(), &protocol)),
+                        NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Colon.into(), colon)),
+                        NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::Text.into(),
+                            &path_angle,
+                        )),
+                        NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::RightAngleBracket.into(),
+                            right_angle,
+                        )),
+                    ],
                 ))
             },
-        ).boxed()
+        )
+        .boxed()
 }
 
 /// regular link parser
@@ -254,7 +242,8 @@ pub(crate) fn regular_link_parser<'a, C: 'a>(
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone +'a,
+    > + Clone
+    + 'a,
 ) -> impl Parser<
     'a,
     &'a str,
@@ -278,24 +267,21 @@ pub(crate) fn regular_link_parser<'a, C: 'a>(
             None => None,
 
             Some(((lbracket, content), rbracket)) => {
-                let mut children = vec![];
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::LeftSquareBracket.into(),
-                    lbracket,
-                )));
-
-                for node in content {
-                    children.push(node);
-                }
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::RightSquareBracket.into(),
-                    rbracket,
-                )));
-
                 Some(NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                     OrgSyntaxKind::LinkDescription.into(),
-                    children,
+                    {
+                        let mut children = Vec::with_capacity(2 + content.len());
+                        children.push(NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::LeftSquareBracket.into(),
+                            lbracket,
+                        )));
+                        children.extend(content);
+                        children.push(NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::RightSquareBracket.into(),
+                            rbracket,
+                        )));
+                        children
+                    },
                 )))
             }
         });
@@ -352,24 +338,19 @@ pub(crate) fn regular_link_parser<'a, C: 'a>(
         )))
         .then(just("]"))
         .map(|((lbracket, path), rbracket)| {
-            let mut children = vec![];
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::LeftSquareBracket.into(),
-                lbracket,
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                path,
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::RightSquareBracket.into(),
-                rbracket,
-            )));
             NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                 OrgSyntaxKind::LinkPath.into(),
-                children,
+                vec![
+                    NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::LeftSquareBracket.into(),
+                        lbracket,
+                    )),
+                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Text.into(), path)),
+                    NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::RightSquareBracket.into(),
+                        rbracket,
+                    )),
+                ],
             ))
         });
 
@@ -380,8 +361,7 @@ pub(crate) fn regular_link_parser<'a, C: 'a>(
         .then(object::newline().or_not())
         .map_with(
             |((((lbracket, path), maybe_desc), rbracket), maybe_newline), e| {
-                let mut children = vec![];
-
+                let mut children = Vec::new();
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::LeftSquareBracket.into(),
                     lbracket,
@@ -389,12 +369,7 @@ pub(crate) fn regular_link_parser<'a, C: 'a>(
 
                 children.push(path);
 
-                match maybe_desc {
-                    None => {}
-                    Some(desc) => {
-                        children.push(desc);
-                    }
-                }
+                children.extend(maybe_desc.into_iter());
 
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::RightSquareBracket.into(),
@@ -402,22 +377,18 @@ pub(crate) fn regular_link_parser<'a, C: 'a>(
                 )));
 
                 e.state().prev_char = rbracket.chars().last();
-                if let Some(nl) = maybe_newline {
+                children.extend(maybe_newline.into_iter().map(|nl| {
                     e.state().prev_char = nl.chars().last();
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Newline.into(),
-                        &nl,
-                    )));
-                }
+                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Newline.into(), &nl))
+                }));
 
-                let link = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+                NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                     OrgSyntaxKind::Link.into(),
                     children,
-                ));
-
-                link
+                ))
             },
-        ).boxed()
+        )
+        .boxed()
 }
 
 #[cfg(test)]

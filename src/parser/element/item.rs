@@ -20,27 +20,21 @@ pub(crate) fn item_parser<'a, C: 'a>(
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
-    let item_content_inner = object::line_parser() // first row, no need to test indent
+    let item_content_inner = object::line_parser() // no need to test indent since this is the first row of item
         .then(
             object::line_parser()
-                .and_is(greater_indent_termination()) // 覆盖了： next item的结束条件(next_item: 属于lesser_indent)
+                .and_is(greater_indent_termination()) // <= indented than the startingl line; including next item since next item is equaly indented of the starting line
                 .or(object::blank_line_str_parser())
-                .and_is(object::blank_line_parser().repeated().at_least(2).not())
+                .and_is(object::blank_line_parser().repeated().at_least(2).not()) // two consecutive blank lines
                 .repeated(),
         )
-        .to_slice()
-        // .map(|s|{println!("s={s:?}"); s})        
-        ;
+        .to_slice();
 
     let item_content_parser = element_parser
         .repeated()
         .collect::<Vec<_>>()
         .nested_in(item_content_inner)
-        .map(|other_children| {
-            let mut children = vec![];
-            for c in other_children {
-                children.push(c);
-            }
+        .map(|children| {
             NodeOrToken::Node(GreenNode::new(
                 OrgSyntaxKind::ListItemContent.into(),
                 children,
@@ -57,7 +51,7 @@ pub(crate) fn item_parser<'a, C: 'a>(
             let current_indent = usize::from(indent.text_len());
             let state_indent_length = e.state().item_indent.len();
 
-            if state_indent_length > 0 {
+            if state_indent_length > 0 { // indent_length vecntor is not empty
                 let last_state = e.state().item_indent[state_indent_length - 1];
                 if current_indent < last_state {
                     let error = Rich::custom::<&str>(
@@ -65,19 +59,15 @@ pub(crate) fn item_parser<'a, C: 'a>(
                             start: e.span().start(),
                             end: e.span().end(),
                         }),
-                        &format!("item_indent_parser: 缩进不足 current_indent({current_indent}) < state_indent({last_state})"),
+                        &format!("item_indent_parser: lesser indernt found: current_indent({current_indent}) < state_indent({last_state})"),
                     );
                     emitter.emit(error)
                 } else if current_indent > last_state {
-                    // println!("item_indent_parser0:before push ({}>{})@ state={:?}", current_indent, last_state, e.state().item_indent); 
                     e.state().item_indent.push(current_indent); // first item of Non-First list in doc
-                    // println!("item_indent_parser0:after  push @ state={:?}", e.state().item_indent); 
                 } else {
                 }
-            } else { // 仅当是“任意一个List的第一个item”时才更新state: push
-                // println!("item_indent_parser1:before push @ state={:?}", e.state().item_indent);
-                e.state().item_indent.push(current_indent); // update state
-                // println!("item_indent_parser1:after  push @ state={:?}", e.state().item_indent);                
+            } else {
+                e.state().item_indent.push(current_indent); // update state only at the first item of one list
             }
             ((((indent, bullet), maybe_counter), maybe_checkbox), maybe_tag)
         })
@@ -88,53 +78,20 @@ pub(crate) fn item_parser<'a, C: 'a>(
                 (((((indent, bullet), maybe_counter), maybe_checkbox), maybe_tag), maybe_content,),
                 maybe_blankline,
             ), _e| {
-                let mut children = vec![];
-
+                let mut children = Vec::with_capacity(8);
                 children.push(indent);
                 children.push(bullet);
 
-                match maybe_counter {
-                    Some(counter) => {
-                        children.push(counter);
-                    }
-                    None => {}
-                }
+                children.extend(maybe_counter.into_iter());
+                children.extend(maybe_checkbox.into_iter());
+                children.extend(maybe_tag.into_iter());
+                children.extend(maybe_content.into_iter());
+                children.extend(maybe_blankline.into_iter().map(NodeOrToken::Token));
 
-                match maybe_checkbox {
-                    Some(checkbox) => {
-                        children.push(checkbox);
-                    }
-                    None => {}
-                }
-
-                match maybe_tag {
-                    Some(tag) => {
-                        children.push(tag);
-                    }
-                    None => {}
-                }
-
-                match maybe_content {
-                    Some(content) => {
-                        children.push(content);
-                    }
-                    None => {}
-                }
-
-                if let Some(blankline) = maybe_blankline {
-                    children.push(NodeOrToken::Token(blankline));
-                }
-
-                let green_node = GreenNode::new(
-                        OrgSyntaxKind::ListItem.into(),
-                        children,
-                );
-                let node = NodeOrToken::<GreenNode, GreenToken>::Node(green_node.clone());
-
-                // let syntax_tree: SyntaxNode<OrgLanguage> = SyntaxNode::new_root(green_node);
-                // println!("item_parser: {syntax_tree:#?}");
-
-                Ok(node)
+                Ok(NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+                  OrgSyntaxKind::ListItem.into(),
+                  children,
+                )))
             },
         ).boxed()
 }
@@ -153,14 +110,15 @@ pub(crate) fn item_indent_parser<'a, C: 'a>() -> impl Parser<
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
-    object::whitespaces().map(|ws| {
-        let mut children = vec![];
-        if ws.len() > 0 {
-            children.push(NodeOrToken::Token(GreenToken::new(
+    object::whitespaces_v2().map(|whitespaces| {
+        let children = if !whitespaces.is_empty() {
+            vec![NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::Whitespace.into(),
-                &ws,
-            )));
-        }
+                whitespaces,
+            ))]
+        } else {
+            vec![]
+        };
         NodeOrToken::Node(GreenNode::new(
             OrgSyntaxKind::ListItemIndent.into(),
             children,
@@ -192,21 +150,12 @@ pub(crate) fn item_bullet_parser<'a, C: 'a>() -> impl Parser<
             .map(|(num, pq)| format!("{}{}", num, pq)))
         .then(object::whitespaces_g1())
         .map(|(bullet, ws)| {
-            let mut children = vec![];
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                &bullet,
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Whitespace.into(),
-                &ws,
-            )));
-
             NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                 OrgSyntaxKind::ListItemBullet.into(),
-                children,
+                vec![
+                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Text.into(), &bullet)),
+                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Whitespace.into(), &ws)),
+                ],
             ))
         })
 }
@@ -223,36 +172,21 @@ pub(crate) fn item_counter_set_parser<'a, C: 'a>() -> impl Parser<
         .then(just("]"))
         .then(object::whitespaces_g1())
         .map(|(((_lbracket_at, number), rbracket), ws)| {
-            let mut children = vec![];
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::LeftSquareBracket.into(),
-                "[",
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::At.into(),
-                "@",
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                number,
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::RightSquareBracket.into(),
-                rbracket,
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Whitespace.into(),
-                &ws,
-            )));
-
             NodeOrToken::Node(GreenNode::new(
                 OrgSyntaxKind::ListItemCounter.into(),
-                children,
+                vec![
+                    NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::LeftSquareBracket.into(),
+                        "[",
+                    )),
+                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::At.into(), "@")),
+                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Text.into(), number)),
+                    NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::RightSquareBracket.into(),
+                        rbracket,
+                    )),
+                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Whitespace.into(), &ws)),
+                ],
             ))
         })
 }
@@ -269,31 +203,20 @@ pub(crate) fn item_checkbox_parser<'a, C: 'a>() -> impl Parser<
         .then(just("]"))
         .then(object::whitespaces_g1())
         .map(|(((lbracket, check), rbracket), ws)| {
-            let mut children = vec![];
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::LeftSquareBracket.into(),
-                lbracket,
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                check,
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::RightSquareBracket.into(),
-                rbracket,
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Whitespace.into(),
-                &ws,
-            )));
-
             NodeOrToken::Node(GreenNode::new(
                 OrgSyntaxKind::ListItemCheckbox.into(),
-                children,
+                vec![
+                    NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::LeftSquareBracket.into(),
+                        lbracket,
+                    )),
+                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Text.into(), check)),
+                    NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::RightSquareBracket.into(),
+                        rbracket,
+                    )),
+                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Whitespace.into(), &ws)),
+                ],
             ))
         })
 }
@@ -304,7 +227,7 @@ pub(crate) fn item_tag_parser<'a, C: 'a>() -> impl Parser<
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+> {
     any()
         .filter(|c: &char| *c != '\n')
         .and_is(
@@ -320,33 +243,19 @@ pub(crate) fn item_tag_parser<'a, C: 'a>() -> impl Parser<
         .then(just("::"))
         .then(object::whitespaces_g1())
         .map(|(((tag, ws1), double_colon), ws2)| {
-            let mut children = vec![];
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                &tag,
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Whitespace.into(),
-                &ws1,
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Colon2.into(),
-                double_colon,
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Whitespace.into(),
-                &ws2,
-            )));
-
-            NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::ListItemTag.into(), children))
+            NodeOrToken::Node(GreenNode::new(
+                OrgSyntaxKind::ListItemTag.into(),
+                vec![
+                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Text.into(), &tag)),
+                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Whitespace.into(), &ws1)),
+                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Colon2.into(), double_colon)),
+                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Whitespace.into(), &ws2)),
+                ],
+            ))
         })
 }
 
-/// 仅用于前瞻否定判定，不用于实际解析
+/// only used for lookahead
 // todo: non-paragrahp elements? inlinetask boundary?
 // - CONTENTS (optional) :: A collection of zero or more elements, ending at the first instance of one of the following:
 //   - The next item.

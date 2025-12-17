@@ -17,48 +17,46 @@ pub(crate) fn horizontal_rule_parser<'a, C: 'a>() -> impl Parser<
         .then(object::newline_or_ending())
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
         .map(|((((ws1, dashes), ws2), nl), blanklines)| {
-            let mut children = vec![];
-            if ws1.len() > 0 {
+            let mut _dashes = String::new();
+            for s in dashes.into_iter() {
+                _dashes.push_str(s);
+            }
+
+            let mut children = Vec::with_capacity(3 + blanklines.len());
+            if !ws1.is_empty() {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Whitespace.into(),
                     &ws1,
                 )));
             }
 
-            let mut _dashes = String::new();
-            for s in dashes.into_iter() {
-                _dashes.push_str(s);
-            }
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::Text.into(),
                 &_dashes,
             )));
 
-            if ws2.len() > 0 {
+            if !ws2.is_empty() {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Whitespace.into(),
                     &ws2,
                 )));
             }
 
-            match nl {
-                Some(newline) => {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Newline.into(),
-                        &newline,
-                    )));
-                }
-                None => {}
+            if let Some(newline) = nl {
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Newline.into(),
+                    &newline,
+                )));
             }
-            for blankline in blanklines {
-                children.push(NodeOrToken::Token(blankline));
-            }
+
+            children.extend(blanklines.into_iter().map(NodeOrToken::Token));
 
             NodeOrToken::Node(GreenNode::new(
                 OrgSyntaxKind::HorizontalRule.into(),
                 children,
             ))
-        }).boxed()
+        })
+        .boxed()
 }
 #[cfg(test)]
 mod tests {

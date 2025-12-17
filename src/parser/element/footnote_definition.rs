@@ -11,7 +11,8 @@ pub(crate) fn footnote_definition_parser<'a, C: 'a>(
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone +'a,
+    > + Clone
+    + 'a,
 ) -> impl Parser<
     'a,
     &'a str,
@@ -50,11 +51,8 @@ pub(crate) fn footnote_definition_parser<'a, C: 'a>(
         .then(object::whitespaces_g1())
         .then(content.clone())
         .map(|(((((keywords, _lfnc), label), rbracket), ws1), content)| {
-            let mut children = vec![];
-
-            for keyword in keywords {
-                children.push(keyword);
-            }
+            let mut children = Vec::with_capacity(8 + content.len());
+            children.extend(keywords);
 
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::LeftSquareBracket.into(),
@@ -82,15 +80,14 @@ pub(crate) fn footnote_definition_parser<'a, C: 'a>(
                 &ws1,
             )));
 
-            for e in content {
-                children.push(e);
-            }
+            children.extend(content);
 
             NodeOrToken::Node(GreenNode::new(
                 OrgSyntaxKind::FootnoteDefinition.into(),
                 children,
             ))
-        }).boxed()
+        })
+        .boxed()
 }
 
 #[cfg(test)]

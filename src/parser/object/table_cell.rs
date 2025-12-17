@@ -13,7 +13,8 @@ pub(crate) fn table_cell_parser<'a, C: 'a>(
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone + 'a,
+    > + Clone
+    + 'a,
 ) -> impl Parser<
     'a,
     &'a str,
@@ -69,7 +70,8 @@ pub(crate) fn table_cell_parser<'a, C: 'a>(
                 OrgSyntaxKind::TableCell.into(),
                 children,
             ))
-        }).boxed()
+        })
+        .boxed()
 }
 #[cfg(test)]
 mod tests {

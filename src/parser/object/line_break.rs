@@ -50,5 +50,6 @@ pub(crate) fn line_break_parser<'a, C: 'a>() -> impl Parser<
                     children,
                 )))
             }
-        }).boxed()
+        })
+        .boxed()
 }

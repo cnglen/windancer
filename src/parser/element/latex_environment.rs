@@ -106,14 +106,12 @@ pub(crate) fn latex_environment_parser<'a, C: 'a>() -> impl Parser<
                 ),
                 blank_lines,
             )| {
-                let mut children = vec![];
-                for keyword in keywords {
-                    children.push(keyword);
-                }
+                let mut children = Vec::with_capacity(3 + keywords.len() + blank_lines.len());
+                children.extend(keywords);
 
                 let begin_row_node = {
-                    let mut children = vec![];
-                    if begin_whitespaces1.len() > 0 {
+                    let mut children = Vec::with_capacity(7);
+                    if !begin_whitespaces1.is_empty() {
                         children.push(NodeOrToken::Token(GreenToken::new(
                             OrgSyntaxKind::Whitespace.into(),
                             begin_whitespaces1,
@@ -140,7 +138,7 @@ pub(crate) fn latex_environment_parser<'a, C: 'a>() -> impl Parser<
                         begin_right_curly,
                     )));
 
-                    if begin_whitespaces2.len() > 0 {
+                    if !begin_whitespaces2.is_empty() {
                         children.push(NodeOrToken::Token(GreenToken::new(
                             OrgSyntaxKind::Whitespace.into(),
                             begin_whitespaces2,
@@ -159,7 +157,7 @@ pub(crate) fn latex_environment_parser<'a, C: 'a>() -> impl Parser<
                 };
                 children.push(begin_row_node);
 
-                if contents.len() > 0 {
+                if !contents.is_empty() {
                     children.push(NodeOrToken::Token(GreenToken::new(
                         OrgSyntaxKind::Text.into(),
                         contents,
@@ -167,8 +165,8 @@ pub(crate) fn latex_environment_parser<'a, C: 'a>() -> impl Parser<
                 }
 
                 let end_row_node = {
-                    let mut children = vec![];
-                    if end_whitespaces1.len() > 0 {
+                    let mut children = Vec::with_capacity(7);
+                    if !end_whitespaces1.is_empty() {
                         children.push(NodeOrToken::Token(GreenToken::new(
                             OrgSyntaxKind::Whitespace.into(),
                             end_whitespaces1,
@@ -195,7 +193,7 @@ pub(crate) fn latex_environment_parser<'a, C: 'a>() -> impl Parser<
                         end_right_curly,
                     )));
 
-                    if end_whitespaces2.len() > 0 {
+                    if !end_whitespaces2.is_empty() {
                         children.push(NodeOrToken::Token(GreenToken::new(
                             OrgSyntaxKind::Whitespace.into(),
                             end_whitespaces2,
@@ -216,16 +214,15 @@ pub(crate) fn latex_environment_parser<'a, C: 'a>() -> impl Parser<
                 };
                 children.push(end_row_node);
 
-                for blankline in blank_lines {
-                    children.push(NodeOrToken::Token(blankline));
-                }
+                children.extend(blank_lines.into_iter().map(NodeOrToken::Token));
 
                 NodeOrToken::Node(GreenNode::new(
                     OrgSyntaxKind::LatexEnvironment.into(),
                     children,
                 ))
             },
-        ).boxed()
+        )
+        .boxed()
 }
 
 #[cfg(test)]

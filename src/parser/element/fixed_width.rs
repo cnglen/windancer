@@ -1,5 +1,5 @@
 //! Fixed width parser
-use crate::parser::object::whitespaces_g1;
+use crate::parser::object::whitespaces_g1_v2;
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserState, element, object};
 use chumsky::inspector::RollbackState;
@@ -16,49 +16,51 @@ pub(crate) fn fixed_width_parser<'a, C: 'a>() -> impl Parser<
         .repeated()
         .collect::<Vec<_>>();
 
-    let fixed_width_line = object::whitespaces()
+    let fixed_width_line = object::whitespaces_v2()
         .then(just(":"))
         .then(
-            whitespaces_g1()
+            whitespaces_g1_v2()
                 .then(none_of("\r\n").repeated())
                 .to_slice()
                 .or_not(),
         )
         .then(object::newline_or_ending())
-        .map(|(((ws, colon), maybe_content), eol_or_eof)| {
-            let mut children = vec![];
+        .map(
+            |(((ws, colon), maybe_content), eol_or_eof): (((&str, _), _), _)| {
+                let mut children = Vec::with_capacity(4);
 
-            if ws.len() > 0 {
+                if !ws.is_empty() {
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Whitespace.into(),
+                        ws,
+                    )));
+                }
+
                 children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    &ws,
+                    OrgSyntaxKind::Colon.into(),
+                    colon,
                 )));
-            }
 
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Colon.into(),
-                colon,
-            )));
+                if let Some(content) = maybe_content {
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Text.into(),
+                        content,
+                    )));
+                }
 
-            if let Some(content) = maybe_content {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    content,
-                )));
-            }
+                if let Some(newline) = eol_or_eof {
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Newline.into(),
+                        &newline,
+                    )));
+                }
 
-            if let Some(newline) = eol_or_eof {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Newline.into(),
-                    &newline,
-                )));
-            }
-
-            NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::FixedWidthLine.into(),
-                children,
-            ))
-        });
+                NodeOrToken::Node(GreenNode::new(
+                    OrgSyntaxKind::FixedWidthLine.into(),
+                    children,
+                ))
+            },
+        );
 
     let blank_lines = object::blank_line_parser().repeated().collect::<Vec<_>>();
 
@@ -66,22 +68,17 @@ pub(crate) fn fixed_width_parser<'a, C: 'a>() -> impl Parser<
         .then(fixed_width_line.repeated().at_least(1).collect::<Vec<_>>())
         .then(blank_lines)
         .map(|((keywords, lines), blank_lines)| {
-            let mut children = vec![];
-            for keyword in keywords {
-                children.push(keyword);
-            }
-            for line in lines {
-                children.push(line);
-            }
-            for bl in blank_lines {
-                children.push(NodeOrToken::Token(bl));
-            }
+            let mut children = Vec::with_capacity(keywords.len() + lines.len() + blank_lines.len());
+            children.extend(keywords);
+            children.extend(lines);
+            children.extend(blank_lines.into_iter().map(NodeOrToken::Token));
 
             NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                 OrgSyntaxKind::FixedWidth.into(),
                 children,
             ))
-        }).boxed()
+        })
+        .boxed()
 }
 
 #[cfg(test)]

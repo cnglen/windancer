@@ -126,6 +126,9 @@ fn create_script_parser<'a, C: 'a>(
             e.state().prev_char_backup.push(tmp);
 
             // println!("t2a: r={:?}", e.state());
+            // if e.state().prev_char_backup.len()>3{
+            //     println!("subscript: state={:?}", e.state().prev_char_backup.len());
+            // }
             e.state().prev_char = Some(b);
             (a, b)
         })
@@ -160,17 +163,13 @@ fn create_script_parser<'a, C: 'a>(
                     } else {
                         e.state().prev_char = Some(rb);
 
-                        let mut children = vec![];
+                        let mut children = Vec::with_capacity(expression.len() + 3);
                         children.push(NT::Token(GreenToken::new(OSK::Caret.into(), sup)));
                         children.push(NT::Token(GreenToken::new(
                             OSK::LeftCurlyBracket.into(),
                             lb.to_string().as_str(),
                         )));
-
-                        for node in expression {
-                            children.push(node);
-                        }
-
+                        children.extend(expression);
                         children.push(NT::Token(GreenToken::new(
                             OSK::RightCurlyBracket.into(),
                             rb.to_string().as_str(),

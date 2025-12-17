@@ -20,8 +20,8 @@ static RADIO_TARGETS: OnceLock<HashSet<String>> = OnceLock::new();
 // - prev_char_backup: previous char backup manually set for later resume back
 #[derive(Clone, Debug)]
 pub struct ParserState {
-    prev_char: Option<char>, // previous char
-    item_indent: smallvec::SmallVec<[usize; 8]>,
+    prev_char: Option<char>,                     // previous char
+    item_indent: smallvec::SmallVec<[usize; 4]>, // list's nested length
     prev_char_backup: smallvec::SmallVec<[Option<char>; 4]>,
 }
 

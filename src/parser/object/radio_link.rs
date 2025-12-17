@@ -83,7 +83,8 @@ pub(crate) fn radio_link_parser<'a, C: 'a>(
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone + 'a,
+    > + Clone
+    + 'a,
 ) -> impl Parser<
     'a,
     &'a str,
@@ -105,6 +106,10 @@ pub(crate) fn radio_link_parser<'a, C: 'a>(
         .map_with(|s, e| {
             let tmp = e.state().prev_char;
             e.state().prev_char_backup.push(tmp);
+
+            // if e.state().prev_char_backup.len()>3{
+            //     println!("radio_link: state={:?}", e.state().prev_char_backup.len());
+            // }
             s
         })
         .rewind();
@@ -151,5 +156,6 @@ pub(crate) fn radio_link_parser<'a, C: 'a>(
                     ),
                 )),
             }
-        }).boxed()
+        })
+        .boxed()
 }

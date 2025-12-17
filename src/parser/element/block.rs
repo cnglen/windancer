@@ -72,16 +72,14 @@ pub(crate) fn export_block_parser<'a, C: 'a>() -> impl Parser<
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
         .map(
             |((((keywords, begin_row), content), end_row), blank_lines)| {
-                let mut children = vec![];
+                let mut children = Vec::with_capacity(3 + keywords.len() + blank_lines.len());
 
-                for keyword in keywords {
-                    children.push(keyword);
-                }
+                children.extend(keywords);
 
                 let block_begin_node = {
                     let (ws1, begin, block_type, ws2, data, ws3, nl) = begin_row;
-                    let mut children = vec![];
-                    if ws1.len() > 0 {
+                    let mut children = Vec::with_capacity(7);
+                    if !ws1.is_empty() {
                         children.push(NodeOrToken::Token(GreenToken::new(
                             OSK::Whitespace.into(),
                             &ws1,
@@ -98,7 +96,7 @@ pub(crate) fn export_block_parser<'a, C: 'a>() -> impl Parser<
                         &block_type.to_uppercase(),
                     )));
 
-                    if ws2.len() > 0 {
+                    if !ws2.is_empty() {
                         children.push(NodeOrToken::Token(GreenToken::new(
                             OSK::Whitespace.into(),
                             &ws2,
@@ -107,7 +105,7 @@ pub(crate) fn export_block_parser<'a, C: 'a>() -> impl Parser<
 
                     children.push(NodeOrToken::Token(GreenToken::new(OSK::Text.into(), &data)));
 
-                    if ws3.len() > 0 {
+                    if !ws3.is_empty() {
                         children.push(NodeOrToken::Token(GreenToken::new(
                             OSK::Whitespace.into(),
                             &ws3,
@@ -122,26 +120,23 @@ pub(crate) fn export_block_parser<'a, C: 'a>() -> impl Parser<
                 };
                 children.push(block_begin_node);
 
-                if content.len() > 0 {
-                    let mut c_children = vec![];
-                    c_children.push(NodeOrToken::Token(GreenToken::new(
-                        OSK::Text.into(),
-                        &content,
-                    )));
-                    let node =
-                        NodeOrToken::Node(GreenNode::new(OSK::BlockContent.into(), c_children));
+                if !content.is_empty() {
+                    let node = NodeOrToken::Node(GreenNode::new(
+                        OSK::BlockContent.into(),
+                        vec![NodeOrToken::Token(GreenToken::new(
+                            OSK::Text.into(),
+                            &content,
+                        ))],
+                    ));
                     children.push(node);
                 }
 
                 children.push(end_row);
-
-                for bl in blank_lines {
-                    children.push(NodeOrToken::Token(bl));
-                }
-
+                children.extend(blank_lines.into_iter().map(NodeOrToken::Token));
                 NodeOrToken::Node(GreenNode::new(OSK::ExportBlock.into(), children))
             },
-        ).boxed()
+        )
+        .boxed()
 }
 
 /// src block
@@ -206,12 +201,8 @@ pub(crate) fn src_block_parser<'a, C: 'a>() -> impl Parser<
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
         .map(
             |((((keywords, begin_row), content), end_row), blank_lines)| {
-                let mut children = vec![];
-
-                for keyword in keywords {
-                    children.push(keyword);
-                }
-
+                let mut children = Vec::with_capacity(keywords.len() + blank_lines.len() + 3);
+                children.extend(keywords);
                 let block_begin_node = {
                     let (
                         ws1,
@@ -223,8 +214,8 @@ pub(crate) fn src_block_parser<'a, C: 'a>() -> impl Parser<
                         maybe_ws4_arguments,
                         nl,
                     ) = begin_row;
-                    let mut children = vec![];
-                    if ws1.len() > 0 {
+                    let mut children = Vec::with_capacity(10);
+                    if !ws1.is_empty() {
                         children.push(NodeOrToken::Token(GreenToken::new(
                             OSK::Whitespace.into(),
                             &ws1,
@@ -241,7 +232,7 @@ pub(crate) fn src_block_parser<'a, C: 'a>() -> impl Parser<
                         &block_type.to_uppercase(),
                     )));
 
-                    if ws2.len() > 0 {
+                    if !ws2.is_empty() {
                         children.push(NodeOrToken::Token(GreenToken::new(
                             OSK::Whitespace.into(),
                             &ws2,
@@ -284,27 +275,23 @@ pub(crate) fn src_block_parser<'a, C: 'a>() -> impl Parser<
                     NodeOrToken::Node(GreenNode::new(OSK::BlockBegin.into(), children))
                 };
                 children.push(block_begin_node);
-
-                if content.len() > 0 {
-                    let mut c_children = vec![];
-                    c_children.push(NodeOrToken::Token(GreenToken::new(
-                        OSK::Text.into(),
-                        &content,
-                    )));
-                    let node =
-                        NodeOrToken::Node(GreenNode::new(OSK::BlockContent.into(), c_children));
+                if !content.is_empty() {
+                    let node = NodeOrToken::Node(GreenNode::new(
+                        OSK::BlockContent.into(),
+                        vec![NodeOrToken::Token(GreenToken::new(
+                            OSK::Text.into(),
+                            &content,
+                        ))],
+                    ));
                     children.push(node);
                 }
-
                 children.push(end_row);
-
-                for bl in blank_lines {
-                    children.push(NodeOrToken::Token(bl));
-                }
+                children.extend(blank_lines.into_iter().map(NodeOrToken::Token));
 
                 NodeOrToken::Node(GreenNode::new(OSK::SrcBlock.into(), children))
             },
-        ).boxed()
+        )
+        .boxed()
 }
 
 fn comment_or_example_block_parser<'a, C: 'a>(
@@ -337,16 +324,14 @@ fn comment_or_example_block_parser<'a, C: 'a>(
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
         .map(
             move |((((keywords, begin_row), content), end_row), blank_lines)| {
-                let mut children = vec![];
+                let mut children = Vec::with_capacity(4 + keywords.len() + blank_lines.len());
 
-                for keyword in keywords {
-                    children.push(keyword);
-                }
+                children.extend(keywords);
 
                 children.push(begin_row);
 
-                if content.len() > 0 {
-                    let mut c_children = vec![];
+                if !content.is_empty() {
+                    let mut c_children = Vec::with_capacity(1);
                     c_children.push(NodeOrToken::Token(GreenToken::new(
                         OSK::Text.into(),
                         &content,
@@ -358,9 +343,7 @@ fn comment_or_example_block_parser<'a, C: 'a>(
 
                 children.push(end_row);
 
-                for bl in blank_lines {
-                    children.push(NodeOrToken::Token(bl));
-                }
+                children.extend(blank_lines.into_iter().map(NodeOrToken::Token));
 
                 match block_type {
                     BlockType::Comment => {
@@ -374,7 +357,8 @@ fn comment_or_example_block_parser<'a, C: 'a>(
                     }
                 }
             },
-        ).boxed()
+        )
+        .boxed()
 }
 
 /// comment block
@@ -431,32 +415,25 @@ pub(crate) fn verse_block_parser<'a, C: 'a>() -> impl Parser<
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
         .map(
             move |((((keywords, begin_row), content), end_row), blank_lines)| {
-                let mut children = vec![];
+                let mut children = Vec::with_capacity(4 + keywords.len() + blank_lines.len());
 
-                for keyword in keywords {
-                    children.push(keyword);
-                }
+                children.extend(keywords);
 
                 children.push(begin_row);
 
-                let mut content_children = vec![];
-                for node in content {
-                    content_children.push(node);
-                }
                 children.push(NodeOrToken::Node(GreenNode::new(
                     OSK::BlockContent.into(),
-                    content_children,
+                    content,
                 )));
 
                 children.push(end_row);
 
-                for bl in blank_lines {
-                    children.push(NodeOrToken::Token(bl));
-                }
+                children.extend(blank_lines.into_iter().map(NodeOrToken::Token));
 
                 NodeOrToken::Node(GreenNode::new(OSK::VerseBlock.into(), children))
             },
-        ).boxed()
+        )
+        .boxed()
 }
 
 // begin_row: #+begin_name[ data][ ]\n
@@ -478,8 +455,8 @@ fn begin_row_parser<'a, C: 'a>(
         .then(just("\n"))
         .map(
             |(((((ws1, begin), block_type), maybe_ws2_data), ws3), nl)| {
-                let mut children = vec![];
-                if ws1.len() > 0 {
+                let mut children = Vec::with_capacity(7);
+                if !ws1.is_empty() {
                     children.push(NodeOrToken::Token(GreenToken::new(
                         OSK::Whitespace.into(),
                         &ws1,
@@ -497,7 +474,7 @@ fn begin_row_parser<'a, C: 'a>(
                 )));
 
                 if let Some((ws2, data)) = maybe_ws2_data {
-                    if ws2.len() > 0 {
+                    if !ws2.is_empty() {
                         children.push(NodeOrToken::Token(GreenToken::new(
                             OSK::Whitespace.into(),
                             &ws2,
@@ -507,7 +484,7 @@ fn begin_row_parser<'a, C: 'a>(
                     children.push(NodeOrToken::Token(GreenToken::new(OSK::Text.into(), &data)));
                 }
 
-                if ws3.len() > 0 {
+                if !ws3.is_empty() {
                     children.push(NodeOrToken::Token(GreenToken::new(
                         OSK::Whitespace.into(),
                         &ws3,
@@ -539,8 +516,8 @@ fn end_row_parser<'a, C: 'a>(
         .then(object::whitespaces())
         .then(object::newline_or_ending())
         .map(|((((ws1, end), name), ws2), nl)| {
-            let mut children = vec![];
-            if ws1.len() > 0 {
+            let mut children = Vec::with_capacity(5);
+            if !ws1.is_empty() {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OSK::Whitespace.into(),
                     &ws1,
@@ -552,7 +529,7 @@ fn end_row_parser<'a, C: 'a>(
                 &name.to_uppercase(),
             )));
 
-            if ws2.len() > 0 {
+            if !ws2.is_empty() {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OSK::Whitespace.into(),
                     &ws2,
@@ -589,7 +566,8 @@ fn center_or_quote_block_parser<'a, C: 'a>(
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone + 'a,
+    > + Clone
+    + 'a,
     block_type: BlockType,
 ) -> impl Parser<
     'a,
@@ -617,13 +595,7 @@ fn center_or_quote_block_parser<'a, C: 'a>(
         .repeated()
         .collect::<Vec<_>>()
         .nested_in(content_inner)
-        .map(|s| {
-            let mut children = vec![];
-            for e in s {
-                children.push(e);
-            }
-            NodeOrToken::Node(GreenNode::new(OSK::BlockContent.into(), children))
-        });
+        .map(|s| NodeOrToken::Node(GreenNode::new(OSK::BlockContent.into(), s)));
 
     let affiliated_keywords = element::keyword::affiliated_keyword_parser()
         .repeated()
@@ -637,28 +609,12 @@ fn center_or_quote_block_parser<'a, C: 'a>(
         .map(
             move |((((keywords, begin_row), content), end_row), blank_lines)| {
                 // reset state
-                let mut children = vec![];
-
-                for keyword in keywords {
-                    children.push(keyword);
-                }
-
+                let mut children = Vec::with_capacity(keywords.len() + 3 + blank_lines.len());
+                children.extend(keywords);
                 children.push(begin_row);
                 children.push(content);
-
-                // let mut content_children = vec![];
-                // for node in content {
-                //     content_children.push(node);
-                // }
-                // children.push(NodeOrToken::Node(GreenNode::new(
-                //     OSK::BlockContent.into(),
-                //     content_children,
-                // )));
                 children.push(end_row);
-
-                for bl in blank_lines {
-                    children.push(NodeOrToken::Token(bl));
-                }
+                children.extend(blank_lines.into_iter().map(NodeOrToken::Token));
 
                 match block_type {
                     BlockType::Center => {
@@ -672,7 +628,8 @@ fn center_or_quote_block_parser<'a, C: 'a>(
                     }
                 }
             },
-        ).boxed()
+        )
+        .boxed()
 }
 
 pub(crate) fn center_block_parser<'a, C: 'a>(
@@ -681,7 +638,8 @@ pub(crate) fn center_block_parser<'a, C: 'a>(
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone + 'a,
+    > + Clone
+    + 'a,
 ) -> impl Parser<
     'a,
     &'a str,
@@ -697,7 +655,8 @@ pub(crate) fn quote_block_parser<'a, C: 'a>(
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone + 'a,
+    > + Clone
+    + 'a,
 ) -> impl Parser<
     'a,
     &'a str,
@@ -770,7 +729,7 @@ pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
         .and_is(end_row.not())
         .repeated()
         .to_slice();
-    
+
     affiliated_keywords
         .then(
             begin_row // element_parser can't be used here since element_parser's context is ()!!! move to the final map()
@@ -792,14 +751,12 @@ pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
                 blanklines,
             ),
                   e| {
-                let mut children = vec![];
-                for keyword in keywords {
-                    children.push(keyword);
-                }
+                let mut children = Vec::with_capacity(keywords.len() + 3 + blanklines.len());
+                children.extend(keywords);
 
                 let begin_node = {
-                    let mut children = vec![];
-                    if begin_whitespaces1.len() > 0 {
+                    let mut children = Vec::with_capacity(6);
+                    if !begin_whitespaces1.is_empty() {
                         children.push(NodeOrToken::Token(GreenToken::new(
                             OSK::Whitespace.into(),
                             begin_whitespaces1,
@@ -812,7 +769,7 @@ pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
                     )));
 
                     if let Some((ws, parameters)) = maybe_ws_parameters {
-                        if ws.len() > 0 {
+                        if !ws.is_empty() {
                             children.push(NodeOrToken::Token(GreenToken::new(
                                 OSK::Whitespace.into(),
                                 &ws,
@@ -852,8 +809,8 @@ pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
                 children.push(content_node);
 
                 let end_node = {
-                    let mut children = vec![];
-                    if end_whitespaces1.len() > 0 {
+                    let mut children = Vec::with_capacity(5);
+                    if !end_whitespaces1.is_empty() {
                         children.push(NodeOrToken::Token(GreenToken::new(
                             OSK::Whitespace.into(),
                             end_whitespaces1,
@@ -867,7 +824,7 @@ pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
                         &end_name.to_uppercase(),
                     )));
 
-                    if end_whitespaces2.len() > 0 {
+                    if !end_whitespaces2.is_empty() {
                         children.push(NodeOrToken::Token(GreenToken::new(
                             OSK::Whitespace.into(),
                             end_whitespaces2,
@@ -883,13 +840,12 @@ pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
                     NodeOrToken::Node(GreenNode::new(OSK::BlockEnd.into(), children))
                 };
                 children.push(end_node);
-                for blankline in blanklines {
-                    children.push(NodeOrToken::Token(blankline));
-                }
+                children.extend(blanklines.into_iter().map(NodeOrToken::Token));
 
                 NodeOrToken::Node(GreenNode::new(OSK::SpecialBlock.into(), children))
             },
-        ).boxed()
+        )
+        .boxed()
 }
 
 #[cfg(test)]

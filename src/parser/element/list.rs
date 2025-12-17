@@ -26,24 +26,18 @@ pub(crate) fn plain_list_parser<'a, C: 'a>(
         .then(item_parser.repeated().at_least(1).collect::<Vec<_>>())
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
         .map_with(|((keywords, items), blanklines), e| {
-            let mut children = vec![];
-
-            for keyword in keywords {
-                children.push(keyword);
-            }
-
-            for item in items.clone() {
-                children.push(item);
-            }
-            for bl in blanklines {
-                children.push(NodeOrToken::Token(bl));
-            }
+            let mut children = Vec::with_capacity(keywords.len() + items.len() + blanklines.len());
+            children.extend(keywords);
+            children.extend(items);
+            children.extend(blanklines.into_iter().map(NodeOrToken::Token));
             e.state().item_indent.pop();
+
             NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                 OrgSyntaxKind::List.into(),
                 children,
             ))
-        }).boxed()
+        })
+        .boxed()
 }
 
 #[cfg(test)]

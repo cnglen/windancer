@@ -32,27 +32,27 @@ pub(crate) fn document_parser<'a>() -> impl Parser<
                 (((maybe_blank_lines, maybe_comment), maybe_property_drawer), maybe_section),
                 headings,
             )| {
-                let mut children = vec![];
+                let mut children = Vec::new();
                 if let Some(blank_lines) = maybe_blank_lines {
-                    for blank_line in blank_lines {
-                        children.push(NodeOrToken::Token(blank_line));
-                    }
+                    children.extend(blank_lines.into_iter().map(NodeOrToken::Token));
                 }
 
-                let mut children_in_section = vec![];
-                if let Some(comment) = maybe_comment {
-                    children_in_section.push(comment);
-                }
-                if let Some(property_drawer) = maybe_property_drawer {
-                    children_in_section.push(property_drawer);
-                }
+                let estimated = maybe_comment.as_ref().map(|_| 1).unwrap_or(0)
+                    + maybe_property_drawer.as_ref().map(|_| 1).unwrap_or(0)
+                    + maybe_section
+                        .as_ref()
+                        .map(|s| s.as_node().unwrap().children().count())
+                        .unwrap_or(0);
+
+                let mut children_in_section = Vec::with_capacity(estimated);
+                children_in_section.extend(maybe_comment.into_iter());
+                children_in_section.extend(maybe_property_drawer.into_iter());
                 if let Some(section) = maybe_section {
-                    for e in section.as_node().unwrap().children() {
-                        children_in_section.push(e.to_owned());
-                    }
+                    children_in_section
+                        .extend(section.as_node().unwrap().children().map(|e| e.to_owned()));
                 }
 
-                if children_in_section.len() > 0 {
+                if !children_in_section.is_empty() {
                     let zeroth_section = NodeOrToken::Node(GreenNode::new(
                         OrgSyntaxKind::Section.into(),
                         children_in_section,
@@ -60,9 +60,7 @@ pub(crate) fn document_parser<'a>() -> impl Parser<
                     children.push(zeroth_section);
                 }
 
-                for c in headings {
-                    children.push(c);
-                }
+                children.extend(headings);
                 let node = GreenNode::new(OrgSyntaxKind::Document.into(), children);
 
                 NodeOrToken::Node(node)
