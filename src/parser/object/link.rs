@@ -139,7 +139,7 @@ fn path_plain_parser<'a, C: 'a>()
         }
 
         Ok(pathplain)
-    })
+    }).boxed()
 }
 
 /// plain link parser
@@ -191,7 +191,7 @@ pub(crate) fn plain_link_parser<'a, C: 'a>() -> impl Parser<
                     ),
                 )),
             }
-        })
+        }).boxed()
 }
 
 /// angle link parser
@@ -244,7 +244,7 @@ pub(crate) fn angle_link_parser<'a, C: 'a>() -> impl Parser<
                     children,
                 ))
             },
-        )
+        ).boxed()
 }
 
 /// regular link parser
@@ -254,7 +254,7 @@ pub(crate) fn regular_link_parser<'a, C: 'a>(
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone,
+    > + Clone +'a,
 ) -> impl Parser<
     'a,
     &'a str,
@@ -417,7 +417,7 @@ pub(crate) fn regular_link_parser<'a, C: 'a>(
 
                 link
             },
-        )
+        ).boxed()
 }
 
 #[cfg(test)]

@@ -58,7 +58,7 @@ pub(crate) fn horizontal_rule_parser<'a, C: 'a>() -> impl Parser<
                 OrgSyntaxKind::HorizontalRule.into(),
                 children,
             ))
-        })
+        }).boxed()
 }
 #[cfg(test)]
 mod tests {

@@ -225,7 +225,7 @@ pub(crate) fn latex_environment_parser<'a, C: 'a>() -> impl Parser<
                     children,
                 ))
             },
-        )
+        ).boxed()
 }
 
 #[cfg(test)]

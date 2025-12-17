@@ -233,7 +233,7 @@ pub(crate) fn property_drawer_parser<'a, C: 'a>() -> impl Parser<
                     children,
                 ))
             },
-        )
+        ).boxed()
 }
 
 pub(crate) fn drawer_parser<'a, C: 'a>(
@@ -242,7 +242,7 @@ pub(crate) fn drawer_parser<'a, C: 'a>(
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone,
+    > + Clone + 'a,
 ) -> impl Parser<
     'a,
     &'a str,
@@ -396,7 +396,7 @@ pub(crate) fn drawer_parser<'a, C: 'a>(
                     children,
                 ))
             },
-        )
+        ).boxed()
 }
 
 #[cfg(test)]

@@ -43,7 +43,7 @@ pub(crate) fn plain_list_parser<'a, C: 'a>(
                 OrgSyntaxKind::List.into(),
                 children,
             ))
-        })
+        }).boxed()
 }
 
 #[cfg(test)]

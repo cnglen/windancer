@@ -28,7 +28,7 @@ pub(crate) fn paragraph_parser<'a, C: 'a>(
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone,
+    > + Clone +'a,
 ) -> impl Parser<
     'a,
     &'a str,
@@ -44,7 +44,7 @@ pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<'a, C: 'a>(
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone,
+    > + Clone +'a,
     n: usize,
 ) -> impl Parser<
     'a,
@@ -95,7 +95,7 @@ pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<'a, C: 'a>(
             }
             let node = NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Paragraph.into(), children));
             node
-        })
+        }).boxed()
 }
 
 #[cfg(test)]

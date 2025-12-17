@@ -56,7 +56,7 @@ pub(crate) fn target_parser<'a, C: 'a>() -> impl Parser<
                 OrgSyntaxKind::Target.into(),
                 children,
             ))
-        })
+        }).boxed()
 }
 
 #[cfg(test)]

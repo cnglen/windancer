@@ -136,7 +136,7 @@ pub(crate) fn item_parser<'a, C: 'a>(
 
                 Ok(node)
             },
-        )
+        ).boxed()
 }
 
 /// Item Indent Parser

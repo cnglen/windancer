@@ -81,7 +81,7 @@ pub(crate) fn fixed_width_parser<'a, C: 'a>() -> impl Parser<
                 OrgSyntaxKind::FixedWidth.into(),
                 children,
             ))
-        })
+        }).boxed()
 }
 
 #[cfg(test)]

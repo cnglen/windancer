@@ -141,7 +141,7 @@ pub(crate) fn export_block_parser<'a, C: 'a>() -> impl Parser<
 
                 NodeOrToken::Node(GreenNode::new(OSK::ExportBlock.into(), children))
             },
-        )
+        ).boxed()
 }
 
 /// src block
@@ -304,7 +304,7 @@ pub(crate) fn src_block_parser<'a, C: 'a>() -> impl Parser<
 
                 NodeOrToken::Node(GreenNode::new(OSK::SrcBlock.into(), children))
             },
-        )
+        ).boxed()
 }
 
 fn comment_or_example_block_parser<'a, C: 'a>(
@@ -374,7 +374,7 @@ fn comment_or_example_block_parser<'a, C: 'a>(
                     }
                 }
             },
-        )
+        ).boxed()
 }
 
 /// comment block
@@ -456,7 +456,7 @@ pub(crate) fn verse_block_parser<'a, C: 'a>() -> impl Parser<
 
                 NodeOrToken::Node(GreenNode::new(OSK::VerseBlock.into(), children))
             },
-        )
+        ).boxed()
 }
 
 // begin_row: #+begin_name[ data][ ]\n
@@ -589,7 +589,7 @@ fn center_or_quote_block_parser<'a, C: 'a>(
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone,
+    > + Clone + 'a,
     block_type: BlockType,
 ) -> impl Parser<
     'a,
@@ -672,7 +672,7 @@ fn center_or_quote_block_parser<'a, C: 'a>(
                     }
                 }
             },
-        )
+        ).boxed()
 }
 
 pub(crate) fn center_block_parser<'a, C: 'a>(
@@ -681,7 +681,7 @@ pub(crate) fn center_block_parser<'a, C: 'a>(
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone,
+    > + Clone + 'a,
 ) -> impl Parser<
     'a,
     &'a str,
@@ -697,7 +697,7 @@ pub(crate) fn quote_block_parser<'a, C: 'a>(
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone,
+    > + Clone + 'a,
 ) -> impl Parser<
     'a,
     &'a str,
@@ -770,7 +770,7 @@ pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
         .and_is(end_row.not())
         .repeated()
         .to_slice();
-
+    
     affiliated_keywords
         .then(
             begin_row // element_parser can't be used here since element_parser's context is ()!!! move to the final map()
@@ -889,7 +889,7 @@ pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
 
                 NodeOrToken::Node(GreenNode::new(OSK::SpecialBlock.into(), children))
             },
-        )
+        ).boxed()
 }
 
 #[cfg(test)]

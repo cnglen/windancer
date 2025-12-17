@@ -284,7 +284,7 @@ pub(crate) fn heading_subtree_parser<'a>(
                 ))
             },
         ),)));
-    Parser::boxed(heading_subtree.with_ctx(prev_level))
+    heading_subtree.with_ctx(prev_level).boxed()
 }
 
 #[cfg(test)]

@@ -622,12 +622,12 @@ pub(crate) fn get_object_parser<'a, C: 'a>() -> (
         plain_text_parser_for_keyword,
     )));
     (
-        full_set_object,
-        standard_set_object,
-        minimal_set_object,
-        object_in_regular_link,
-        object_in_table_cell,
-        object_in_keyword,
+        full_set_object.boxed(),
+        standard_set_object.boxed(),
+        minimal_set_object.boxed(),
+        object_in_regular_link.boxed(),
+        object_in_table_cell.boxed(),
+        object_in_keyword.boxed(),
     )
 }
 

@@ -103,5 +103,5 @@ pub(crate) fn comment_parser<'a, C: 'a>() -> impl Parser<
             }
 
             NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Comment.into(), children))
-        })
+        }).boxed()
 }
