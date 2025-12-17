@@ -20,7 +20,6 @@ use crate::parser::element::paragraph::simple_heading_row_parser;
 // block_parser
 // blank_line``
 // other_parser
-// S2? 是否合适?
 pub(crate) fn section_parser<'a, C: 'a>(
     element_parser: impl Parser<
         'a,

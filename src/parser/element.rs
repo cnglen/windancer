@@ -57,41 +57,33 @@ pub(crate) fn get_element_parser<'a, C: 'a + std::default::Default>() -> (
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, usize>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone,
     impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, usize>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone,
     impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, usize>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone,
     impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, usize>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone,
     impl Parser<
         'a,
         &'a str,
         NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, usize>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone,
-    // impl Parser<
-    //     'a,
-    //     &'a str,
-    //     NodeOrToken<GreenNode, GreenToken>,
-    //     extra::Full<Rich<'a, char>, RollbackState<ParserState>, usize>,
-    // > + Clone,
-)
-// where Boxed<'a, '_, &'a str, NodeOrToken<GreenNode, GreenToken>, chumsky::extra::Full<chumsky::error::Rich<'a, char>, RollbackState<ParserState>, usize>>: chumsky::Parser<'a, &'a str, NodeOrToken<GreenNode, GreenToken>, chumsky::extra::Full<chumsky::error::Rich<'a, char>, RollbackState<ParserState>, C>>
-{
+) {
     // let mut element_in_pagraph = Recursive::declare();
     let mut element_without_tablerow_and_item = Recursive::declare();
     let mut element_in_section = Recursive::declare();
@@ -260,7 +252,7 @@ pub(crate) fn element_parser<'a, C: 'a + std::default::Default>() -> impl Parser
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, usize>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     get_element_parser::<C>().0
 }
@@ -270,7 +262,7 @@ pub(crate) fn elements_parser<'a, C: 'a + std::default::Default>() -> impl Parse
     'a,
     &'a str,
     Vec<NodeOrToken<GreenNode, GreenToken>>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, usize>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     element_parser::<C>()
         .repeated()
@@ -283,7 +275,7 @@ pub(crate) fn element_in_paragraph_parser<'a, C: 'a + std::default::Default>() -
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, usize>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     get_element_parser::<C>().1
 }
@@ -293,7 +285,7 @@ pub(crate) fn element_in_section_parser<'a, C: 'a + std::default::Default>() -> 
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, usize>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     get_element_parser::<C>().2
 }
@@ -303,7 +295,7 @@ pub(crate) fn element_in_item_parser<'a, C: 'a + std::default::Default>() -> imp
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, usize>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     get_element_parser::<C>().2
 }
@@ -313,7 +305,7 @@ pub(crate) fn element_in_drawer_parser<'a, C: 'a + std::default::Default>() -> i
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, usize>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     get_element_parser::<C>().3
 }
@@ -323,7 +315,7 @@ pub(crate) fn element_in_keyword_parser<'a, C: 'a + std::default::Default>() -> 
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, usize>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     get_element_parser::<C>().4
 }

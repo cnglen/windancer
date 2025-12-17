@@ -1,29 +1,18 @@
 //! Document parser
 use crate::parser::ParserState;
 use crate::parser::syntax::OrgSyntaxKind;
-
-// use crate::parser::SyntaxNode;
-
-use crate::parser::element;
-use crate::parser::element::section;
+use crate::parser::{element, object};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
-use super::object;
-
-/// Document parser: [section]? + heading+
-/// - Document
-///   - Zeroth Section
-///   - HeadingSubtree
-///   - ...
-///   - HeadingSubtree
-
-pub(crate) fn document_parser<'a, C: 'a + std::default::Default>() -> impl Parser<
+/// document <- zeroth_section? heading_subtree*
+/// zeroth_sectoin <- blank_line* comment? property_drawer? section?
+pub(crate) fn document_parser<'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, usize>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > {
     let parser = object::blank_line_parser()
         .repeated()
@@ -32,10 +21,9 @@ pub(crate) fn document_parser<'a, C: 'a + std::default::Default>() -> impl Parse
         .or_not()
         .then(element::comment::comment_parser().or_not())
         .then(element::drawer::property_drawer_parser().or_not())
-        .then(section::section_parser(element::element_in_section_parser::<C>()).or_not())
+        .then(element::section::section_parser(element::element_in_section_parser()).or_not())
         .then(
-            // element::heading_subtree_parser::<C>()
-            element::heading::heading_subtree_parser(element::element_parser::<usize>(), 0)
+            element::heading::heading_subtree_parser(element::element_parser(), 0)
                 .repeated()
                 .collect::<Vec<_>>(),
         )

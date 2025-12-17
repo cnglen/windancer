@@ -7,7 +7,7 @@ use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
-pub(crate) fn heading_subtree_parser<'a, C: 'a>(
+pub(crate) fn heading_subtree_parser<'a>(
     element_parser: impl Parser<
         'a,
         &'a str,
@@ -20,7 +20,7 @@ pub(crate) fn heading_subtree_parser<'a, C: 'a>(
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
 > + Clone {
     let mut heading_subtree = Recursive::declare();
 
@@ -38,26 +38,7 @@ pub(crate) fn heading_subtree_parser<'a, C: 'a>(
         .configure(|cfg, ctx: &usize| cfg.at_least(ctx + 1))
         .to_slice()
         .map(|s: &str| s.len());
-    let tag_char =
-        any().filter(|c: &char| c.is_alphanumeric() || matches!(c, '_' | '#' | '@' | '%'));
-    let maybe_title = none_of("\n")
-        .and_is(
-            one_of(" \t")
-                .repeated()
-                .at_least(1)
-                .then(just(':'))
-                .then(tag_char.repeated())
-                .then(just(':'))
-                .then(object::whitespaces_v2())
-                .not(),
-        ) // 后面不是[space]?+标签
-        .and_is(one_of(" \t").repeated().then(just("\n")).not()) // 后面不是[space]?+换行
-        .repeated()
-        .at_least(1)
-        .to_slice()
-        .then(object::whitespaces_v2())
-        .or_not();
-    let maybe_tag = just(":")
+    let tags = just(":")
         .then(
             any()
                 .filter(|c: &char| c.is_alphanumeric() || matches!(c, '_' | '#' | '@' | '%'))
@@ -68,76 +49,39 @@ pub(crate) fn heading_subtree_parser<'a, C: 'a>(
                 .collect::<Vec<_>>(),
         )
         .then(just(":"))
+        .then(object::whitespaces_v2());
+    let maybe_tag = tags.or_not();
+    let maybe_title = none_of("\n")
+        .and_is(one_of(" \t").repeated().at_least(1).then(tags).not())
+        .and_is(one_of(" \t").repeated().then(just("\n")).not())
+        .repeated()
+        .at_least(1)
+        .to_slice()
         .then(object::whitespaces_v2())
         .or_not();
-    let maybe_section_parser = section::section_parser::<usize>(element_parser.clone()).or_not();
-    // let maybe_section_parser = object::line_parser()
-    //     .and_is(just("*").repeated().at_least(1).then(just(" ")).not())
-    //     .repeated()
-    //     .to_slice()
-    //     .map(|s| {
-    //         let token = NodeOrToken::<GreenNode, GreenToken>::Token(GreenToken::new(
-    //             OrgSyntaxKind::Text.into(),
-    //             s,
-    //         ));
-
-    //         NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(OrgSyntaxKind::Section.into(), vec![token]))
-    //     })
-    //     .or_not() // just("asfd").to_slice(),
-    // ;
-
-    heading_subtree.define(choice((
-        // stars
-        //     .clone()
-        //     .then(
-        //         one_of(" \t")
-        //             .repeated()
-        //             .at_least(1)
-        //             .then(maybe_keyword_ws)
-        //             .then(maybe_priority.clone())
-        //             .then(maybe_comment)
-        //             .then(maybe_title)
-        //             .then(maybe_tag)
-        //             .then(object::newline_v2())
-        //             .then(planning::planning_parser().or_not())
-        //             .then(drawer::property_drawer_parser().or_not())
-        //             .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
-        //             .then(maybe_section_parser.clone())
-        //             .then_ignore(end()),
-        //     )
-        //     .map(|s| {
-        //         let mut children = vec![];
-        //         children.push(NodeOrToken::Token(GreenToken::new(
-        //             OrgSyntaxKind::HeadingRowStars.into(),
-        //             "*".repeat(s.0.prev_heading_level).as_str(),
-        //         )));
-
-        //         NodeOrToken::Node(GreenNode::new(
-        //             OrgSyntaxKind::HeadingSubtree.into(),
-        //             children,
-        //         ))
-        //     }),
-        stars
-            .then_with_ctx(
-                one_of(" \t")
-                    .repeated()
-                    .at_least(1)
-                    .to_slice()
-                    .then(maybe_keyword_ws)
-                    .then(maybe_priority)
-                    .then(maybe_comment)
-                    .then(maybe_title)
-                    .then(maybe_tag)
-                    .then(object::newline_v2())
-                    .then(planning::planning_parser().or_not())
-                    .then(drawer::property_drawer_parser().or_not())
-                    .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
-                    .then(maybe_section_parser.clone())
-                    .then(heading_subtree.clone().repeated().collect::<Vec<_>>()),
-            )
-            .map(
-                |(
-                    stars,
+    let maybe_section_parser = section::section_parser(element_parser.clone()).or_not();
+    heading_subtree.define(choice((stars
+        .then_with_ctx(
+            one_of(" \t")
+                .repeated()
+                .at_least(1)
+                .to_slice()
+                .then(maybe_keyword_ws)
+                .then(maybe_priority)
+                .then(maybe_comment)
+                .then(maybe_title)
+                .then(maybe_tag)
+                .then(object::newline_v2())
+                .then(planning::planning_parser().or_not())
+                .then(drawer::property_drawer_parser().or_not())
+                .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
+                .then(maybe_section_parser.clone())
+                .then(heading_subtree.clone().repeated().collect::<Vec<_>>()),
+        )
+        .map(
+            |(
+                stars,
+                (
                     (
                         (
                             (
@@ -147,202 +91,199 @@ pub(crate) fn heading_subtree_parser<'a, C: 'a>(
                                             (
                                                 (
                                                     (
-                                                        (
-                                                            (whitespace1, maybe_keyword_ws),
-                                                            maybe_priority,
-                                                        ),
-                                                        maybe_comment,
+                                                        (whitespace1, maybe_keyword_ws),
+                                                        maybe_priority,
                                                     ),
-                                                    maybe_title,
+                                                    maybe_comment,
                                                 ),
-                                                maybe_tag,
+                                                maybe_title,
                                             ),
-                                            newline,
+                                            maybe_tag,
                                         ),
-                                        maybe_planning,
+                                        newline,
                                     ),
-                                    maybe_property_drawer,
+                                    maybe_planning,
                                 ),
-                                blanklines,
+                                maybe_property_drawer,
                             ),
-                            maybe_section,
+                            blanklines,
                         ),
-                        subtrees,
+                        maybe_section,
                     ),
-                )| {
-                    let mut children = vec![];
+                    subtrees,
+                ),
+            )| {
+                let mut children = vec![];
 
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::HeadingRowStars.into(),
-                        "*".repeat(stars).as_str(),
-                        // "*".repeat(stars.prev_heading_level).as_str(),
-                        // "*".repeat(e.ctx().prev_heading_level).as_str(),
-                    )));
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::HeadingRowStars.into(),
+                    "*".repeat(stars).as_str(),
+                    // "*".repeat(stars.prev_heading_level).as_str(),
+                    // "*".repeat(e.ctx().prev_heading_level).as_str(),
+                )));
 
-                    children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
-                        GreenToken::new(OrgSyntaxKind::Whitespace.into(), whitespace1),
-                    ));
+                children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
+                    GreenToken::new(OrgSyntaxKind::Whitespace.into(), whitespace1),
+                ));
 
-                    match maybe_keyword_ws {
-                        Some((kw, ws)) if kw.to_uppercase() == "TODO" => {
-                            children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
-                                GreenToken::new(OrgSyntaxKind::HeadingRowKeywordTodo.into(), kw),
-                            ));
-                            children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
-                                GreenToken::new(OrgSyntaxKind::Whitespace.into(), &ws),
-                            ));
-                        }
-                        Some((kw, ws)) if kw.to_uppercase() == "DONE" => {
-                            children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
-                                GreenToken::new(OrgSyntaxKind::HeadingRowKeywordDone.into(), kw),
-                            ));
+                match maybe_keyword_ws {
+                    Some((kw, ws)) if kw.to_uppercase() == "TODO" => {
+                        children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
+                            GreenToken::new(OrgSyntaxKind::HeadingRowKeywordTodo.into(), kw),
+                        ));
+                        children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
+                            GreenToken::new(OrgSyntaxKind::Whitespace.into(), &ws),
+                        ));
+                    }
+                    Some((kw, ws)) if kw.to_uppercase() == "DONE" => {
+                        children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
+                            GreenToken::new(OrgSyntaxKind::HeadingRowKeywordDone.into(), kw),
+                        ));
 
-                            children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
-                                GreenToken::new(OrgSyntaxKind::Whitespace.into(), &ws),
-                            ));
-                        }
-
-                        Some((kw, ws)) => {
-                            children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
-                                GreenToken::new(OrgSyntaxKind::HeadingRowKeywordOther.into(), kw),
-                            ));
-
-                            children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
-                                GreenToken::new(OrgSyntaxKind::Whitespace.into(), &ws),
-                            ));
-                        }
-                        None => {}
+                        children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
+                            GreenToken::new(OrgSyntaxKind::Whitespace.into(), &ws),
+                        ));
                     }
 
-                    if let Some((((leftbracket_hash, level), rightbracket), whitespace)) =
-                        maybe_priority
-                    {
-                        let p_children = vec![
-                            NodeOrToken::Token(GreenToken::new(
-                                OrgSyntaxKind::LeftSquareBracket.into(),
-                                &leftbracket_hash[0..1],
-                            )),
-                            NodeOrToken::Token(GreenToken::new(
-                                OrgSyntaxKind::Hash.into(),
-                                &leftbracket_hash[1..2],
-                            )),
-                            NodeOrToken::Token(GreenToken::new(
-                                OrgSyntaxKind::Text.into(),
-                                &level.to_string(),
-                            )),
-                            NodeOrToken::Token(GreenToken::new(
-                                OrgSyntaxKind::RightSquareBracket.into(),
-                                rightbracket,
-                            )),
-                        ];
+                    Some((kw, ws)) => {
+                        children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
+                            GreenToken::new(OrgSyntaxKind::HeadingRowKeywordOther.into(), kw),
+                        ));
 
-                        let priority_node = NodeOrToken::<GreenNode, GreenToken>::Node(
-                            GreenNode::new(OrgSyntaxKind::HeadingRowPriority.into(), p_children),
-                        );
+                        children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
+                            GreenToken::new(OrgSyntaxKind::Whitespace.into(), &ws),
+                        ));
+                    }
+                    None => {}
+                }
 
+                if let Some((((leftbracket_hash, level), rightbracket), whitespace)) =
+                    maybe_priority
+                {
+                    let p_children = vec![
+                        NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::LeftSquareBracket.into(),
+                            &leftbracket_hash[0..1],
+                        )),
+                        NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::Hash.into(),
+                            &leftbracket_hash[1..2],
+                        )),
+                        NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::Text.into(),
+                            &level.to_string(),
+                        )),
+                        NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::RightSquareBracket.into(),
+                            rightbracket,
+                        )),
+                    ];
+
+                    let priority_node = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+                        OrgSyntaxKind::HeadingRowPriority.into(),
+                        p_children,
+                    ));
+
+                    let ws_token = NodeOrToken::<GreenNode, GreenToken>::Token(GreenToken::new(
+                        OrgSyntaxKind::Whitespace.into(),
+                        whitespace,
+                    ));
+
+                    children.push(priority_node);
+                    children.push(ws_token);
+                }
+
+                if let Some((comment, whitespace)) = maybe_comment {
+                    children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
+                        GreenToken::new(OrgSyntaxKind::HeadingRowComment.into(), comment),
+                    ));
+
+                    children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
+                        GreenToken::new(OrgSyntaxKind::Whitespace.into(), whitespace),
+                    ));
+                }
+
+                if let Some((title, whitespace)) = maybe_title {
+                    let title_token = NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::HeadingRowTitle.into(),
+                        title,
+                    ));
+                    children.push(title_token);
+
+                    if whitespace.len() > 0 {
                         let ws_token = NodeOrToken::<GreenNode, GreenToken>::Token(
                             GreenToken::new(OrgSyntaxKind::Whitespace.into(), whitespace),
                         );
-
-                        children.push(priority_node);
                         children.push(ws_token);
                     }
+                }
 
-                    if let Some((comment, whitespace)) = maybe_comment {
-                        children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
-                            GreenToken::new(OrgSyntaxKind::HeadingRowComment.into(), comment),
-                        ));
+                if let Some((((left_colon, tags), right_colon), whitespace)) = maybe_tag {
+                    let mut tag_token_children: Vec<NodeOrToken<GreenNode, GreenToken>> = vec![];
+                    tag_token_children.push(NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Colon.into(),
+                        &left_colon.to_string(),
+                    )));
 
+                    for tag in tags {
+                        tag_token_children.push(NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::HeadingRowTag.into(),
+                            tag,
+                        )));
+
+                        tag_token_children.push(NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::Colon.into(),
+                            right_colon,
+                        )));
+                    }
+
+                    let tag_node: NodeOrToken<GreenNode, GreenToken> = NodeOrToken::Node(
+                        GreenNode::new(OrgSyntaxKind::HeadingRowTags.into(), tag_token_children),
+                    );
+                    children.push(tag_node);
+
+                    if whitespace.len() > 0 {
                         children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
                             GreenToken::new(OrgSyntaxKind::Whitespace.into(), whitespace),
                         ));
                     }
+                }
 
-                    if let Some((title, whitespace)) = maybe_title {
-                        let title_token = NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::HeadingRowTitle.into(),
-                            title,
-                        ));
-                        children.push(title_token);
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Newline.into(),
+                    newline,
+                )));
 
-                        if whitespace.len() > 0 {
-                            let ws_token = NodeOrToken::<GreenNode, GreenToken>::Token(
-                                GreenToken::new(OrgSyntaxKind::Whitespace.into(), whitespace),
-                            );
-                            children.push(ws_token);
-                        }
-                    }
+                if let Some(planning) = maybe_planning {
+                    children.push(planning);
+                }
 
-                    if let Some((((left_colon, tags), right_colon), whitespace)) = maybe_tag {
-                        let mut tag_token_children: Vec<NodeOrToken<GreenNode, GreenToken>> =
-                            vec![];
-                        tag_token_children.push(NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::Colon.into(),
-                            &left_colon.to_string(),
-                        )));
+                if let Some(property_drawer) = maybe_property_drawer {
+                    children.push(property_drawer);
+                }
 
-                        for tag in tags {
-                            tag_token_children.push(NodeOrToken::Token(GreenToken::new(
-                                OrgSyntaxKind::HeadingRowTag.into(),
-                                tag,
-                            )));
+                for blankline in blanklines {
+                    children.push(NodeOrToken::Token(blankline))
+                }
+                let head_row = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+                    OrgSyntaxKind::HeadingRow.into(),
+                    children,
+                ));
 
-                            tag_token_children.push(NodeOrToken::Token(GreenToken::new(
-                                OrgSyntaxKind::Colon.into(),
-                                right_colon,
-                            )));
-                        }
-
-                        let tag_node: NodeOrToken<GreenNode, GreenToken> =
-                            NodeOrToken::Node(GreenNode::new(
-                                OrgSyntaxKind::HeadingRowTags.into(),
-                                tag_token_children,
-                            ));
-                        children.push(tag_node);
-
-                        if whitespace.len() > 0 {
-                            children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
-                                GreenToken::new(OrgSyntaxKind::Whitespace.into(), whitespace),
-                            ));
-                        }
-                    }
-
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Newline.into(),
-                        newline,
-                    )));
-
-                    if let Some(planning) = maybe_planning {
-                        children.push(planning);
-                    }
-
-                    if let Some(property_drawer) = maybe_property_drawer {
-                        children.push(property_drawer);
-                    }
-
-                    for blankline in blanklines {
-                        children.push(NodeOrToken::Token(blankline))
-                    }
-                    let head_row = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                        OrgSyntaxKind::HeadingRow.into(),
-                        children,
-                    ));
-
-                    let mut children = vec![];
-                    children.push(head_row);
-                    if let Some(section) = maybe_section {
-                        children.push(section);
-                    }
-                    for subtree in subtrees {
-                        children.push(subtree);
-                    }
-                    NodeOrToken::Node(GreenNode::new(
-                        OrgSyntaxKind::HeadingSubtree.into(),
-                        children,
-                    ))
-                },
-            ),
-    )));
+                let mut children = vec![];
+                children.push(head_row);
+                if let Some(section) = maybe_section {
+                    children.push(section);
+                }
+                for subtree in subtrees {
+                    children.push(subtree);
+                }
+                NodeOrToken::Node(GreenNode::new(
+                    OrgSyntaxKind::HeadingSubtree.into(),
+                    children,
+                ))
+            },
+        ),)));
     Parser::boxed(heading_subtree.with_ctx(prev_level))
 }
 
@@ -352,16 +293,13 @@ mod tests {
     use crate::parser::common::{get_parser_output, get_parsers_output};
     use crate::parser::element::element_parser;
     use pretty_assertions::assert_eq;
-    // use crate::parser::usize;
 
     #[test]
     fn test_heading_subtree_01() {
-        // let input = "* 标题1\n 测试\n** 标题1.1\n测试\n测试\ntest\n*** 1.1.1 title\nContent\n* Title\nI have a dream\n";
         let input = "* 标题1\n 测试\n** 标题1.1\n测试\n测试\ntest \n*** 1.1.1 title\nContent\n";
-        // let parser = heading_subtree_parser(section_parser(element_in_section_parser()));
-        let parser = heading_subtree_parser(element_parser::<usize>(), 0);
+        let parser = heading_subtree_parser(element_parser(), 0);
         assert_eq!(
-            get_parser_output::<usize>(parser, input),
+            get_parser_output(parser, input),
             r##"HeadingSubtree@0..75
   HeadingRow@0..10
     HeadingRowStars@0..1 "*"
@@ -395,11 +333,8 @@ mod tests {
 
     #[test]
     fn test_heading_subtree_02() {
-        // let input = "* 1 \n** 1.1\n*** 1.1.1\n* Title"; // panic
-        // let input = "* 1 \n** 1.1\n*** 1.1.1\n* 2\n"; // overflow
         let input = "* 标题1\n 测试\n** 标题1.1\n测试\n测试\ntest\n*** 1.1.1 title\nContent\n* Title\nI have a dream\n"; // overflow
-        // let parser = heading_subtree_parser(section_parser(element_in_section_parser::<()>())).repeated().collect::<Vec<_>>();
-        let parser = heading_subtree_parser::<usize>(element_parser::<()>(), 0)
+        let parser = heading_subtree_parser(element_parser(), 0)
             .repeated()
             .collect::<Vec<_>>();
         assert_eq!(

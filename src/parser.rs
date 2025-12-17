@@ -1,40 +1,18 @@
 //! Parser of org-mode
-
-pub(crate) mod syntax;
-
+use crate::parser::syntax::OrgSyntaxKind;
+use crate::parser::syntax::SyntaxNode;
+use chumsky::inspector::RollbackState;
+use chumsky::prelude::*;
+use rowan::{GreenNode, GreenToken, NodeOrToken, WalkEvent};
+use smallvec;
+use std::collections::HashSet;
+use std::sync::OnceLock;
 mod common;
 mod document;
 mod element;
 pub(crate) mod object;
-// pub mod object;
-
-use crate::parser::syntax::OrgSyntaxKind;
-
-use chumsky::inspector::RollbackState;
-use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken, WalkEvent};
-use std::ops::Range;
-
-use crate::parser::syntax::SyntaxNode;
-use smallvec;
-
-use std::collections::HashSet;
-use std::sync::OnceLock;
+pub(crate) mod syntax;
 static RADIO_TARGETS: OnceLock<HashSet<String>> = OnceLock::new();
-
-/// S2: Return nodes whose number if Smaller than Two
-/// - 0: None
-/// - 1: Single(Node)
-/// - 2: Double(Node, Node)
-#[derive(Debug)]
-pub enum S2 {
-    None,                                       // zero
-    Single(NodeOrToken<GreenNode, GreenToken>), // one
-    Double(
-        NodeOrToken<GreenNode, GreenToken>,
-        NodeOrToken<GreenNode, GreenToken>,
-    ), // two
-}
 
 // 上下文状态：当前解析的标题级别
 // - item_indent:
@@ -64,8 +42,6 @@ impl Default for ParserState {
 pub struct ParserResult {
     // FIXME: use Arc<GreenNode>?
     green: NodeOrToken<GreenNode, GreenToken>,
-    text: String, // 作用?
-    span: Range<usize>,
 }
 
 impl ParserResult {
@@ -152,11 +128,8 @@ impl OrgParser {
             self.get_radio_targets(radio_target_lines.as_str()); // only use radio target related lines to speed up get the radio targets
         }
 
-        let parse_result = document::document_parser::<()>().parse_with_state(
-            input,
-            // &mut RollbackState(ParserState::default_with_radio_targets(radio_targets)),
-            &mut RollbackState(ParserState::default()),
-        );
+        let parse_result = document::document_parser()
+            .parse_with_state(input, &mut RollbackState(ParserState::default()));
 
         if parse_result.has_errors() {
             for e in parse_result.errors() {
@@ -166,15 +139,7 @@ impl OrgParser {
 
         ParserResult {
             green: parse_result.into_output().expect("Parse failed"),
-            text: "todo".to_string(),
-            span: Range { start: 0, end: 5 },
         }
-
-        // ParserResult {
-        //     green: NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Document.into(), vec![])),
-        //     text: "todo".to_string(),
-        //     span: Range { start: 0, end: 5 },
-        // }
     }
 }
 
