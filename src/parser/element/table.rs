@@ -22,28 +22,23 @@ fn table_standard_row<'a, C: 'a>() -> impl Parser<
         )
         .then(object::newline_or_ending())
         .map(|(((ws, pipe), cells), maybe_newline)| {
-            let mut children = vec![];
-            if ws.len() > 0 {
+            let mut children = Vec::with_capacity(3 + cells.len());
+            if !ws.is_empty() {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Whitespace.into(),
-                    &ws,
+                    ws,
                 )));
             }
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::Pipe.into(),
-                &pipe,
+                pipe,
             )));
-            for cell in cells {
-                children.push(cell);
-            }
-            match maybe_newline {
-                Some(newline) => {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Newline.into(),
-                        &newline,
-                    )));
-                }
-                None => {}
+            children.extend(cells);
+            if let Some(newline) = maybe_newline {
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Newline.into(),
+                    newline,
+                )));
             }
 
             NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
@@ -63,28 +58,28 @@ fn table_rule_row<'a, C: 'a>() -> impl Parser<
     object::whitespaces()
         .then(just("|"))
         .then(just("-"))
-        .then(none_of("\n").repeated().collect::<String>())
+        .then(none_of("\n").repeated().to_slice())
         .then(object::newline_or_ending())
         .map(|((((ws, pipe), dash), content), maybe_newline)| {
-            let mut children = vec![];
-            if ws.len() > 0 {
+            let mut children = Vec::with_capacity(5);
+            if !ws.is_empty() {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Whitespace.into(),
-                    &ws,
+                    ws,
                 )));
             }
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::Pipe.into(),
-                &pipe,
+                pipe,
             )));
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::Dash.into(),
-                &dash,
+                dash,
             )));
             if content.len() > 0 {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Text.into(),
-                    &content,
+                    content,
                 )));
             }
 
@@ -92,7 +87,7 @@ fn table_rule_row<'a, C: 'a>() -> impl Parser<
                 Some(newline) => {
                     children.push(NodeOrToken::Token(GreenToken::new(
                         OrgSyntaxKind::Newline.into(),
-                        &newline,
+                        newline,
                     )));
                 }
                 None => {}
@@ -115,10 +110,10 @@ pub(crate) fn table_formula_parser<'a, C: 'a>() -> impl Parser<
         .then(object::just_case_insensitive("TBLFM"))
         .then(just(":"))
         .then(object::whitespaces())
-        .then(none_of("\r\n").repeated().collect::<String>())
+        .then(none_of(object::CRLF).repeated().to_slice())
         .then(object::newline_or_ending())
         .map_with(|(((((hash_plus, tblfm), colon), ws), formula), nl), e| {
-            let mut children = vec![];
+            let mut children = Vec::with_capacity(6);
 
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::HashPlus.into(),
@@ -129,7 +124,7 @@ pub(crate) fn table_formula_parser<'a, C: 'a>() -> impl Parser<
                 OrgSyntaxKind::KeywordKey.into(),
                 vec![NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Text.into(),
-                    &tblfm,
+                    tblfm,
                 ))],
             )));
 
@@ -138,10 +133,10 @@ pub(crate) fn table_formula_parser<'a, C: 'a>() -> impl Parser<
                 colon,
             )));
 
-            if ws.len() > 0 {
+            if !ws.is_empty() {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Whitespace.into(),
-                    &ws,
+                    ws,
                 )));
             }
 
@@ -149,7 +144,7 @@ pub(crate) fn table_formula_parser<'a, C: 'a>() -> impl Parser<
                 OrgSyntaxKind::TableFormulaValue.into(),
                 vec![NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Text.into(),
-                    &formula,
+                    formula,
                 ))],
             )));
 
@@ -157,7 +152,7 @@ pub(crate) fn table_formula_parser<'a, C: 'a>() -> impl Parser<
                 Some(newline) => {
                     children.push(NodeOrToken::Token(GreenToken::new(
                         OrgSyntaxKind::Newline.into(),
-                        &newline,
+                        newline,
                     )));
                     e.state().prev_char = newline.chars().last();
                 }
@@ -188,23 +183,13 @@ pub(crate) fn table_parser<'a, C: 'a>() -> impl Parser<
         .then(formulas)
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
         .map(|(((affiliated_keywords, rows), formulas), blanklines)| {
-            let mut children = vec![];
-
-            for e in affiliated_keywords {
-                children.push(e);
-            }
-
-            for e in rows {
-                children.push(e);
-            }
-
-            for e in formulas {
-                children.push(e);
-            }
-
-            for blankline in blanklines {
-                children.push(NodeOrToken::Token(blankline));
-            }
+            let mut children = Vec::with_capacity(
+                affiliated_keywords.len() + rows.len() + formulas.len() + blanklines.len(),
+            );
+            children.extend(affiliated_keywords);
+            children.extend(rows);
+            children.extend(formulas);
+            children.extend(blanklines.into_iter().map(NodeOrToken::Token));
 
             NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Table.into(), children))
         })

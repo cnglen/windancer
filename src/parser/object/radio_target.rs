@@ -27,7 +27,7 @@ pub(crate) fn radio_target_parser<'a, C: 'a>(
         .at_least(1)
         .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
 
-    let target_onechar = none_of("<>\n \t").map(|c| format!("{c}")).to_slice();
+    let target_onechar = none_of("<>\n \t").to_slice();
     let target_g2char = none_of("<>\n \t")
         .then(none_of("<>\n").repeated().at_least(1).collect::<String>())
         .try_map_with(|(a, b), e| {
@@ -49,7 +49,7 @@ pub(crate) fn radio_target_parser<'a, C: 'a>(
         .map_with(|((lbracket3, target), rbracket3), e| {
             e.state().prev_char = rbracket3.chars().last();
 
-            let mut children = vec![];
+            let mut children = Vec::with_capacity(2 + target.len());
 
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::LeftAngleBracket3.into(),

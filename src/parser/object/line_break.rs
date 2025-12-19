@@ -1,7 +1,6 @@
 //! Line break parser
-use crate::parser::ParserState;
-use crate::parser::object::whitespaces;
 use crate::parser::syntax::OrgSyntaxKind;
+use crate::parser::{ParserState, object};
 
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
@@ -20,25 +19,25 @@ pub(crate) fn line_break_parser<'a, C: 'a>() -> impl Parser<
 
     // PRE\\SPACE
     just(r##"\\"##)
-        .then(whitespaces())
+        .then(object::whitespaces())
         .then_ignore(just("\r").or_not().then(just("\n")).rewind())
-        .try_map_with(|(line_break, maybe_ws), e| {
+        .try_map_with(|(line_break, maybe_ws): (&str, &str), e| {
             if let Some('\\') = e.state().prev_char {
                 let error =
                     Rich::custom(e.span(), format!("PRE is \\ not mathced, NOT line break"));
                 Err(error)
             } else {
-                let mut children = vec![];
+                let mut children = Vec::with_capacity(2);
 
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::BackSlash2.into(),
                     line_break,
                 )));
 
-                if maybe_ws.len() > 0 {
+                if !maybe_ws.is_empty() {
                     children.push(NodeOrToken::Token(GreenToken::new(
                         OrgSyntaxKind::Whitespace.into(),
-                        &maybe_ws,
+                        maybe_ws,
                     )));
                     e.state().prev_char = maybe_ws.chars().last();
                 } else {

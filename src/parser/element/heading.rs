@@ -25,14 +25,14 @@ pub(crate) fn heading_subtree_parser<'a>(
     let mut heading_subtree = Recursive::declare();
 
     let maybe_keyword_ws = choice((just("TODO"), just("DONE")))
-        .then(object::whitespaces_g1_v2())
+        .then(object::whitespaces_g1())
         .or_not();
     let maybe_priority = just("[#")
         .then(one_of('0'..'9').or(one_of('a'..'z').or(one_of('A'..'Z'))))
         .then(just("]"))
-        .then(object::whitespaces_g1_v2())
+        .then(object::whitespaces_g1())
         .or_not();
-    let maybe_comment = just("COMMENT").then(object::whitespaces_g1_v2()).or_not();
+    let maybe_comment = just("COMMENT").then(object::whitespaces_g1()).or_not();
     let stars = just('*')
         .repeated()
         .configure(|cfg, ctx: &usize| cfg.at_least(ctx + 1))
@@ -44,20 +44,20 @@ pub(crate) fn heading_subtree_parser<'a>(
                 .filter(|c: &char| c.is_alphanumeric() || matches!(c, '_' | '#' | '@' | '%'))
                 .repeated()
                 .at_least(1)
-                .to_slice() // slice?
+                .to_slice()
                 .separated_by(just(':'))
                 .collect::<Vec<_>>(),
         )
         .then(just(":"))
-        .then(object::whitespaces_v2());
+        .then(object::whitespaces());
     let maybe_tag = tags.or_not();
-    let maybe_title = none_of("\n")
+    let maybe_title = none_of(object::CRLF)
         .and_is(one_of(" \t").repeated().at_least(1).then(tags).not())
-        .and_is(one_of(" \t").repeated().then(just("\n")).not())
+        .and_is(one_of(" \t").repeated().then(object::newline()).not())
         .repeated()
         .at_least(1)
         .to_slice()
-        .then(object::whitespaces_v2())
+        .then(object::whitespaces())
         .or_not();
     let maybe_section_parser = section::section_parser(element_parser.clone()).or_not();
     heading_subtree.define(choice((stars
@@ -71,7 +71,7 @@ pub(crate) fn heading_subtree_parser<'a>(
                 .then(maybe_comment)
                 .then(maybe_title)
                 .then(maybe_tag)
-                .then(object::newline_v2())
+                .then(object::newline())
                 .then(planning::planning_parser().or_not())
                 .then(drawer::property_drawer_parser().or_not())
                 .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
@@ -210,7 +210,7 @@ pub(crate) fn heading_subtree_parser<'a>(
                     ));
                     children.push(title_token);
 
-                    if whitespace.len() > 0 {
+                    if !whitespace.is_empty() {
                         let ws_token = NodeOrToken::<GreenNode, GreenToken>::Token(
                             GreenToken::new(OrgSyntaxKind::Whitespace.into(), whitespace),
                         );

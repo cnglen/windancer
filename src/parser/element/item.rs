@@ -110,7 +110,7 @@ pub(crate) fn item_indent_parser<'a, C: 'a>() -> impl Parser<
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
-    object::whitespaces_v2().map(|whitespaces| {
+    object::whitespaces().map(|whitespaces| {
         let children = if !whitespaces.is_empty() {
             vec![NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::Whitespace.into(),
@@ -142,18 +142,15 @@ pub(crate) fn item_bullet_parser<'a, C: 'a>() -> impl Parser<
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     just("*")
-        .to(String::from("*"))
-        .or(just("-").to(String::from("-")))
-        .or(just("+").to(String::from("+")))
-        .or(counter_parser()
-            .then(just(".").or(just(")")))
-            .map(|(num, pq)| format!("{}{}", num, pq)))
+        .or(just("-"))
+        .or(just("+"))
+        .or(counter_parser().then(just(".").or(just(")"))).to_slice())
         .then(object::whitespaces_g1())
         .map(|(bullet, ws)| {
             NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                 OrgSyntaxKind::ListItemBullet.into(),
                 vec![
-                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Text.into(), &bullet)),
+                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Text.into(), bullet)),
                     NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Whitespace.into(), &ws)),
                 ],
             ))
@@ -215,7 +212,7 @@ pub(crate) fn item_checkbox_parser<'a, C: 'a>() -> impl Parser<
                         OrgSyntaxKind::RightSquareBracket.into(),
                         rbracket,
                     )),
-                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Whitespace.into(), &ws)),
+                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Whitespace.into(), ws)),
                 ],
             ))
         })
@@ -228,8 +225,7 @@ pub(crate) fn item_tag_parser<'a, C: 'a>() -> impl Parser<
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > {
-    any()
-        .filter(|c: &char| *c != '\n')
+    none_of(object::CRLF)
         .and_is(
             object::whitespaces_g1()
                 .then(just("::"))
@@ -238,7 +234,7 @@ pub(crate) fn item_tag_parser<'a, C: 'a>() -> impl Parser<
         )
         .repeated()
         .at_least(1)
-        .collect::<String>()
+        .to_slice()
         .then(object::whitespaces_g1())
         .then(just("::"))
         .then(object::whitespaces_g1())
@@ -246,10 +242,10 @@ pub(crate) fn item_tag_parser<'a, C: 'a>() -> impl Parser<
             NodeOrToken::Node(GreenNode::new(
                 OrgSyntaxKind::ListItemTag.into(),
                 vec![
-                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Text.into(), &tag)),
-                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Whitespace.into(), &ws1)),
+                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Text.into(), tag)),
+                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Whitespace.into(), ws1)),
                     NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Colon2.into(), double_colon)),
-                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Whitespace.into(), &ws2)),
+                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Whitespace.into(), ws2)),
                 ],
             ))
         })

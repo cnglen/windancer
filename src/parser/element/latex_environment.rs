@@ -15,8 +15,8 @@ pub(crate) fn latex_environment_parser<'a, C: 'a>() -> impl Parser<
         .repeated()
         .collect::<Vec<_>>();
 
-    let begin_row = object::whitespaces_v2()
-        .then(object::just_case_insensitive_v2(r##"\BEGIN{"##))
+    let begin_row = object::whitespaces()
+        .then(object::just_case_insensitive(r##"\BEGIN{"##))
         .then(
             any()
                 .filter(|c: &char| c.is_ascii_alphanumeric() || *c == '*')
@@ -25,8 +25,8 @@ pub(crate) fn latex_environment_parser<'a, C: 'a>() -> impl Parser<
                 .to_slice(),
         )
         .then(just("}"))
-        .then(object::whitespaces_v2())
-        .then(object::newline_v2())
+        .then(object::whitespaces())
+        .then(object::newline())
         .map(
             |(
                 (
@@ -46,14 +46,14 @@ pub(crate) fn latex_environment_parser<'a, C: 'a>() -> impl Parser<
             },
         );
 
-    let end_row = object::whitespaces_v2()
-        .then(object::just_case_insensitive_v2(r##"\END{"##))
+    let end_row = object::whitespaces()
+        .then(object::just_case_insensitive(r##"\END{"##))
         .then(
             just("").configure(|cfg, ctx: &(&str, &str, &str, &str, &str, &str)| cfg.seq((*ctx).2)),
         )
         .then(just("}"))
-        .then(object::whitespaces_v2())
-        .then(object::newline_or_ending_v2())
+        .then(object::whitespaces())
+        .then(object::newline_or_ending())
         .map(
             |(
                 (

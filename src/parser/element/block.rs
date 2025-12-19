@@ -3,6 +3,7 @@ use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserState, element, object};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
+use phf::phf_set;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 type OSK = OrgSyntaxKind;
@@ -19,23 +20,55 @@ enum BlockType {
     Quote,
 }
 
+pub(crate) static ORG_BLOCK_NON_SPECIAL_NAMES: phf::Set<&'static str> = phf_set! {
+    "SRC", "EXPORT", "EXAMPLE", "COMMENT", "VERSE", "CENTER", "QUOTE"
+};
+
 fn special_name_parser<'a, C: 'a>()
 -> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
 {
-    any()
-        .filter(|c: &char| !c.is_whitespace())
-        .repeated()
-        .at_least(1)
-        .to_slice()
-        .try_map_with(|s: &str, e| match s.to_uppercase().as_str() {
-            "SRC" | "EXPORT" | "EXAMPLE" | "COMMENT" | "VERSE" | "CENTER" | "QUOTE" => {
-                let error =
-                    Rich::custom::<&str>(e.span(), &format!("{s} is not special block name"));
-                Err(error)
-            }
-            _ => Ok(s),
-        })
-        .to_slice()
+    custom(|inp| {
+        let before = &inp.cursor();
+        let remaining: &str = inp.slice_from(std::ops::RangeFrom {
+            start: &inp.cursor(),
+        });
+
+        let name: String = remaining
+            .chars()
+            .take_while(|c| !c.is_whitespace())
+            .collect();
+
+        if name.is_empty() || ORG_BLOCK_NON_SPECIAL_NAMES.contains(&name.to_uppercase()) {
+            return Err(Rich::custom(
+                inp.span_since(before),
+                format!("invalid special block name: '{}'", name),
+            ));
+        }
+
+        let bound = name.len();
+        let ans = &remaining[0..bound];
+
+        for _ in 0..name.len() {
+            inp.next();
+        }
+
+        Ok(ans)
+    })
+
+    // any()
+    //     .filter(|c: &char| !c.is_whitespace())
+    //     .repeated()
+    //     .at_least(1)
+    //     .to_slice()
+    //     .try_map_with(|s: &str, e| match s.to_uppercase().as_str() {
+    //         "SRC" | "EXPORT" | "EXAMPLE" | "COMMENT" | "VERSE" | "CENTER" | "QUOTE" => {
+    //             let error =
+    //                 Rich::custom::<&str>(e.span(), &format!("{s} is not special block name"));
+    //             Err(error)
+    //         }
+    //         _ => Ok(s),
+    //     })
+    //     .to_slice()
 }
 
 /// export block
@@ -399,9 +432,7 @@ pub(crate) fn verse_block_parser<'a, C: 'a>() -> impl Parser<
     let content_inner = object::line_parser_allow_blank()
         .and_is(end_row.clone().not()) // No line may start with #+end_NAME.
         .and_is(just("*").not())
-        .repeated()
-        .collect::<Vec<String>>()
-        .map(|s| s.join(""));
+        .repeated();
     let content = fullset_objects_parser.nested_in(content_inner.to_slice());
 
     let affiliated_keywords = element::keyword::affiliated_keyword_parser()
@@ -684,15 +715,15 @@ pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
         .repeated()
         .collect::<Vec<_>>();
 
-    let begin_row = object::whitespaces_v2()
-        .then(object::just_case_insensitive_v2("#+begin_"))
+    let begin_row = object::whitespaces()
+        .then(object::just_case_insensitive("#+begin_"))
         .then(special_name_parser())
         .then(
-            object::whitespaces_g1_v2()
+            object::whitespaces_g1()
                 .then(none_of("\n").repeated().to_slice())
                 .or_not(),
         )
-        .then(object::newline_v2())
+        .then(object::newline())
         .map(
             |((((begin_whitespaces1, begin), begin_name), maybe_ws_parameters), begin_newline)| {
                 (
@@ -705,13 +736,13 @@ pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
             },
         );
 
-    let end_row = object::whitespaces_v2()
-        .then(object::just_case_insensitive_v2("#+end_"))
+    let end_row = object::whitespaces()
+        .then(object::just_case_insensitive("#+end_"))
         .then(just("").configure(
             |cfg, ctx: &(&str, &str, &str, Option<(&str, &str)>, &str)| cfg.seq((*ctx).2),
         ))
-        .then(object::whitespaces_v2())
-        .then(object::newline_or_ending_v2())
+        .then(object::whitespaces())
+        .then(object::newline_or_ending())
         .map(
             |((((end_whitespaces1, end_), end_name), end_whitespaces2), end_maybe_newline)| {
                 (
@@ -724,8 +755,8 @@ pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
             },
         );
 
-    let content_inner = object::line_parser_v2()
-        .or(object::blank_line_str_parser_v2())
+    let content_inner = object::line_parser()
+        .or(object::blank_line_str_parser())
         .and_is(end_row.not())
         .repeated()
         .to_slice();

@@ -40,21 +40,12 @@ pub(crate) fn table_cell_parser<'a, C: 'a>(
         .then(pipe)
         // .map(|s|{println!("table_cell_parser: s={s:?}"); s})
         .map(|((contents, ws), pipe)| {
-            let mut children = vec![];
+            let mut children = Vec::with_capacity(contents.len() + 2);
             // println!("contents={:?}; ws={:?}; pipe={:?}", contents, ws, pipe);
 
-            for node in contents {
-                children.push(node);
-            }
+            children.extend(contents);
 
-            // if contents.len()>0 {
-            //     children.push(NodeOrToken::Token(GreenToken::new(
-            //         OrgSyntaxKind::Text.into(),
-            //         &contents,
-            //     )));
-            // }
-
-            if ws.len() > 0 {
+            if !ws.is_empty() {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Whitespace.into(),
                     &ws,

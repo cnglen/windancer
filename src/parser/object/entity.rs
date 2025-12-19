@@ -478,12 +478,37 @@ pub(crate) fn entity_parser<'a, C: 'a>() -> impl Parser<
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
-    let name_parser = any()
-        .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
-        .repeated()
-        .at_least(1)
-        .collect::<String>()
-        .filter(|name| ENTITYNAME_TO_HTML.contains_key(name));
+    let name_parser = custom(|inp| {
+        let before = &inp.cursor();
+        let remaining: &str = inp.slice_from(std::ops::RangeFrom {
+            start: &inp.cursor(),
+        });
+
+        let name: String = remaining
+            .chars()
+            .take_while(|c| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
+            .collect();
+
+        if name.is_empty() || !ENTITYNAME_TO_HTML.contains_key(&name) {
+            return Err(Rich::custom(
+                inp.span_since(before),
+                format!("invalid entity name: '{}'", name),
+            ));
+        }
+
+        for _ in 0..name.len() {
+            inp.next();
+        }
+
+        Ok(name)
+    });
+
+    // let name_parser = any()
+    //     .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
+    //     .repeated()
+    //     .at_least(1)
+    //     .collect::<String>()
+    //     .filter(|name| ENTITYNAME_TO_HTML.contains_key(name));
 
     let post_parser = any()
         .filter(|c: &char| !c.is_alphabetic())
@@ -495,51 +520,52 @@ pub(crate) fn entity_parser<'a, C: 'a>() -> impl Parser<
         .then_ignore(post_parser.rewind()) // POST
         .map_with(|(backslash, name), e| {
             e.state().prev_char = name.chars().last();
-            let mut children = vec![];
-            children.push(NT::Token(GreenToken::new(OSK::BackSlash.into(), backslash)));
-            children.push(NT::Token(GreenToken::new(OSK::EntityName.into(), &name)));
-
-            NT::Node(GreenNode::new(OSK::Entity.into(), children))
+            NT::Node(GreenNode::new(
+                OSK::Entity.into(),
+                vec![
+                    NT::Token(GreenToken::new(OSK::BackSlash.into(), backslash)),
+                    NT::Token(GreenToken::new(OSK::EntityName.into(), &name)),
+                ],
+            ))
         });
 
     // Pattern2: \NAME{}
     let a2 = just(r"\").then(name_parser).then(just("{}")).map_with(
         |((backslash, name), left_right_curly), e| {
             e.state().prev_char = left_right_curly.chars().last();
-            let mut children = vec![];
-            children.push(NT::Token(GreenToken::new(OSK::BackSlash.into(), backslash)));
-            children.push(NT::Token(GreenToken::new(OSK::EntityName.into(), &name)));
-            children.push(NT::Token(GreenToken::new(
-                OSK::LeftCurlyBracket.into(),
-                &left_right_curly[0..1],
-            )));
-            children.push(NT::Token(GreenToken::new(
-                OSK::RightCurlyBracket.into(),
-                &left_right_curly[1..2],
-            )));
 
-            NT::Node(GreenNode::new(OSK::Entity.into(), children))
+            NT::Node(GreenNode::new(
+                OSK::Entity.into(),
+                vec![
+                    NT::Token(GreenToken::new(OSK::BackSlash.into(), backslash)),
+                    NT::Token(GreenToken::new(OSK::EntityName.into(), &name)),
+                    NT::Token(GreenToken::new(
+                        OSK::LeftCurlyBracket.into(),
+                        &left_right_curly[0..1],
+                    )),
+                    NT::Token(GreenToken::new(
+                        OSK::RightCurlyBracket.into(),
+                        &left_right_curly[1..2],
+                    )),
+                ],
+            ))
         },
     );
 
     // pattern3:  \_SPACES
     let a3 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>(r"\")
         .then(just("_"))
-        .then(
-            one_of(" ")
-                .repeated()
-                .at_least(1)
-                .at_most(20)
-                .collect::<String>(),
-        )
-        .map_with(|((backslash, us), ws), e| {
+        .then(just(" ").repeated().at_least(1).at_most(20).to_slice())
+        .map_with(|((backslash, us), ws): ((_, _), &str), e| {
             e.state().prev_char = ws.chars().last();
-            let mut children = vec![];
-            children.push(NT::Token(GreenToken::new(OSK::BackSlash.into(), backslash)));
-            children.push(NT::Token(GreenToken::new(OSK::Underscore.into(), us)));
-            children.push(NT::Token(GreenToken::new(OSK::Spaces.into(), &ws)));
-
-            NT::Node(GreenNode::new(OSK::Entity.into(), children))
+            NT::Node(GreenNode::new(
+                OSK::Entity.into(),
+                vec![
+                    NT::Token(GreenToken::new(OSK::BackSlash.into(), backslash)),
+                    NT::Token(GreenToken::new(OSK::Underscore.into(), us)),
+                    NT::Token(GreenToken::new(OSK::Spaces.into(), ws)),
+                ],
+            ))
         });
 
     // priority: `a2` > `a1` since `a2` is longer and includes `a1`, or "\pi{}" will be parsed into <Entity(\pi) + Text({})>, while <Entity(\pi{})> is expected

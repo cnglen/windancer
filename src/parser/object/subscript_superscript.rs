@@ -84,10 +84,13 @@ fn create_script_parser<'a, C: 'a>(
         .then(just("*"))
         .map_with(move |(sup, aes), e| {
             e.state().prev_char = Some('*');
-            let mut children = vec![];
-            children.push(NT::Token(GreenToken::new(OSK::Caret.into(), sup)));
-            children.push(NT::Token(GreenToken::new(OSK::Text.into(), aes)));
-            NT::Node(GreenNode::new(syntax_kind.clone().into(), children))
+            NT::Node(GreenNode::new(
+                syntax_kind.clone().into(),
+                vec![
+                    NT::Token(GreenToken::new(OSK::Caret.into(), sup)),
+                    NT::Token(GreenToken::new(OSK::Text.into(), aes)),
+                ],
+            ))
         });
 
     // CHAR^{expression} / CHAR^(EXPRESSION)
@@ -115,6 +118,17 @@ fn create_script_parser<'a, C: 'a>(
         .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
     let expression =
         standard_objects_parser.nested_in(single_expression.clone().repeated().to_slice()); // foo(bar){(def)ghi}
+
+    let lb_str = |lb| match lb {
+        '(' => "(",
+        '{' => "{",
+        _ => unreachable!(),
+    };
+    let rb_str = |rb| match rb {
+        ')' => ")",
+        '}' => "}",
+        _ => unreachable!(),
+    };
 
     let pairs = HashMap::from([('(', ')'), ('{', '}')]);
     let pair_starts = pairs.keys().copied().collect::<Vec<_>>();
@@ -167,12 +181,12 @@ fn create_script_parser<'a, C: 'a>(
                         children.push(NT::Token(GreenToken::new(OSK::Caret.into(), sup)));
                         children.push(NT::Token(GreenToken::new(
                             OSK::LeftCurlyBracket.into(),
-                            lb.to_string().as_str(),
+                            lb_str(lb),
                         )));
                         children.extend(expression);
                         children.push(NT::Token(GreenToken::new(
                             OSK::RightCurlyBracket.into(),
-                            rb.to_string().as_str(),
+                            rb_str(rb),
                         )));
 
                         Ok(NT::Node(GreenNode::new(
@@ -205,7 +219,7 @@ fn create_script_parser<'a, C: 'a>(
         },
     );
 
-    Parser::boxed(choice((t1, t3, t2)))
+    Parser::boxed(choice((t3, t1, t2)))
     // t1.or(t3).or(t2)
 }
 

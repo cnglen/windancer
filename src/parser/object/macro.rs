@@ -17,10 +17,9 @@ pub(crate) fn macro_parser<'a, C: 'a>() -> impl Parser<
         .then(
             any()
                 .filter(|c: &char| c.is_alphanumeric() || matches!(c, '_' | '-'))
-                .repeated()
-                .collect::<String>(),
+                .repeated(),
         )
-        .map(|(first, remaining)| format!("{first}{remaining}"));
+        .to_slice();
 
     // {{{NAME}}}
     let t1 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("{{{")
@@ -29,7 +28,7 @@ pub(crate) fn macro_parser<'a, C: 'a>() -> impl Parser<
         .map_with(|((left_3curly, name), right_3curly), e| {
             e.state().prev_char = right_3curly.chars().last();
 
-            let mut children = vec![];
+            let mut children = Vec::with_capacity(3);
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::LeftCurlyBracket3.into(),
                 left_3curly,
@@ -37,7 +36,7 @@ pub(crate) fn macro_parser<'a, C: 'a>() -> impl Parser<
 
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::MacroName.into(),
-                &name,
+                name,
             )));
 
             children.push(NodeOrToken::Token(GreenToken::new(
@@ -64,7 +63,7 @@ pub(crate) fn macro_parser<'a, C: 'a>() -> impl Parser<
             |(((((left_3curly, name), left_round), args), right_round), right_3curly), e| {
                 e.state().prev_char = right_3curly.chars().last();
 
-                let mut children = vec![];
+                let mut children = Vec::with_capacity(6);
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::LeftCurlyBracket3.into(),
                     left_3curly,
@@ -72,7 +71,7 @@ pub(crate) fn macro_parser<'a, C: 'a>() -> impl Parser<
 
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::MacroName.into(),
-                    &name,
+                    name,
                 )));
 
                 children.push(NodeOrToken::Token(GreenToken::new(

@@ -11,18 +11,21 @@ pub(crate) fn comment_parser<'a, C: 'a>() -> impl Parser<
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
-    let comment_line1 = object::whitespaces()
+    let comment_line = object::whitespaces()
         .then(just("#"))
-        .then(object::whitespaces_g1())
-        .then(none_of("\n").repeated().collect::<String>())
+        .then(
+            object::whitespaces_g1()
+                .then(none_of(object::CRLF).repeated().to_slice())
+                .or_not(),
+        )
         .then(object::newline_or_ending())
-        .map(|((((ws1, hash), ws2), content), maybe_nl)| {
+        .map(|(((ws1, hash), maybe_ws2_content), maybe_nl)| {
             let mut children = Vec::with_capacity(5);
 
             if !ws1.is_empty() {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Whitespace.into(),
-                    &ws1,
+                    ws1,
                 )));
             }
 
@@ -31,61 +34,28 @@ pub(crate) fn comment_parser<'a, C: 'a>() -> impl Parser<
                 hash,
             )));
 
-            if !ws2.is_empty() {
+            if let Some((ws2, content)) = maybe_ws2_content {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Whitespace.into(),
-                    &ws2,
+                    ws2,
+                )));
+
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Text.into(),
+                    content,
                 )));
             }
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                &content,
-            )));
 
             if let Some(nl) = maybe_nl {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Newline.into(),
-                    &nl,
+                    nl,
                 )));
             }
-
             children
         });
 
-    let comment_line2 = object::whitespaces()
-        .then(just("#"))
-        .then(object::newline_or_ending())
-        .map(|((ws, hash), maybe_nl)| {
-            let mut children = vec![];
-
-            if ws.len() > 0 {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    &ws,
-                )));
-            }
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Hash.into(),
-                hash,
-            )));
-
-            match maybe_nl {
-                Some(nl) => {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Newline.into(),
-                        &nl,
-                    )));
-                }
-                None => {}
-            }
-
-            children
-        });
-
-    comment_line1
-        .or(comment_line2)
+    comment_line
         .repeated()
         .at_least(1)
         .collect::<Vec<_>>()

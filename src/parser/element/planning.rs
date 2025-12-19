@@ -11,36 +11,36 @@ pub(crate) fn planning_parser<'a, C: 'a>() -> impl Parser<
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
-    object::whitespaces_v2()
+    object::whitespaces()
         .then(choice((
             just("DEADLINE"),
             just("SCHEDULED"),
             just("CLOSED"),
         )))
         .then(just(":"))
-        .then(object::whitespaces_v2())
+        .then(object::whitespaces())
         .then(object::timestamp::timestamp_parser())
         // .map(|s|{println!("planning: s={s:#?}"); s})
         .map(|((((ws1, keyword), colon), ws2), ts)| {
-            let mut children = vec![];
-            if ws1.len() > 0 {
+            let mut children = Vec::with_capacity(5);
+            if !ws1.is_empty() {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Whitespace.into(),
-                    &ws1,
+                    ws1,
                 )));
             }
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::PlanningKeyword.into(),
-                &keyword,
+                keyword,
             )));
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::Colon.into(),
-                &colon,
+                colon,
             )));
-            if ws2.len() > 0 {
+            if !ws2.is_empty() {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Whitespace.into(),
-                    &ws2,
+                    ws2,
                 )));
             }
             children.push(ts);
@@ -50,7 +50,7 @@ pub(crate) fn planning_parser<'a, C: 'a>() -> impl Parser<
         .repeated()
         .at_least(1)
         .collect::<Vec<_>>()
-        .then(object::whitespaces_v2())
+        .then(object::whitespaces())
         .then(object::newline_or_ending())
         .map(|((s, ws), maybe_nl)| {
             let mut children = vec![];
@@ -64,19 +64,20 @@ pub(crate) fn planning_parser<'a, C: 'a>() -> impl Parser<
             if ws.len() > 0 {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Whitespace.into(),
-                    &ws,
+                    ws,
                 )));
             }
 
             if let Some(nl) = maybe_nl {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Newline.into(),
-                    &nl,
+                    nl,
                 )));
             }
 
             NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Planning.into(), children))
         })
+        .boxed()
 }
 
 #[cfg(test)]

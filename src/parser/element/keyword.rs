@@ -39,34 +39,109 @@ pub(crate) fn affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
-    let key = any()
-        .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
-        .repeated()
-        .at_least(1)
-        .collect::<String>()
-        .filter(|name| ORG_ELEMENT_AFFILIATED_KEYWORDS.contains(&name.to_uppercase()));
+    let key = custom(|inp| {
+        let before = &inp.cursor();
+        let remaining: &str = inp.slice_from(std::ops::RangeFrom {
+            start: &inp.cursor(),
+        });
 
-    let key_with_optvalue = any()
-        .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
-        .repeated()
-        .at_least(1)
-        .collect::<String>()
-        .filter(|name| ORG_ELEMENT_DUAL_KEYWORDS.contains(&name.to_uppercase()));
+        let name: String = remaining
+            .chars()
+            .take_while(|c| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
+            .collect();
 
-    let key_with_objects = any()
-        .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
-        .repeated()
-        .at_least(1)
-        .collect::<String>()
-        .filter(|name| ORG_ELEMENT_PARSED_KEYWORDS.contains(&name.to_uppercase()));
+        if name.is_empty() || !ORG_ELEMENT_AFFILIATED_KEYWORDS.contains(&name.to_uppercase()) {
+            return Err(Rich::custom(
+                inp.span_since(before),
+                format!("invalid key: '{}'", name),
+            ));
+        }
+
+        for _ in 0..name.len() {
+            inp.next();
+        }
+
+        Ok(name)
+    });
+
+    // let key = any()
+    //     .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
+    //     .repeated()
+    //     .at_least(1)
+    //     .collect::<String>()
+    //     .filter(|name| ORG_ELEMENT_AFFILIATED_KEYWORDS.contains(&name.to_uppercase()));
+
+    let key_with_optvalue = custom(|inp| {
+        let before = &inp.cursor();
+        let remaining: &str = inp.slice_from(std::ops::RangeFrom {
+            start: &inp.cursor(),
+        });
+
+        let name: String = remaining
+            .chars()
+            .take_while(|c| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
+            .collect();
+
+        if name.is_empty() || !ORG_ELEMENT_DUAL_KEYWORDS.contains(&name.to_uppercase()) {
+            return Err(Rich::custom(
+                inp.span_since(before),
+                format!("invalid key: '{}'", name),
+            ));
+        }
+
+        for _ in 0..name.len() {
+            inp.next();
+        }
+
+        Ok(name)
+    });
+
+    // let key_with_optvalue = any()
+    //     .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
+    //     .repeated()
+    //     .at_least(1)
+    //     .collect::<String>()
+    //     .filter(|name| ORG_ELEMENT_DUAL_KEYWORDS.contains(&name.to_uppercase()));
+
+    let key_with_objects = custom(|inp| {
+        let before = &inp.cursor();
+        let remaining: &str = inp.slice_from(std::ops::RangeFrom {
+            start: &inp.cursor(),
+        });
+
+        let name: String = remaining
+            .chars()
+            .take_while(|c| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
+            .collect();
+
+        if name.is_empty() || !ORG_ELEMENT_PARSED_KEYWORDS.contains(&name.to_uppercase()) {
+            return Err(Rich::custom(
+                inp.span_since(before),
+                format!("invalid key: '{}'", name),
+            ));
+        }
+
+        for _ in 0..name.len() {
+            inp.next();
+        }
+
+        Ok(name)
+    });
+
+    // let key_with_objects = any()
+    //     .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
+    //     .repeated()
+    //     .at_least(1)
+    //     .collect::<String>()
+    //     .filter(|name| ORG_ELEMENT_PARSED_KEYWORDS.contains(&name.to_uppercase()));
 
     let backend = any()
         .filter(|c: &char| matches!(c, '-' | '_') || c.is_alphanumeric())
         .repeated()
         .at_least(1)
-        .collect::<String>();
+        .to_slice();
 
-    let string_without_nl = none_of("\n\r").repeated().collect::<String>();
+    let string_without_nl = none_of(object::CRLF).repeated().to_slice();
 
     let var =
         none_of::<&str, &str, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("[]\r\n")
@@ -95,7 +170,7 @@ pub(crate) fn affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
         .then(string_without_nl)
         .then(object::newline_or_ending())
         .map_with(|(((((hash_plus, key), colon), ws), value), nl), e| {
-            let mut children = vec![];
+            let mut children = Vec::with_capacity(6);
 
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::HashPlus.into(),
@@ -118,7 +193,7 @@ pub(crate) fn affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
             if ws.len() > 0 {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Whitespace.into(),
-                    &ws,
+                    ws,
                 )));
             }
 
@@ -126,7 +201,7 @@ pub(crate) fn affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
                 OrgSyntaxKind::KeywordValue.into(),
                 vec![NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Text.into(),
-                    &value,
+                    value,
                 ))],
             )));
 
@@ -134,7 +209,7 @@ pub(crate) fn affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
                 Some(newline) => {
                     children.push(NodeOrToken::Token(GreenToken::new(
                         OrgSyntaxKind::Newline.into(),
-                        &newline,
+                        newline,
                     )));
                     e.state().prev_char = newline.chars().last();
                 }
@@ -160,7 +235,7 @@ pub(crate) fn affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
         .then(object::newline_or_ending())
         .map_with(
             |((((((((hash_plus, key), lsb), optval), rsb), colon), ws), value), nl), e| {
-                let mut children = vec![];
+                let mut children = Vec::with_capacity(9);
 
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::HashPlus.into(),
@@ -234,15 +309,18 @@ pub(crate) fn affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
 
     // #+attr_BACKEND: VALUE
     let p3 = just("#+")
-        .then(object::just_case_insensitive("attr_"))
-        .then(backend)
+        .then(
+            object::just_case_insensitive("attr_")
+                .then(backend)
+                .to_slice(),
+        )
         .then(just(":"))
         .then(object::whitespaces())
         .then(string_without_nl)
         .then(object::newline_or_ending())
         .map_with(
-            |((((((hash_plus, attr_), backend), colon), ws), value), nl), e| {
-                let mut children = vec![];
+            |(((((hash_plus, attr_backend), colon), ws), value), nl), e| {
+                let mut children = Vec::with_capacity(6);
 
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::HashPlus.into(),
@@ -253,7 +331,7 @@ pub(crate) fn affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
                     OrgSyntaxKind::KeywordKey.into(),
                     vec![NodeOrToken::Token(GreenToken::new(
                         OrgSyntaxKind::Text.into(),
-                        &format!("{attr_}{backend}"),
+                        attr_backend,
                     ))],
                 )));
 
@@ -262,10 +340,10 @@ pub(crate) fn affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
                     colon,
                 )));
 
-                if ws.len() > 0 {
+                if !ws.is_empty() {
                     children.push(NodeOrToken::Token(GreenToken::new(
                         OrgSyntaxKind::Whitespace.into(),
-                        &ws,
+                        ws,
                     )));
                 }
 
@@ -273,7 +351,7 @@ pub(crate) fn affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
                     OrgSyntaxKind::KeywordValue.into(),
                     vec![NodeOrToken::Token(GreenToken::new(
                         OrgSyntaxKind::Text.into(),
-                        &value,
+                        value,
                     ))],
                 )));
 
@@ -301,14 +379,10 @@ pub(crate) fn affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
         .then(key_with_objects)
         .then(just(":"))
         .then(object::whitespaces())
-        .then(
-            objects_parser
-                .clone()
-                .nested_in(string_without_nl.to_slice()),
-        )
+        .then(objects_parser.clone().nested_in(string_without_nl))
         .then(object::newline_or_ending())
         .map_with(|(((((hash_plus, key), colon), ws), value), nl), e| {
-            let mut children = vec![];
+            let mut children = Vec::with_capacity(6);
 
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::HashPlus.into(),
@@ -331,18 +405,14 @@ pub(crate) fn affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
             if ws.len() > 0 {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Whitespace.into(),
-                    &ws,
+                    ws,
                 )));
             }
 
-            let mut children_of_value = vec![];
-            for node in value {
-                children_of_value.push(node);
-            }
-            if children_of_value.len() > 0 {
+            if value.len() > 0 {
                 children.push(NodeOrToken::Node(GreenNode::new(
                     OrgSyntaxKind::KeywordValue.into(),
-                    children_of_value,
+                    value,
                 )));
             }
 
@@ -350,7 +420,7 @@ pub(crate) fn affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
                 Some(newline) => {
                     children.push(NodeOrToken::Token(GreenToken::new(
                         OrgSyntaxKind::Newline.into(),
-                        &newline,
+                        newline,
                     )));
                     e.state().prev_char = newline.chars().last();
                 }
@@ -379,7 +449,7 @@ pub(crate) fn affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
         .then(object::newline_or_ending())
         .map_with(
             |((((((((hash_plus, key), lsb), optval), rsb), colon), ws), value), nl), e| {
-                let mut children = vec![];
+                let mut children = Vec::with_capacity(9);
 
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::HashPlus.into(),
@@ -424,14 +494,10 @@ pub(crate) fn affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
                     )));
                 }
 
-                let mut children_of_value = vec![];
-                for node in value {
-                    children_of_value.push(node);
-                }
-                if children_of_value.len() > 0 {
+                if value.len() > 0 {
                     children.push(NodeOrToken::Node(GreenNode::new(
                         OrgSyntaxKind::KeywordValue.into(),
-                        children_of_value,
+                        value,
                     )));
                 }
 
@@ -511,12 +577,37 @@ pub(crate) fn keyword_parser<'a, C: 'a>(
     // last if not :
 
     let string_without_nl = none_of("\n\r").repeated().collect::<String>();
-    let key_with_objects = any()
-        .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
-        .repeated()
-        .at_least(1)
-        .collect::<String>()
-        .filter(|name| ORG_ELEMENT_PARSED_KEYWORDS.contains(&name.to_uppercase()));
+    let key_with_objects = custom(|inp| {
+        let before = &inp.cursor();
+        let remaining: &str = inp.slice_from(std::ops::RangeFrom {
+            start: &inp.cursor(),
+        });
+
+        let name: String = remaining
+            .chars()
+            .take_while(|c| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
+            .collect();
+
+        if name.is_empty() || !ORG_ELEMENT_PARSED_KEYWORDS.contains(&name.to_uppercase()) {
+            return Err(Rich::custom(
+                inp.span_since(before),
+                format!("invalid key: '{}'", name),
+            ));
+        }
+
+        for _ in 0..name.len() {
+            inp.next();
+        }
+
+        Ok(name)
+    });
+
+    // let key_with_objects = any()
+    //     .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
+    //     .repeated()
+    //     .at_least(1)
+    //     .collect::<String>()
+    //     .filter(|name| ORG_ELEMENT_PARSED_KEYWORDS.contains(&name.to_uppercase()));
 
     let objects_parser = object::object_in_keyword_parser()
         .repeated()
@@ -537,11 +628,9 @@ pub(crate) fn keyword_parser<'a, C: 'a>(
     // (part + \n) !(element_with_affiliated_keywords)
     let p1 = choice((
         p1_part1.clone().then(end().to(None)),
-        p1_part1.clone().then(
-            object::newline()
-                .then(end())
-                .map(|(c, _)| Some(String::from(c))),
-        ),
+        p1_part1
+            .clone()
+            .then(object::newline().then(end()).to_slice().map(|s| Some(s))),
         p1_part1
             .clone()
             .then(object::newline().map(|c| Some(c)))
@@ -633,16 +722,12 @@ pub(crate) fn keyword_parser<'a, C: 'a>(
 
     let p1a = choice((
         p1a_part1.clone().then(end().to(None)),
-        p1a_part1.clone().then(
-            just('\n')
-                .map(|c| Some(String::from(c)))
-                .then(end())
-                .to_slice()
-                .to(Some(String::from('\n'))),
-        ),
         p1a_part1
             .clone()
-            .then(just('\n').map(|c| Some(String::from(c))))
+            .then(just('\n').then(end()).to_slice().to(Some("\n"))),
+        p1a_part1
+            .clone()
+            .then(just("\n").map(|c| Some(c)))
             .and_is(element_parser.clone().not()),
         p1a_part1
             .clone()

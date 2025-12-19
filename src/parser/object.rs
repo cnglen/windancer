@@ -14,7 +14,6 @@ mod target;
 mod text;
 mod text_markup;
 pub(crate) mod timestamp;
-
 use crate::parser::ParserState;
 use crate::parser::object::entity::entity_parser;
 use crate::parser::object::footnote_reference::footnote_reference_parser;
@@ -26,6 +25,7 @@ use crate::parser::object::radio_link::radio_link_parser;
 use crate::parser::object::radio_target::radio_target_parser;
 use crate::parser::object::subscript_superscript::subscript_parser;
 use crate::parser::object::subscript_superscript::superscript_parser;
+use chumsky::input::InputRef;
 // use crate::parser::object::table_cell::table_cell_parser;
 use crate::parser::object::target::target_parser;
 use crate::parser::object::text::plain_text_parser;
@@ -37,33 +37,11 @@ use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
-/// 解析行终止符：换行符(LF/CRLF)或输入结束
-pub(crate) fn newline_or_ending<'a, C: 'a>()
--> impl Parser<'a, &'a str, Option<String>, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>
-+ Clone {
-    choice((
-        just("\n").map(|c| Some(String::from(c))),
-        just("\r\n").map(|c| Some(String::from(c))),
-        end().to(None),
-    ))
-}
-
-/// 解析行终止符：换行符(LF/CRLF)
-pub(crate) fn newline<'a, C: 'a>()
--> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
-    choice((
-        just("\n").map(|c| String::from(c)),
-        just("\r\n").map(|c| String::from(c)),
-    ))
-}
-
-pub const CR: &str = "\r";
 pub const LF: &str = "\n";
 pub const CRLF: &str = "\r\n";
 
 /// 解析行终止符：换行符(LF/CRLF)或输入结束
-pub(crate) fn newline_or_ending_v2<'a, C: 'a>()
+pub(crate) fn newline_or_ending<'a, C: 'a>()
 -> impl Parser<'a, &'a str, Option<&'a str>, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>
 + Clone
 + Copy {
@@ -75,39 +53,13 @@ pub(crate) fn newline_or_ending_v2<'a, C: 'a>()
 }
 
 /// 解析行终止符：换行符(LF/CRLF)
-pub(crate) fn newline_v2<'a, C: 'a>()
+pub(crate) fn newline<'a, C: 'a>()
 -> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
 {
     choice((just(LF), just(CRLF)))
 }
 
-/// 创建一个不区分大小写的关键字解析器
 pub(crate) fn just_case_insensitive<'a, C: 'a>(
-    s: &'a str,
-) -> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
-    let s_lower = s.to_lowercase();
-
-    any()
-        .filter(|c: &char| c.is_ascii())
-        .repeated()
-        .exactly(s.chars().count())
-        .collect::<String>()
-        .try_map_with(move |t, e| {
-            if t.to_lowercase() == s_lower {
-                Ok(t)
-            } else {
-                Err(Rich::custom(
-                    e.span(),
-                    format!("Got '{}', Expected '{}' (case-insensitive)", t, s_lower),
-                ))
-            }
-        })
-}
-
-use chumsky::input::InputRef;
-
-pub(crate) fn just_case_insensitive_v2<'a, C: 'a>(
     s: &'a str,
 ) -> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>
 + Clone
@@ -119,16 +71,16 @@ pub(crate) fn just_case_insensitive_v2<'a, C: 'a>(
             &'a str,
             extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
         >| {
-            let n = s.chars().count();
             let before = &inp.cursor();
             let remaining = inp.slice_from(std::ops::RangeFrom { start: before });
+            let n = s.chars().count();
 
             let mut remaining_chars = remaining.chars();
             let mut bound = 0;
-            for (i, expected_char) in s.char_indices() {
+            for expected_char in s.chars() {
                 match remaining_chars.next() {
                     Some(r) if r.eq_ignore_ascii_case(&expected_char) => {
-                        bound = i;
+                        bound = bound + r.len_utf8();
                     }
                     _ => {
                         let error = Rich::custom::<&str>(
@@ -139,53 +91,24 @@ pub(crate) fn just_case_insensitive_v2<'a, C: 'a>(
                     }
                 }
             }
-            let t = &remaining[..bound + 1];
+            let t = &remaining[..bound];
             for _ in 0..n {
                 inp.next();
             }
-
             Ok(t)
         },
     )
 }
 
-#[allow(dead_code)]
-pub(crate) fn is_ending<'a, C: 'a>()
--> impl Parser<'a, &'a str, Option<String>, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>
-+ Clone {
-    any()
-        .repeated()
-        .then(
-            just("\n")
-                .or(just("\r\n"))
-                .map(|c| Some(String::from(c)))
-                .or(end().to(None)),
-        )
-        .map(|_| Some("OK".to_string()))
-}
-
-/// 解析零个或多个空白字符（包括空格、制表符等）
-pub(crate) fn whitespaces<'a, C: 'a>()
--> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
-    one_of(" \t").repeated().collect::<String>()
-}
-/// 解析一个或多个空白字符（包括空格、制表符等）
-pub(crate) fn whitespaces_g1<'a, C: 'a>()
--> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
-    one_of(" \t").repeated().at_least(1).collect::<String>()
-}
-
 /// zero or more whitespaces(including space, \tab)
-pub(crate) fn whitespaces_v2<'a, C: 'a>()
+pub(crate) fn whitespaces<'a, C: 'a>()
 -> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>
 + Clone
 + Copy {
     one_of(" \t").repeated().to_slice()
 }
 /// one or more whitespaces(including space, \tab)
-pub(crate) fn whitespaces_g1_v2<'a, C: 'a>()
+pub(crate) fn whitespaces_g1<'a, C: 'a>()
 -> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>
 + Clone
 + Copy {
@@ -194,43 +117,14 @@ pub(crate) fn whitespaces_g1_v2<'a, C: 'a>()
 
 /// 解析一行:
 /// Line <- (!EOL .)+
-/// EOL <- '\r'? '\n'
+/// EOL <- CR? LF
 pub(crate) fn line_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>
-+ Clone
-+ Copy {
-    let end_of_line = (just("\r").or_not())
-        .then(just("\n").or(end().to(""))) // fixme: to check end()?
-        .map(|(s, n)| {
-            let mut ans = String::new();
-            if let Some(cr) = s {
-                ans.push_str(cr);
-            }
-            ans.push_str(n);
-            ans
-        });
-
-    any()
-        .and_is(end_of_line.clone().not())
-        .repeated()
-        .at_least(1)
-        .collect::<String>()
-        .then(end_of_line)
-        .map(|(line, eol)| {
-            let mut ans = String::from(line);
-            ans.push_str(&eol);
-            ans
-        })
-}
-
-pub(crate) fn line_parser_v2<'a, C: 'a>()
 -> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>
 + Clone
 + Copy {
-    let end_of_line = (just(CR).or_not()).then(just(LF).or(end().to("")));
+    let end_of_line = choice((just(LF).to(()), just(CRLF).to(()), end()));
 
-    any()
-        .and_is(end_of_line.clone().not())
+    none_of(CRLF)
         .repeated()
         .at_least(1)
         .then(end_of_line)
@@ -239,66 +133,24 @@ pub(crate) fn line_parser_v2<'a, C: 'a>()
 
 /// 解析一行: 允许空行
 pub(crate) fn line_parser_allow_blank<'a, C: 'a>()
--> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+-> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
 {
-    let end_of_line = (just("\r").or_not()).then(just("\n")).map(|(s, n)| {
-        let mut ans = String::new();
-        if let Some(cr) = s {
-            ans.push_str(cr);
-        }
-        ans.push_str(n);
-        ans
-    });
+    let end_of_line = choice((just(LF).to(()), just(CRLF).to(()), end()));
 
-    any()
-        .and_is(end_of_line.not())
-        .repeated()
-        .collect::<String>()
-        .then(end_of_line)
-        .map(|(line, eol)| {
-            let mut ans = String::from(line);
-            ans.push_str(&eol);
-            ans
-        })
-}
-
-pub(crate) fn blank_line_str_parser_v2<'a, C: 'a>()
--> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>
-+ Clone
-+ Copy {
-    whitespaces_v2()
-        .then(just(CR).or_not())
-        .then(just(LF))
-        .map_with(|((ws, maybe_cr), nl), e| {
-            e.state().prev_char = nl.chars().last();
-            ((ws, maybe_cr), nl)
-        })
-        .to_slice()
+    none_of(CRLF).repeated().then(end_of_line).to_slice()
 }
 
 pub(crate) fn blank_line_str_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
+-> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>
++ Clone
++ Copy {
     whitespaces()
-        .then(just("\r").or_not())
-        .then(just("\n"))
-        .map_with(|((ws, maybe_cr), nl), e| {
-            e.state().prev_char = nl.chars().last();
-
-            let mut text = String::new();
-
-            if ws.len() > 0 {
-                text.push_str(&ws);
-            }
-
-            if let Some(cr) = maybe_cr {
-                text.push_str(cr);
-            }
-
-            text.push_str(nl);
-
-            text
+        .then(just(LF).or(just(CRLF)))
+        .map_with(|(ws, maybecr_lf), e| {
+            e.state().prev_char = maybecr_lf.chars().last();
+            (ws, maybecr_lf)
         })
+        .to_slice()
 }
 
 /// Blank Line Parser := 空白字符后紧跟行终止符, PEG定义如下
@@ -310,27 +162,11 @@ pub(crate) fn blank_line_str_parser<'a, C: 'a>()
 pub(crate) fn blank_line_parser<'a, C: 'a>()
 -> impl Parser<'a, &'a str, GreenToken, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>
 + Clone {
-    whitespaces_v2()
-        .then(just("\r").or_not())
-        .then(just("\n"))
-        .map(|((ws, maybe_cr), nl)| {
-            let mut text = String::new();
-
-            if ws.len() > 0 {
-                text.push_str(&ws);
-            }
-
-            if let Some(cr) = maybe_cr {
-                text.push_str(cr);
-            }
-
-            text.push_str(nl);
-
-            GreenToken::new(OrgSyntaxKind::BlankLine.into(), &text)
-        })
+    whitespaces()
+        .then(just(LF).or(just(CRLF)))
+        .to_slice()
+        .map(|s| GreenToken::new(OrgSyntaxKind::BlankLine.into(), s))
 }
-
-// ---------------------------------------------------------------------
 
 pub(crate) fn objects_parser<'a, C: 'a>() -> impl Parser<
     'a,
@@ -496,8 +332,8 @@ pub(crate) fn get_object_parser<'a, C: 'a>() -> (
 
     // independent object (12)
     let independent_object = Parser::boxed(choice((
-        latex_fragment.clone(),
-        entity.clone(),
+        latex_fragment.clone(), // 10%'s rewind!!! 20e4
+        entity.clone(),         // 5%
         angle_link.clone(),
         line_break.clone(),
         r#macro.clone(),
@@ -631,16 +467,6 @@ pub(crate) fn get_object_parser<'a, C: 'a>() -> (
     )
 }
 
-#[allow(unused)]
-fn is_all_whitespace(s: String) -> bool {
-    for c in s.chars() {
-        if !matches!(c, '\t' | ' ' | '​') {
-            return false;
-        }
-    }
-    true
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -710,7 +536,7 @@ other objects (2):
             r##"\Begin{test}"##,
             r##"\BeGiN{test}"##,
         ];
-        let parser = just_case_insensitive_v2::<()>(r"\BeGiN{test}");
+        let parser = just_case_insensitive::<()>(r"\BeGiN{test}");
         for case in test_cases {
             assert!(!parser.parse(case).has_errors());
         }
@@ -724,25 +550,12 @@ other objects (2):
             r##"\Begin{test}"##,
             r##"\BeGiN{test}"##,
         ];
-        let parser = just_case_insensitive_v2::<()>(r"\BeGiN{test}");
+        let parser = just_case_insensitive::<()>(r"\BeGiN{test}");
         b.iter(|| {
             for case in &test_cases {
                 assert!(!parser.parse(case).has_errors());
             }
         })
-    }
-
-    #[test]
-    fn test_is_ending() {
-        let mut state = RollbackState(ParserState::default());
-        for input in vec![" \n", "\t\n", "\n", " \t   \n", " ", "\t", "abc"] {
-            assert_eq!(
-                is_ending::<()>()
-                    .parse_with_state(input, &mut state)
-                    .into_result(),
-                Ok(Some("OK".to_string()))
-            );
-        }
     }
 
     #[test]

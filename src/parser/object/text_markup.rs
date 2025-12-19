@@ -28,7 +28,9 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
     let get_content = |marker: char| {
         none_of::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>(" \t​")
             .then(any()
-                  .and_is(just(marker).then(post).not().rewind())
+                  .and_is(
+                      just(marker).then(post).not()
+                  )
                   .repeated()
                   .collect::<String>()
             )
@@ -80,14 +82,12 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
             e.state().prev_char = end_marker.chars().last();
             // println!("bold: {:?}{:?}{:?}, set prev_char {:?} -> {:?}", start_marker, content, end_marker, old_state, e.state().prev_char);
 
-            let mut children = vec![];
+            let mut children = Vec::with_capacity(2 + content.len());
             children.push(NT::Token(GreenToken::new(
                 OSK::Asterisk.into(),
                 start_marker,
             )));
-            for node in content {
-                children.push(node);
-            }
+            children.extend(content);
             children.push(NT::Token(GreenToken::new(OSK::Asterisk.into(), end_marker)));
 
             Ok(NT::Node(GreenNode::new(OSK::Bold.into(), children)))
@@ -101,11 +101,9 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
             // pre valid should NOT be deteced here, state.prev_char is update by standard object parser
             e.state().prev_char = end_marker.chars().last();
 
-            let mut children = vec![];
+            let mut children = Vec::with_capacity(2 + content.len());
             children.push(NT::Token(GreenToken::new(OSK::Slash.into(), start_marker)));
-            for node in content {
-                children.push(node);
-            }
+            children.extend(content);
             children.push(NT::Token(GreenToken::new(OSK::Slash.into(), end_marker)));
 
             Ok(NT::Node(GreenNode::new(OSK::Italic.into(), children)))
@@ -119,14 +117,12 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
             // pre valid should NOT be deteced here, state.prev_char is update by standard object parser
             e.state().prev_char = end_marker.chars().last();
 
-            let mut children = vec![];
+            let mut children = Vec::with_capacity(2 + content.len());
             children.push(NT::Token(GreenToken::new(
                 OSK::Underscore.into(),
                 start_marker,
             )));
-            for node in content {
-                children.push(node);
-            }
+            children.extend(content);
             children.push(NT::Token(GreenToken::new(
                 OSK::Underscore.into(),
                 end_marker,
@@ -143,11 +139,9 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
             // pre valid should NOT be deteced here, state.prev_char is update by standard object parser
             e.state().prev_char = end_marker.chars().last();
 
-            let mut children = vec![];
+            let mut children = Vec::with_capacity(2 + content.len());
             children.push(NT::Token(GreenToken::new(OSK::Plus.into(), start_marker)));
-            for node in content {
-                children.push(node);
-            }
+            children.extend(content);
             children.push(NT::Token(GreenToken::new(OSK::Plus.into(), end_marker)));
 
             Ok(NT::Node(GreenNode::new(
@@ -162,13 +156,14 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
         .then_ignore(post.rewind())
         .try_map_with(|((start_marker, content), end_marker), e| {
             e.state().prev_char = end_marker.chars().last();
-
-            let mut children = vec![];
-            children.push(NT::Token(GreenToken::new(OSK::Tilde.into(), start_marker)));
-            children.push(NT::Token(GreenToken::new(OSK::Text.into(), content)));
-            children.push(NT::Token(GreenToken::new(OSK::Tilde.into(), end_marker)));
-
-            Ok(NT::Node(GreenNode::new(OSK::Code.into(), children)))
+            Ok(NT::Node(GreenNode::new(
+                OSK::Code.into(),
+                vec![
+                    NT::Token(GreenToken::new(OSK::Tilde.into(), start_marker)),
+                    NT::Token(GreenToken::new(OSK::Text.into(), content)),
+                    NT::Token(GreenToken::new(OSK::Tilde.into(), end_marker)),
+                ],
+            )))
         });
 
     let verbatim = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("=")
@@ -178,12 +173,14 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
         .try_map_with(|((start_marker, content), end_marker), e| {
             e.state().prev_char = end_marker.chars().last();
 
-            let mut children = vec![];
-            children.push(NT::Token(GreenToken::new(OSK::Equals.into(), start_marker)));
-            children.push(NT::Token(GreenToken::new(OSK::Text.into(), content)));
-            children.push(NT::Token(GreenToken::new(OSK::Equals.into(), end_marker)));
-
-            Ok(NT::Node(GreenNode::new(OSK::Verbatim.into(), children)))
+            Ok(NT::Node(GreenNode::new(
+                OSK::Verbatim.into(),
+                vec![
+                    NT::Token(GreenToken::new(OSK::Equals.into(), start_marker)),
+                    NT::Token(GreenToken::new(OSK::Text.into(), content)),
+                    NT::Token(GreenToken::new(OSK::Equals.into(), end_marker)),
+                ],
+            )))
         });
 
     Parser::boxed(choice((

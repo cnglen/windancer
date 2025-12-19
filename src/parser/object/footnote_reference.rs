@@ -7,6 +7,33 @@ use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 /// Footnote refrence
+/// Helper function to build common footnote reference token structure
+fn build_footnote_reference(
+    lbracket: &str,
+    fn_text: &str,
+    rbracket: &str,
+    middle_tokens: Vec<NodeOrToken<GreenNode, GreenToken>>,
+) -> NodeOrToken<GreenNode, GreenToken> {
+    let mut tokens = Vec::with_capacity(3 + middle_tokens.len());
+    tokens.extend(vec![
+        NodeOrToken::Token(GreenToken::new(
+            OrgSyntaxKind::LeftSquareBracket.into(),
+            lbracket,
+        )),
+        NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Text.into(), fn_text)),
+    ]);
+    tokens.extend(middle_tokens);
+    tokens.push(NodeOrToken::Token(GreenToken::new(
+        OrgSyntaxKind::RightSquareBracket.into(),
+        rbracket,
+    )));
+
+    NodeOrToken::Node(GreenNode::new(
+        OrgSyntaxKind::FootnoteReference.into(),
+        tokens,
+    ))
+}
+
 // - [fn:LABEL]
 // - [fn:LABEL:DEFINITION]
 // - [fn::DEFINITION]
@@ -28,7 +55,7 @@ pub(crate) fn footnote_reference_parser<'a, C: 'a>(
         .filter(|c: &char| c.is_alphanumeric() || matches!(c, '_' | '-'))
         .repeated()
         .at_least(1)
-        .collect::<String>();
+        .to_slice();
 
     // defintion must in oneline
     let var =
@@ -51,149 +78,88 @@ pub(crate) fn footnote_reference_parser<'a, C: 'a>(
         standard_objects_parser.nested_in(single_expression.clone().repeated().to_slice());
 
     // [fn:LABEL]
-    let t1 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("[fn:")
+    let t1 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("[")
+        .then(just("fn"))
+        .then(just(":"))
         .then(label)
         .then(just("]"))
-        .map_with(|((_left_fn_c, label), rbracket), e| {
+        .map_with(|((((lbracket, fn_text), colon1), label), rbracket), e| {
             e.state().prev_char = rbracket.chars().last();
-            let mut children = vec![];
 
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::LeftSquareBracket.into(),
-                "[",
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                "fn",
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Colon.into(),
-                ":",
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::FootnoteReferenceLabel.into(),
-                &label,
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::RightSquareBracket.into(),
+            build_footnote_reference(
+                lbracket,
+                fn_text,
                 rbracket,
-            )));
-
-            NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::FootnoteReference.into(),
-                children,
-            ))
+                vec![
+                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Colon.into(), colon1)),
+                    NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::FootnoteReferenceLabel.into(),
+                        label,
+                    )),
+                ],
+            )
         });
 
     // [fn:LABEL:DEFINITION]
-    let t2 = just("[fn:")
+    let t2 = just("[")
+        .then(just("fn"))
+        .then(just(":"))
         .then(label)
         .then(just(":"))
         .then(definition.clone())
-        // .map(|s| {
-        //     println!("s2={s:?};");
-        //     s
-        // })
         .then(just("]"))
         .map_with(
-            |((((_left_fn_c, label), colon), definition), rbracket), e| {
+            |((((((lbracket, fn_text), colon1), label), colon2), definition), rbracket), e| {
                 e.state().prev_char = rbracket.chars().last();
-                let mut children = vec![];
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::LeftSquareBracket.into(),
-                    "[",
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    "fn",
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Colon.into(),
-                    colon,
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::FootnoteReferenceLabel.into(),
-                    &label,
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Colon.into(),
-                    ":",
-                )));
-
-                let mut defintion_children = vec![];
-                for node in definition {
-                    defintion_children.push(node);
-                }
-                children.push(NodeOrToken::Node(GreenNode::new(
-                    OrgSyntaxKind::FootnoteReferenceDefintion.into(),
-                    defintion_children,
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::RightSquareBracket.into(),
+                build_footnote_reference(
+                    lbracket,
+                    fn_text,
                     rbracket,
-                )));
-
-                NodeOrToken::Node(GreenNode::new(
-                    OrgSyntaxKind::FootnoteReference.into(),
-                    children,
-                ))
+                    vec![
+                        NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Colon.into(), colon1)),
+                        NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::FootnoteReferenceLabel.into(),
+                            label,
+                        )),
+                        NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Colon.into(), colon2)),
+                        NodeOrToken::Node(GreenNode::new(
+                            OrgSyntaxKind::FootnoteReferenceDefintion.into(),
+                            definition,
+                        )),
+                    ],
+                )
             },
         );
 
     // [fn::DEFINITION]
-    let t3 = just("[fn::").then(definition).then(just("]")).map_with(
-        |((_left_fn_c_c, definition), rbracket), e| {
-            e.state().prev_char = rbracket.chars().last();
-            let mut children = vec![];
+    let t3 = just("[")
+        .then(just("fn"))
+        .then(just("::"))
+        .then(definition)
+        .then(just("]"))
+        .map_with(
+            |((((lbracket, fn_text), colon_colon), definition), rbracket), e| {
+                e.state().prev_char = rbracket.chars().last();
 
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::LeftSquareBracket.into(),
-                "[",
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                "fn",
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Colon2.into(),
-                "::",
-            )));
-
-            let mut defintion_children = vec![];
-            for node in definition {
-                defintion_children.push(node);
-            }
-            children.push(NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::FootnoteReferenceDefintion.into(),
-                defintion_children,
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::RightSquareBracket.into(),
-                rbracket,
-            )));
-
-            NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::FootnoteReference.into(),
-                children,
-            ))
-        },
-    );
+                build_footnote_reference(
+                    lbracket,
+                    fn_text,
+                    rbracket,
+                    vec![
+                        NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::Colon2.into(),
+                            colon_colon,
+                        )),
+                        NodeOrToken::Node(GreenNode::new(
+                            OrgSyntaxKind::FootnoteReferenceDefintion.into(),
+                            definition,
+                        )),
+                    ],
+                )
+            },
+        );
 
     Parser::boxed(choice((t1, t2, t3)))
-    // t1.or(t2).or(t3)
 }
 
 #[cfg(test)]

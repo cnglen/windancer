@@ -1,5 +1,5 @@
 //! Fixed width parser
-use crate::parser::object::whitespaces_g1_v2;
+use crate::parser::object::whitespaces_g1;
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserState, element, object};
 use chumsky::inspector::RollbackState;
@@ -16,11 +16,11 @@ pub(crate) fn fixed_width_parser<'a, C: 'a>() -> impl Parser<
         .repeated()
         .collect::<Vec<_>>();
 
-    let fixed_width_line = object::whitespaces_v2()
+    let fixed_width_line = object::whitespaces()
         .then(just(":"))
         .then(
-            whitespaces_g1_v2()
-                .then(none_of("\r\n").repeated())
+            whitespaces_g1()
+                .then(none_of(object::CRLF).repeated())
                 .to_slice()
                 .or_not(),
         )

@@ -17,17 +17,54 @@ pub(crate) static LINK_PROTOCOLS: phf::Set<&'static str> = phf_set! {
 };
 
 /// PROTOCOL: A string which is one of the link type strings in org-link-parameters
-#[allow(unused)]
+// - Consume only verified to reduce # of backtracks: rollbackstate.on_save 1761022 -> 1661398 (94.3%)
+// #[allow(unused)]
+use chumsky::input::InputRef;
 pub(crate) fn protocol<'a, C: 'a>()
 -> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
 {
-    any()
-        .filter(|c: &char| matches!(c, 'a'..'z' | '+'))
-        .repeated()
-        .at_least(1)
-        .collect::<String>()
-        .filter(|e| LINK_PROTOCOLS.contains(e))
+    custom(
+        |inp: &mut InputRef<
+            'a,
+            '_,
+            &'a str,
+            extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
+        >| {
+            let before = &inp.cursor();
+            let remaining = inp.slice_from(std::ops::RangeFrom {
+                start: &inp.cursor(),
+            });
+
+            let protocol: String = remaining
+                .chars()
+                .take_while(|c| c.is_ascii_lowercase() || *c == '+')
+                .collect();
+
+            if protocol.is_empty() || !LINK_PROTOCOLS.contains(protocol.as_str()) {
+                return Err(Rich::custom(
+                    inp.span_since(before),
+                    format!("invalid protocol: '{}'", protocol),
+                ));
+            }
+
+            for _ in 0..protocol.len() {
+                inp.next();
+            }
+
+            Ok(protocol)
+        },
+    )
 }
+// pub(crate) fn protocol_old<'a, C: 'a>()
+// -> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+// {
+//     any()
+//         .filter(|c: &char| matches!(c, 'a'..'z' | '+'))
+//         .repeated()
+//         .at_least(1)
+//         .collect::<String>()
+//         .filter(|e| LINK_PROTOCOLS.contains(e))
+// }
 
 // pathplain parser
 fn path_plain_parser<'a, C: 'a>()
@@ -202,7 +239,7 @@ pub(crate) fn angle_link_parser<'a, C: 'a>() -> impl Parser<
     let path_angle = none_of(">") // . is permitted: orgmode.org, xx@xx.com
         .repeated()
         .at_least(1)
-        .collect::<String>();
+        .to_slice();
 
     just("<")
         .then(protocol())
@@ -220,10 +257,7 @@ pub(crate) fn angle_link_parser<'a, C: 'a>() -> impl Parser<
                         )),
                         NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Text.into(), &protocol)),
                         NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Colon.into(), colon)),
-                        NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::Text.into(),
-                            &path_angle,
-                        )),
+                        NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Text.into(), path_angle)),
                         NodeOrToken::Token(GreenToken::new(
                             OrgSyntaxKind::RightAngleBracket.into(),
                             right_angle,
@@ -258,8 +292,14 @@ pub(crate) fn regular_link_parser<'a, C: 'a>(
 
     let description = just("[")
         .then(
-            minimal_and_other_objects_parser
-                .nested_in(any().and_is(just("]]").not()).repeated().to_slice()),
+            minimal_and_other_objects_parser.nested_in(
+                // any().and_is(just("]]").not()) // slow version
+                none_of("]")
+                    .to_slice()
+                    .or(just("]").then(none_of("]")).to_slice())
+                    .repeated()
+                    .to_slice(),
+            ),
         )
         .then(just("]"))
         .or_not()
@@ -303,8 +343,7 @@ pub(crate) fn regular_link_parser<'a, C: 'a>(
                 .and_is(just("[").not())
                 .and_is(just("]").not())
                 .repeated()
-                .at_least(1)
-                .collect::<String>(),
+                .at_least(1),
         )
         .to_slice();
 

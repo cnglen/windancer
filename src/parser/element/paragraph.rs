@@ -61,9 +61,8 @@ pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<'a, C: 'a>(
 
     // Empty lines and other elements end paragraphs
     let inner = object::line_parser()
-        .and_is(non_paragraph_parser.not()) // other element
-        .and_is(simple_heading_row_parser().not()) // heading_tree is recursive, we use simple heading row for lookahead to avoid stackoverflow
         .and_is(object::blank_line_parser().not()) // empty line
+        .and_is(simple_heading_row_parser().not()) // heading_tree is recursive, we use simple heading row for lookahead to avoid stackoverflow
         .and_is(
             just("#+")
                 .then(
@@ -77,6 +76,7 @@ pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<'a, C: 'a>(
                 .then(just(":"))
                 .not(),
         )
+        .and_is(non_paragraph_parser.not()) // other element, this is necessary to find the end of paragraph even thougn paragraph is the last element of choice
         .repeated()
         .at_least(1)
         .to_slice();
@@ -89,8 +89,7 @@ pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<'a, C: 'a>(
             children.extend(keywords);
             children.extend(lines);
             children.extend(blanklines.into_iter().map(NodeOrToken::Token));
-            let node = NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Paragraph.into(), children));
-            node
+            NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Paragraph.into(), children))
         })
         .boxed()
 }

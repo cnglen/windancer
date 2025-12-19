@@ -127,14 +127,9 @@ pub(crate) fn radio_link_parser<'a, C: 'a>(
 
             match pre_valid {
                 true => {
-                    let mut children = vec![];
-                    for node in radio {
-                        children.push(node);
-                    }
-
                     let root = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                         OrgSyntaxKind::Root.into(),
-                        children.clone(),
+                        radio.clone(),
                     ));
                     let syntax_tree: SyntaxNode<OrgLanguage> =
                         SyntaxNode::new_root(root.into_node().expect("xx"));
@@ -145,7 +140,7 @@ pub(crate) fn radio_link_parser<'a, C: 'a>(
 
                     Ok(NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                         OrgSyntaxKind::RadioLink.into(),
-                        children,
+                        radio,
                     )))
                 }
                 false => Err(Rich::custom(

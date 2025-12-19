@@ -20,38 +20,6 @@ use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
-/// FIXME:
-///   递归的parser不覆盖，如list_parser，更好地办法?
-///   - list_parser -> element_parser -> list_parser ...
-// pub(crate) fn element_parser<'a, C: 'a>() -> impl Parser<
-//     'a,
-//     &'a str,
-//     NodeOrToken<GreenNode, GreenToken>,
-//     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-// > + Clone {
-//     choice((
-//         footnote_definition::footnote_definition_parser(),
-//         block::block_parser(),
-//         drawer::drawer_parser(),
-//         table::table_parser(),
-//         keyword::keyword_parser(),
-//         horizontal_rule::horizontal_rule_parser(),
-//         latex_environment::latex_environment_parser(),
-//         comment::comment_parser(),
-//         // paragraph::paragraph_parser(),
-//         section::section_unknown_parser(),
-//     ))
-// }
-
-// pub(crate) fn element_parser_in_list<'a, C: 'a>() -> impl Parser<
-//         'a,
-//     &'a str,
-//     NodeOrToken<GreenNode, GreenToken>,
-//     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-//     > + Clone {
-//     get_element_parser().1
-// }
-
 pub(crate) fn get_element_parser<'a, C: 'a + std::default::Default>() -> (
     impl Parser<
         'a,
@@ -247,7 +215,6 @@ pub(crate) fn get_element_parser<'a, C: 'a + std::default::Default>() -> (
     )
 }
 
-#[allow(unused)]
 pub(crate) fn element_parser<'a, C: 'a + std::default::Default>() -> impl Parser<
     'a,
     &'a str,
@@ -280,7 +247,6 @@ pub(crate) fn element_in_paragraph_parser<'a, C: 'a + std::default::Default>() -
     get_element_parser::<C>().1
 }
 
-#[allow(unused)]
 pub(crate) fn element_in_section_parser<'a, C: 'a + std::default::Default>() -> impl Parser<
     'a,
     &'a str,

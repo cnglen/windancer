@@ -35,18 +35,15 @@ pub(crate) fn target_parser<'a, C: 'a>() -> impl Parser<
         .map_with(|((lbracket2, target), rbracket2), e| {
             e.state().prev_char = rbracket2.chars().last();
 
-            let mut children = vec![];
-
+            let mut children = Vec::with_capacity(3);
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::LeftAngleBracket2.into(),
                 lbracket2,
             )));
-
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::Text.into(),
                 &target,
             )));
-
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::RightAngleBracket2.into(),
                 rbracket2,

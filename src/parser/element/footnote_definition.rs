@@ -27,7 +27,7 @@ pub(crate) fn footnote_definition_parser<'a, C: 'a>(
         .filter(|c: &char| c.is_alphanumeric() || matches!(c, '_' | '-'))
         .repeated()
         .at_least(1)
-        .collect::<String>();
+        .to_slice();
 
     let content_begin = just("[fn:").then(label.clone()).then(just("]"));
 
@@ -68,7 +68,7 @@ pub(crate) fn footnote_definition_parser<'a, C: 'a>(
             )));
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::Text.into(),
-                &label,
+                label,
             )));
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::RightSquareBracket.into(),

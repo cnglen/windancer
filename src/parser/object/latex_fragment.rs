@@ -18,81 +18,85 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>() -> impl Parser<
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone
 + 'a {
-    // \(CONTENTS\)
-    let t1 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>(r##"\"##)
-        .then(just("("))
+    // t1 <- \(CONTENTS\)
+    // CONTENTS <- !("\(")
+    let t1 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>(r"\")
+        .then(just(r"("))
         .then(
-            any()
-                .and_is(just(r##"\)"##).not())
+            // any().and_is(just(r"\)").not()).repeated().to_slice() // slow version
+            none_of('\\')
+                .to_slice()
+                .or(just('\\').then(none_of(')')).to_slice())
                 .repeated()
-                .collect::<String>(),
+                .to_slice(),
         )
-        .then(just(r##"\"##))
-        .then(just(")"))
+        .then(just(r"\"))
+        .then(just(r")"))
         .map_with(|((((dd1, lb), content), dd2), rb), e| {
             e.state().prev_char = rb.chars().last();
 
-            let mut children = vec![];
-            children.push(NT::Token(GreenToken::new(OSK::BackSlash.into(), dd1)));
-            children.push(NT::Token(GreenToken::new(OSK::LeftRoundBracket.into(), lb)));
-            children.push(NT::Token(GreenToken::new(OSK::Text.into(), &content)));
-            children.push(NT::Token(GreenToken::new(OSK::BackSlash.into(), dd2)));
-            children.push(NT::Token(GreenToken::new(
-                OSK::RightRoundBracket.into(),
-                rb,
-            )));
-
-            NT::Node(GreenNode::new(OSK::LatexFragment.into(), children))
+            NT::Node(GreenNode::new(
+                OSK::LatexFragment.into(),
+                vec![
+                    NT::Token(GreenToken::new(OSK::BackSlash.into(), dd1)),
+                    NT::Token(GreenToken::new(OSK::LeftRoundBracket.into(), lb)),
+                    NT::Token(GreenToken::new(OSK::Text.into(), content)),
+                    NT::Token(GreenToken::new(OSK::BackSlash.into(), dd2)),
+                    NT::Token(GreenToken::new(OSK::RightRoundBracket.into(), rb)),
+                ],
+            ))
         });
 
     // \[CONTENTS\]
     let t2 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>(r##"\"##)
         .then(just("["))
         .then(
-            any()
-                .and_is(just(r##"\]"##).not())
+            // any().and_is(just(r##"\]"##).not()).repeated().to_slice()
+            none_of('\\')
+                .to_slice()
+                .or(just('\\').then(none_of(']')).to_slice())
                 .repeated()
-                .collect::<String>(),
+                .to_slice(),
         )
         .then(just(r##"\"##))
         .then(just("]"))
         .map_with(|((((dd1, lb), content), dd2), rb), e| {
             e.state().prev_char = dd2.chars().last();
 
-            let mut children = vec![];
-            children.push(NT::Token(GreenToken::new(OSK::BackSlash.into(), dd1)));
-            children.push(NT::Token(GreenToken::new(
-                OSK::LeftSquareBracket.into(),
-                lb,
-            )));
-            children.push(NT::Token(GreenToken::new(OSK::Text.into(), &content)));
-            children.push(NT::Token(GreenToken::new(OSK::BackSlash.into(), dd2)));
-            children.push(NT::Token(GreenToken::new(
-                OSK::RightSquareBracket.into(),
-                rb,
-            )));
-
-            NT::Node(GreenNode::new(OSK::LatexFragment.into(), children))
+            NT::Node(GreenNode::new(
+                OSK::LatexFragment.into(),
+                vec![
+                    NT::Token(GreenToken::new(OSK::BackSlash.into(), dd1)),
+                    NT::Token(GreenToken::new(OSK::LeftSquareBracket.into(), lb)),
+                    NT::Token(GreenToken::new(OSK::Text.into(), content)),
+                    NT::Token(GreenToken::new(OSK::BackSlash.into(), dd2)),
+                    NT::Token(GreenToken::new(OSK::RightSquareBracket.into(), rb)),
+                ],
+            ))
         });
 
     // $$CONTENTS$$
     let t3 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("$$")
         .then(
-            any()
-                .and_is(just("$$").not())
+            // any().and_is(just("$$").not()).repeated().to_slice()
+            none_of('$')
+                .to_slice()
+                .or(just('$').then(none_of('$')).to_slice())
                 .repeated()
-                .collect::<String>(),
+                .to_slice(),
         )
         .then(just("$$"))
         .map_with(|((dd_pre, content), dd_post), e| {
             e.state().prev_char = dd_post.chars().last();
 
-            let mut children = vec![];
-            children.push(NT::Token(GreenToken::new(OSK::Dollar2.into(), dd_pre)));
-            children.push(NT::Token(GreenToken::new(OSK::Text.into(), &content)));
-            children.push(NT::Token(GreenToken::new(OSK::Dollar2.into(), dd_post)));
-
-            NT::Node(GreenNode::new(OSK::LatexFragment.into(), children))
+            NT::Node(GreenNode::new(
+                OSK::LatexFragment.into(),
+                vec![
+                    NT::Token(GreenToken::new(OSK::Dollar2.into(), dd_pre)),
+                    NT::Token(GreenToken::new(OSK::Text.into(), content)),
+                    NT::Token(GreenToken::new(OSK::Dollar2.into(), dd_post)),
+                ],
+            ))
         });
 
     // v2: use prev_char state
@@ -108,18 +112,13 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>() -> impl Parser<
 
             _ => {
                 e.state().prev_char = d_post.chars().last();
-
-                let mut children = vec![];
-                children.push(NT::Token(GreenToken::new(OSK::Dollar.into(), d_pre)));
-                children.push(NT::Token(GreenToken::new(
-                    OSK::Text.into(),
-                    &format!("{}", c),
-                )));
-                children.push(NT::Token(GreenToken::new(OSK::Dollar.into(), d_post)));
-
                 Ok(NT::Node(GreenNode::new(
                     OSK::LatexFragment.into(),
-                    children,
+                    vec![
+                        NT::Token(GreenToken::new(OSK::Dollar.into(), d_pre)),
+                        NT::Token(GreenToken::new(OSK::Text.into(), &format!("{}", c))),
+                        NT::Token(GreenToken::new(OSK::Dollar.into(), d_post)),
+                    ],
                 )))
             }
         });
@@ -133,11 +132,11 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>() -> impl Parser<
             any()
                 .and_is(border2.then(just("$")).not())
                 .repeated()
-                .collect::<String>(),
+                .to_slice(),
         )
         .then(border2)
         .then(just("$"))
-        .then_ignore(post.rewind())
+        .then_ignore(post.rewind()) // todo
         .try_map_with(|((((d_pre, border1), body), border2), d_post), e| {
             match e.state().prev_char {
                 Some(c) if c == '$' => {
@@ -170,12 +169,7 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>() -> impl Parser<
     let t01 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>(r##"\"##)
         .then(name)
         .then(just("["))
-        .then(
-            none_of("{}[]\r\n")
-                .and_is(just("]").not())
-                .repeated()
-                .collect::<String>(),
-        )
+        .then(none_of("{}[]\r\n").repeated().to_slice())
         .then(just("]"))
         .map_with(|((((bs, name), lb), content), rb), e| {
             e.state().prev_char = rb.chars().last();
@@ -191,12 +185,7 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>() -> impl Parser<
     let t02 = just(r##"\"##)
         .then(name)
         .then(just("{"))
-        .then(
-            none_of("{}\r\n")
-                .and_is(just("}").not())
-                .repeated()
-                .collect::<String>(),
-        )
+        .then(none_of("{}\r\n").repeated().to_slice())
         .then(just("}"))
         .map_with(|((((bs, name), lb), content), rb), e| {
             e.state().prev_char = rb.chars().last();
@@ -209,4 +198,35 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>() -> impl Parser<
         });
 
     Parser::boxed(choice((t1, t2, t3, t4, t5, t01, t02)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    extern crate test;
+    use crate::parser::common::get_parser_output;
+    use pretty_assertions::assert_eq;
+    use test::Bencher;
+
+    #[test]
+    fn test_latex_fragment_01() {
+        assert_eq!(
+            get_parser_output(latex_fragment_parser::<()>(), r"\(\alpha\)"),
+            r###"LatexFragment@0..10
+  BackSlash@0..1 "\\"
+  LeftRoundBracket@1..2 "("
+  Text@2..8 "\\alpha"
+  BackSlash@8..9 "\\"
+  RightRoundBracket@9..10 ")"
+"###
+        );
+    }
+
+    #[bench]
+    fn test_latex_fragment_01_bench(b: &mut Bencher) {
+        let parser = latex_fragment_parser::<()>();
+        b.iter(|| {
+            assert!(!parser.parse(r"\(\alpha\)").has_errors());
+        })
+    }
 }

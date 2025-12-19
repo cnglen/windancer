@@ -11,41 +11,36 @@ pub(crate) fn horizontal_rule_parser<'a, C: 'a>() -> impl Parser<
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
-    object::whitespaces_v2()
-        .then(just("-").repeated().at_least(5).collect::<Vec<&str>>()) //todo: collect as String failed
-        .then(object::whitespaces_v2())
+    object::whitespaces()
+        .then(just("-").repeated().at_least(5).to_slice())
+        .then(object::whitespaces())
         .then(object::newline_or_ending())
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
         .map(|((((ws1, dashes), ws2), nl), blanklines)| {
-            let mut _dashes = String::new();
-            for s in dashes.into_iter() {
-                _dashes.push_str(s);
-            }
-
             let mut children = Vec::with_capacity(3 + blanklines.len());
             if !ws1.is_empty() {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Whitespace.into(),
-                    &ws1,
+                    ws1,
                 )));
             }
 
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::Text.into(),
-                &_dashes,
+                dashes,
             )));
 
             if !ws2.is_empty() {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Whitespace.into(),
-                    &ws2,
+                    ws2,
                 )));
             }
 
             if let Some(newline) = nl {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Newline.into(),
-                    &newline,
+                    newline,
                 )));
             }
 

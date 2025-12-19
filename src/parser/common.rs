@@ -30,22 +30,14 @@ pub(crate) fn get_parser_output_with_state<'a, C: 'a + std::default::Default>(
     input: &'a str,
     mut state: RollbackState<ParserState>,
 ) -> String {
-    let a = parser.parse_with_state(input, &mut state);
+    let (maybe_output, errors) = parser
+        .parse_with_state(input, &mut state)
+        .into_output_errors();
 
-    let mut errors = vec![];
-    errors.push(String::from("errors:"));
-    if a.has_errors() {
-        for error in a.errors() {
-            // println!("{:?}", error);
-            errors.push(format!("{:?}", error));
-        }
-    }
-
-    if a.has_output() {
-        match parser.parse(input).unwrap() {
+    if let Some(output) = maybe_output {
+        match output {
             NodeOrToken::Node(node) => {
                 let syntax_tree: SyntaxNode<OrgLanguage> = SyntaxNode::new_root(node);
-                // println!("{syntax_tree:#?}");
                 format!("{syntax_tree:#?}")
             }
 
@@ -61,7 +53,7 @@ pub(crate) fn get_parser_output_with_state<'a, C: 'a + std::default::Default>(
             }
         }
     } else {
-        panic!("{}", errors.join("\n"));
+        panic!("{:?}", errors);
     }
 }
 
