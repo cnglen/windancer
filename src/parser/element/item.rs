@@ -25,7 +25,13 @@ pub(crate) fn item_parser<'a, C: 'a>(
             object::line_parser()
                 .and_is(greater_indent_termination()) // <= indented than the startingl line; including next item since next item is equaly indented of the starting line
                 .or(object::blank_line_str_parser())
-                .and_is(object::blank_line_parser().repeated().at_least(2).not()) // two consecutive blank lines
+                .and_is(
+                    object::blank_line_parser()
+                        .repeated()
+                        .at_least(2)
+                        .ignored()
+                        .not(),
+                ) // two consecutive blank lines
                 .repeated(),
         )
         .to_slice();
@@ -228,8 +234,9 @@ pub(crate) fn item_tag_parser<'a, C: 'a>() -> impl Parser<
     none_of(object::CRLF)
         .and_is(
             object::whitespaces_g1()
-                .then(just("::"))
-                .then(object::whitespaces_g1())
+                .ignore_then(just("::"))
+                .ignore_then(object::whitespaces_g1())
+                .ignored()
                 .not(),
         )
         .repeated()

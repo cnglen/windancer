@@ -16,7 +16,7 @@ exclude = ["readme_cn.org"]
 
 [dependencies]
 phf = { version = "0.13.1", features = ["macros"]}
-chumsky = {version="0.11.1"}
+chumsky = { version = "0.12.0", features = [] }
 
 colored = "3.0.0"
 orgize = "=0.10.0-alpha.10"
@@ -32,6 +32,9 @@ pretty_assertions = "1.4.1"
 
 # sudo sysctl kernel.perf_event_paranoid=1
 [profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
 debug = true
 
 [profile.bench]

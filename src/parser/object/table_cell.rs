@@ -28,7 +28,7 @@ pub(crate) fn table_cell_parser<'a, C: 'a>(
 
     // CONTENTS SPACES|
     let contents_inner = none_of("|\n")
-        .and_is(object::whitespaces().then(just("|")).not())
+        .and_is(object::whitespaces().ignore_then(just("|").ignored()).not())
         .repeated()
         .to_slice();
     let contents = minimal_and_other_objects_parser.nested_in(contents_inner);

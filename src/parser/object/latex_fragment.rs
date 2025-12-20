@@ -130,7 +130,7 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>() -> impl Parser<
         .then(border1)
         .then(
             any()
-                .and_is(border2.then(just("$")).not())
+                .and_is(border2.ignore_then(just("$")).ignored().not())
                 .repeated()
                 .to_slice(),
         )

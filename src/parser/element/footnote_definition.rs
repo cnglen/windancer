@@ -33,9 +33,15 @@ pub(crate) fn footnote_definition_parser<'a, C: 'a>(
 
     let content_inner = object::line_parser()
         .or(object::blank_line_str_parser())
-        .and_is(just("*").not()) // ends at the next heading
-        .and_is(object::blank_line_parser().repeated().at_least(2).not()) // two consecutive blank lines
-        .and_is(content_begin.not()) // ends at the next footnote definition
+        .and_is(just("*").ignored().not()) // ends at the next heading
+        .and_is(
+            object::blank_line_parser()
+                .repeated()
+                .at_least(2)
+                .ignored()
+                .not(),
+        ) // two consecutive blank lines
+        .and_is(content_begin.ignored().not()) // ends at the next footnote definition
         .repeated()
         .to_slice();
 

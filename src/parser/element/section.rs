@@ -36,7 +36,7 @@ pub(crate) fn section_parser<'a, C: 'a>(
 > + Clone {
     Parser::boxed(
         element_parser
-            .and_is(simple_heading_row_parser().not()) // Section不能以<* title>开头，避免HeadingSurbtree被识别为Section
+            .and_is(simple_heading_row_parser().ignored().not()) // Section不能以<* title>开头，避免HeadingSurbtree被识别为Section
             .repeated()
             .at_least(1)
             .collect::<Vec<_>>()

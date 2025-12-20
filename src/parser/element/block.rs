@@ -430,8 +430,8 @@ pub(crate) fn verse_block_parser<'a, C: 'a>() -> impl Parser<
         .at_least(1)
         .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
     let content_inner = object::line_parser_allow_blank()
-        .and_is(end_row.clone().not()) // No line may start with #+end_NAME.
-        .and_is(just("*").not())
+        .and_is(end_row.clone().ignored().not()) // No line may start with #+end_NAME.
+        .and_is(just("*").ignored().not())
         .repeated();
     let content = fullset_objects_parser.nested_in(content_inner.to_slice());
 
@@ -585,8 +585,8 @@ fn content_inner_parser<'a, C: 'a>(
 {
     object::line_parser()
         .or(object::blank_line_str_parser())
-        .and_is(end_row.not()) // No line may start with #+end_NAME.
-        .and_is(just("*").not())
+        .and_is(end_row.ignored().not()) // No line may start with #+end_NAME.
+        .and_is(just("*").ignored().not())
         .repeated()
         .to_slice()
 }
@@ -618,8 +618,8 @@ fn center_or_quote_block_parser<'a, C: 'a>(
     let end_row = end_row_parser(name);
     let content_inner = object::line_parser()
         .or(object::blank_line_str_parser())
-        .and_is(end_row.clone().not())
-        .and_is(just("*").not())
+        .and_is(end_row.clone().ignored().not())
+        .and_is(just("*").ignored().not())
         .repeated()
         .to_slice();
     let content = element_parser
@@ -757,7 +757,7 @@ pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
 
     let content_inner = object::line_parser()
         .or(object::blank_line_str_parser())
-        .and_is(end_row.not())
+        .and_is(end_row.ignored().not())
         .repeated()
         .to_slice();
 

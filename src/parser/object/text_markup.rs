@@ -29,12 +29,12 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
         none_of::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>(" \t​")
             .then(any()
                   .and_is(
-                      just(marker).then(post).not()
+                      just(marker).ignore_then(post).ignored().not()
                   )
                   .repeated()
-                  .collect::<String>()
             )
-            .try_map_with(|(first_char, remaining), e| {
+            .to_slice()
+            .try_map_with(|content:&str, e| {
                 let pre_valid = e.state().prev_char.map_or(true, |c| {
                     matches!(
                         c,
@@ -44,7 +44,6 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
                     )
                 });
 
-                let content = format!("{first_char}{remaining}");
                 let content_end_valid = match content.chars().last() {
                     Some(c) if matches!(c, ' ' | '\t' | '​') => false,
                     _ => true

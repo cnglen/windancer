@@ -23,7 +23,7 @@ pub(crate) fn plain_text_parser<'a, C: 'a>(
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     any::<_, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>()
-        .and_is(non_plain_text_parsers.not())
+        .and_is(non_plain_text_parsers.ignored().not())
         // we MUST update state here: if negation lookahead successes，update state to let the object_parser work
         // input: fox_bar
         //   - f: negation lookahead OK, update state -> f

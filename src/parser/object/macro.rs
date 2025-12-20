@@ -53,7 +53,7 @@ pub(crate) fn macro_parser<'a, C: 'a>() -> impl Parser<
         .then(just("("))
         .then(
             any()
-                .and_is(just(")}}}").not())
+                .and_is(just(")}}}").ignored().not())
                 .repeated()
                 .collect::<String>(),
         )

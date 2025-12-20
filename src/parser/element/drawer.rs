@@ -149,7 +149,7 @@ pub(crate) fn property_drawer_parser<'a, C: 'a>() -> impl Parser<
         .then(blank_lines.clone())
         .then(
             node_property_parser()
-                .and_is(end_row.clone().not())
+                .and_is(end_row.clone().ignored().not())
                 .repeated()
                 .collect::<Vec<_>>(),
         )
@@ -337,8 +337,8 @@ pub(crate) fn drawer_parser<'a, C: 'a>(
 
     let drawer_content_inner = object::line_parser()
         .or(object::blank_line_str_parser())
-        .and_is(drawer_end_row.clone().not())
-        .and_is(just("*").not()) // fixme: use heading row?
+        .and_is(drawer_end_row.clone().ignored().not())
+        .and_is(just("*").ignored().not()) // fixme: use heading row?
         .repeated()
         .to_slice();
 

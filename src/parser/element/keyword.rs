@@ -642,6 +642,7 @@ pub(crate) fn keyword_parser<'a, C: 'a>(
             .and_is(
                 element_parser
                     .clone()
+                    .ignored()
                     // .map(|s|{println!("dbg@and_is: s={s:?}"); s})
                     .not(),
             ),
@@ -728,7 +729,7 @@ pub(crate) fn keyword_parser<'a, C: 'a>(
         p1a_part1
             .clone()
             .then(just("\n").map(|c| Some(c)))
-            .and_is(element_parser.clone().not()),
+            .and_is(element_parser.clone().ignored().not()),
         p1a_part1
             .clone()
             .then(object::newline_or_ending())

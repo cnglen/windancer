@@ -73,7 +73,7 @@ pub(crate) fn latex_environment_parser<'a, C: 'a>() -> impl Parser<
             },
         );
 
-    let contents = any().and_is(end_row.not()).repeated().to_slice();
+    let contents = any().and_is(end_row.ignored().not()).repeated().to_slice();
 
     affiliated_keywords
         .then(begin_row.then_with_ctx(contents.then(end_row)))

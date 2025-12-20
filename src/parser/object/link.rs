@@ -326,10 +326,7 @@ pub(crate) fn regular_link_parser<'a, C: 'a>(
             }
         });
 
-    let normal_char = any()
-        .and_is(just("[").not())
-        .and_is(just("]").not())
-        .and_is(just("\\").not());
+    let normal_char = none_of("[]\\");
     let escape_char = just('\\').then(one_of("[]\\")).map(|(_, c)| c);
     let string_without_brackets = choice((normal_char, escape_char))
         .repeated()
@@ -339,9 +336,11 @@ pub(crate) fn regular_link_parser<'a, C: 'a>(
     let filename = (just("./").or(just("/")))
         .then(
             any()
-                .filter(|c: &char| c.is_alphanumeric() || matches!(c, '.' | '/' | ':' | '@'))
-                .and_is(just("[").not())
-                .and_is(just("]").not())
+                .filter(|c: &char| {
+                    (c.is_alphanumeric() || matches!(c, '.' | '/' | ':' | '@'))
+                        && (*c != '[')
+                        && (*c != ']')
+                })
                 .repeated()
                 .at_least(1),
         )

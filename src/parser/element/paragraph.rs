@@ -13,7 +13,7 @@ pub(crate) fn simple_heading_row_parser<'a, C: 'a>()
 {
     let stars = just('*').repeated().at_least(1);
     let whitespaces = one_of(" \t").repeated().at_least(1);
-    let title = none_of("\n\r").repeated();
+    let title = none_of(object::CRLF).repeated();
     stars
         .then(whitespaces)
         .then(title)
@@ -61,22 +61,20 @@ pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<'a, C: 'a>(
 
     // Empty lines and other elements end paragraphs
     let inner = object::line_parser()
-        .and_is(object::blank_line_parser().not()) // empty line
-        .and_is(simple_heading_row_parser().not()) // heading_tree is recursive, we use simple heading row for lookahead to avoid stackoverflow
+        .and_is(object::blank_line_parser().ignored().not()) // empty line
+        .and_is(simple_heading_row_parser().ignored().not()) // heading_tree is recursive, we use simple heading row for lookahead to avoid stackoverflow
         .and_is(
             just("#+")
-                .then(
-                    any()
-                        .filter(
-                            |c: &char| matches!(c, 'a'..='z' | 'A'..='Z'| '0'..='9'|'_'|']'|'['),
-                        )
+                .ignore_then(
+                    one_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_[]")
                         .repeated()
                         .at_least(1),
                 )
-                .then(just(":"))
+                .ignore_then(just(":"))
+                .ignored()
                 .not(),
         )
-        .and_is(non_paragraph_parser.not()) // other element, this is necessary to find the end of paragraph even thougn paragraph is the last element of choice
+        .and_is(non_paragraph_parser.ignored().not()) // other element, this is necessary to find the end of paragraph even thougn paragraph is the last element of choice
         .repeated()
         .at_least(1)
         .to_slice();

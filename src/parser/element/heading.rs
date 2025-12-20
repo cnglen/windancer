@@ -28,7 +28,9 @@ pub(crate) fn heading_subtree_parser<'a>(
         .then(object::whitespaces_g1())
         .or_not();
     let maybe_priority = just("[#")
-        .then(one_of('0'..'9').or(one_of('a'..'z').or(one_of('A'..'Z'))))
+        .then(one_of(
+            "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
+        ))
         .then(just("]"))
         .then(object::whitespaces_g1())
         .or_not();
@@ -52,8 +54,21 @@ pub(crate) fn heading_subtree_parser<'a>(
         .then(object::whitespaces());
     let maybe_tag = tags.or_not();
     let maybe_title = none_of(object::CRLF)
-        .and_is(one_of(" \t").repeated().at_least(1).then(tags).not())
-        .and_is(one_of(" \t").repeated().then(object::newline()).not())
+        .and_is(
+            one_of(" \t")
+                .repeated()
+                .at_least(1)
+                .ignore_then(tags)
+                .ignored()
+                .not(),
+        )
+        .and_is(
+            one_of(" \t")
+                .repeated()
+                .ignore_then(object::newline())
+                .ignored()
+                .not(),
+        )
         .repeated()
         .at_least(1)
         .to_slice()
