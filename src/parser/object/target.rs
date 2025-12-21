@@ -13,41 +13,44 @@ pub(crate) fn target_parser<'a, C: 'a>() -> impl Parser<
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
-    let target_onechar = none_of("<>\n \t").map(|c| format!("{c}"));
-    let target_g2char = none_of("<>\n \t")
-        .then(none_of("<>\n").repeated().at_least(1).collect::<String>())
-        .try_map_with(|(a, b), e| {
-            if b.chars().last().expect("at least 1").is_whitespace() {
-                Err(Rich::custom(
-                    e.span(),
-                    format!("the last char of '{}' can't be whitespace", b),
-                ))
-            } else {
-                Ok(format!("{a}{b}"))
-            }
-        });
+    let target = none_of("<>\n \t")
+        .then(
+            none_of("<>\n")
+                .repeated()
+                .at_least(1)
+                .to_slice()
+                .try_map_with(|ab: &str, e| {
+                    if ab.chars().last().expect("at least 1").is_whitespace() {
+                        Err(Rich::custom(
+                            e.span(),
+                            format!("the last char of '{}' can't be whitespace", ab),
+                        ))
+                    } else {
+                        Ok(ab)
+                    }
+                })
+                .or_not(),
+        )
+        .to_slice();
 
-    let target = choice((target_g2char, target_onechar)); // target_g2char > target_onechar
-
-    just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("<<")
+    just("<<")
         .then(target)
         .then(just(">>"))
         .map_with(|((lbracket2, target), rbracket2), e| {
-            e.state().prev_char = rbracket2.chars().last();
+            let state: &mut RollbackState<ParserState> = e.state();
+            state.prev_char = Some('>');
 
-            let mut children = Vec::with_capacity(3);
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::LeftAngleBracket2.into(),
-                lbracket2,
-            )));
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                &target,
-            )));
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::RightAngleBracket2.into(),
-                rbracket2,
-            )));
+            let children = vec![
+                NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::LeftAngleBracket2.into(),
+                    lbracket2,
+                )),
+                NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Text.into(), target)),
+                NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::RightAngleBracket2.into(),
+                    rbracket2,
+                )),
+            ];
 
             NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                 OrgSyntaxKind::Target.into(),

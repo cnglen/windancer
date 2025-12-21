@@ -96,6 +96,42 @@ pub(crate) fn footnote_definition_parser<'a, C: 'a>(
         .boxed()
 }
 
+// only used in lookahead
+pub(crate) fn simple_footnote_definition_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+{
+    let affiliated_keywords = element::keyword::affiliated_keyword_parser().repeated();
+
+    let label = any()
+        .filter(|c: &char| c.is_alphanumeric() || matches!(c, '_' | '-'))
+        .repeated()
+        .at_least(1);
+
+    let content_begin = just("[fn:").then(label.clone()).then(just("]"));
+
+    let content_inner = object::line_parser()
+        .or(object::blank_line_str_parser())
+        .and_is(just("*").ignored().not()) // ends at the next heading
+        .and_is(
+            object::blank_line_parser()
+                .repeated()
+                .at_least(2)
+                .ignored()
+                .not(),
+        ) // two consecutive blank lines
+        .and_is(content_begin.ignored().not()) // ends at the next footnote definition
+        .repeated();
+
+    affiliated_keywords
+        .then(just("[fn:"))
+        .then(label)
+        .then(just("]"))
+        .then(object::whitespaces_g1())
+        .then(content_inner)
+        .to_slice()
+        .boxed()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

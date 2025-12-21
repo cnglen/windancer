@@ -37,7 +37,7 @@ pub(crate) fn plain_text_parser<'a, C: 'a>(
         })
         .repeated()
         .at_least(1)
-        .collect::<String>()
+        .collect::<String>() // to_slice? test failed
         .map_with(|s, e| {
             if let Some(c) = s.chars().last() {
                 e.state().prev_char = Some(c);

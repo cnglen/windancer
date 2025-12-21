@@ -1,28 +1,13 @@
 //! Paragraph parser
 use crate::parser::element::keyword;
 use crate::parser::syntax::OrgSyntaxKind;
-use crate::parser::{ParserState, object};
+use crate::parser::{ParserState, element, object};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
-/// A simple heading row parser WITHOUT state, ONLY used for look ahead
-// - section parser: to check whether the next part is heading to stop
-pub(crate) fn simple_heading_row_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
-    let stars = just('*').repeated().at_least(1);
-    let whitespaces = one_of(" \t").repeated().at_least(1);
-    let title = none_of(object::CRLF).repeated();
-    stars
-        .then(whitespaces)
-        .then(title)
-        .then(object::newline_or_ending())
-        .to_slice()
-}
-
 // non_paragraph_parser: used for negative lookahead
-pub(crate) fn paragraph_parser<'a, C: 'a>(
+pub(crate) fn paragraph_parser<'a, C: 'a + std::default::Default>(
     non_paragraph_parser: impl Parser<
         'a,
         &'a str,
@@ -39,7 +24,10 @@ pub(crate) fn paragraph_parser<'a, C: 'a>(
     paragraph_parser_with_at_least_n_affiliated_keywords(non_paragraph_parser, 0)
 }
 
-pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<'a, C: 'a>(
+pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<
+    'a,
+    C: 'a + std::default::Default,
+>(
     non_paragraph_parser: impl Parser<
         'a,
         &'a str,
@@ -59,22 +47,36 @@ pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<'a, C: 'a>(
         .at_least(n)
         .collect::<Vec<_>>();
 
+    let simple_plain_list =
+        element::list::plain_list_parser(element::item::simple_item_parser()).ignored();
+
     // Empty lines and other elements end paragraphs
     let inner = object::line_parser()
-        .and_is(object::blank_line_parser().ignored().not()) // empty line
-        .and_is(simple_heading_row_parser().ignored().not()) // heading_tree is recursive, we use simple heading row for lookahead to avoid stackoverflow
         .and_is(
-            just("#+")
-                .ignore_then(
-                    one_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_[]")
-                        .repeated()
-                        .at_least(1),
-                )
-                .ignore_then(just(":"))
-                .ignored()
-                .not(),
+            // use simple parsers for lookahead to reduce rewind() and speed up
+            choice((
+                object::blank_line_parser().ignored(),
+                element::heading::simple_heading_row_parser().ignored(), // heading_tree is recursive, we use simple heading row for lookahead to avoid stackoverflow
+                element::table::simple_table_parser().ignored(),
+                element::footnote_definition::simple_footnote_definition_parser().ignored(),
+                just("#+")
+                    .ignore_then(
+                        one_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_[]")
+                            .repeated()
+                            .at_least(1),
+                    )
+                    .ignore_then(just(":"))
+                    .ignored(),
+                simple_plain_list.ignored(),
+                element::drawer::simple_drawer_parser(),
+                element::block::simple_center_block_parser(),
+                element::block::simple_quote_block_parser(),
+                element::block::simple_special_block_parser(),
+                element::block::simple_verse_block_parser(),
+                non_paragraph_parser.ignored(), // other element, this is necessary to find the end of paragraph even thougn paragraph is the last element of choice
+            ))
+            .not(),
         )
-        .and_is(non_paragraph_parser.ignored().not()) // other element, this is necessary to find the end of paragraph even thougn paragraph is the last element of choice
         .repeated()
         .at_least(1)
         .to_slice();
@@ -86,7 +88,7 @@ pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<'a, C: 'a>(
             let mut children = Vec::with_capacity(keywords.len() + lines.len() + blanklines.len());
             children.extend(keywords);
             children.extend(lines);
-            children.extend(blanklines.into_iter().map(NodeOrToken::Token));
+            children.extend(blanklines);
             NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Paragraph.into(), children))
         })
         .boxed()

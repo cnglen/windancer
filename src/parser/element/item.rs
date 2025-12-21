@@ -92,7 +92,7 @@ pub(crate) fn item_parser<'a, C: 'a>(
                 children.extend(maybe_checkbox.into_iter());
                 children.extend(maybe_tag.into_iter());
                 children.extend(maybe_content.into_iter());
-                children.extend(maybe_blankline.into_iter().map(NodeOrToken::Token));
+                children.extend(maybe_blankline);
 
                 Ok(NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                   OrgSyntaxKind::ListItem.into(),
@@ -100,6 +100,69 @@ pub(crate) fn item_parser<'a, C: 'a>(
                 )))
             },
         ).boxed()
+}
+
+// only used in lookahead
+pub(crate) fn simple_item_parser<'a, C: 'a>() -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
+> + Clone {
+    let item_content_inner = object::line_parser() // no need to test indent since this is the first row of item
+        .then(
+            object::line_parser()
+                .and_is(greater_indent_termination()) // <= indented than the startingl line; including next item since next item is equaly indented of the starting line
+                .or(object::blank_line_str_parser())
+                .and_is(
+                    object::blank_line_parser()
+                        .repeated()
+                        .at_least(2)
+                        .ignored()
+                        .not(),
+                ) // two consecutive blank lines
+                .repeated(),
+        );
+
+    item_indent_parser()
+        .then(item_bullet_parser())
+        .then(item_counter_set_parser().or_not())
+        .then(item_checkbox_parser().or_not())
+        .then(item_tag_parser().or_not())
+        .validate(|((((indent, bullet), maybe_counter), maybe_checkbox), maybe_tag), e, emitter|{
+            // update item_indent state: push
+            let current_indent = usize::from(indent.text_len());
+            let state_indent_length = e.state().item_indent.len();
+
+            if state_indent_length > 0 { // indent_length vecntor is not empty
+                let last_state = e.state().item_indent[state_indent_length - 1];
+                if current_indent < last_state {
+                    let error = Rich::custom::<&str>(
+                        SimpleSpan::from(Range {
+                            start: e.span().start(),
+                            end: e.span().end(),
+                        }),
+                        &format!("item_indent_parser: lesser indernt found: current_indent({current_indent}) < state_indent({last_state})"),
+                    );
+                    emitter.emit(error)
+                } else if current_indent > last_state {
+                    e.state().item_indent.push(current_indent); // first item of Non-First list in doc
+                } else {
+                }
+            } else {
+                e.state().item_indent.push(current_indent); // update state only at the first item of one list
+            }
+            ((((indent, bullet), maybe_counter), maybe_checkbox), maybe_tag)
+        })
+        .then(item_content_inner.or_not())
+        .then(object::blank_line_parser().or_not())
+        .to(
+            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+                OrgSyntaxKind::ListItem.into(),
+                vec![],
+            ))
+        )
+        .boxed()
 }
 
 /// Item Indent Parser
@@ -147,10 +210,9 @@ pub(crate) fn item_bullet_parser<'a, C: 'a>() -> impl Parser<
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
-    just("*")
-        .or(just("-"))
-        .or(just("+"))
-        .or(counter_parser().then(just(".").or(just(")"))).to_slice())
+    one_of("*+-")
+        .to_slice()
+        .or(counter_parser().then(one_of(".)")).to_slice())
         .then(object::whitespaces_g1())
         .map(|(bullet, ws)| {
             NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(

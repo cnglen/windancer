@@ -78,56 +78,57 @@ pub(crate) fn footnote_reference_parser<'a, C: 'a>(
         standard_objects_parser.nested_in(single_expression.clone().repeated().to_slice());
 
     // [fn:LABEL]
-    let t1 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("[")
-        .then(just("fn"))
-        .then(just(":"))
-        .then(label)
-        .then(just("]"))
-        .map_with(|((((lbracket, fn_text), colon1), label), rbracket), e| {
-            e.state().prev_char = rbracket.chars().last();
-
-            build_footnote_reference(
-                lbracket,
-                fn_text,
-                rbracket,
-                vec![
-                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Colon.into(), colon1)),
-                    NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::FootnoteReferenceLabel.into(),
-                        label,
-                    )),
-                ],
-            )
-        });
-
     // [fn:LABEL:DEFINITION]
-    let t2 = just("[")
+    let t1_or_t2 = just("[")
         .then(just("fn"))
         .then(just(":"))
         .then(label)
-        .then(just(":"))
-        .then(definition.clone())
+        .then(just(":").then(definition.clone()).or_not())
         .then(just("]"))
         .map_with(
-            |((((((lbracket, fn_text), colon1), label), colon2), definition), rbracket), e| {
-                e.state().prev_char = rbracket.chars().last();
-                build_footnote_reference(
-                    lbracket,
-                    fn_text,
-                    rbracket,
-                    vec![
-                        NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Colon.into(), colon1)),
-                        NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::FootnoteReferenceLabel.into(),
-                            label,
-                        )),
-                        NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Colon.into(), colon2)),
-                        NodeOrToken::Node(GreenNode::new(
-                            OrgSyntaxKind::FootnoteReferenceDefintion.into(),
-                            definition,
-                        )),
-                    ],
-                )
+            |(((((lbracket, fn_text), colon1), label), maybe_colon2_definition), rbracket), e| {
+                e.state().prev_char = Some(']');
+
+                match maybe_colon2_definition {
+                    Some((colon2, definition)) => build_footnote_reference(
+                        lbracket,
+                        fn_text,
+                        rbracket,
+                        vec![
+                            NodeOrToken::Token(GreenToken::new(
+                                OrgSyntaxKind::Colon.into(),
+                                colon1,
+                            )),
+                            NodeOrToken::Token(GreenToken::new(
+                                OrgSyntaxKind::FootnoteReferenceLabel.into(),
+                                label,
+                            )),
+                            NodeOrToken::Token(GreenToken::new(
+                                OrgSyntaxKind::Colon.into(),
+                                colon2,
+                            )),
+                            NodeOrToken::Node(GreenNode::new(
+                                OrgSyntaxKind::FootnoteReferenceDefintion.into(),
+                                definition,
+                            )),
+                        ],
+                    ),
+                    None => build_footnote_reference(
+                        lbracket,
+                        fn_text,
+                        rbracket,
+                        vec![
+                            NodeOrToken::Token(GreenToken::new(
+                                OrgSyntaxKind::Colon.into(),
+                                colon1,
+                            )),
+                            NodeOrToken::Token(GreenToken::new(
+                                OrgSyntaxKind::FootnoteReferenceLabel.into(),
+                                label,
+                            )),
+                        ],
+                    ),
+                }
             },
         );
 
@@ -159,7 +160,7 @@ pub(crate) fn footnote_reference_parser<'a, C: 'a>(
             },
         );
 
-    Parser::boxed(choice((t1, t2, t3)))
+    Parser::boxed(choice((t1_or_t2, t3)))
 }
 
 #[cfg(test)]

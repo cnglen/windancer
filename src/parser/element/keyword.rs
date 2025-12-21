@@ -702,7 +702,7 @@ pub(crate) fn keyword_parser<'a, C: 'a>(
                 }
             }
             for blank_line in blank_lines {
-                children.push(NodeOrToken::Token(blank_line));
+                children.push(blank_line);
                 e.state().prev_char = Some('\n');
             }
 
@@ -788,7 +788,7 @@ pub(crate) fn keyword_parser<'a, C: 'a>(
             }
 
             for blank_line in blank_lines {
-                children.push(NodeOrToken::Token(blank_line));
+                children.push(blank_line);
                 e.state().prev_char = Some('\n');
             }
 

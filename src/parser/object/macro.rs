@@ -22,46 +22,29 @@ pub(crate) fn macro_parser<'a, C: 'a>() -> impl Parser<
         .to_slice();
 
     // {{{NAME}}}
-    let t1 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("{{{")
-        .then(name)
-        .then(just("}}}"))
-        .map_with(|((left_3curly, name), right_3curly), e| {
-            e.state().prev_char = right_3curly.chars().last();
-
-            let mut children = Vec::with_capacity(3);
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::LeftCurlyBracket3.into(),
-                left_3curly,
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::MacroName.into(),
-                name,
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::RightCurlyBracket3.into(),
-                right_3curly,
-            )));
-
-            NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Macro.into(), children))
-        });
-
     // {{{NAME(ARGUMENTS)}}}
-    let t2 = just(r"{{{")
+    just(r"{{{")
         .then(name)
-        .then(just("("))
         .then(
-            any()
-                .and_is(just(")}}}").ignored().not())
-                .repeated()
-                .collect::<String>(),
+            just("(")
+                .then(
+                    any()
+                        .and_is(just(")}}}").ignored().not())
+                        .repeated()
+                        .to_slice(),
+                )
+                .then(just(")"))
+                .or_not(),
         )
-        .then(just(")"))
         .then(just("}}}"))
         .map_with(
-            |(((((left_3curly, name), left_round), args), right_round), right_3curly), e| {
-                e.state().prev_char = right_3curly.chars().last();
+            |(((left_3curly, name), maybe_leftround_args_rightround), right_3curly): (
+                ((&_, &_), Option<((&_, &str), &_)>),
+                &_,
+            ),
+             e| {
+                let state: &mut RollbackState<ParserState> = e.state();
+                state.prev_char = Some('}');
 
                 let mut children = Vec::with_capacity(6);
                 children.push(NodeOrToken::Token(GreenToken::new(
@@ -74,22 +57,24 @@ pub(crate) fn macro_parser<'a, C: 'a>() -> impl Parser<
                     name,
                 )));
 
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::LeftRoundBracket.into(),
-                    &left_round.to_string(),
-                )));
-
-                if args.len() > 0 {
+                if let Some(((left_round, args), right_round)) = maybe_leftround_args_rightround {
                     children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::MacroArgs.into(),
-                        &args,
+                        OrgSyntaxKind::LeftRoundBracket.into(),
+                        left_round,
+                    )));
+
+                    if !args.is_empty() {
+                        children.push(NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::MacroArgs.into(),
+                            args,
+                        )));
+                    }
+
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::RightRoundBracket.into(),
+                        right_round,
                     )));
                 }
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::RightRoundBracket.into(),
-                    &right_round,
-                )));
 
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::RightCurlyBracket3.into(),
@@ -98,7 +83,6 @@ pub(crate) fn macro_parser<'a, C: 'a>() -> impl Parser<
 
                 NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Macro.into(), children))
             },
-        );
-
-    Parser::boxed(choice((t1, t2)))
+        )
+        .boxed()
 }

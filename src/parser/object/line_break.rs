@@ -20,7 +20,7 @@ pub(crate) fn line_break_parser<'a, C: 'a>() -> impl Parser<
     // PRE\\SPACE
     just(r##"\\"##)
         .then(object::whitespaces())
-        .then_ignore(just("\r").or_not().then(just("\n")).rewind())
+        .then_ignore(object::newline().ignored().rewind())
         .try_map_with(|(line_break, maybe_ws): (&str, &str), e| {
             if let Some('\\') = e.state().prev_char {
                 let error =

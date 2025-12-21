@@ -33,7 +33,7 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>() -> impl Parser<
         .then(just(r"\"))
         .then(just(r")"))
         .map_with(|((((dd1, lb), content), dd2), rb), e| {
-            e.state().prev_char = rb.chars().last();
+            e.state().prev_char = Some(')');
 
             NT::Node(GreenNode::new(
                 OSK::LatexFragment.into(),
@@ -61,7 +61,7 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>() -> impl Parser<
         .then(just(r##"\"##))
         .then(just("]"))
         .map_with(|((((dd1, lb), content), dd2), rb), e| {
-            e.state().prev_char = dd2.chars().last();
+            e.state().prev_char = Some(']');
 
             NT::Node(GreenNode::new(
                 OSK::LatexFragment.into(),
@@ -76,7 +76,7 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>() -> impl Parser<
         });
 
     // $$CONTENTS$$
-    let t3 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("$$")
+    let t3 = just("$$")
         .then(
             // any().and_is(just("$$").not()).repeated().to_slice()
             none_of('$')
@@ -87,7 +87,8 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>() -> impl Parser<
         )
         .then(just("$$"))
         .map_with(|((dd_pre, content), dd_post), e| {
-            e.state().prev_char = dd_post.chars().last();
+            let state: &mut RollbackState<ParserState> = e.state();
+            state.prev_char = Some('$');
 
             NT::Node(GreenNode::new(
                 OSK::LatexFragment.into(),
@@ -99,7 +100,7 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>() -> impl Parser<
             ))
         });
 
-    // v2: use prev_char state
+    // PRE$CHAR$POST
     let post = any()
         .filter(|c: &char| c.is_ascii_punctuation() || matches!(c, ' ' | '\t' | '\r' | '\n'))
         .or(end().to('x'));
@@ -111,7 +112,7 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>() -> impl Parser<
             Some(c) if c == '$' => Err(Rich::custom::<&str>(e.span(), &format!("prev_char is $"))),
 
             _ => {
-                e.state().prev_char = d_post.chars().last();
+                e.state().prev_char = Some('$');
                 Ok(NT::Node(GreenNode::new(
                     OSK::LatexFragment.into(),
                     vec![
@@ -143,7 +144,7 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>() -> impl Parser<
                     Err(Rich::custom::<&str>(e.span(), &format!("prev_char is $")))
                 }
                 _ => {
-                    e.state().prev_char = d_post.chars().last();
+                    e.state().prev_char = Some('$');
 
                     let mut children = vec![];
                     children.push(NT::Token(GreenToken::new(OSK::Dollar.into(), d_pre)));
@@ -160,44 +161,43 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>() -> impl Parser<
         });
 
     // \NAME [CONTENTS1]
+    // \NAME {CONTENTS2}
+    // NAME := a string consisting of alphabetic characters which does NOT have an association in either `org-entities`` or `org-entities-user`
     let name = any()
         .filter(|c: &char| c.is_alphabetic())
         .repeated()
         .at_least(1)
-        .collect::<String>()
-        .filter(|name| !ENTITYNAME_TO_HTML.contains_key(name));
-    let t01 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>(r##"\"##)
+        .to_slice()
+        .filter(|name: &&str| !ENTITYNAME_TO_HTML.contains_key(*name));
+    let t0 = just(r##"\"##)
         .then(name)
-        .then(just("["))
-        .then(none_of("{}[]\r\n").repeated().to_slice())
-        .then(just("]"))
-        .map_with(|((((bs, name), lb), content), rb), e| {
-            e.state().prev_char = rb.chars().last();
-
-            let mut children = vec![];
-            let _content = format!("{bs}{name}{lb}{content}{rb}");
-            children.push(NT::Token(GreenToken::new(OSK::Text.into(), &_content)));
-
-            NT::Node(GreenNode::new(OSK::LatexFragment.into(), children))
+        .then(
+            just("[")
+                .then(none_of("{}[]\r\n").repeated().to_slice())
+                .then(just("]"))
+                .map_with(|s, e| {
+                    let state: &mut RollbackState<ParserState> = e.state();
+                    state.prev_char = Some(']');
+                    s
+                })
+                .or(just("{")
+                    .then(none_of("{}\r\n").repeated().to_slice())
+                    .then(just("}"))
+                    .map_with(|s, e| {
+                        let state: &mut RollbackState<ParserState> = e.state();
+                        state.prev_char = Some('}');
+                        s
+                    })),
+        )
+        .to_slice()
+        .map(|s| {
+            NT::Node(GreenNode::new(
+                OSK::LatexFragment.into(),
+                vec![NT::Token(GreenToken::new(OSK::Text.into(), s))],
+            ))
         });
 
-    // \NAME {CONTENTS2}
-    let t02 = just(r##"\"##)
-        .then(name)
-        .then(just("{"))
-        .then(none_of("{}\r\n").repeated().to_slice())
-        .then(just("}"))
-        .map_with(|((((bs, name), lb), content), rb), e| {
-            e.state().prev_char = rb.chars().last();
-
-            let mut children = vec![];
-            let _content = format!("{bs}{name}{lb}{content}{rb}");
-            children.push(NT::Token(GreenToken::new(OSK::Text.into(), &_content)));
-
-            NT::Node(GreenNode::new(OSK::LatexFragment.into(), children))
-        });
-
-    Parser::boxed(choice((t1, t2, t3, t4, t5, t01, t02)))
+    Parser::boxed(choice((t1, t2, t3, t4, t5, t0)))
 }
 
 #[cfg(test)]

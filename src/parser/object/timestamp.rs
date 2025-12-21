@@ -32,14 +32,14 @@ pub(crate) fn timestamp_parser<'a, C: 'a>() -> impl Parser<
         .at_most(2)
         .then(just(":"))
         .then(one_of("0123456789").repeated().at_least(2).at_most(2));
+
     let repeater_or_delay = just("++")
         .or(just(".+"))
         .or(just("+"))
         .or(just("--"))
         .or(just("-"))
         .then(one_of("0123456789").repeated().at_least(1))
-        .then(one_of("hdwmy"))
-        .map(|s| s);
+        .then(one_of("hdwmy"));
 
     let p1a = just("<")
         .then(date.clone())

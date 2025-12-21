@@ -189,11 +189,46 @@ pub(crate) fn table_parser<'a, C: 'a>() -> impl Parser<
             children.extend(affiliated_keywords);
             children.extend(rows);
             children.extend(formulas);
-            children.extend(blanklines.into_iter().map(NodeOrToken::Token));
+            children.extend(blanklines);
 
             NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Table.into(), children))
         })
         .boxed()
+}
+
+// used for negative lookahead
+pub(crate) fn simple_table_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+{
+    let affiliated_keywords = affiliated_keyword_parser().ignored().repeated();
+    let rows = (object::whitespaces()
+        .ignore_then(just("|"))
+        .ignore_then(just("-"))
+        .ignore_then(none_of("\n").repeated().to_slice())
+        .ignore_then(object::newline_or_ending())
+        .ignored())
+    .or(object::whitespaces()
+        .ignore_then(just("|"))
+        .ignore_then(
+            // CONTENTS SPACES|
+            none_of("|\n")
+                .and_is(object::whitespaces().ignore_then(just("|").ignored()).not())
+                .repeated()
+                .then(object::whitespaces())
+                .then(just("|"))
+                .repeated(),
+        )
+        .ignore_then(object::newline_or_ending())
+        .ignored())
+    .repeated()
+    .at_least(1);
+    let formulas = table_formula_parser().repeated();
+    affiliated_keywords
+        .ignore_then(rows)
+        .ignore_then(formulas)
+        .ignore_then(object::blank_line_parser().repeated())
+        .ignored()
+        .to_slice()
 }
 
 #[cfg(test)]

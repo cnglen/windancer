@@ -78,7 +78,7 @@ pub(crate) fn export_block_parser<'a, C: 'a>() -> impl Parser<
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
-    let data = none_of("\n \t").repeated().at_least(1).collect::<String>();
+    let data = none_of("\n \t").repeated().at_least(1).to_slice();
     let begin_row = object::whitespaces()
         .then(object::just_case_insensitive("#+BEGIN_"))
         .then(object::just_case_insensitive("EXPORT")) // name
@@ -115,14 +115,11 @@ pub(crate) fn export_block_parser<'a, C: 'a>() -> impl Parser<
                     if !ws1.is_empty() {
                         children.push(NodeOrToken::Token(GreenToken::new(
                             OSK::Whitespace.into(),
-                            &ws1,
+                            ws1,
                         )));
                     }
 
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OSK::Text.into(),
-                        &begin,
-                    )));
+                    children.push(NodeOrToken::Token(GreenToken::new(OSK::Text.into(), begin)));
 
                     children.push(NodeOrToken::Token(GreenToken::new(
                         OSK::Text.into(),
@@ -132,11 +129,11 @@ pub(crate) fn export_block_parser<'a, C: 'a>() -> impl Parser<
                     if !ws2.is_empty() {
                         children.push(NodeOrToken::Token(GreenToken::new(
                             OSK::Whitespace.into(),
-                            &ws2,
+                            ws2,
                         )));
                     }
 
-                    children.push(NodeOrToken::Token(GreenToken::new(OSK::Text.into(), &data)));
+                    children.push(NodeOrToken::Token(GreenToken::new(OSK::Text.into(), data)));
 
                     if !ws3.is_empty() {
                         children.push(NodeOrToken::Token(GreenToken::new(
@@ -158,14 +155,14 @@ pub(crate) fn export_block_parser<'a, C: 'a>() -> impl Parser<
                         OSK::BlockContent.into(),
                         vec![NodeOrToken::Token(GreenToken::new(
                             OSK::Text.into(),
-                            &content,
+                            content,
                         ))],
                     ));
                     children.push(node);
                 }
 
                 children.push(end_row);
-                children.extend(blank_lines.into_iter().map(NodeOrToken::Token));
+                children.extend(blank_lines);
                 NodeOrToken::Node(GreenNode::new(OSK::ExportBlock.into(), children))
             },
         )
@@ -179,7 +176,7 @@ pub(crate) fn src_block_parser<'a, C: 'a>() -> impl Parser<
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
-    let language = none_of(" \t\n").repeated().at_least(1).collect::<String>();
+    let language = none_of(" \t\n").repeated().at_least(1).to_slice();
     let switch_p1 = just("-l")
         .then(object::whitespaces_g1())
         .then(none_of("\n\" \t").repeated())
@@ -188,7 +185,7 @@ pub(crate) fn src_block_parser<'a, C: 'a>() -> impl Parser<
         .then(any().filter(|c: &char| c.is_alphanumeric()))
         .to_slice();
     let switches = switch_p1.or(switch_p2).repeated().to_slice();
-    let arguments = none_of("\n").repeated().collect::<String>();
+    let arguments = none_of("\n").repeated().to_slice();
     let begin_row = object::whitespaces()
         .then(object::just_case_insensitive("#+BEGIN_"))
         .then(object::just_case_insensitive("SRC")) // name
@@ -274,7 +271,7 @@ pub(crate) fn src_block_parser<'a, C: 'a>() -> impl Parser<
 
                     children.push(NodeOrToken::Token(GreenToken::new(
                         OSK::SrcBlockLanguage.into(),
-                        &language,
+                        language,
                     )));
 
                     if let Some((ws3, switches)) = maybe_ws3_switches {
@@ -297,7 +294,7 @@ pub(crate) fn src_block_parser<'a, C: 'a>() -> impl Parser<
 
                         children.push(NodeOrToken::Token(GreenToken::new(
                             OSK::SrcBlockHeaderArguments.into(),
-                            &arguments,
+                            arguments,
                         )));
                     }
 
@@ -319,7 +316,7 @@ pub(crate) fn src_block_parser<'a, C: 'a>() -> impl Parser<
                     children.push(node);
                 }
                 children.push(end_row);
-                children.extend(blank_lines.into_iter().map(NodeOrToken::Token));
+                children.extend(blank_lines);
 
                 NodeOrToken::Node(GreenNode::new(OSK::SrcBlock.into(), children))
             },
@@ -376,7 +373,7 @@ fn comment_or_example_block_parser<'a, C: 'a>(
 
                 children.push(end_row);
 
-                children.extend(blank_lines.into_iter().map(NodeOrToken::Token));
+                children.extend(blank_lines);
 
                 match block_type {
                     BlockType::Comment => {
@@ -431,7 +428,11 @@ pub(crate) fn verse_block_parser<'a, C: 'a>() -> impl Parser<
         .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
     let content_inner = object::line_parser_allow_blank()
         .and_is(end_row.clone().ignored().not()) // No line may start with #+end_NAME.
-        .and_is(just("*").ignored().not())
+        .and_is(
+            element::heading::simple_heading_row_parser()
+                .ignored()
+                .not(),
+        )
         .repeated();
     let content = fullset_objects_parser.nested_in(content_inner.to_slice());
 
@@ -459,11 +460,34 @@ pub(crate) fn verse_block_parser<'a, C: 'a>() -> impl Parser<
 
                 children.push(end_row);
 
-                children.extend(blank_lines.into_iter().map(NodeOrToken::Token));
+                children.extend(blank_lines);
 
                 NodeOrToken::Node(GreenNode::new(OSK::VerseBlock.into(), children))
             },
         )
+        .boxed()
+}
+
+pub(crate) fn simple_verse_block_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+{
+    let begin_row = begin_row_parser("verse");
+    let end_row = end_row_parser("verse");
+    let content_inner = object::line_parser_allow_blank()
+        .and_is(end_row.clone().ignored().not()) // No line may start with #+end_NAME.
+        .and_is(
+            element::heading::simple_heading_row_parser()
+                .ignored()
+                .not(),
+        )
+        .repeated();
+    let affiliated_keywords = element::keyword::affiliated_keyword_parser().repeated();
+    affiliated_keywords
+        .ignore_then(begin_row)
+        .ignore_then(content_inner)
+        .ignore_then(end_row)
+        .ignore_then(object::blank_line_parser().repeated())
+        .ignored()
         .boxed()
 }
 
@@ -477,7 +501,7 @@ fn begin_row_parser<'a, C: 'a>(
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
-    let data = none_of("\n").repeated().at_least(1).collect::<String>();
+    let data = none_of("\n").repeated().at_least(1).to_slice();
     object::whitespaces()
         .then(object::just_case_insensitive("#+begin_"))
         .then(object::just_case_insensitive(name))
@@ -512,7 +536,7 @@ fn begin_row_parser<'a, C: 'a>(
                         )));
                     }
 
-                    children.push(NodeOrToken::Token(GreenToken::new(OSK::Text.into(), &data)));
+                    children.push(NodeOrToken::Token(GreenToken::new(OSK::Text.into(), data)));
                 }
 
                 if !ws3.is_empty() {
@@ -586,7 +610,11 @@ fn content_inner_parser<'a, C: 'a>(
     object::line_parser()
         .or(object::blank_line_str_parser())
         .and_is(end_row.ignored().not()) // No line may start with #+end_NAME.
-        .and_is(just("*").ignored().not())
+        .and_is(
+            element::heading::simple_heading_row_parser()
+                .ignored()
+                .not(),
+        )
         .repeated()
         .to_slice()
 }
@@ -619,7 +647,11 @@ fn center_or_quote_block_parser<'a, C: 'a>(
     let content_inner = object::line_parser()
         .or(object::blank_line_str_parser())
         .and_is(end_row.clone().ignored().not())
-        .and_is(just("*").ignored().not())
+        .and_is(
+            element::heading::simple_heading_row_parser()
+                .ignored()
+                .not(),
+        )
         .repeated()
         .to_slice();
     let content = element_parser
@@ -645,7 +677,7 @@ fn center_or_quote_block_parser<'a, C: 'a>(
                 children.push(begin_row);
                 children.push(content);
                 children.push(end_row);
-                children.extend(blank_lines.into_iter().map(NodeOrToken::Token));
+                children.extend(blank_lines);
 
                 match block_type {
                     BlockType::Center => {
@@ -695,6 +727,51 @@ pub(crate) fn quote_block_parser<'a, C: 'a>(
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     center_or_quote_block_parser(element_parser, BlockType::Quote)
+}
+
+fn simple_center_or_quote_block_parser<'a, C: 'a>(
+    block_type: BlockType,
+) -> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+{
+    let name = match block_type {
+        BlockType::Center => "center",
+        BlockType::Quote => "quote",
+        _ => {
+            panic!("not supported type")
+        }
+    };
+
+    let begin_row = begin_row_parser(name);
+    let end_row = end_row_parser(name);
+    let content_inner = object::line_parser()
+        .or(object::blank_line_str_parser())
+        .and_is(end_row.clone().ignored().not())
+        .and_is(
+            element::heading::simple_heading_row_parser()
+                .ignored()
+                .not(),
+        )
+        .repeated();
+    let affiliated_keywords = element::keyword::affiliated_keyword_parser().repeated();
+    affiliated_keywords
+        .ignore_then(begin_row)
+        .ignore_then(content_inner)
+        .ignore_then(end_row)
+        .ignore_then(object::blank_line_parser().repeated())
+        .ignored()
+        .boxed()
+}
+
+pub(crate) fn simple_center_block_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+{
+    simple_center_or_quote_block_parser(BlockType::Center)
+}
+
+pub(crate) fn simple_quote_block_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+{
+    simple_center_or_quote_block_parser(BlockType::Quote)
 }
 
 pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
@@ -757,7 +834,12 @@ pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
 
     let content_inner = object::line_parser()
         .or(object::blank_line_str_parser())
-        .and_is(end_row.ignored().not())
+        .and_is(end_row.clone().ignored().not())
+        .and_is(
+            element::heading::simple_heading_row_parser()
+                .ignored()
+                .not(),
+        )
         .repeated()
         .to_slice();
 
@@ -871,11 +953,61 @@ pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
                     NodeOrToken::Node(GreenNode::new(OSK::BlockEnd.into(), children))
                 };
                 children.push(end_node);
-                children.extend(blanklines.into_iter().map(NodeOrToken::Token));
+                children.extend(blanklines);
 
                 NodeOrToken::Node(GreenNode::new(OSK::SpecialBlock.into(), children))
             },
         )
+        .boxed()
+}
+
+pub(crate) fn simple_special_block_parser<'a, C: 'a + std::default::Default>()
+-> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+{
+    let affiliated_keywords = element::keyword::affiliated_keyword_parser().repeated();
+
+    let begin_row = object::whitespaces()
+        .then(object::just_case_insensitive("#+begin_"))
+        .then(special_name_parser())
+        .then(
+            object::whitespaces_g1()
+                .then(none_of("\n").repeated().to_slice())
+                .or_not(),
+        )
+        .then(object::newline())
+        .map(
+            |((((begin_whitespaces1, begin), begin_name), maybe_ws_parameters), begin_newline)| {
+                (
+                    begin_whitespaces1,
+                    begin,
+                    begin_name,
+                    maybe_ws_parameters,
+                    begin_newline,
+                )
+            },
+        );
+
+    let end_row = object::whitespaces()
+        .ignore_then(object::just_case_insensitive("#+end_"))
+        .ignore_then(just("").configure(
+            |cfg, ctx: &(&str, &str, &str, Option<(&str, &str)>, &str)| cfg.seq((*ctx).2),
+        ))
+        .ignore_then(object::whitespaces())
+        .ignore_then(object::newline_or_ending())
+        .ignored();
+
+    let content_inner = object::line_parser()
+        .or(object::blank_line_str_parser())
+        .and_is(end_row.ignored().not())
+        .repeated()
+        .to_slice();
+
+    affiliated_keywords
+        .ignore_then(
+            begin_row // element_parser can't be used here since element_parser's context is ()!!! move to the final map()
+                .then_with_ctx(content_inner.ignore_then(end_row)),
+        )
+        .ignore_then(object::blank_line_parser().repeated())
         .boxed()
 }
 

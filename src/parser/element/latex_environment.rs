@@ -214,7 +214,7 @@ pub(crate) fn latex_environment_parser<'a, C: 'a>() -> impl Parser<
                 };
                 children.push(end_row_node);
 
-                children.extend(blank_lines.into_iter().map(NodeOrToken::Token));
+                children.extend(blank_lines);
 
                 NodeOrToken::Node(GreenNode::new(
                     OrgSyntaxKind::LatexEnvironment.into(),

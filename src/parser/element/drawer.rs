@@ -117,7 +117,7 @@ pub(crate) fn node_property_parser<'a, C: 'a>() -> impl Parser<
                     newline,
                 )));
 
-                children.extend(blank_lines.into_iter().map(NodeOrToken::Token));
+                children.extend(blank_lines);
 
                 NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                     OrgSyntaxKind::NodeProperty.into(),
@@ -190,7 +190,7 @@ pub(crate) fn property_drawer_parser<'a, C: 'a>() -> impl Parser<
                     nl1,
                 )));
 
-                children.extend(start_blank_lines.into_iter().map(NodeOrToken::Token));
+                children.extend(start_blank_lines);
                 children.extend(contents);
 
                 if !ws3.is_empty() {
@@ -217,7 +217,7 @@ pub(crate) fn property_drawer_parser<'a, C: 'a>() -> impl Parser<
                     nl2,
                 )));
 
-                children.extend(blank_lines.into_iter().map(NodeOrToken::Token));
+                children.extend(blank_lines);
 
                 NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                     OrgSyntaxKind::PropertyDrawer.into(),
@@ -253,7 +253,7 @@ pub(crate) fn drawer_parser<'a, C: 'a>(
                 .filter(|c: &char| c.is_alphanumeric() || matches!(c, '_' | '-'))
                 .repeated()
                 .at_least(1)
-                .collect::<String>(),
+                .to_slice(),
         )
         .then(just(":"))
         .then(object::whitespaces())
@@ -267,7 +267,7 @@ pub(crate) fn drawer_parser<'a, C: 'a>(
             if !ws1.is_empty() {
                 tokens.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Whitespace.into(),
-                    &ws1,
+                    ws1,
                 )));
             }
             tokens.push(NodeOrToken::Token(GreenToken::new(
@@ -276,7 +276,7 @@ pub(crate) fn drawer_parser<'a, C: 'a>(
             )));
             tokens.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::Text.into(),
-                &name,
+                name,
             )));
             tokens.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::Colon.into(),
@@ -285,7 +285,7 @@ pub(crate) fn drawer_parser<'a, C: 'a>(
             if !ws2.is_empty() {
                 tokens.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Whitespace.into(),
-                    &ws2,
+                    ws2,
                 )));
             }
             tokens.push(NodeOrToken::Token(GreenToken::new(
@@ -338,7 +338,11 @@ pub(crate) fn drawer_parser<'a, C: 'a>(
     let drawer_content_inner = object::line_parser()
         .or(object::blank_line_str_parser())
         .and_is(drawer_end_row.clone().ignored().not())
-        .and_is(just("*").ignored().not()) // fixme: use heading row?
+        .and_is(
+            element::heading::simple_heading_row_parser()
+                .ignored()
+                .not(),
+        ) // fixme: use heading row?
         .repeated()
         .to_slice();
 
@@ -368,10 +372,10 @@ pub(crate) fn drawer_parser<'a, C: 'a>(
 
                 children.extend(keywords);
                 children.push(begin);
-                children.extend(start_blank_lines.into_iter().map(NodeOrToken::Token));
+                children.extend(start_blank_lines);
                 children.push(content);
                 children.push(end);
-                children.extend(blank_lines.into_iter().map(NodeOrToken::Token));
+                children.extend(blank_lines);
 
                 NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                     OrgSyntaxKind::Drawer.into(),
@@ -379,6 +383,52 @@ pub(crate) fn drawer_parser<'a, C: 'a>(
                 ))
             },
         )
+        .boxed()
+}
+
+pub(crate) fn simple_drawer_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+{
+    let affiliated_keywords = element::keyword::affiliated_keyword_parser().repeated();
+
+    let drawer_name_row = object::whitespaces()
+        .ignore_then(just(":"))
+        .ignore_then(
+            any()
+                .filter(|c: &char| c.is_alphanumeric() || matches!(c, '_' | '-'))
+                .repeated()
+                .at_least(1)
+                .to_slice(),
+        )
+        .ignore_then(just(":"))
+        .ignore_then(object::whitespaces())
+        .ignore_then(object::newline())
+        .ignored();
+
+    let drawer_end_row = object::whitespaces()
+        .ignore_then(object::just_case_insensitive(":end:"))
+        .ignore_then(object::whitespaces())
+        .ignore_then(object::newline_or_ending())
+        .ignored();
+
+    let drawer_content_inner = object::line_parser()
+        .or(object::blank_line_str_parser())
+        .and_is(drawer_end_row.clone().ignored().not())
+        .and_is(
+            element::heading::simple_heading_row_parser()
+                .ignored()
+                .not(),
+        ) // fixme: use heading row?
+        .repeated();
+
+    let blank_lines = object::blank_line_parser().repeated();
+
+    affiliated_keywords
+        .ignore_then(drawer_name_row)
+        .ignore_then(blank_lines.clone())
+        .ignore_then(drawer_content_inner)
+        .ignore_then(drawer_end_row)
+        .ignore_then(blank_lines)
         .boxed()
 }
 

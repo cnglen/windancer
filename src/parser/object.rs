@@ -159,13 +159,16 @@ pub(crate) fn blank_line_str_parser<'a, C: 'a>()
 /// WS <- [ \t]
 /// EOL <- '\r'? '\n'
 /// ```
-pub(crate) fn blank_line_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, GreenToken, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>
-+ Clone {
+pub(crate) fn blank_line_parser<'a, C: 'a>() -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
+> + Clone {
     whitespaces()
         .then(just(LF).or(just(CRLF)))
         .to_slice()
-        .map(|s| GreenToken::new(OrgSyntaxKind::BlankLine.into(), s))
+        .map(|s| NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::BlankLine.into(), s)))
 }
 
 pub(crate) fn objects_parser<'a, C: 'a>() -> impl Parser<
@@ -566,7 +569,10 @@ other objects (2):
                 blank_line_parser::<()>()
                     .parse_with_state(input, &mut state)
                     .into_result(),
-                Ok(GreenToken::new(OrgSyntaxKind::BlankLine.into(), input))
+                Ok(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::BlankLine.into(),
+                    input
+                )))
             );
         }
 

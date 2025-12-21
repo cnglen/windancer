@@ -514,43 +514,42 @@ pub(crate) fn entity_parser<'a, C: 'a>() -> impl Parser<
         .filter(|c: &char| !c.is_alphabetic())
         .or(end().to('x'));
 
-    // pattern1: \NAME POST
-    let a1 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>(r"\")
-        .then(name_parser) // NAME
-        .then_ignore(post_parser.rewind()) // POST
-        .map_with(|(backslash, name), e| {
-            e.state().prev_char = name.chars().last();
-            NT::Node(GreenNode::new(
-                OSK::Entity.into(),
-                vec![
-                    NT::Token(GreenToken::new(OSK::BackSlash.into(), backslash)),
-                    NT::Token(GreenToken::new(OSK::EntityName.into(), &name)),
-                ],
-            ))
+    let a2_or_a1 = just(r"\")
+        .then(name_parser.clone())
+        .then(
+            just("{}").map(|curly| (curly, true)).or(
+                empty::<&str, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>()
+                    .then_ignore(post_parser.rewind())
+                    .map(|()| ("", false)), // 标记为 Pattern1
+            ),
+        )
+        .map_with(|((backslash, name), (_curly_or_empty, is_pattern2)), e| {
+            let state: &mut RollbackState<ParserState> = e.state();
+
+            if is_pattern2 {
+                // Pattern2: \NAME{}
+                state.prev_char = Some('}');
+                NT::Node(GreenNode::new(
+                    OSK::Entity.into(),
+                    vec![
+                        NT::Token(GreenToken::new(OSK::BackSlash.into(), backslash)),
+                        NT::Token(GreenToken::new(OSK::EntityName.into(), &name)),
+                        NT::Token(GreenToken::new(OSK::LeftCurlyBracket.into(), "{")),
+                        NT::Token(GreenToken::new(OSK::RightCurlyBracket.into(), "}")),
+                    ],
+                ))
+            } else {
+                // Pattern1: \NAME POST
+                state.prev_char = name.chars().last();
+                NT::Node(GreenNode::new(
+                    OSK::Entity.into(),
+                    vec![
+                        NT::Token(GreenToken::new(OSK::BackSlash.into(), backslash)),
+                        NT::Token(GreenToken::new(OSK::EntityName.into(), &name)),
+                    ],
+                ))
+            }
         });
-
-    // Pattern2: \NAME{}
-    let a2 = just(r"\").then(name_parser).then(just("{}")).map_with(
-        |((backslash, name), left_right_curly), e| {
-            e.state().prev_char = left_right_curly.chars().last();
-
-            NT::Node(GreenNode::new(
-                OSK::Entity.into(),
-                vec![
-                    NT::Token(GreenToken::new(OSK::BackSlash.into(), backslash)),
-                    NT::Token(GreenToken::new(OSK::EntityName.into(), &name)),
-                    NT::Token(GreenToken::new(
-                        OSK::LeftCurlyBracket.into(),
-                        &left_right_curly[0..1],
-                    )),
-                    NT::Token(GreenToken::new(
-                        OSK::RightCurlyBracket.into(),
-                        &left_right_curly[1..2],
-                    )),
-                ],
-            ))
-        },
-    );
 
     // pattern3:  \_SPACES
     let a3 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>(r"\")
@@ -569,7 +568,7 @@ pub(crate) fn entity_parser<'a, C: 'a>() -> impl Parser<
         });
 
     // priority: `a2` > `a1` since `a2` is longer and includes `a1`, or "\pi{}" will be parsed into <Entity(\pi) + Text({})>, while <Entity(\pi{})> is expected
-    Parser::boxed(choice((a2, a1, a3)))
+    Parser::boxed(choice((a2_or_a1, a3)))
 }
 
 #[cfg(test)]

@@ -71,7 +71,7 @@ pub(crate) fn fixed_width_parser<'a, C: 'a>() -> impl Parser<
             let mut children = Vec::with_capacity(keywords.len() + lines.len() + blank_lines.len());
             children.extend(keywords);
             children.extend(lines);
-            children.extend(blank_lines.into_iter().map(NodeOrToken::Token));
+            children.extend(blank_lines);
 
             NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                 OrgSyntaxKind::FixedWidth.into(),

@@ -29,7 +29,7 @@ pub(crate) fn plain_list_parser<'a, C: 'a>(
             let mut children = Vec::with_capacity(keywords.len() + items.len() + blanklines.len());
             children.extend(keywords);
             children.extend(items);
-            children.extend(blanklines.into_iter().map(NodeOrToken::Token));
+            children.extend(blanklines);
             e.state().item_indent.pop();
 
             NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(

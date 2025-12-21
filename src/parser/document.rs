@@ -34,7 +34,7 @@ pub(crate) fn document_parser<'a>() -> impl Parser<
             )| {
                 let mut children = Vec::new();
                 if let Some(blank_lines) = maybe_blank_lines {
-                    children.extend(blank_lines.into_iter().map(NodeOrToken::Token));
+                    children.extend(blank_lines);
                 }
 
                 let estimated = maybe_comment.as_ref().map(|_| 1).unwrap_or(0)

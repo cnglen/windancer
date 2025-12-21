@@ -29,18 +29,18 @@ pub(crate) fn radio_target_parser<'a, C: 'a>(
 
     let target_onechar = none_of("<>\n \t").to_slice();
     let target_g2char = none_of("<>\n \t")
-        .then(none_of("<>\n").repeated().at_least(1).collect::<String>())
-        .try_map_with(|(a, b), e| {
-            if b.chars().last().expect("at least 1").is_whitespace() {
+        .then(none_of("<>\n").repeated().at_least(1))
+        .to_slice()
+        .try_map_with(|ab: &str, e| {
+            if ab.chars().last().expect("at least 1").is_whitespace() {
                 Err(Rich::custom(
                     e.span(),
-                    format!("the last char of '{}' can't be whitespace", b),
+                    format!("the last char of '{}' can't be whitespace", ab),
                 ))
             } else {
-                Ok(format!("{a}{b}"))
+                Ok(ab)
             }
-        })
-        .to_slice();
+        });
     let target = minimal_objects_parser.nested_in(choice((target_g2char, target_onechar)));
 
     just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("<<<")

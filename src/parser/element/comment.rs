@@ -64,7 +64,7 @@ pub(crate) fn comment_parser<'a, C: 'a>() -> impl Parser<
             let mut children =
                 Vec::with_capacity(vn.iter().map(|e| e.len()).sum::<usize>() + blanklines.len());
             children.extend(vn.into_iter().flatten());
-            children.extend(blanklines.into_iter().map(NodeOrToken::Token));
+            children.extend(blanklines);
 
             NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Comment.into(), children))
         })

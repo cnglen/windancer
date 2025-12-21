@@ -20,6 +20,7 @@ use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
+// heading should not be in here, since it's parsed by document!
 pub(crate) fn get_element_parser<'a, C: 'a + std::default::Default>() -> (
     impl Parser<
         'a,
@@ -88,14 +89,28 @@ pub(crate) fn get_element_parser<'a, C: 'a + std::default::Default>() -> (
     let quote_block = block::quote_block_parser(element_without_tablerow_and_item.clone());
     let special_block = block::special_block_parser(element_without_tablerow_and_item.clone());
     let drawer = drawer::drawer_parser(element_in_drawer.clone());
-    // let heading_subtree =
-    //     heading::heading_subtree_parser(element_without_tablerow_and_item.clone(), 0);
     let plain_list =
         list::plain_list_parser(item::item_parser(element_without_tablerow_and_item.clone()));
 
-    // we don't include heading subtree to avoid stackoverflow
-    let non_paragraph_element_parser = choice((
-        // heading_subtree.clone(),
+    // ONLY used for lookhead
+    // IN paragraph_parser(), simple_heading/simple_table/simple_footnote_definition is used for lookahead, no need here for performance:
+    // - we don't include heading subtree to avoid stackoverflow
+    // - we don't include table/drawer/center_block/quote_block/special_block/verse_block
+    let non_paragraph_element_parser_used_in_lookahead = choice((
+        horizontal_rule.clone(),
+        latex_environment.clone(),
+        src_block.clone(),
+        export_block.clone(),
+        example_block.clone(),
+        comment_block.clone(),
+        comment.clone(),
+        fixed_width.clone(),
+        keyword.clone(),
+    ));
+    let paragraph_parser =
+        paragraph::paragraph_parser(non_paragraph_element_parser_used_in_lookahead.clone()); // non_paragraph_element_parser used to negative lookehead
+
+    element_without_tablerow_and_item.define(choice((
         footnote_definition.clone(),
         drawer.clone(),
         plain_list.clone(),
@@ -113,18 +128,11 @@ pub(crate) fn get_element_parser<'a, C: 'a + std::default::Default>() -> (
         table.clone(),
         fixed_width.clone(),
         keyword.clone(),
-    ));
-    let paragraph_parser = paragraph::paragraph_parser(non_paragraph_element_parser.clone()); // non_paragraph_element_parser used to negative lookehead
-
-    element_without_tablerow_and_item.define(choice((
-        non_paragraph_element_parser.clone(),
         paragraph_parser.clone(),
     )));
 
-    // element in section: without heading
-    let non_paragraph_element_parser_in_section = choice((
+    element_in_section.define(choice((
         footnote_definition.clone(),
-        special_block.clone(),
         drawer.clone(),
         plain_list.clone(),
         horizontal_rule.clone(),
@@ -141,16 +149,10 @@ pub(crate) fn get_element_parser<'a, C: 'a + std::default::Default>() -> (
         table.clone(),
         fixed_width.clone(),
         keyword.clone(),
-    ));
-    let paragraph_parser_in_section =
-        paragraph::paragraph_parser(non_paragraph_element_parser_in_section.clone()); // non_paragraph_element_parser used to negative lookehead
-    element_in_section.define(choice((
-        non_paragraph_element_parser_in_section.clone(),
-        paragraph_parser_in_section.clone(),
+        paragraph_parser.clone(),
     )));
 
-    let non_paragraph_element_parser_in_drawer = choice((
-        // heading_subtree.clone(),
+    element_in_drawer.define(choice((
         footnote_definition.clone(),
         plain_list.clone(),
         horizontal_rule.clone(),
@@ -167,15 +169,26 @@ pub(crate) fn get_element_parser<'a, C: 'a + std::default::Default>() -> (
         table.clone(),
         fixed_width.clone(),
         keyword.clone(),
-    ));
-    element_in_drawer.define(choice((
-        non_paragraph_element_parser_in_drawer.clone(),
         paragraph_parser.clone(),
     )));
 
     // negative lookahead
     // dont' use keyword() here, or stackoverflow.
-    let non_paragraph_element_parser_in_keyword = choice((
+    let non_paragraph_element_parser_in_keyword_lookahead = choice((
+        horizontal_rule.clone(),
+        latex_environment.clone(),
+        src_block.clone(),
+        export_block.clone(),
+        example_block.clone(),
+        comment_block.clone(),
+        fixed_width.clone(),
+    ));
+    let paragraph_parser_in_keyword =
+        paragraph::paragraph_parser_with_at_least_n_affiliated_keywords(
+            non_paragraph_element_parser_in_keyword_lookahead,
+            1,
+        );
+    element_in_keyword.define(choice((
         footnote_definition.clone(),
         plain_list.clone(),
         horizontal_rule.clone(),
@@ -190,28 +203,15 @@ pub(crate) fn get_element_parser<'a, C: 'a + std::default::Default>() -> (
         comment_block.clone(),
         table.clone(),
         fixed_width.clone(),
-    ));
-    let paragraph_parser_in_keyword =
-        paragraph::paragraph_parser_with_at_least_n_affiliated_keywords(
-            non_paragraph_element_parser_in_keyword.clone(),
-            1,
-        ); // non_paragraph_element_parser used to negative lookehead
-    element_in_keyword.define(choice((
-        non_paragraph_element_parser_in_keyword.clone(),
         paragraph_parser_in_keyword.clone(),
     )));
 
     (
         Parser::boxed(element_without_tablerow_and_item),
-        Parser::boxed(non_paragraph_element_parser),
+        Parser::boxed(non_paragraph_element_parser_used_in_lookahead),
         Parser::boxed(element_in_section),
         Parser::boxed(element_in_drawer),
         Parser::boxed(element_in_keyword),
-        // element_without_tablerow_and_item,
-        // non_paragraph_element_parser,
-        // element_in_section,
-        // element_in_drawer,
-        // element_in_keyword,
     )
 }
 

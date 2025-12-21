@@ -1,11 +1,9 @@
 //! Section parser
-use crate::parser::ParserState;
 use crate::parser::syntax::OrgSyntaxKind;
+use crate::parser::{ParserState, element};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
-
-use crate::parser::element::paragraph::simple_heading_row_parser;
 
 /// Section解析器，返回包含`GreenNode`的ParserResult
 ///
@@ -36,7 +34,11 @@ pub(crate) fn section_parser<'a, C: 'a>(
 > + Clone {
     Parser::boxed(
         element_parser
-            .and_is(simple_heading_row_parser().ignored().not()) // Section不能以<* title>开头，避免HeadingSurbtree被识别为Section
+            .and_is(
+                element::heading::simple_heading_row_parser()
+                    .ignored()
+                    .not(),
+            ) // Section不能以<* title>开头，避免HeadingSurbtree被识别为Section
             .repeated()
             .at_least(1)
             .collect::<Vec<_>>()

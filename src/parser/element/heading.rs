@@ -277,9 +277,7 @@ pub(crate) fn heading_subtree_parser<'a>(
                     children.push(property_drawer);
                 }
 
-                for blankline in blanklines {
-                    children.push(NodeOrToken::Token(blankline))
-                }
+                children.extend(blanklines);
                 let head_row = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
                     OrgSyntaxKind::HeadingRow.into(),
                     children,
@@ -300,6 +298,21 @@ pub(crate) fn heading_subtree_parser<'a>(
             },
         ),)));
     heading_subtree.with_ctx(prev_level).boxed()
+}
+
+/// A simple heading row parser WITHOUT state, ONLY used for look ahead
+// - section parser: to check whether the next part is heading to stop
+pub(crate) fn simple_heading_row_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+{
+    let stars = just('*').repeated().at_least(1);
+    let whitespaces = one_of(" \t").repeated().at_least(1);
+    let title = none_of(object::CRLF).repeated();
+    stars
+        .ignore_then(whitespaces)
+        .ignore_then(title)
+        .ignore_then(object::newline_or_ending())
+        .to_slice()
 }
 
 #[cfg(test)]

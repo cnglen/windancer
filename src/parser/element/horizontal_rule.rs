@@ -44,7 +44,7 @@ pub(crate) fn horizontal_rule_parser<'a, C: 'a>() -> impl Parser<
                 )));
             }
 
-            children.extend(blanklines.into_iter().map(NodeOrToken::Token));
+            children.extend(blanklines);
 
             NodeOrToken::Node(GreenNode::new(
                 OrgSyntaxKind::HorizontalRule.into(),
