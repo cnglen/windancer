@@ -547,7 +547,7 @@ impl HtmlRenderer {
                     format!(r"\({}\)", content)
                 }
 
-                None => String::from(""),
+                None => String::from(content),
             },
 
             _ => String::from(""), // AstInline::Link { url, text } => {
@@ -588,11 +588,12 @@ impl HtmlRenderer {
                         path,
                         description,
                         is_image,
-                    } if protocol == "file" || protocol == "https"
-                        && description.len() == 0
-                        && [".jpg", ".jpeg", ".png", ".gif", ".svg"]
-                            .iter()
-                            .any(|ext| path.to_lowercase().ends_with(ext)) =>
+                    } if protocol == "file"
+                        || protocol == "https"
+                            && description.len() == 0
+                            && [".jpg", ".jpeg", ".png", ".gif", ".svg"]
+                                .iter()
+                                .any(|ext| path.to_lowercase().ends_with(ext)) =>
                     {
                         true
                     }

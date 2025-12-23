@@ -624,7 +624,8 @@ mod tests {
             get_parsers_output(object::objects_parser::<()>(), r"\alphafoo"),
             format!(
                 r###"Root@0..9
-  Text@0..9 "\\alphafoo"
+  LatexFragment@0..9
+    Text@0..9 "\\alphafoo"
 "###
             )
         );
@@ -658,7 +659,8 @@ mod tests {
         assert_eq!(
             get_parsers_output(object::objects_parser::<()>(), r"\pid"),
             r###"Root@0..4
-  Text@0..4 "\\pid"
+  LatexFragment@0..4
+    Text@0..4 "\\pid"
 "###
         );
     }
@@ -690,7 +692,8 @@ mod tests {
     BackSlash@0..1 "\\"
     Underscore@1..2 "_"
     Spaces@2..12 "          "
-  Text@12..14 "\\n"
+  LatexFragment@12..14
+    Text@12..14 "\\n"
 "###
         );
     }
@@ -700,7 +703,12 @@ mod tests {
         assert_eq!(
             get_parsers_output(object::objects_parser::<()>(), r"\alphA \deltab "),
             r###"Root@0..15
-  Text@0..15 "\\alphA \\deltab "
+  LatexFragment@0..6
+    Text@0..6 "\\alphA"
+  Text@6..7 " "
+  LatexFragment@7..14
+    Text@7..14 "\\deltab"
+  Text@14..15 " "
 "###
         );
     }
