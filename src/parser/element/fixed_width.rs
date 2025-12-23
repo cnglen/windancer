@@ -81,6 +81,30 @@ pub(crate) fn fixed_width_parser<'a, C: 'a>() -> impl Parser<
         .boxed()
 }
 
+pub(crate) fn simple_fixed_width_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+{
+    let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser().repeated();
+
+    let fixed_width_line = object::whitespaces()
+        .ignore_then(just(":"))
+        .ignore_then(
+            whitespaces_g1()
+                .then(none_of(object::CRLF).repeated())
+                .to_slice()
+                .or_not(),
+        )
+        .ignore_then(object::newline_or_ending());
+
+    let blank_lines = object::blank_line_parser().repeated();
+
+    affiliated_keywords
+        .ignore_then(fixed_width_line.repeated().at_least(1))
+        .ignore_then(blank_lines)
+        .ignored()
+        .boxed()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

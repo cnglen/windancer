@@ -1,5 +1,6 @@
 //! Table parser
 use crate::parser::element::keyword::affiliated_keyword_parser;
+use crate::parser::element::keyword::simple_affiliated_keyword_parser;
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserState, object};
 use chumsky::inspector::RollbackState;
@@ -198,9 +199,9 @@ pub(crate) fn table_parser<'a, C: 'a>() -> impl Parser<
 
 // used for negative lookahead
 pub(crate) fn simple_table_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+-> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
 {
-    let affiliated_keywords = affiliated_keyword_parser().ignored().repeated();
+    let affiliated_keywords = simple_affiliated_keyword_parser().ignored().repeated();
     let rows = (object::whitespaces()
         .ignore_then(just("|"))
         .ignore_then(just("-"))
@@ -228,7 +229,6 @@ pub(crate) fn simple_table_parser<'a, C: 'a>()
         .ignore_then(formulas)
         .ignore_then(object::blank_line_parser().repeated())
         .ignored()
-        .to_slice()
 }
 
 #[cfg(test)]

@@ -25,7 +25,7 @@ use crate::parser::object::radio_link::radio_link_parser;
 use crate::parser::object::radio_target::radio_target_parser;
 use crate::parser::object::subscript_superscript::subscript_parser;
 use crate::parser::object::subscript_superscript::superscript_parser;
-use chumsky::input::InputRef;
+
 // use crate::parser::object::table_cell::table_cell_parser;
 use crate::parser::object::target::target_parser;
 use crate::parser::object::text::plain_text_parser;
@@ -64,40 +64,25 @@ pub(crate) fn just_case_insensitive<'a, C: 'a>(
 ) -> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>
 + Clone
 + Copy {
-    custom(
-        |inp: &mut InputRef<
-            'a,
-            '_,
-            &'a str,
-            extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-        >| {
-            let before = &inp.cursor();
-            let remaining = inp.slice_from(std::ops::RangeFrom { start: before });
-            let n = s.chars().count();
+    custom(move |inp| {
+        let before = inp.cursor();
+        for expected_char in s.chars() {
+            let z: Option<char> = inp.next();
+            match z {
+                Some(r) if r.eq_ignore_ascii_case(&expected_char) => {}
+                _ => {
+                    let found = inp.slice_since(&before..);
+                    let error = Rich::custom(
+                        inp.span_since(&before),
+                        &format!("expected '{}' found '{}'", s, found),
+                    );
 
-            let mut remaining_chars = remaining.chars();
-            let mut bound = 0;
-            for expected_char in s.chars() {
-                match remaining_chars.next() {
-                    Some(r) if r.eq_ignore_ascii_case(&expected_char) => {
-                        bound = bound + r.len_utf8();
-                    }
-                    _ => {
-                        let error = Rich::custom::<&str>(
-                            SimpleSpan::from(inp.span_since(before)),
-                            &format!("mismatched"),
-                        );
-                        return Err(error);
-                    }
+                    return Err(error);
                 }
             }
-            let t = &remaining[..bound];
-            for _ in 0..n {
-                inp.next();
-            }
-            Ok(t)
-        },
-    )
+        }
+        Ok(inp.slice_since(&before..))
+    })
 }
 
 /// zero or more whitespaces(including space, \tab)

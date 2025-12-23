@@ -225,6 +225,78 @@ pub(crate) fn latex_environment_parser<'a, C: 'a>() -> impl Parser<
         .boxed()
 }
 
+pub(crate) fn simple_latex_environment_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+{
+    let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser().repeated();
+
+    let begin_row = object::whitespaces()
+        .then(object::just_case_insensitive(r##"\BEGIN{"##))
+        .then(
+            any()
+                .filter(|c: &char| c.is_ascii_alphanumeric() || *c == '*')
+                .repeated()
+                .at_least(1)
+                .to_slice(),
+        )
+        .then(just("}"))
+        .then(object::whitespaces())
+        .then(object::newline())
+        .map(
+            |(
+                (
+                    (((begin_whitespaces1, begin_left_curly), begin_name), begin_right_curly),
+                    begin_whitespaces2,
+                ),
+                begin_newline,
+            )| {
+                (
+                    begin_whitespaces1,
+                    begin_left_curly,
+                    begin_name,
+                    begin_right_curly,
+                    begin_whitespaces2,
+                    begin_newline,
+                )
+            },
+        );
+
+    let end_row = object::whitespaces()
+        .then(object::just_case_insensitive(r##"\END{"##))
+        .then(
+            just("").configure(|cfg, ctx: &(&str, &str, &str, &str, &str, &str)| cfg.seq((*ctx).2)),
+        )
+        .then(just("}"))
+        .then(object::whitespaces())
+        .then(object::newline_or_ending())
+        .map(
+            |(
+                (
+                    (((end_whitespaces1, end_left_curly), end_name), end_right_curly),
+                    end_whitespaces2,
+                ),
+                end_maybe_newline,
+            )| {
+                (
+                    end_whitespaces1,
+                    end_left_curly,
+                    end_name,
+                    end_right_curly,
+                    end_whitespaces2,
+                    end_maybe_newline,
+                )
+            },
+        );
+
+    let contents = any().and_is(end_row.ignored().not()).repeated().to_slice();
+
+    affiliated_keywords
+        .then(begin_row.then_with_ctx(contents.then(end_row)))
+        .then(object::blank_line_parser().repeated())
+        .ignored()
+        .boxed()
+}
+
 #[cfg(test)]
 mod tests {
     use crate::parser::common::get_parser_output;

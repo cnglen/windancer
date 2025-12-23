@@ -11,7 +11,7 @@ pub(crate) fn paragraph_parser<'a, C: 'a + std::default::Default>(
     non_paragraph_parser: impl Parser<
         'a,
         &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
+        (),
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone
     + 'a,
@@ -31,7 +31,7 @@ pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<
     non_paragraph_parser: impl Parser<
         'a,
         &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
+        (),
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone
     + 'a,
@@ -47,9 +47,6 @@ pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<
         .at_least(n)
         .collect::<Vec<_>>();
 
-    let simple_plain_list =
-        element::list::plain_list_parser(element::item::simple_item_parser()).ignored();
-
     // Empty lines and other elements end paragraphs
     let inner = object::line_parser()
         .and_is(
@@ -57,8 +54,8 @@ pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<
             choice((
                 object::blank_line_parser().ignored(),
                 element::heading::simple_heading_row_parser().ignored(), // heading_tree is recursive, we use simple heading row for lookahead to avoid stackoverflow
-                element::table::simple_table_parser().ignored(),
-                element::footnote_definition::simple_footnote_definition_parser().ignored(),
+                element::table::simple_table_parser(),
+                element::footnote_definition::simple_footnote_definition_parser(),
                 just("#+")
                     .ignore_then(
                         one_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_[]")
@@ -67,12 +64,20 @@ pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<
                     )
                     .ignore_then(just(":"))
                     .ignored(),
-                simple_plain_list.ignored(),
+                element::list::simple_plain_list_parser(element::item::simple_item_parser()),
                 element::drawer::simple_drawer_parser(),
                 element::block::simple_center_block_parser(),
                 element::block::simple_quote_block_parser(),
                 element::block::simple_special_block_parser(),
                 element::block::simple_verse_block_parser(),
+                element::latex_environment::simple_latex_environment_parser(),
+                element::block::simple_src_block_parser(),
+                element::block::simple_export_block_parser(),
+                element::block::simple_example_block_parser(),
+                element::block::simple_comment_block_parser(),
+                element::fixed_width::simple_fixed_width_parser(),
+                element::horizontal_rule::horizontal_rule_parser().ignored(),
+                element::comment::comment_parser().ignored(),
                 non_paragraph_parser.ignored(), // other element, this is necessary to find the end of paragraph even thougn paragraph is the last element of choice
             ))
             .not(),

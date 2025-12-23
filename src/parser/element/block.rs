@@ -169,6 +169,78 @@ pub(crate) fn export_block_parser<'a, C: 'a>() -> impl Parser<
         .boxed()
 }
 
+/// simple export block
+pub(crate) fn simple_export_block_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+{
+    let data = none_of("\n \t").repeated().at_least(1).to_slice();
+    let begin_row = object::whitespaces()
+        .then(object::just_case_insensitive("#+BEGIN_"))
+        .then(object::just_case_insensitive("EXPORT")) // name
+        .then(object::whitespaces_g1())
+        .then(data)
+        .then(object::whitespaces())
+        .then(just("\n"))
+        .map(|((((((ws1, begin), block_type), ws2), data), ws3), nl)| {
+            (ws1, begin, block_type, ws2, data, ws3, nl)
+        });
+    let end_row = end_row_parser("export");
+
+    // No line may start with #+end_NAME.
+    // Lines beginning with an asterisk must be quoted by a comma (,*) and lines beginning with #+ may be quoted by a comma when necessary (#+).
+    let content = content_inner_parser(end_row.clone());
+    let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser().repeated();
+
+    affiliated_keywords
+        .then(begin_row)
+        .then(content)
+        .then(end_row)
+        .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
+        .ignored()
+        .boxed()
+}
+
+pub(crate) fn simple_src_block_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+{
+    let language = none_of(" \t\n").repeated().at_least(1).to_slice();
+    let switch_p1 = just("-l")
+        .then(object::whitespaces_g1())
+        .then(none_of("\n\" \t").repeated())
+        .to_slice();
+    let switch_p2 = one_of("+-")
+        .then(any().filter(|c: &char| c.is_alphanumeric()))
+        .to_slice();
+    let switches = switch_p1.or(switch_p2).repeated().to_slice();
+    let arguments = none_of("\n").repeated().to_slice();
+    let begin_row = object::whitespaces()
+        .then(object::just_case_insensitive("#+BEGIN_"))
+        .then(object::just_case_insensitive("SRC")) // name
+        .then(object::whitespaces_g1())
+        .then(language)
+        .then(object::whitespaces_g1().then(switches).or_not())
+        .then(object::whitespaces_g1().then(arguments).or_not())
+        .then(just("\n"));
+
+    let end_row = end_row_parser("src");
+
+    // No line may start with #+end_NAME.
+    // Lines beginning with an asterisk must be quoted by a comma (,*) and lines beginning with #+ may be quoted by a comma when necessary (#+).
+    let content = content_inner_parser(end_row.clone());
+
+    let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser()
+        .repeated()
+        .collect::<Vec<_>>();
+
+    affiliated_keywords
+        .then(begin_row)
+        .then(content)
+        .then(end_row)
+        .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
+        .ignored()
+        .boxed()
+}
+
 /// src block
 pub(crate) fn src_block_parser<'a, C: 'a>() -> impl Parser<
     'a,
@@ -224,6 +296,7 @@ pub(crate) fn src_block_parser<'a, C: 'a>() -> impl Parser<
     let affiliated_keywords = element::keyword::affiliated_keyword_parser()
         .repeated()
         .collect::<Vec<_>>();
+
     affiliated_keywords
         .then(begin_row)
         .then(content)
@@ -411,6 +484,46 @@ pub(crate) fn example_block_parser<'a, C: 'a>() -> impl Parser<
     comment_or_example_block_parser(BlockType::Example)
 }
 
+fn simple_comment_or_example_block_parser<'a, C: 'a>(
+    block_type: BlockType,
+) -> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+{
+    let name = match block_type {
+        BlockType::Comment => "comment",
+        BlockType::Example => "example",
+        _ => {
+            panic!("not supported type")
+        }
+    };
+
+    let begin_row = begin_row_parser(name);
+    let end_row = end_row_parser(name);
+    let content = content_inner_parser(end_row.clone());
+    let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser().repeated();
+
+    affiliated_keywords
+        .then(begin_row)
+        .then(content)
+        .then(end_row)
+        .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
+        .ignored()
+        .boxed()
+}
+
+/// simple comment block
+pub(crate) fn simple_comment_block_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+{
+    simple_comment_or_example_block_parser(BlockType::Comment)
+}
+
+/// simple example block
+pub(crate) fn simple_example_block_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+{
+    simple_comment_or_example_block_parser(BlockType::Example)
+}
+
 /// verse block
 pub(crate) fn verse_block_parser<'a, C: 'a>() -> impl Parser<
     'a,
@@ -481,7 +594,7 @@ pub(crate) fn simple_verse_block_parser<'a, C: 'a>()
                 .not(),
         )
         .repeated();
-    let affiliated_keywords = element::keyword::affiliated_keyword_parser().repeated();
+    let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser().repeated();
     affiliated_keywords
         .ignore_then(begin_row)
         .ignore_then(content_inner)
@@ -752,7 +865,7 @@ fn simple_center_or_quote_block_parser<'a, C: 'a>(
                 .not(),
         )
         .repeated();
-    let affiliated_keywords = element::keyword::affiliated_keyword_parser().repeated();
+    let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser().repeated();
     affiliated_keywords
         .ignore_then(begin_row)
         .ignore_then(content_inner)
@@ -964,7 +1077,7 @@ pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
 pub(crate) fn simple_special_block_parser<'a, C: 'a + std::default::Default>()
 -> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
 {
-    let affiliated_keywords = element::keyword::affiliated_keyword_parser().repeated();
+    let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser().repeated();
 
     let begin_row = object::whitespaces()
         .then(object::just_case_insensitive("#+begin_"))

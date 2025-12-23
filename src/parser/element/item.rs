@@ -103,12 +103,9 @@ pub(crate) fn item_parser<'a, C: 'a>(
 }
 
 // only used in lookahead
-pub(crate) fn simple_item_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn simple_item_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+{
     let item_content_inner = object::line_parser() // no need to test indent since this is the first row of item
         .then(
             object::line_parser()
@@ -156,12 +153,7 @@ pub(crate) fn simple_item_parser<'a, C: 'a>() -> impl Parser<
         })
         .then(item_content_inner.or_not())
         .then(object::blank_line_parser().or_not())
-        .to(
-            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                OrgSyntaxKind::ListItem.into(),
-                vec![],
-            ))
-        )
+        .ignored()
         .boxed()
 }
 

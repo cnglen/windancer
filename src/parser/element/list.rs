@@ -40,6 +40,25 @@ pub(crate) fn plain_list_parser<'a, C: 'a>(
         .boxed()
 }
 
+pub(crate) fn simple_plain_list_parser<'a, C: 'a>(
+    item_parser: impl Parser<
+        'a,
+        &'a str,
+        (),
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
+    > + Clone
+    + 'a,
+) -> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+{
+    let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser().repeated();
+
+    affiliated_keywords
+        .then(item_parser.repeated().at_least(1))
+        .then(object::blank_line_parser().repeated())
+        .ignored()
+        .boxed()
+}
+
 #[cfg(test)]
 mod tests {
     use crate::parser::common::get_parser_output;

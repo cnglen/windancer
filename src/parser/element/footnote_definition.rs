@@ -98,9 +98,9 @@ pub(crate) fn footnote_definition_parser<'a, C: 'a>(
 
 // only used in lookahead
 pub(crate) fn simple_footnote_definition_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+-> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
 {
-    let affiliated_keywords = element::keyword::affiliated_keyword_parser().repeated();
+    let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser().repeated();
 
     let label = any()
         .filter(|c: &char| c.is_alphanumeric() || matches!(c, '_' | '-'))
@@ -128,7 +128,7 @@ pub(crate) fn simple_footnote_definition_parser<'a, C: 'a>()
         .then(just("]"))
         .then(object::whitespaces_g1())
         .then(content_inner)
-        .to_slice()
+        .ignored()
         .boxed()
 }
 

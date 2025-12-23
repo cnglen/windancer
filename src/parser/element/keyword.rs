@@ -1,15 +1,27 @@
 //! Keyword parser
 use crate::parser::object::blank_line_parser;
 use crate::parser::syntax::OrgSyntaxKind;
-use crate::parser::{ParserState, object};
+use crate::parser::{ParserState, element, object};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use phf::phf_set;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 use std::ops::Range;
 
-pub(crate) static ORG_ELEMENT_AFFILIATED_KEYWORDS: phf::Set<&'static str> = phf_set! {
-    "CAPTION",
+// 4 group without overlap for affliated keyword
+// - OPTVALUE_PARSED
+// - OPTVALUE_STRING
+// - NONVALUE_PARSED
+// - NONVALUE_STRING
+pub(crate) static ORG_ELEMENT_KEYWORDS_OPTVALUE_PARSED: phf::Set<&'static str> = phf_set! {
+    "CAPTION"
+};
+
+pub(crate) static ORG_ELEMENT_KEYWORDS_OPTVALUE_STRING: phf::Set<&'static str> = phf_set! {
+    "RESULTS"
+};
+// pub(crate) static ORG_ELEMENT_KEYWORDS_NONVALUE_PARSED: phf::Set<&'static str> = phf_set! {};
+pub(crate) static ORG_ELEMENT_KEYWORDS_NONVALUE_STRING: phf::Set<&'static str> = phf_set! {
     "DATA",
     "HEADER",
     "HEADERS",
@@ -18,508 +30,350 @@ pub(crate) static ORG_ELEMENT_AFFILIATED_KEYWORDS: phf::Set<&'static str> = phf_
     "PLOT",
     "RESNAME",
     "RESULT",
-    "RESULTS",
     "SOURCE",
     "SRCNAME",
     "TBLNAME"
 };
-
-pub(crate) static ORG_ELEMENT_DUAL_KEYWORDS: phf::Set<&'static str> = phf_set! {
+// used for simple_affiliated_keyword_parser: merge ORG_ELEMENT_KEYWORDS_OPTVALUE_PARSED and ORG_ELEMENT_KEYWORDS_OPTVALUE_STRING
+pub(crate) static ORG_ELEMENT_KEYWORDS_OPTVALUE: phf::Set<&'static str> = phf_set! {
     "CAPTION", "RESULTS"
 };
 
-pub(crate) static ORG_ELEMENT_PARSED_KEYWORDS: phf::Set<&'static str> = phf_set! {
-    "CAPTION"
-};
+pub(crate) fn just_keyword_parser<'a, C: 'a>(
+    allowed_keywords: &phf::Set<&'static str>,
+) -> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+{
+    custom(|inp| {
+        let before = inp.cursor();
+        loop {
+            match inp.peek() {
+                Some(c) if matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9') => {
+                    inp.next();
+                }
+                _ => {
+                    break;
+                }
+            }
+        }
+        let name: &str = inp.slice_since(&before..);
+        // println!("name={name}");
+        if name.is_empty() || !allowed_keywords.contains(&name.to_uppercase()) {
+            return Err(Rich::custom(
+                inp.span_since(&before),
+                format!("invalid key: '{}'", name),
+            ));
+        }
+        Ok(name)
+    })
+}
 
 // affliated keyword is NOT a element, it's part of some element.
+// #+KEY: VALUE(string)
+// #+KEY[OPTVAL]: VALUE(string)
+// #+KEY[OPTVAL]: VALUE(objects)
+// #+attr_BACKEND: VALUE
 pub(crate) fn affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
-    let key = custom(|inp| {
-        let before = &inp.cursor();
-        let remaining: &str = inp.slice_from(std::ops::RangeFrom {
-            start: &inp.cursor(),
-        });
-
-        let name: String = remaining
-            .chars()
-            .take_while(|c| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
-            .collect();
-
-        if name.is_empty() || !ORG_ELEMENT_AFFILIATED_KEYWORDS.contains(&name.to_uppercase()) {
-            return Err(Rich::custom(
-                inp.span_since(before),
-                format!("invalid key: '{}'", name),
-            ));
-        }
-
-        for _ in 0..name.len() {
-            inp.next();
-        }
-
-        Ok(name)
-    });
-
-    // let key = any()
-    //     .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
-    //     .repeated()
-    //     .at_least(1)
-    //     .collect::<String>()
-    //     .filter(|name| ORG_ELEMENT_AFFILIATED_KEYWORDS.contains(&name.to_uppercase()));
-
-    let key_with_optvalue = custom(|inp| {
-        let before = &inp.cursor();
-        let remaining: &str = inp.slice_from(std::ops::RangeFrom {
-            start: &inp.cursor(),
-        });
-
-        let name: String = remaining
-            .chars()
-            .take_while(|c| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
-            .collect();
-
-        if name.is_empty() || !ORG_ELEMENT_DUAL_KEYWORDS.contains(&name.to_uppercase()) {
-            return Err(Rich::custom(
-                inp.span_since(before),
-                format!("invalid key: '{}'", name),
-            ));
-        }
-
-        for _ in 0..name.len() {
-            inp.next();
-        }
-
-        Ok(name)
-    });
-
-    // let key_with_optvalue = any()
-    //     .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
-    //     .repeated()
-    //     .at_least(1)
-    //     .collect::<String>()
-    //     .filter(|name| ORG_ELEMENT_DUAL_KEYWORDS.contains(&name.to_uppercase()));
-
-    let key_with_objects = custom(|inp| {
-        let before = &inp.cursor();
-        let remaining: &str = inp.slice_from(std::ops::RangeFrom {
-            start: &inp.cursor(),
-        });
-
-        let name: String = remaining
-            .chars()
-            .take_while(|c| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
-            .collect();
-
-        if name.is_empty() || !ORG_ELEMENT_PARSED_KEYWORDS.contains(&name.to_uppercase()) {
-            return Err(Rich::custom(
-                inp.span_since(before),
-                format!("invalid key: '{}'", name),
-            ));
-        }
-
-        for _ in 0..name.len() {
-            inp.next();
-        }
-
-        Ok(name)
-    });
-
-    // let key_with_objects = any()
-    //     .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
-    //     .repeated()
-    //     .at_least(1)
-    //     .collect::<String>()
-    //     .filter(|name| ORG_ELEMENT_PARSED_KEYWORDS.contains(&name.to_uppercase()));
+    let key_optvalue_parsed = just_keyword_parser(&ORG_ELEMENT_KEYWORDS_OPTVALUE_PARSED); // 1
+    let key_optvalue_string = just_keyword_parser(&ORG_ELEMENT_KEYWORDS_OPTVALUE_STRING); // 1
+    let key_nonvalue_string = just_keyword_parser(&ORG_ELEMENT_KEYWORDS_NONVALUE_STRING); // 11
 
     let backend = any()
         .filter(|c: &char| matches!(c, '-' | '_') || c.is_alphanumeric())
         .repeated()
         .at_least(1)
         .to_slice();
+    let string_without_nl = none_of(object::CRLF).repeated().at_least(1).to_slice();
 
-    let string_without_nl = none_of(object::CRLF).repeated().to_slice();
-
-    let var =
-        none_of::<&str, &str, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("[]\r\n")
-            .repeated()
-            .at_least(1)
-            .to_slice();
-    let mut single_expression = Recursive::declare(); // foo / (foo) / (((foo)))
+    let mut single_expression = Recursive::declare(); // foo / [foo] / [[[foo]]]
     single_expression.define(
-        var.or(just("[")
+        (none_of("[]\r\n").repeated().at_least(1).to_slice()).or(just("[")
             .then(single_expression.clone().repeated())
             .then(just("]"))
             .to_slice()),
     );
-    let optval = single_expression.clone().repeated().to_slice();
+    let optval = single_expression.clone().repeated().at_least(1).to_slice();
 
     let objects_parser = object::object_in_keyword_parser()
         .repeated()
         .at_least(1)
         .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
 
-    // #+KEY: VALUE(string)
-    let p1 = just("#+")
-        .then(key)
-        .then(just(":"))
-        .then(object::whitespaces())
-        .then(string_without_nl)
-        .then(object::newline_or_ending())
-        .map_with(|(((((hash_plus, key), colon), ws), value), nl), e| {
-            let mut children = Vec::with_capacity(6);
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::HashPlus.into(),
-                hash_plus,
-            )));
-
-            children.push(NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::KeywordKey.into(),
-                vec![NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    &key,
-                ))],
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Colon.into(),
-                colon,
-            )));
-
-            if ws.len() > 0 {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    ws,
-                )));
-            }
-
-            children.push(NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::KeywordValue.into(),
-                vec![NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    value,
-                ))],
-            )));
-
-            match nl {
-                Some(newline) => {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Newline.into(),
-                        newline,
+    just("#+")
+        .then(choice((
+            // #+KEY[OPTVAL]: VALUE(string)
+            key_optvalue_string
+                .then(just("[").then(optval.clone()).then(just("]")).or_not())
+                .then(just(":"))
+                .then(object::whitespaces())
+                .then(string_without_nl)
+                .map_with(|((((key, maybe_lsb_optval_rsb), colon), ws), value), e| {
+                    let mut children = Vec::with_capacity(7);
+                    children.push(NodeOrToken::Node(GreenNode::new(
+                        OrgSyntaxKind::KeywordKey.into(),
+                        vec![NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::Text.into(),
+                            key,
+                        ))],
                     )));
-                    e.state().prev_char = newline.chars().last();
-                }
-                None => {
+
+                    if let Some(((lsb, optval), rsb)) = maybe_lsb_optval_rsb {
+                        children.push(NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::LeftSquareBracket.into(),
+                            lsb,
+                        )));
+
+                        children.push(NodeOrToken::Node(GreenNode::new(
+                            OrgSyntaxKind::KeywordOptvalue.into(),
+                            vec![NodeOrToken::Token(GreenToken::new(
+                                OrgSyntaxKind::Text.into(),
+                                optval,
+                            ))],
+                        )));
+
+                        children.push(NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::RightSquareBracket.into(),
+                            rsb,
+                        )));
+                    }
+
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Colon.into(),
+                        colon,
+                    )));
+                    if !ws.is_empty() {
+                        children.push(NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::Whitespace.into(),
+                            ws,
+                        )));
+                    }
+                    children.push(NodeOrToken::Node(GreenNode::new(
+                        OrgSyntaxKind::KeywordValue.into(),
+                        vec![NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::Text.into(),
+                            value,
+                        ))],
+                    )));
+
                     e.state().prev_char = value.chars().last();
-                }
-            }
-            NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::AffiliatedKeyword.into(),
-                children,
-            ))
-        });
-
-    // #+KEY[OPTVAL]: VALUE(string)
-    let p2 = just("#+")
-        .then(key_with_optvalue)
-        .then(just("["))
-        .then(optval.clone())
-        .then(just("]"))
-        .then(just(":"))
-        .then(object::whitespaces())
-        .then(string_without_nl)
-        .then(object::newline_or_ending())
-        .map_with(
-            |((((((((hash_plus, key), lsb), optval), rsb), colon), ws), value), nl), e| {
-                let mut children = Vec::with_capacity(9);
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::HashPlus.into(),
-                    hash_plus,
-                )));
-
-                children.push(NodeOrToken::Node(GreenNode::new(
-                    OrgSyntaxKind::KeywordKey.into(),
-                    vec![NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Text.into(),
-                        &key,
-                    ))],
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::LeftSquareBracket.into(),
-                    &lsb,
-                )));
-
-                children.push(NodeOrToken::Node(GreenNode::new(
-                    OrgSyntaxKind::KeywordOptvalue.into(),
-                    vec![NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Text.into(),
-                        &optval,
-                    ))],
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::RightSquareBracket.into(),
-                    &rsb,
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Colon.into(),
-                    colon,
-                )));
-
-                if ws.len() > 0 {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Whitespace.into(),
-                        &ws,
+                    children
+                }),
+            // #+KEY[OPTVAL]: VALUE(objects)
+            key_optvalue_parsed
+                .then(just("[").then(optval.clone()).then(just("]")).or_not())
+                .then(just(":"))
+                .then(object::whitespaces())
+                .then(objects_parser.clone().nested_in(string_without_nl))
+                .map_with(|((((key, maybe_lsb_optval_rsb), colon), ws), value), _e| {
+                    let mut children = Vec::with_capacity(7);
+                    children.push(NodeOrToken::Node(GreenNode::new(
+                        OrgSyntaxKind::KeywordKey.into(),
+                        vec![NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::Text.into(),
+                            key,
+                        ))],
                     )));
-                }
 
-                children.push(NodeOrToken::Node(GreenNode::new(
-                    OrgSyntaxKind::KeywordValue.into(),
-                    vec![NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Text.into(),
-                        &value,
-                    ))],
-                )));
-
-                match nl {
-                    Some(newline) => {
+                    if let Some(((lsb, optval), rsb)) = maybe_lsb_optval_rsb {
                         children.push(NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::Newline.into(),
-                            &newline,
+                            OrgSyntaxKind::LeftSquareBracket.into(),
+                            lsb,
                         )));
-                        e.state().prev_char = newline.chars().last();
-                    }
-                    None => {
-                        e.state().prev_char = value.chars().last();
-                    }
-                }
-                NodeOrToken::Node(GreenNode::new(
-                    OrgSyntaxKind::AffiliatedKeyword.into(),
-                    children,
-                ))
-            },
-        );
 
-    // #+attr_BACKEND: VALUE
-    let p3 = just("#+")
-        .then(
-            object::just_case_insensitive("attr_")
-                .then(backend)
-                .to_slice(),
-        )
-        .then(just(":"))
-        .then(object::whitespaces())
-        .then(string_without_nl)
-        .then(object::newline_or_ending())
-        .map_with(
-            |(((((hash_plus, attr_backend), colon), ws), value), nl), e| {
-                let mut children = Vec::with_capacity(6);
+                        children.push(NodeOrToken::Node(GreenNode::new(
+                            OrgSyntaxKind::KeywordOptvalue.into(),
+                            vec![NodeOrToken::Token(GreenToken::new(
+                                OrgSyntaxKind::Text.into(),
+                                optval,
+                            ))],
+                        )));
 
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::HashPlus.into(),
-                    hash_plus,
-                )));
-
-                children.push(NodeOrToken::Node(GreenNode::new(
-                    OrgSyntaxKind::KeywordKey.into(),
-                    vec![NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Text.into(),
-                        attr_backend,
-                    ))],
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Colon.into(),
-                    colon,
-                )));
-
-                if !ws.is_empty() {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Whitespace.into(),
-                        ws,
-                    )));
-                }
-
-                children.push(NodeOrToken::Node(GreenNode::new(
-                    OrgSyntaxKind::KeywordValue.into(),
-                    vec![NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Text.into(),
-                        value,
-                    ))],
-                )));
-
-                match nl {
-                    Some(newline) => {
                         children.push(NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::Newline.into(),
-                            &newline,
+                            OrgSyntaxKind::RightSquareBracket.into(),
+                            rsb,
                         )));
-                        e.state().prev_char = newline.chars().last();
                     }
-                    None => {
-                        e.state().prev_char = value.chars().last();
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Colon.into(),
+                        colon,
+                    )));
+                    if !ws.is_empty() {
+                        children.push(NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::Whitespace.into(),
+                            ws,
+                        )));
                     }
-                }
-                NodeOrToken::Node(GreenNode::new(
-                    OrgSyntaxKind::AffiliatedKeyword.into(),
-                    children,
-                ))
-            },
-        );
-
-    // #+KEY: VALUE(objects)
-    let p1a = just("#+")
-        .then(key_with_objects)
-        .then(just(":"))
-        .then(object::whitespaces())
-        .then(objects_parser.clone().nested_in(string_without_nl))
-        .then(object::newline_or_ending())
-        .map_with(|(((((hash_plus, key), colon), ws), value), nl), e| {
-            let mut children = Vec::with_capacity(6);
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::HashPlus.into(),
-                hash_plus,
-            )));
-
-            children.push(NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::KeywordKey.into(),
-                vec![NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    &key,
-                ))],
-            )));
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Colon.into(),
-                colon,
-            )));
-
-            if ws.len() > 0 {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    ws,
-                )));
-            }
-
-            if value.len() > 0 {
-                children.push(NodeOrToken::Node(GreenNode::new(
-                    OrgSyntaxKind::KeywordValue.into(),
-                    value,
-                )));
-            }
-
-            match nl {
-                Some(newline) => {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Newline.into(),
-                        newline,
-                    )));
-                    e.state().prev_char = newline.chars().last();
-                }
-                None => {}
-            }
-
-            NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::AffiliatedKeyword.into(),
-                children,
-            ))
-        });
-
-    // #+KEY[OPTVAL]: VALUE(objects)
-    let p2a = just("#+")
-        .then(key_with_objects)
-        .then(just("["))
-        .then(optval.clone())
-        .then(just("]"))
-        .then(just(":"))
-        .then(object::whitespaces())
-        .then(
-            objects_parser
-                .clone()
-                .nested_in(string_without_nl.to_slice()),
-        )
-        .then(object::newline_or_ending())
-        .map_with(
-            |((((((((hash_plus, key), lsb), optval), rsb), colon), ws), value), nl), e| {
-                let mut children = Vec::with_capacity(9);
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::HashPlus.into(),
-                    hash_plus,
-                )));
-
-                children.push(NodeOrToken::Node(GreenNode::new(
-                    OrgSyntaxKind::KeywordKey.into(),
-                    vec![NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Text.into(),
-                        &key,
-                    ))],
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::LeftSquareBracket.into(),
-                    &lsb,
-                )));
-
-                children.push(NodeOrToken::Node(GreenNode::new(
-                    OrgSyntaxKind::KeywordOptvalue.into(),
-                    vec![NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Text.into(),
-                        &optval,
-                    ))],
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::RightSquareBracket.into(),
-                    &rsb,
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Colon.into(),
-                    colon,
-                )));
-
-                if ws.len() > 0 {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Whitespace.into(),
-                        &ws,
-                    )));
-                }
-
-                if value.len() > 0 {
                     children.push(NodeOrToken::Node(GreenNode::new(
                         OrgSyntaxKind::KeywordValue.into(),
                         value,
                     )));
-                }
-
-                match nl {
-                    Some(newline) => {
+                    children
+                }),
+            // #+KEY: VALUE(string)
+            key_nonvalue_string
+                .then(just(":"))
+                .then(object::whitespaces())
+                .then(string_without_nl)
+                .map_with(|(((key, colon), ws), value), e| {
+                    let mut children = Vec::with_capacity(4);
+                    children.push(NodeOrToken::Node(GreenNode::new(
+                        OrgSyntaxKind::KeywordKey.into(),
+                        vec![NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::Text.into(),
+                            key,
+                        ))],
+                    )));
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Colon.into(),
+                        colon,
+                    )));
+                    if !ws.is_empty() {
                         children.push(NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::Newline.into(),
-                            &newline,
+                            OrgSyntaxKind::Whitespace.into(),
+                            ws,
                         )));
-                        e.state().prev_char = newline.chars().last();
                     }
-                    None => {}
-                }
+                    children.push(NodeOrToken::Node(GreenNode::new(
+                        OrgSyntaxKind::KeywordValue.into(),
+                        vec![NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::Text.into(),
+                            value,
+                        ))],
+                    )));
 
-                NodeOrToken::Node(GreenNode::new(
-                    OrgSyntaxKind::AffiliatedKeyword.into(),
-                    children,
-                ))
-            },
-        );
+                    e.state().prev_char = value.chars().last();
+                    children
+                }),
+            // #+attr_BACKEND: VALUE
+            object::just_case_insensitive("attr_")
+                .then(backend)
+                .to_slice()
+                .then(just(":"))
+                .then(object::whitespaces())
+                .then(string_without_nl)
+                .map_with(|(((attr_backend, colon), ws), value), e| {
+                    let mut children = Vec::with_capacity(4);
 
-    Parser::boxed(choice((p2a, p2, p1a, p1, p3)))
+                    children.push(NodeOrToken::Node(GreenNode::new(
+                        OrgSyntaxKind::KeywordKey.into(),
+                        vec![NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::Text.into(),
+                            attr_backend,
+                        ))],
+                    )));
+
+                    children.push(NodeOrToken::Token(GreenToken::new(
+                        OrgSyntaxKind::Colon.into(),
+                        colon,
+                    )));
+
+                    if !ws.is_empty() {
+                        children.push(NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::Whitespace.into(),
+                            ws,
+                        )));
+                    }
+
+                    children.push(NodeOrToken::Node(GreenNode::new(
+                        OrgSyntaxKind::KeywordValue.into(),
+                        vec![NodeOrToken::Token(GreenToken::new(
+                            OrgSyntaxKind::Text.into(),
+                            value,
+                        ))],
+                    )));
+
+                    e.state().prev_char = value.chars().last();
+                    children
+                }),
+        )))
+        .then(object::newline_or_ending())
+        .map_with(|((hash_plus, others), maybe_newline), e| {
+            let mut children = Vec::with_capacity(2 + others.len());
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::HashPlus.into(),
+                hash_plus,
+            )));
+            children.extend(others);
+            if let Some(newline) = maybe_newline {
+                children.push(NodeOrToken::Token(GreenToken::new(
+                    OrgSyntaxKind::Newline.into(),
+                    newline,
+                )));
+                e.state().prev_char = newline.chars().last();
+            }
+
+            NodeOrToken::Node(GreenNode::new(
+                OrgSyntaxKind::AffiliatedKeyword.into(),
+                children,
+            ))
+        })
+}
+
+// only for lookahead, no object_parser is need
+pub(crate) fn simple_affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
+> + Clone {
+    let key_optvalue = just_keyword_parser(&ORG_ELEMENT_KEYWORDS_OPTVALUE); // 2
+    let key_nonvalue_string = just_keyword_parser(&ORG_ELEMENT_KEYWORDS_NONVALUE_STRING); // 11
+    let backend = any()
+        .filter(|c: &char| matches!(c, '-' | '_') || c.is_alphanumeric())
+        .repeated()
+        .at_least(1);
+    let string_without_nl = none_of(object::CRLF).repeated().at_least(1).to_slice();
+    let mut single_expression = Recursive::declare(); // foo / [foo] / [[[foo]]]
+    single_expression.define(
+        (none_of("[]\r\n").repeated().at_least(1).to_slice()).or(just("[")
+            .then(single_expression.clone().repeated())
+            .then(just("]"))
+            .to_slice()),
+    );
+    let optval = single_expression.clone().repeated().at_least(1);
+
+    just("#+")
+        .then(choice((
+            // #+KEY[OPTVAL]: VALUE(string/object)
+            key_optvalue
+                .then(just("[").then(optval.clone()).then(just("]")).or_not())
+                .then(just(":"))
+                .then(object::whitespaces())
+                .then(string_without_nl)
+                .map_with(|((((_, _), _), _), value), e| {
+                    e.state().prev_char = value.chars().last();
+                    ()
+                }),
+            // #+KEY: VALUE(string)
+            key_nonvalue_string
+                .then(just(":"))
+                .then(object::whitespaces())
+                .then(string_without_nl)
+                .map_with(|(((_, _), _), value), e| {
+                    e.state().prev_char = value.chars().last();
+                    ()
+                }),
+            // #+attr_BACKEND: VALUE
+            object::just_case_insensitive("attr_")
+                .then(backend)
+                .to_slice()
+                .then(just(":"))
+                .then(object::whitespaces())
+                .then(string_without_nl)
+                .map_with(|(((_, _), _), value), e| {
+                    e.state().prev_char = value.chars().last();
+                    ()
+                }),
+        )))
+        .then(object::newline_or_ending())
+        .to(NodeOrToken::Node(GreenNode::new(
+            OrgSyntaxKind::AffiliatedKeyword.into(),
+            vec![],
+        )))
 }
 
 // find last colon(:), all previous chars are `key`, such as "#+key:with:colon: value"
@@ -559,56 +413,40 @@ fn key_parser<'a, C: 'a>()
 }
 
 // element_parser: <element with affiliated word>
-pub(crate) fn keyword_parser<'a, C: 'a>(
-    element_parser: impl Parser<
-        'a,
-        &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone
-    + 'a,
-) -> impl Parser<
+pub(crate) fn keyword_parser<'a, C: 'a + std::default::Default>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
+    let element_parser_having_affiliated_keywords_for_lookahead = choice((
+        element::footnote_definition::simple_footnote_definition_parser(),
+        element::list::simple_plain_list_parser(element::item::simple_item_parser()),
+        element::block::simple_center_block_parser(),
+        element::block::simple_quote_block_parser(),
+        element::block::simple_special_block_parser(),
+        element::block::simple_verse_block_parser(),
+        element::table::simple_table_parser(),
+        element::horizontal_rule::horizontal_rule_parser().ignored(),
+        element::latex_environment::simple_latex_environment_parser(),
+        element::block::simple_src_block_parser(),
+        element::block::simple_export_block_parser(),
+        element::block::simple_example_block_parser(),
+        element::block::simple_comment_block_parser(),
+        element::fixed_width::simple_fixed_width_parser(),
+        element::paragraph::paragraph_parser_with_at_least_n_affiliated_keywords(
+            choice((
+                element::horizontal_rule::horizontal_rule_parser().ignored(), // placeholder
+            )),
+            1,
+        )
+        .ignored(),
+    ));
+
     // PEG: !whitespace any()*
     // last if not :
-
-    let string_without_nl = none_of("\n\r").repeated().collect::<String>();
-    let key_with_objects = custom(|inp| {
-        let before = &inp.cursor();
-        let remaining: &str = inp.slice_from(std::ops::RangeFrom {
-            start: &inp.cursor(),
-        });
-
-        let name: String = remaining
-            .chars()
-            .take_while(|c| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
-            .collect();
-
-        if name.is_empty() || !ORG_ELEMENT_PARSED_KEYWORDS.contains(&name.to_uppercase()) {
-            return Err(Rich::custom(
-                inp.span_since(before),
-                format!("invalid key: '{}'", name),
-            ));
-        }
-
-        for _ in 0..name.len() {
-            inp.next();
-        }
-
-        Ok(name)
-    });
-
-    // let key_with_objects = any()
-    //     .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
-    //     .repeated()
-    //     .at_least(1)
-    //     .collect::<String>()
-    //     .filter(|name| ORG_ELEMENT_PARSED_KEYWORDS.contains(&name.to_uppercase()));
-
+    let string_without_nl = none_of(object::CRLF).repeated().at_least(1).to_slice();
+    let key_with_objects = just_keyword_parser(&ORG_ELEMENT_KEYWORDS_OPTVALUE_PARSED); // 1
     let objects_parser = object::object_in_keyword_parser()
         .repeated()
         .at_least(1)
@@ -640,7 +478,7 @@ pub(crate) fn keyword_parser<'a, C: 'a>(
             .then(object::newline().map(|c| Some(c)))
             // .map(|s|{println!("dbg: s={s:?}"); s})
             .and_is(
-                element_parser
+                element_parser_having_affiliated_keywords_for_lookahead
                     .clone()
                     .ignored()
                     // .map(|s|{println!("dbg@and_is: s={s:?}"); s})
@@ -648,13 +486,9 @@ pub(crate) fn keyword_parser<'a, C: 'a>(
             ),
     ))
     .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
-    // .map(|s| {
-    //     println!("keyword_parser@s2={s:?}");
-    //     s
-    // })
     .map_with(
         |((((((hash_plus, key), colon), ws), value), nl), blank_lines), e| {
-            let mut children = vec![];
+            let mut children = Vec::with_capacity(6 + blank_lines.len());
 
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::HashPlus.into(),
@@ -674,10 +508,10 @@ pub(crate) fn keyword_parser<'a, C: 'a>(
                 colon,
             )));
 
-            if ws.len() > 0 {
+            if !ws.is_empty() {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Whitespace.into(),
-                    &ws,
+                    ws,
                 )));
             }
 
@@ -693,7 +527,7 @@ pub(crate) fn keyword_parser<'a, C: 'a>(
                 Some(newline) => {
                     children.push(NodeOrToken::Token(GreenToken::new(
                         OrgSyntaxKind::Newline.into(),
-                        &newline,
+                        newline,
                     )));
                     e.state().prev_char = newline.chars().last();
                 }
@@ -701,8 +535,9 @@ pub(crate) fn keyword_parser<'a, C: 'a>(
                     e.state().prev_char = value.chars().last();
                 }
             }
-            for blank_line in blank_lines {
-                children.push(blank_line);
+
+            if blank_lines.len() > 0 {
+                children.extend(blank_lines);
                 e.state().prev_char = Some('\n');
             }
 
@@ -715,21 +550,19 @@ pub(crate) fn keyword_parser<'a, C: 'a>(
         .then(key_with_objects)
         .then(just(":"))
         .then(object::whitespaces())
-        .then(
-            objects_parser
-                .clone()
-                .nested_in(string_without_nl.to_slice()),
-        );
+        .then(objects_parser.clone().nested_in(string_without_nl));
 
     let p1a = choice((
         p1a_part1.clone().then(end().to(None)),
         p1a_part1
             .clone()
             .then(just('\n').then(end()).to_slice().to(Some("\n"))),
-        p1a_part1
-            .clone()
-            .then(just("\n").map(|c| Some(c)))
-            .and_is(element_parser.clone().ignored().not()),
+        p1a_part1.clone().then(just("\n").map(|c| Some(c))).and_is(
+            element_parser_having_affiliated_keywords_for_lookahead
+                .clone()
+                .ignored()
+                .not(),
+        ), // todo: better use simple_afflitaed keyword?
         p1a_part1
             .clone()
             .then(object::newline_or_ending())
@@ -738,13 +571,11 @@ pub(crate) fn keyword_parser<'a, C: 'a>(
     .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
     .map_with(
         |((((((hash_plus, key), colon), ws), value), nl), blank_lines), e| {
-            let mut children = vec![];
-
+            let mut children = Vec::with_capacity(6 + blank_lines.len());
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::HashPlus.into(),
                 hash_plus,
             )));
-
             children.push(NodeOrToken::Node(GreenNode::new(
                 OrgSyntaxKind::KeywordKey.into(),
                 vec![NodeOrToken::Token(GreenToken::new(
@@ -752,43 +583,32 @@ pub(crate) fn keyword_parser<'a, C: 'a>(
                     &key,
                 ))],
             )));
-
             children.push(NodeOrToken::Token(GreenToken::new(
                 OrgSyntaxKind::Colon.into(),
                 colon,
             )));
-
-            if ws.len() > 0 {
+            if !ws.is_empty() {
                 children.push(NodeOrToken::Token(GreenToken::new(
                     OrgSyntaxKind::Whitespace.into(),
-                    &ws,
+                    ws,
                 )));
             }
-
-            let mut children_of_value = vec![];
-            for node in value {
-                children_of_value.push(node);
-            }
-            if children_of_value.len() > 0 {
-                children.push(NodeOrToken::Node(GreenNode::new(
-                    OrgSyntaxKind::KeywordValue.into(),
-                    children_of_value,
-                )));
-            }
-
+            children.push(NodeOrToken::Node(GreenNode::new(
+                OrgSyntaxKind::KeywordValue.into(),
+                value,
+            )));
             match nl {
                 Some(newline) => {
                     children.push(NodeOrToken::Token(GreenToken::new(
                         OrgSyntaxKind::Newline.into(),
-                        &newline,
+                        newline,
                     )));
                     e.state().prev_char = newline.chars().last();
                 }
                 None => {}
             }
-
-            for blank_line in blank_lines {
-                children.push(blank_line);
+            if blank_lines.len() > 0 {
+                children.extend(blank_lines);
                 e.state().prev_char = Some('\n');
             }
 
@@ -797,7 +617,63 @@ pub(crate) fn keyword_parser<'a, C: 'a>(
     );
 
     Parser::boxed(choice((p1a, p1)))
-    // choice((p1a, p1))
+}
+
+pub(crate) fn simple_keyword_parser<'a, C: 'a + std::default::Default>()
+-> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+{
+    let element_parser_having_affiliated_keywords_for_lookahead = choice((
+        element::footnote_definition::simple_footnote_definition_parser(),
+        element::list::simple_plain_list_parser(element::item::simple_item_parser()),
+        element::block::simple_center_block_parser(),
+        element::block::simple_quote_block_parser(),
+        element::block::simple_special_block_parser(),
+        element::block::simple_verse_block_parser(),
+        element::table::simple_table_parser(),
+        element::horizontal_rule::horizontal_rule_parser().ignored(),
+        element::latex_environment::simple_latex_environment_parser(),
+        element::block::simple_src_block_parser(),
+        element::block::simple_export_block_parser(),
+        element::block::simple_example_block_parser(),
+        element::block::simple_comment_block_parser(),
+        element::fixed_width::simple_fixed_width_parser(),
+        element::paragraph::paragraph_parser_with_at_least_n_affiliated_keywords(
+            choice((
+                element::horizontal_rule::horizontal_rule_parser().ignored(), // placeholder
+            )),
+            1,
+        )
+        .ignored(),
+    ));
+    let string_without_nl = none_of(object::CRLF).repeated().at_least(1).to_slice();
+
+    let p1_part1 = just("#+")
+        .then(key_parser())
+        .then(just(":"))
+        .then(object::whitespaces())
+        .then(string_without_nl);
+
+    choice((
+        p1_part1.clone().then(end().to(None)),
+        p1_part1
+            .clone()
+            .then(object::newline().then(end()).to_slice().map(|s| Some(s))),
+        p1_part1
+            .clone()
+            .then(object::newline().map(|c| Some(c)))
+            .then_ignore(blank_line_parser().repeated().at_least(1).rewind()),
+        p1_part1
+            .clone()
+            .then(object::newline().map(|c| Some(c)))
+            .and_is(
+                element_parser_having_affiliated_keywords_for_lookahead
+                    .clone()
+                    .ignored()
+                    .not(),
+            ),
+    ))
+    .ignore_then(object::blank_line_parser().repeated())
+    .ignored()
 }
 
 #[cfg(test)]
@@ -811,7 +687,8 @@ mod tests {
     fn test_keyword_01() {
         assert_eq!(
             get_parser_output(
-                keyword_parser(element::element_in_keyword_parser::<()>()),
+                // keyword_parser(element::element_in_keyword_parser::<()>()),
+                keyword_parser::<()>(),
                 r"#+key: value    "
             ),
             r###"Keyword@0..16
@@ -830,7 +707,8 @@ mod tests {
     fn test_keyword_91() {
         assert_eq!(
             get_parser_output(
-                keyword_parser(element::element_in_keyword_parser::<()>()),
+                // keyword_parser(element::element_in_keyword_parser::<()>()),
+                keyword_parser::<()>(),
                 r"#+title: org test
 
 "
@@ -853,7 +731,8 @@ mod tests {
     fn test_keyword_02() {
         assert_eq!(
             get_parser_output(
-                keyword_parser(element::element_in_keyword_parser::<()>()),
+                // keyword_parser(element::element_in_keyword_parser::<()>()),
+                keyword_parser::<()>(),
                 r"#+key:has:colons: value    "
             ),
             r###"Keyword@0..27
