@@ -7,6 +7,7 @@ use rowan::{GreenNode, GreenToken, NodeOrToken};
 type NT = NodeOrToken<GreenNode, GreenToken>;
 type OSK = OrgSyntaxKind;
 
+// todo: use ctx combine 6 parser  for better lesser code
 /// text markup parser
 pub(crate) fn text_markup_parser<'a, C: 'a>(
     object_parser: impl Parser<
@@ -26,7 +27,7 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
 
     // a string may not begin or end with whitespace.
     let get_content = |marker: char| {
-        none_of::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>(" \t​")
+        none_of(" \t​")
             .then(any()
                   .and_is(
                       just(marker).ignore_then(post).ignored().not()
@@ -35,7 +36,8 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
             )
             .to_slice()
             .try_map_with(|content:&str, e| {
-                let pre_valid = e.state().prev_char.map_or(true, |c| {
+                // https://github.com/zesterer/chumsky/issues/624
+                let pre_valid = (e.state() as &mut RollbackState<ParserState>).prev_char.map_or(true, |c| {
                     matches!(
                         c,
                         ' '| '\t'| '​'|              // whitespace character
@@ -56,7 +58,7 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
 
                     _ => {Err(Rich::custom(
                         e.span(),
-                        format!("text-markup:content: pre_valid={pre_valid}, content_end_valid={content_end_valid}:\n  - content={content:?} ends with whitesace\n  - PRE={:?} not valid", e.state().prev_char),
+                        format!("text-markup:content: pre_valid={pre_valid}, content_end_valid={content_end_valid}:\n  - content={content:?} ends with whitesace\n  - PRE={:?} not valid", (e.state() as & mut RollbackState<ParserState>).prev_char),
                     ))}
 
                 }
@@ -78,7 +80,7 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
             // pre valid should NOT be deteced here, state.prev_char is update by standard object parser
             // let old_state = e.state().prev_char;
 
-            e.state().prev_char = end_marker.chars().last();
+            (e.state() as &mut RollbackState<ParserState>).prev_char = end_marker.chars().last();
             // println!("bold: {:?}{:?}{:?}, set prev_char {:?} -> {:?}", start_marker, content, end_marker, old_state, e.state().prev_char);
 
             let mut children = Vec::with_capacity(2 + content.len());
@@ -98,7 +100,8 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
         .then_ignore(post.rewind())
         .try_map_with(|((start_marker, content), end_marker), e| {
             // pre valid should NOT be deteced here, state.prev_char is update by standard object parser
-            e.state().prev_char = end_marker.chars().last();
+            (e.state() as &mut RollbackState<ParserState>).prev_char = end_marker.chars().last();
+            
 
             let mut children = Vec::with_capacity(2 + content.len());
             children.push(NT::Token(GreenToken::new(OSK::Slash.into(), start_marker)));
@@ -114,7 +117,7 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
         .then_ignore(post.rewind())
         .try_map_with(|((start_marker, content), end_marker), e| {
             // pre valid should NOT be deteced here, state.prev_char is update by standard object parser
-            e.state().prev_char = end_marker.chars().last();
+            (e.state() as &mut RollbackState<ParserState>).prev_char = end_marker.chars().last();
 
             let mut children = Vec::with_capacity(2 + content.len());
             children.push(NT::Token(GreenToken::new(
@@ -136,7 +139,8 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
         .then_ignore(post.rewind())
         .try_map_with(|((start_marker, content), end_marker), e| {
             // pre valid should NOT be deteced here, state.prev_char is update by standard object parser
-            e.state().prev_char = end_marker.chars().last();
+            (e.state() as &mut RollbackState<ParserState>).prev_char = end_marker.chars().last();
+            
 
             let mut children = Vec::with_capacity(2 + content.len());
             children.push(NT::Token(GreenToken::new(OSK::Plus.into(), start_marker)));
@@ -154,7 +158,8 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
         .then(just("~"))
         .then_ignore(post.rewind())
         .try_map_with(|((start_marker, content), end_marker), e| {
-            e.state().prev_char = end_marker.chars().last();
+            (e.state() as &mut RollbackState<ParserState>).prev_char = end_marker.chars().last();
+            
             Ok(NT::Node(GreenNode::new(
                 OSK::Code.into(),
                 vec![
@@ -170,7 +175,8 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
         .then(just("="))
         .then_ignore(post.rewind())
         .try_map_with(|((start_marker, content), end_marker), e| {
-            e.state().prev_char = end_marker.chars().last();
+            (e.state() as &mut RollbackState<ParserState>).prev_char = end_marker.chars().last();
+            
 
             Ok(NT::Node(GreenNode::new(
                 OSK::Verbatim.into(),
