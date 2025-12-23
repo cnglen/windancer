@@ -2,23 +2,27 @@ An [[https://orgmode.org/][org-mode]] toolkit, including parser, renderer.
 
 * Usage
 
+** How to use?
+
 #+begin_src bash
   cargo install windancer
   windancer --help
-  RUST_MIN_STACK=8388608 cargo test
 #+end_src
 
 see [[file:docs/status.org][status]] for status.
 
-** dev
+** development
 
-RUST_MIN_STACK=8388608 cargo bench --profile dev
+#+begin_src bash
+  cargo test
 
-cargo flamegraph --example main
-cargo flamegraph --example main --dev
-perf report
+  # bench
+  cargo bench
+  # performance
+  cargo flamegraph --example main
+  perf report
+#+end_src
 
-cargo bench
 
 * Reference
 

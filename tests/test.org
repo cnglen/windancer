@@ -666,22 +666,10 @@ radio link: my radio target, define three radio target <<<*bold* target>>> and <
 
 
 
-#+name: image-name
-#+caption: This is a caption for
-#+caption: the image linked below
-[[file:some/image.png]]
-
-#+name: image-name
-#+caption: This is a keyword
-
-[[file:some/image.png]]
-
-
-
-#+caption: This is a keyword
-
-[[file:some/image.png]]
-
+#+name: Blossoming Swirls of Elegance
+#+caption: This is a caption for the image linked below
+#+caption: Blossoming Swirls of Elegance Free Vector Download
+[[https://images.freeimages.com/image/previews/1b1/blossoming-swirls-of-elegance-5690563.jpg]]
 
 
 ** timestamp

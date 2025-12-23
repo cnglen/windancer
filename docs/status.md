@@ -8,7 +8,7 @@
 | superscript | ✓ | ✓ | ✓ |  |
 | footnote-reference | ✓ | ✓ | ✓ |  |
 | line-break | ✓ | ✓ | ✓ |  |
-| macro | ✓ | ✓ |  | todo render: collect macro replacement |
+| macro | ✓ | ✓ |  | collect macro defintion from keyword |
 | text-markup[^1] | ✓ | ✓ | ✓ |  |
 | radio link | ✓ | ✓ | ✓ |  |
 | angle link | ✓ | ✓ | ✓ |  |
@@ -27,31 +27,38 @@
 
 # element
 
-## greater element
-
-|                    | parser-rowan | parser-ast | html-render | comment |
-|--------------------|--------------|------------|-------------|---------|
-| HeadingSubtree     |              |            |             |         |
-| Section            |              |            |             |         |
-| Table              |              |            |             |         |
-| Drawer             |              |            |             |         |
-| CenterBlock        |              |            |             |         |
-| QuoteBlock         |              |            |             |         |
-| SpecialBlock       |              |            |             |         |
-| List               |              |            |             |         |
-| Item               |              |            |             |         |
-| FootnoteDefinition |              |            |             |         |
-| Paragraph          |              |            |             |         |
-| SrcBlock           |              |            |             |         |
-| CommentBlock       |              |            |             |         |
-| VerseBlock         |              |            |             |         |
-| ExampleBlock       |              |            |             |         |
-| HorizontalRule     |              |            |             |         |
-| LatexEnvironment   |              |            |             |         |
-| Keyrord            |              |            |             |         |
-| TableRow           |              |            |             |         |
-
-## lesser element
+|                     | parser-rowan | parser-ast | html-render | comment      |
+|---------------------|--------------|------------|-------------|--------------|
+| heading-subtree     | ✓            | ✓          | ✓           |              |
+| section             | ✓            | ✓          | ✓           |              |
+| drawer              | ✓            | ✓          | \-          |              |
+| property-drawer     | ✓            | ✓          | \-          |              |
+| center-block        | ✓            | ✓          | ✓           |              |
+| quote-block         | ✓            | ✓          | ✓           |              |
+| special-block       | ✓            | ✓          | ✓           |              |
+| item                | ✓            | ✓          | ✓           |              |
+| plain-List          | ✓            | ✓          | ✓           |              |
+| Table               | ✓            | ✓          | ✓           |              |
+| footnote-definition | ✓            | ✓          | ✓           |              |
+| dynamic-block       |              |            |             | low          |
+| inlinetask          |              |            |             | low          |
+| comment             | ✓            | ✓          | ✓           |              |
+| table-row           | ✓            | ✓          | ✓           |              |
+| paragraph           | ✓            | ✓          | ✓           |              |
+| node-property       | ✓            | ✓          | \-          |              |
+| planning            | ✓            | ✓          | \-          |              |
+| clock               |              |            |             | low          |
+| diary-sexp          |              |            |             | low          |
+| fixed-width         | ✓            | ✓          | ✓           |              |
+| comment-block       | ✓            | ✓          | ✓           |              |
+| example-block       | ✓            | ✓          | ✓           |              |
+| verse-block         | ✓            | ✓          | ✓           |              |
+| export-block        | ✓            | ✓          | ✓           |              |
+| src-block           | ✓            | ✓          | ✓           |              |
+| horizontal-rule     | ✓            | ✓          | ✓           |              |
+| latex-environment   | ✓            | ✓          | ✓           |              |
+| keyword             | ✓            | ✓          | \-          | babel~call~  |
+| babel-call?         |              |            |             | low, \#+CALL |
 
 # Footnotes
 

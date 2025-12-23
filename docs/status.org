@@ -32,56 +32,41 @@
 
 * element
 
-** greater element
-
-|                     | parser-rowan | parser-ast | html-render | comment |
-|---------------------+--------------+------------+-------------+---------|
-| heading-subtree     |              |            |             |         |
-| section             |              |            |             |         |
-| drawer              |              |            |             |         |
-| property-drawer     |              |            |             |         |
-| center-block        |              |            |             |         |
-| quote-block         |              |            |             |         |
-| special-block       |              |            |             |         |
-| dynamic-block       |              |            |             |         |
-| item                |              |            |             |         |
-| plain-List          |              |            |             |         |
-| Table               | ✓           | ✓         | ✓          |         |
-| inlinetask          |              |            |             |         |
-| footnote-definition |              |            |             |         |
-
-
-heading-subtree:
-- heading row
-- section (optional)
-- next-level heading subtree(son)
-
-section:
-- one or more none-heading elements
-
-** lesser element
-
-|                   | parser-rowan | parser-ast | html-render | comment |
-|-------------------+--------------+------------+-------------+---------|
-| comment           | ✓           | ✓         | ✓          |         |
-| table-row         | ✓           | ✓         | ✓          |         |
-| clock             |              |            |             |         |
-| diary-sexp        |              |            |             |         |
-| paragraph         |              |            |             |         |
-| node-property     |              |            |             |         |
-| fixed-width       |              |            |             |         |
-| planning          |              |            |             |         |
-| blocks            |              |            |             |         |
-| horizontal-rule   | ✓           | ✓         | ✓          |         |
-| latex-environment | ✓           | ✓         | ✓          |         |
-| keyword           |              |            |             |         |
-| babel-call?       |              |            |             |         |
-
-| comment-block |   |   |   |   |
-| example-block |   |   |   |   |
-| src-block     |   |   |   |   |
-| verse-block   |   |   |   |   |
-| export-clock  |   |   |   |   |
+|                     | parser-rowan | parser-ast | html-render | comment     |
+|---------------------+--------------+------------+-------------+-------------|
+| heading-subtree     | ✓           | ✓         | ✓          |             |
+| section             | ✓           | ✓         | ✓          |             |
+| drawer              | ✓           | ✓         | -           |             |
+| property-drawer     | ✓           | ✓         | -           |             |
+| center-block        | ✓           | ✓         | ✓          |             |
+| quote-block         | ✓           | ✓         | ✓          |             |
+| special-block       | ✓           | ✓         | ✓          |             |
+| item                | ✓           | ✓         | ✓          |             |
+| plain-List          | ✓           | ✓         | ✓          |             |
+| Table               | ✓           | ✓         | ✓          |             |
+| footnote-definition | ✓           | ✓         | ✓          |             |
+| dynamic-block       |              |            |             | low         |
+| inlinetask          |              |            |             | low         |
+|---------------------+--------------+------------+-------------+-------------|
+| comment             | ✓           | ✓         | ✓          |             |
+| table-row           | ✓           | ✓         | ✓          |             |
+| paragraph           | ✓           | ✓         | ✓          |             |
+| node-property       | ✓           | ✓         | -           |             |
+| planning            | ✓           | ✓         | -           |             |
+| clock               |              |            |             | low         |
+| diary-sexp          |              |            |             | low         |
+| fixed-width         | ✓           | ✓         | ✓          |             |
+|---------------------+--------------+------------+-------------+-------------|
+| comment-block       | ✓           | ✓         | ✓          |             |
+| example-block       | ✓           | ✓         | ✓          |             |
+| verse-block         | ✓           | ✓         | ✓          |             |
+| export-block        | ✓           | ✓         | ✓          |             |
+| src-block           | ✓           | ✓         | ✓          |             |
+|---------------------+--------------+------------+-------------+-------------|
+| horizontal-rule     | ✓           | ✓         | ✓          |             |
+| latex-environment   | ✓           | ✓         | ✓          |             |
+| keyword             | ✓           | ✓         | -           | babel_call  |
+| babel-call?         |              |            |             | low, #+CALL |
 
 
 * Footnotes

@@ -588,7 +588,7 @@ impl HtmlRenderer {
                         path,
                         description,
                         is_image,
-                    } if protocol == "file"
+                    } if protocol == "file" || protocol == "https"
                         && description.len() == 0
                         && [".jpg", ".jpeg", ".png", ".gif", ".svg"]
                             .iter()

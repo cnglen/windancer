@@ -2,18 +2,26 @@ An [org-mode](https://orgmode.org/) toolkit, including parser, renderer.
 
 # Usage
 
+## How to use?
+
 ``` bash
-# user
 cargo install windancer
 windancer --help
-
-# developer
-cargo test -r
-cargo run -r  --example main
-cargo bench
 ```
 
-see [status](docs/status.md) for status.
+see [status](docs/status.org) for status.
+
+## development
+
+``` bash
+cargo test
+
+# bench
+cargo bench
+# performance
+cargo flamegraph --example main
+perf report
+```
 
 # Reference
 
