@@ -1,12 +1,12 @@
 //! radio link parser
 use crate::parser::syntax::{OrgLanguage, OrgSyntaxKind};
 use crate::parser::{ParserState, RADIO_TARGETS};
+use chumsky::container::Seq;
 use chumsky::input::InputRef;
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::SyntaxNode;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
-use std::ops::Range;
 
 fn try_match_string<'a, C: 'a>(
     stream: &mut InputRef<
@@ -17,13 +17,11 @@ fn try_match_string<'a, C: 'a>(
     >,
     s: &str,
 ) -> bool {
-    let start = stream.save();
+    let mut remaining = stream.slice_from(&stream.cursor()..).seq_iter();
     let mut success = true;
-
     for expected_char in s.chars() {
-        let cc = stream.next();
-        match cc {
-            Some(actual_char) if actual_char == expected_char => {
+        match remaining.next() {
+            Some(c) if c == expected_char => {
                 continue;
             }
             _ => {
@@ -32,48 +30,42 @@ fn try_match_string<'a, C: 'a>(
             }
         }
     }
-
-    stream.rewind(start);
     success
 }
 
 fn radio_parser<'a, C: 'a>()
 -> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
 {
-    custom::<_, &str, _, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>(
-        move |stream| {
-            let mut longest_match: Option<(String, usize)> = None;
-            if let Some(radio_targets) = RADIO_TARGETS.get() {
-                for candidate in radio_targets {
-                    if try_match_string(stream, candidate) {
-                        let match_len = candidate.len();
-                        if longest_match
-                            .as_ref()
-                            .map_or(true, |(_, len)| match_len > *len)
-                        {
-                            longest_match = Some((candidate.clone(), match_len));
-                        }
+    custom(move |stream| {
+        let before = stream.cursor();
+
+        let mut longest_match: Option<(String, usize)> = None;
+        if let Some(radio_targets) = RADIO_TARGETS.get() {
+            for candidate in radio_targets {
+                if try_match_string(stream, candidate) {
+                    let match_len = candidate.len();
+                    if longest_match
+                        .as_ref()
+                        .map_or(true, |(_, len)| match_len > *len)
+                    {
+                        longest_match = Some((candidate.clone(), match_len));
                     }
                 }
             }
+        }
 
-            if let Some((matched_string, len)) = longest_match {
-                for _ in 0..len {
-                    stream.next();
-                }
-                // println!("radio_parser: {matched_string:?}");
-                Ok(matched_string)
-            } else {
-                Err(Rich::custom(
-                    SimpleSpan::from(Range {
-                        start: *stream.cursor().inner(),
-                        end: (stream.cursor().inner() + 0),
-                    }),
-                    format!("No radio target matched"),
-                ))
+        if let Some((matched_string, len)) = longest_match {
+            for _ in 0..len {
+                stream.next();
             }
-        },
-    )
+            Ok(matched_string)
+        } else {
+            Err(Rich::custom(
+                stream.span_since(&before),
+                "No radio target matched",
+            ))
+        }
+    })
 }
 
 /// radio link parser: PRE RADIO POST
