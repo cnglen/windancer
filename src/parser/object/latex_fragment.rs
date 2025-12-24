@@ -1,7 +1,6 @@
-//! latex fragment parser
-// todo: PRE update state or parse(pre, latex_framengt)?
+//! Latex fragment parser
+use crate::constants::entity::ENTITYNAME_TO_HTML;
 use crate::parser::ParserState;
-use crate::parser::object::entity::ENTITYNAME_TO_HTML;
 use crate::parser::syntax::OrgSyntaxKind;
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
@@ -88,14 +87,15 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>() -> impl Parser<
     let border1 = none_of("\r\n \t.,;$");
     let border2 = none_of("\r\n \t.,$");
     let t_tex_inline = just("$")
-        .try_map_with(
-            |s, e| match (e.state() as &mut RollbackState<ParserState>).prev_char {
-                Some(c) if c == '$' => {
-                    Err(Rich::<char>::custom(e.span(), format!("prev_char is $")))
-                }
-                _ => Ok(s),
-            },
-        )
+        .try_map_with(|s, e| {
+            let pre_valid = (e.state() as &mut RollbackState<ParserState>)
+                .prev_char
+                .map_or(true, |e| e != '$');
+            match pre_valid {
+                false => Err(Rich::<char>::custom(e.span(), format!("prev_char is $"))),
+                true => Ok(s),
+            }
+        })
         .then(choice((
             // PRE$CHAR$POST must be in first order, $|pia$, $pi|$
             // $pia$, $pi$ -> $|pia$, $pi|$

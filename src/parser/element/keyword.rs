@@ -1,71 +1,15 @@
 //! Keyword parser
+use crate::constants::keyword::ORG_ELEMENT_KEYWORDS_NONVALUE_STRING;
+use crate::constants::keyword::ORG_ELEMENT_KEYWORDS_OPTVALUE;
+use crate::constants::keyword::ORG_ELEMENT_KEYWORDS_OPTVALUE_PARSED;
+use crate::constants::keyword::ORG_ELEMENT_KEYWORDS_OPTVALUE_STRING;
 use crate::parser::object::blank_line_parser;
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserState, element, object};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use phf::phf_set;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 use std::ops::Range;
-
-// 4 group without overlap for affliated keyword
-// - OPTVALUE_PARSED
-// - OPTVALUE_STRING
-// - NONVALUE_PARSED
-// - NONVALUE_STRING
-pub(crate) static ORG_ELEMENT_KEYWORDS_OPTVALUE_PARSED: phf::Set<&'static str> = phf_set! {
-    "CAPTION"
-};
-
-pub(crate) static ORG_ELEMENT_KEYWORDS_OPTVALUE_STRING: phf::Set<&'static str> = phf_set! {
-    "RESULTS"
-};
-// pub(crate) static ORG_ELEMENT_KEYWORDS_NONVALUE_PARSED: phf::Set<&'static str> = phf_set! {};
-pub(crate) static ORG_ELEMENT_KEYWORDS_NONVALUE_STRING: phf::Set<&'static str> = phf_set! {
-    "DATA",
-    "HEADER",
-    "HEADERS",
-    "LABEL",
-    "NAME",
-    "PLOT",
-    "RESNAME",
-    "RESULT",
-    "SOURCE",
-    "SRCNAME",
-    "TBLNAME"
-};
-// used for simple_affiliated_keyword_parser: merge ORG_ELEMENT_KEYWORDS_OPTVALUE_PARSED and ORG_ELEMENT_KEYWORDS_OPTVALUE_STRING
-pub(crate) static ORG_ELEMENT_KEYWORDS_OPTVALUE: phf::Set<&'static str> = phf_set! {
-    "CAPTION", "RESULTS"
-};
-
-pub(crate) fn just_keyword_parser<'a, C: 'a>(
-    allowed_keywords: &phf::Set<&'static str>,
-) -> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
-    custom(|inp| {
-        let before = inp.cursor();
-        loop {
-            match inp.peek() {
-                Some(c) if matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9') => {
-                    inp.next();
-                }
-                _ => {
-                    break;
-                }
-            }
-        }
-        let name: &str = inp.slice_since(&before..);
-        // println!("name={name}");
-        if name.is_empty() || !allowed_keywords.contains(&name.to_uppercase()) {
-            return Err(Rich::custom(
-                inp.span_since(&before),
-                format!("invalid key: '{}'", name),
-            ));
-        }
-        Ok(name)
-    })
-}
 
 // affliated keyword is NOT a element, it's part of some element.
 // #+KEY: VALUE(string)
@@ -78,9 +22,9 @@ pub(crate) fn affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
-    let key_optvalue_parsed = just_keyword_parser(&ORG_ELEMENT_KEYWORDS_OPTVALUE_PARSED); // 1
-    let key_optvalue_string = just_keyword_parser(&ORG_ELEMENT_KEYWORDS_OPTVALUE_STRING); // 1
-    let key_nonvalue_string = just_keyword_parser(&ORG_ELEMENT_KEYWORDS_NONVALUE_STRING); // 11
+    let key_optvalue_parsed = object::keyword_ci_parser(&ORG_ELEMENT_KEYWORDS_OPTVALUE_PARSED); // 1
+    let key_optvalue_string = object::keyword_ci_parser(&ORG_ELEMENT_KEYWORDS_OPTVALUE_STRING); // 1
+    let key_nonvalue_string = object::keyword_ci_parser(&ORG_ELEMENT_KEYWORDS_NONVALUE_STRING); // 11
 
     let backend = any()
         .filter(|c: &char| matches!(c, '-' | '_') || c.is_alphanumeric())
@@ -320,8 +264,8 @@ pub(crate) fn simple_affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
-    let key_optvalue = just_keyword_parser(&ORG_ELEMENT_KEYWORDS_OPTVALUE); // 2
-    let key_nonvalue_string = just_keyword_parser(&ORG_ELEMENT_KEYWORDS_NONVALUE_STRING); // 11
+    let key_optvalue = object::keyword_ci_parser(&ORG_ELEMENT_KEYWORDS_OPTVALUE); // 2
+    let key_nonvalue_string = object::keyword_ci_parser(&ORG_ELEMENT_KEYWORDS_NONVALUE_STRING); // 11
     let backend = any()
         .filter(|c: &char| matches!(c, '-' | '_') || c.is_alphanumeric())
         .repeated()
@@ -446,7 +390,7 @@ pub(crate) fn keyword_parser<'a, C: 'a + std::default::Default>() -> impl Parser
     // PEG: !whitespace any()*
     // last if not :
     let string_without_nl = none_of(object::CRLF).repeated().at_least(1).to_slice();
-    let key_with_objects = just_keyword_parser(&ORG_ELEMENT_KEYWORDS_OPTVALUE_PARSED); // 1
+    let key_with_objects = object::keyword_ci_parser(&ORG_ELEMENT_KEYWORDS_OPTVALUE_PARSED); // 1
     let objects_parser = object::object_in_keyword_parser()
         .repeated()
         .at_least(1)

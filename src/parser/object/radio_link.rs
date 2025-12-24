@@ -96,61 +96,49 @@ pub(crate) fn radio_link_parser<'a, C: 'a>(
         .repeated()
         .at_least(1)
         .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
-
     let radio = minimal_objects_parser.nested_in(radio_parser().to_slice());
     let post = any()
         .filter(|c: &char| !c.is_alphanumeric())
         .or(end().to('x'));
 
-    let backup_prev_char = any::<_, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>()
-        .map_with(|s, e| {
-            let tmp = e.state().prev_char;
-            e.state().prev_char_backup.push(tmp);
-
-            // if e.state().prev_char_backup.len()>3{
-            //     println!("radio_link: state={:?}", e.state().prev_char_backup.len());
-            // }
-            s
-        })
-        .rewind();
-
-    backup_prev_char
-        .then(radio)
-        .map_with(|s, e| {
-            // println!("radio_link_parser: s={s:?}");
-            e.state().prev_char = e.state().prev_char_backup.pop().unwrap(); // resume prev_char
-            s
-        })
-        .then_ignore(post.rewind())
-        .try_map_with(|(_, radio), e| {
-            let pre_valid = e.state().prev_char.map_or(true, |c| !c.is_alphanumeric());
+    any()
+        .try_map_with(|_s, e| {
+            // check with PRE
+            let pre_valid = (e.state() as &mut RollbackState<ParserState>)
+                .prev_char
+                .map_or(true, |c| !c.is_alphanumeric());
 
             match pre_valid {
-                true => {
-                    let root = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                        OrgSyntaxKind::Root.into(),
-                        radio.clone(),
-                    ));
-                    let syntax_tree: SyntaxNode<OrgLanguage> =
-                        SyntaxNode::new_root(root.into_node().expect("xx"));
-                    let last_char = syntax_tree
-                        .last_token()
-                        .map_or(None, |x| x.text().chars().last());
-                    e.state().prev_char = last_char;
-
-                    Ok(NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                        OrgSyntaxKind::RadioLink.into(),
-                        radio,
-                    )))
-                }
-                false => Err(Rich::custom(
+                true => Ok(()),
+                false => Err(Rich::<char>::custom(
                     e.span(),
                     format!(
                         "radio_link_parser: pre_valid={pre_valid}, PRE={:?} not valid",
-                        e.state().prev_char
+                        (e.state() as &mut RollbackState<ParserState>).prev_char
                     ),
                 )),
             }
+        })
+        .rewind()
+        .then(radio)
+        .then_ignore(post.rewind())
+        .map_with(|(_s, radio), e| {
+            // fixme: faster to get radio last char?
+            let root = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+                OrgSyntaxKind::Root.into(),
+                radio.clone(),
+            ));
+            let syntax_tree: SyntaxNode<OrgLanguage> =
+                SyntaxNode::new_root(root.into_node().expect("xx"));
+            let last_char = syntax_tree
+                .last_token()
+                .map_or(None, |x| x.text().chars().last());
+            (e.state() as &mut RollbackState<ParserState>).prev_char = last_char;
+
+            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+                OrgSyntaxKind::RadioLink.into(),
+                radio,
+            ))
         })
         .boxed()
 }

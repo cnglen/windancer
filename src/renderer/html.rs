@@ -34,7 +34,7 @@ use crate::ast::element::{
     TableRowType, VerseBlock,
 };
 use crate::ast::object::{Object, TableCellType};
-use crate::parser::object::entity::ENTITYNAME_TO_HTML;
+use crate::constants::entity::ENTITYNAME_TO_HTML;
 use chrono::{DateTime, Local};
 
 use std::collections::HashMap;

@@ -4,6 +4,7 @@
 use clap::Parser;
 
 mod ast;
+mod constants;
 mod parser;
 mod renderer;
 

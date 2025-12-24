@@ -40,6 +40,88 @@ use rowan::{GreenNode, GreenToken, NodeOrToken};
 pub const LF: &str = "\n";
 pub const CRLF: &str = "\r\n";
 
+// case insensitive keyword parser:
+// - name <- (a-zA-Z0-9)*
+// - if name in allowe_keywords, Ok(name)
+// example:
+// - OK: keyword_ci_parser("def").parse("def")
+// - ERR: keyword_ci_parser("def").parse("define")
+pub(crate) fn keyword_ci_parser<'a, C: 'a>(
+    allowed_keywords: &phf::Set<&'static str>,
+) -> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+{
+    custom(|inp| {
+        let before = inp.cursor();
+        loop {
+            match inp.peek() {
+                Some(c) if matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9') => {
+                    inp.next();
+                }
+                _ => {
+                    break;
+                }
+            }
+        }
+        let name: &str = inp.slice_since(&before..);
+
+        if name.is_empty() {
+            return Err(Rich::custom(
+                inp.span_since(&before),
+                format!("no valid string found: empty found"),
+            ));
+        }
+
+        let allowed_keywords_uppercase: std::collections::HashSet<String> =
+            allowed_keywords.iter().map(|m| m.to_uppercase()).collect();
+        if !allowed_keywords_uppercase.contains(&name.to_uppercase()) {
+            return Err(Rich::custom(
+                inp.span_since(&before),
+                format!("invalid key: '{}'", name),
+            ));
+        }
+        Ok(name)
+    })
+}
+
+// case sensitive keyword parser:
+// - name <- (a-zA-Z0-9)*
+// - if name in allowe_keywords, Ok(name)
+pub(crate) fn keyword_cs_parser<'a, C: 'a>(
+    allowed_keywords: &phf::Set<&'static str>,
+) -> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+{
+    custom(|inp| {
+        let before = inp.cursor();
+        loop {
+            match inp.peek() {
+                Some(c) if matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9') => {
+                    inp.next();
+                }
+                _ => {
+                    break;
+                }
+            }
+        }
+        let name: &str = inp.slice_since(&before..);
+
+        if name.is_empty() {
+            return Err(Rich::custom(
+                inp.span_since(&before),
+                format!("no valid string found: empty found"),
+            ));
+        }
+
+        if !allowed_keywords.contains(&name) {
+            return Err(Rich::custom(
+                inp.span_since(&before),
+                format!("invalid key: '{}'", name),
+            ));
+        }
+
+        Ok(name)
+    })
+}
+
 /// 解析行终止符：换行符(LF/CRLF)或输入结束
 pub(crate) fn newline_or_ending<'a, C: 'a>()
 -> impl Parser<'a, &'a str, Option<&'a str>, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>

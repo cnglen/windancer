@@ -1,574 +1,75 @@
 //! Entity parser
-use crate::parser::ParserState;
+use crate::constants::entity::ENTITYNAME_SET;
 use crate::parser::syntax::OrgSyntaxKind;
-
+use crate::parser::{ParserState, object};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
-use phf::phf_map;
-
 type NT = NodeOrToken<GreenNode, GreenToken>;
 type OSK = OrgSyntaxKind;
 
-pub(crate) static ENTITYNAME_TO_HTML: phf::Map<&'static str, &'static str> = phf_map! {
-        // * letters
-        // ** latin
-        "Agrave" => "&Agrave;",
-        "agrave" => "&agrave;",
-        "Aacute" => "&Aacute;",
-        "aacute" => "&aacute;",
-        "Acirc" => "&Acirc;",
-        "acirc" => "&acirc;",
-        "Amacr" => "&Amacr;",
-        "amacr" => "&amacr;",
-        "Atilde" => "&Atilde;",
-        "atilde" => "&atilde;",
-        "Auml" => "&Auml;",
-        "auml" => "&auml;",
-        "Aring" => "&Aring;",
-        "AA" => "&Aring;",
-        "aring" => "&aring;",
-        "AElig" => "&AElig;",
-        "aelig" => "&aelig;",
-        "Ccedil" => "&Ccedil;",
-        "ccedil" => "&ccedil;",
-        "Egrave" => "&Egrave;",
-        "egrave" => "&egrave;",
-        "Eacute" => "&Eacute;",
-        "eacute" => "&eacute;",
-        "Ecirc" => "&Ecirc;",
-        "ecirc" => "&ecirc;",
-        "Euml" => "&Euml;",
-        "euml" => "&euml;",
-        "Igrave" => "&Igrave;",
-        "igrave" => "&igrave;",
-        "Iacute" => "&Iacute;",
-        "iacute" => "&iacute;",
-        "Idot" => "&idot;",
-        "inodot" => "&inodot;",
-        "Icirc" => "&Icirc;",
-        "icirc" => "&icirc;",
-        "Iuml" => "&Iuml;",
-        "iuml" => "&iuml;",
-        "Ntilde" => "&Ntilde;",
-        "ntilde" => "&ntilde;",
-        "Ograve" => "&Ograve;",
-        "ograve" => "&ograve;",
-        "Oacute" => "&Oacute;",
-        "oacute" => "&oacute;",
-        "Ocirc" => "&Ocirc;",
-        "ocirc" => "&ocirc;",
-        "Otilde" => "&Otilde;",
-        "otilde" => "&otilde;",
-        "Ouml" => "&Ouml;",
-        "ouml" => "&ouml;",
-        "Oslash" => "&Oslash;",
-        "oslash" => "&oslash;",
-        "OElig" => "&OElig;",
-        "oelig" => "&oelig;",
-        "Scaron" => "&Scaron;",
-        "scaron" => "&scaron;",
-        "szlig" => "&szlig;",
-        "Ugrave" => "&Ugrave;",
-        "ugrave" => "&ugrave;",
-        "Uacute" => "&Uacute;",
-        "uacute" => "&uacute;",
-        "Ucirc" => "&Ucirc;",
-        "ucirc" => "&ucirc;",
-        "Uuml" => "&Uuml;",
-        "uuml" => "&uuml;",
-        "Yacute" => "&Yacute;",
-        "yacute" => "&yacute;",
-        "Yuml" => "&Yuml;",
-        "yuml" => "&yuml;",
-
-        // ** Latin special face,"
-        "fnof" => "&fnof;",
-        "real" => "&real;",
-        "image" => "&image;",
-        "weierp" => "&weierp;",
-        "ell" => "&ell;",
-        "imath" => "&imath;",
-        "jmath" => "&jmath;",
-
-        // ** Greek"
-        "Alpha" => "&Alpha;",
-        "alpha" => "&alpha;",
-        "Beta" => "&Beta;",
-        "beta" => "&beta;",
-        "Gamma" => "&Gamma;",
-        "gamma" => "&gamma;",
-        "Delta" => "&Delta;",
-        "delta" => "&delta;",
-        "Epsilon" => "&Epsilon;",
-        "epsilon" => "&epsilon;",
-        "varepsilon" => "&epsilon;",
-        "Zeta" => "&Zeta;",
-        "zeta" => "&zeta;",
-        "Eta" => "&Eta;",
-        "eta" => "&eta;",
-        "Theta" => "&Theta;",
-        "theta" => "&theta;",
-        "thetasym" => "&thetasym;",
-        "vartheta" => "&thetasym;",
-        "Iota" => "&Iota;",
-        "iota" => "&iota;",
-        "Kappa" => "&Kappa;",
-        "kappa" => "&kappa;",
-        "Lambda" => "&Lambda;",
-        "lambda" => "&lambda;",
-        "Mu" => "&Mu;",
-        "mu" => "&mu;",
-        "nu" => "&nu;",
-        "Nu" => "&Nu;",
-        "Xi" => "&Xi;",
-        "xi" => "&xi;",
-        "Omicron" => "&Omicron;",
-        "omicron" => "&omicron;",
-        "Pi" => "&Pi;",
-        "pi" => "&pi;",
-        "Rho" => "&Rho;",
-        "rho" => "&rho;",
-        "Sigma" => "&Sigma;",
-        "sigma" => "&sigma;",
-        "sigmaf" => "&sigmaf;",
-        "varsigma" => "&sigmaf;",
-        "Tau" => "&Tau;",
-        "Upsilon" => "&Upsilon;",
-        "upsih" => "&upsih;",
-        "upsilon" => "&upsilon;",
-        "Phi" => "&Phi;",
-        "phi" => "&phi;",
-        "varphi" => "&varphi;",
-        "Chi" => "&Chi;",
-        "chi" => "&chi;",
-        "acutex" => "&acute;x",
-        "Psi" => "&Psi;",
-        "psi" => "&psi;",
-        "tau" => "&tau;",
-        "Omega" => "&Omega;",
-        "omega" => "&omega;",
-        "piv" => "&piv;",
-        "varpi" => "&piv;",
-        "partial" => "&part;",
-
-        // ** Hebrew"
-        "alefsym" => "&alefsym;",
-        "aleph" => "&aleph;",
-        "gimel" => "&gimel;",
-        "beth" => "&beth;",
-        "dalet" => "&daleth;",
-
-        // ** Icelandic"
-        "ETH" => "&ETH;",
-        "eth" => "&eth;",
-        "THORN" => "&THORN;",
-        "thorn" => "&thorn;",
-
-        // * Punctuation"
-        // ** Dots and Marks"
-        "dots" => "&hellip;",
-        "cdots" => "&ctdot;",
-        "hellip" => "&hellip;",
-        "middot" => "&middot;",
-        "iexcl" => "&iexcl;",
-        "iquest" => "&iquest;",
-
-        // ** Dash-like"
-        "shy" => "&shy;",
-        "ndash" => "&ndash;",
-        "mdash" => "&mdash;",
-
-        // ** Quotations"
-        "quot" => "&quot;",
-        "acute" => "&acute;",
-        "ldquo" => "&ldquo;",
-        "rdquo" => "&rdquo;",
-        "bdquo" => "&bdquo;",
-        "lsquo" => "&lsquo;",
-        "rsquo" => "&rsquo;",
-        "sbquo" => "&sbquo;",
-        "laquo" => "&laquo;",
-        "raquo" => "&raquo;",
-        "lsaquo" => "&lsaquo;",
-        "rsaquo" => "&rsaquo;",
-
-        // * Other"
-        // ** Misc. often used"
-        "circ" => "&circ;",
-        "vert" => "&vert;",
-        "vbar" => "|",
-        "brvbar" => "&brvbar;",
-        "S" => "&sect;",
-        "sect" => "&sect;",
-        "P" => "&para;",
-        "para" => "&para;",
-        "amp" => "&amp;",
-        "lt" => "&lt;",
-        "gt" => "&gt;",
-        "tilde" => "~",
-        "slash" => "/",
-        "plus" => "+",
-        "under" => "_",
-        "equal" => "=",
-        "asciicirc" => "^",
-        "dagger" => "&dagger;",
-        "dag" => "&dagger;",
-        "Dagger" => "&Dagger;",
-        "ddag" => "&Dagger;",
-
-        // ** Whitespace"
-        "nbsp" => "&nbsp;",
-        "ensp" => "&ensp;",
-        "emsp" => "&emsp;",
-        "thinsp" => "&thinsp;",
-
-        // ** Currency"
-        "curren" => "&curren;",
-        "cent" => "&cent;",
-        "pound" => "&pound;",
-        "yen" => "&yen;",
-        "euro" => "&euro;",
-        "EUR" => "&euro;",
-        "dollar" => "$",
-        "USD" => "$",
-
-        // ** Property Marks"
-        "copy" => "&copy;",
-        "reg" => "&reg;",
-        "trade" => "&trade;",
-
-        // ** Science et al."
-        "minus" => "&minus;",
-        "pm" => "&plusmn;",
-        "plusmn" => "&plusmn;",
-        "times" => "&times;",
-        "frasl" => "&frasl;",
-        "colon" => ":",
-        "div" => "&divide;",
-        "frac12" => "&frac12;",
-        "frac14" => "&frac14;",
-        "frac34" => "&frac34;",
-        "permil" => "&permil;",
-        "sup1" => "&sup1;",
-        "sup2" => "&sup2;",
-        "sup3" => "&sup3;",
-        "radic" => "&radic;",
-        "sum" => "&sum;",
-        "prod" => "&prod;",
-        "micro" => "&micro;",
-        "macr" => "&macr;",
-        "deg" => "&deg;",
-        "prime" => "&prime;",
-        "Prime" => "&Prime;",
-        "infin" => "&infin;",
-        "infty" => "&infin;",
-        "prop" => "&prop;",
-        "propto" => "&prop;",
-        "not" => "&not;",
-        "neg" => "&not;",
-        "land" => "&and;",
-        "wedge" => "&and;",
-        "lor" => "&or;",
-        "vee" => "&or;",
-        "cap" => "&cap;",
-        "cup" => "&cup;",
-        "smile" => "&smile;",
-        "frown" => "&frown;",
-        "int" => "&int;",
-        "therefore" => "&there4;",
-        "there4" => "&there4;",
-        "because" => "&because;",
-        "sim" => "&sim;",
-        "cong" => "&cong;",
-        "simeq" => "&cong;" ,
-        "asymp" => "&asymp;",
-        "approx" => "&asymp;",
-        "ne" => "&ne;",
-        "neq" => "&ne;",
-        "equiv" => "&equiv;",
-
-        "triangleq" => "&triangleq;",
-        "le" => "&le;",
-        "leq" => "&le;",
-        "ge" => "&ge;",
-        "geq" => "&ge;",
-        "lessgtr" => "&lessgtr;",
-        "lesseqgtr" => "&lesseqgtr;",
-        "ll" => "&Lt;",
-        "Ll" => "&Ll;",
-        "lll" => "&Ll;",
-        "gg" => "&Gt;",
-        "Gg" => "&Gg;",
-        "ggg" => "&Gg;",
-        "prec" => "&pr;",
-        "preceq" => "&prcue;",
-        "preccurlyeq" => "&prcue;",
-        "succ" => "&sc;",
-        "succeq" => "&sccue;",
-        "succcurlyeq" => "&sccue;",
-        "sub" => "&sub;",
-        "subset" => "&sub;",
-        "sup" => "&sup;",
-        "supset" => "&sup;",
-        "nsub" => "&nsub;",
-        "sube" => "&sube;",
-        "nsup" => "&nsup;",
-        "supe" => "&supe;",
-        "setminus" => "&setminus;",
-        "forall" => "&forall;",
-        "exist" => "&exist;",
-        "exists" => "&exist;",
-        "nexist" => "&exist;",
-        "nexists" => "&exist;",
-        "empty" => "&empty;",
-        "emptyset" => "&empty;",
-        "isin" => "&isin;",
-        "in" => "&isin;",
-        "notin" => "&notin;",
-        "ni" => "&ni;",
-        "nabla" => "&nabla;",
-        "ang" => "&ang;",
-        "angle" => "&ang;",
-        "perp" => "&perp;",
-        "parallel" => "&parallel;",
-        "sdot" => "&sdot;",
-        "cdot" => "&sdot;",
-        "lceil" => "&lceil;",
-        "rceil" => "&rceil;",
-        "lfloor" => "&lfloor;",
-        "rfloor" => "&rfloor;",
-        "lang" => "&lang;",
-        "rang" => "&rang;",
-        "langle" => "&lang;",
-        "rangle" => "&rang;",
-        "hbar" => "&hbar;",
-        "mho" => "&mho;",
-
-        // ** Arrows"
-        "larr" => "&larr;",
-        "leftarrow" => "&larr;" ,
-        "gets" => "&larr;" ,
-        "lArr" => "&lArr;",
-        "Leftarrow" => "&lArr;",
-        "uarr" => "&uarr;",
-        "uparrow" => "&uarr;",
-        "uArr" => "&uArr;",
-        "Uparrow" => "&uArr;",
-        "rarr" => "&rarr;",
-        "to" => "&rarr;",
-        "rightarrow" => "&rarr;" ,
-        "rArr" => "&rArr;",
-        "Rightarrow" => "&rArr;",
-        "darr" => "&darr;",
-        "downarrow" => "&darr;",
-        "dArr" => "&dArr;",
-        "Downarrow" => "&dArr;",
-        "harr" => "&harr;",
-        "leftrightarrow" => "&harr;" ,
-        "hArr" => "&hArr;",
-        "Leftrightarrow" => "&hArr;",
-        "crarr" => "&crarr;",
-        "hookleftarrow" => "&crarr;" ,
-
-        // ** Function names"
-        "arccos" => "arccos",
-        "arcsin" => "arcsin",
-        "arctan" => "arctan",
-        "arg" => "arg",
-        "cos" => "cos",
-        "cosh" => "cosh",
-        "cot" => "cot",
-        "coth" => "coth",
-        "csc" => "csc",
-        "det" => "det",
-        "dim" => "dim",
-        "exp" => "exp",
-        "gcd" => "gcd",
-        "hom" => "hom",
-        "inf" => "inf",
-        "ker" => "ker",
-        "lg" => "lg",
-        "lim" => "lim",
-        "liminf" => "liminf",
-        "limsup" => "limsup",
-        "ln" => "ln",
-        "log" => "log",
-        "max" => "max",
-        "min" => "min",
-        "Pr" => "Pr",
-        "sec" => "sec",
-        "sin" => "sin",
-        "sinh" => "sinh",
-        "tan" => "tan",
-        "tanh" => "tanh",
-
-        // ** Signs & Symbols"
-        "bull" => "&bull;",
-        "bullet" => "&bull;",
-        "star" => "*",
-        "lowast" => "&lowast;",
-        "ast" => "&lowast;",
-        "odot" => "o",
-        "oplus" => "&oplus;",
-        "otimes" => "&otimes;",
-        "check" => "&checkmark;",
-        "checkmark" => "&check;",
-
-        // ** Miscellaneous seldom used,"
-        "ordf" => "&ordf;",
-        "ordm" => "&ordm;",
-        "cedil" => "&cedil;",
-        "oline" => "&oline;",
-        "uml" => "&uml;",
-        "zwnj" => "&zwnj;",
-        "zwj" => "&zwj;",
-        "lrm" => "&lrm;",
-        "rlm" => "&rlm;",
-
-        // ** Smilies"
-        "smiley" => "&#9786;",
-        "blacksmile" => "&#9787;",
-        "sad" => "&#9785;",
-        "frowny" => "&#9785;",
-
-        // ** Suits"
-        "clubs" => "&clubs;",
-        "clubsuit" => "&clubs;",
-        "spades" => "&spades;",
-        "spadesuit" => "&spades;",
-        "hearts" => "&hearts;",
-        "heartsuit" => "&heartsuit;",
-        "diams" => "&diams;",
-        "diamondsuit" => "&diams;",
-        "diamond" => "&diamond;",
-        "Diamond" => "&diamond;",
-        "loz" => "&loz;",
-
-    // spaces
-    "_ " => "&ensp;",
-    "_  " => "&ensp;&ensp;",
-    "_   " => "&ensp;&ensp;&ensp;",
-    "_    " => "&ensp;&ensp;&ensp;&ensp;",
-    "_     " => "&ensp;&ensp;&ensp;&ensp;&ensp;",
-    "_      " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
-    "_       " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
-    "_        " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
-    "_         " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
-    "_          " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
-    "_           " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
-    "_            " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
-    "_             " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
-    "_              " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
-    "_               " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
-    "_                " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
-    "_                 " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
-    "_                  " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
-    "_                   " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
-    "_                    " => "&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;",
-
-
-};
-
 /// Entity parser
+/// - \NAME{}
+/// - \NAME POST
+/// - \_SPACES
 pub(crate) fn entity_parser<'a, C: 'a>() -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
-    let name_parser = custom(|inp| {
-        let before = &inp.cursor();
-        let remaining: &str = inp.slice_from(std::ops::RangeFrom {
-            start: &inp.cursor(),
-        });
-
-        let name: String = remaining
-            .chars()
-            .take_while(|c| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
-            .collect();
-
-        if name.is_empty() || !ENTITYNAME_TO_HTML.contains_key(&name) {
-            return Err(Rich::custom(
-                inp.span_since(before),
-                format!("invalid entity name: '{}'", name),
-            ));
-        }
-
-        for _ in 0..name.len() {
-            inp.next();
-        }
-
-        Ok(name)
-    });
-
-    // let name_parser = any()
-    //     .filter(|c: &char| matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9'))
-    //     .repeated()
-    //     .at_least(1)
-    //     .collect::<String>()
-    //     .filter(|name| ENTITYNAME_TO_HTML.contains_key(name));
+    // name := A string with a valid association in either org-entities or org-entities-user
+    let name_parser = object::keyword_cs_parser(&ENTITYNAME_SET);
 
     let post_parser = any()
         .filter(|c: &char| !c.is_alphabetic())
         .or(end().to('x'));
 
-    let a2_or_a1 = just(r"\")
-        .then(name_parser.clone())
-        .then(
-            just("{}").map(|curly| (curly, true)).or(
-                empty::<&str, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>()
-                    .then_ignore(post_parser.rewind())
-                    .map(|()| ("", false)), // 标记为 Pattern1
-            ),
-        )
-        .map_with(|((backslash, name), (_curly_or_empty, is_pattern2)), e| {
-            let state: &mut RollbackState<ParserState> = e.state();
-
-            if is_pattern2 {
-                // Pattern2: \NAME{}
-                state.prev_char = Some('}');
-                NT::Node(GreenNode::new(
-                    OSK::Entity.into(),
-                    vec![
-                        NT::Token(GreenToken::new(OSK::BackSlash.into(), backslash)),
-                        NT::Token(GreenToken::new(OSK::EntityName.into(), &name)),
-                        NT::Token(GreenToken::new(OSK::LeftCurlyBracket.into(), "{")),
-                        NT::Token(GreenToken::new(OSK::RightCurlyBracket.into(), "}")),
-                    ],
-                ))
-            } else {
-                // Pattern1: \NAME POST
-                state.prev_char = name.chars().last();
-                NT::Node(GreenNode::new(
-                    OSK::Entity.into(),
-                    vec![
-                        NT::Token(GreenToken::new(OSK::BackSlash.into(), backslash)),
-                        NT::Token(GreenToken::new(OSK::EntityName.into(), &name)),
-                    ],
-                ))
-            }
-        });
-
-    // pattern3:  \_SPACES
-    let a3 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>(r"\")
-        .then(just("_"))
-        .then(just(" ").repeated().at_least(1).at_most(20).to_slice())
-        .map_with(|((backslash, us), ws): ((_, _), &str), e| {
-            e.state().prev_char = ws.chars().last();
-            NT::Node(GreenNode::new(
-                OSK::Entity.into(),
-                vec![
-                    NT::Token(GreenToken::new(OSK::BackSlash.into(), backslash)),
-                    NT::Token(GreenToken::new(OSK::Underscore.into(), us)),
-                    NT::Token(GreenToken::new(OSK::Spaces.into(), ws)),
-                ],
-            ))
-        });
-
     // priority: `a2` > `a1` since `a2` is longer and includes `a1`, or "\pi{}" will be parsed into <Entity(\pi) + Text({})>, while <Entity(\pi{})> is expected
-    Parser::boxed(choice((a2_or_a1, a3)))
+    let a2_or_a1_or_a3 = just(r"\")
+        .then(choice((
+            name_parser
+                .clone()
+                .then(choice((
+                    just("{}").to(true),
+                    post_parser.rewind().to(false),
+                )))
+                .map_with(|(name, is_pattern2), e| {
+                    if is_pattern2 {
+                        (e.state() as &mut RollbackState<ParserState>).prev_char = Some('}');
+                        vec![
+                            NT::Token(GreenToken::new(OSK::EntityName.into(), name)),
+                            NT::Token(GreenToken::new(OSK::LeftCurlyBracket.into(), "{")),
+                            NT::Token(GreenToken::new(OSK::RightCurlyBracket.into(), "}")),
+                        ]
+                    } else {
+                        // Pattern1: \NAME POST
+                        (e.state() as &mut RollbackState<ParserState>).prev_char =
+                            name.chars().last();
+                        vec![NT::Token(GreenToken::new(OSK::EntityName.into(), name))]
+                    }
+                }),
+            just("_")
+                .then(just(" ").repeated().at_least(1).at_most(20).to_slice())
+                .map_with(|(us, ws): (_, &str), e| {
+                    (e.state() as &mut RollbackState<ParserState>).prev_char = ws.chars().last();
+                    vec![
+                        NT::Token(GreenToken::new(OSK::Underscore.into(), us)),
+                        NT::Token(GreenToken::new(OSK::Spaces.into(), ws)),
+                    ]
+                }),
+        )))
+        .map(|(backslash, others)| {
+            let mut children = Vec::with_capacity(1 + others.len());
+            children.push(NT::Token(GreenToken::new(OSK::BackSlash.into(), backslash)));
+            children.extend(others);
+
+            NT::Node(GreenNode::new(OSK::Entity.into(), children))
+        })
+        .boxed();
+
+    a2_or_a1_or_a3
 }
 
 #[cfg(test)]
