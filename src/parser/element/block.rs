@@ -1571,7 +1571,7 @@ cc
       Paragraph@15..33
         Text@15..22 "#+begin"
         Subscript@22..29
-          Caret@22..23 "_"
+          Underscore@22..23 "_"
           Text@23..29 "center"
         Text@29..33 "\ncc\n"
     BlockEnd@33..46
@@ -1581,7 +1581,7 @@ cc
   Paragraph@46..59
     Text@46..51 "#+end"
     Subscript@51..58
-      Caret@51..52 "_"
+      Underscore@51..52 "_"
       Text@52..58 "center"
     Text@58..59 "\n"
 "##

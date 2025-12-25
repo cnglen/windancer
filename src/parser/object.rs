@@ -712,7 +712,7 @@ other objects (2):
     Dollar@168..169 "$"
   Text@169..186 "\n\n04 suscripot: a"
   Subscript@186..192
-    Caret@186..187 "_"
+    Underscore@186..187 "_"
     LeftCurlyBracket@187..188 "{"
     Text@188..191 "i,j"
     RightCurlyBracket@191..192 "}"
@@ -776,7 +776,7 @@ other objects (2):
     Dollar@168..169 "$"
   Text@169..186 "\n\n04 suscripot: a"
   Subscript@186..192
-    Caret@186..187 "_"
+    Underscore@186..187 "_"
     LeftCurlyBracket@187..188 "{"
     Text@188..191 "i,j"
     RightCurlyBracket@191..192 "}"
@@ -970,7 +970,7 @@ other objects (2):
           TableCell@418..443
             Text@418..420 " a"
             Subscript@420..422
-              Caret@420..421 "_"
+              Underscore@420..421 "_"
               Text@421..422 "1"
             Whitespace@422..442 "                    "
             Pipe@442..443 "|"

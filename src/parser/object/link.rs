@@ -929,7 +929,7 @@ mod tests {
         Dollar@29..30 "$"
       Text@30..34 " the"
       Subscript@34..44
-        Caret@34..35 "_"
+        Underscore@34..35 "_"
         Text@35..44 "subscript"
       Text@44..45 " "
       Bold@45..50

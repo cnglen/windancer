@@ -6,7 +6,6 @@ use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
-use std::collections::HashMap;
 use std::ops::Range;
 type NT = NodeOrToken<GreenNode, GreenToken>;
 type OSK = OrgSyntaxKind;
@@ -17,8 +16,8 @@ type OSK = OrgSyntaxKind;
 fn chars_final_parser<'a, C: 'a>()
 -> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
 {
-    custom::<_, &str, _, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>(|inp| {
-        let remaining = inp.slice_from(std::ops::RangeFrom {
+    custom(|inp| {
+        let remaining: &str = inp.slice_from(std::ops::RangeFrom {
             start: &inp.cursor(),
         });
 
@@ -79,27 +78,8 @@ fn create_script_parser<'a, C: 'a>(
         ScriptType::Sub => ("_", OSK::Subscript),
     };
 
-    // ^* or _*
-    let t1 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>(c)
-        .then(just("*"))
-        .map_with(move |(sup, aes), e| {
-            e.state().prev_char = Some('*');
-            NT::Node(GreenNode::new(
-                syntax_kind.clone().into(),
-                vec![
-                    NT::Token(GreenToken::new(OSK::Caret.into(), sup)),
-                    NT::Token(GreenToken::new(OSK::Text.into(), aes)),
-                ],
-            ))
-        });
-
-    // CHAR^{expression} / CHAR^(EXPRESSION)
-    let var = none_of::<&str, &str, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>(
-        "{}()\r\n",
-    )
-    .repeated()
-    .at_least(1)
-    .to_slice();
+    // expression
+    let var = none_of("{}()\r\n").repeated().at_least(1).to_slice();
     let mut single_expression = Recursive::declare(); // foo / (foo) / (((foo)))
     single_expression.define(
         var.or(just("(")
@@ -119,6 +99,7 @@ fn create_script_parser<'a, C: 'a>(
     let expression =
         standard_objects_parser.nested_in(single_expression.clone().repeated().to_slice()); // foo(bar){(def)ghi}
 
+    // bracket char to str
     let lb_str = |lb| match lb {
         '(' => "(",
         '{' => "{",
@@ -130,97 +111,96 @@ fn create_script_parser<'a, C: 'a>(
         _ => unreachable!(),
     };
 
-    let pairs = HashMap::from([('(', ')'), ('{', '}')]);
-    let pair_starts = pairs.keys().copied().collect::<Vec<_>>();
-    let pair_ends = pairs.values().copied().collect::<Vec<_>>();
-    let t2 = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>(c)
-        .then(one_of(pair_starts))
-        .map_with(|(a, b): (&str, char), e| {
-            let tmp = e.state().prev_char;
-            e.state().prev_char_backup.push(tmp);
-
-            // println!("t2a: r={:?}", e.state());
-            // if e.state().prev_char_backup.len()>3{
-            //     println!("subscript: state={:?}", e.state().prev_char_backup.len());
-            // }
-            e.state().prev_char = Some(b);
-            (a, b)
-        })
-        .then(expression)
-        .map_with(|s, e| {
-            // println!("t2b: r={:?}", e.state());
-            e.state().prev_char = e.state().prev_char_backup.pop().unwrap(); // resume prev_char
-
-            s
-        })
-        .then(one_of(pair_ends))
-        .try_map_with(move |(((sup, lb), expression), rb), e| {
-            let pre_valid = e
-                .state()
-                .prev_char
-                .map_or(false, |c| !matches!(c, ' ' | '\t'));
-            // println!("pre_valid={pre_valid:?}, expression={expression:?}, prev_char={:?}", e.state().prev_char);
-            match pre_valid {
-                false => {
-                    let error = Rich::custom::<&str>(e.span(), &format!("PRE not valid"));
-                    Err(error)
-                }
-
-                true => {
-                    let expected_rb = *pairs.get(&lb).unwrap();
-
-                    if rb != expected_rb {
-                        Err(Rich::custom::<&str>(
-                            e.span(),
-                            &format!("bracket not matched: {lb} {rb}"),
-                        ))
-                    } else {
-                        e.state().prev_char = Some(rb);
-
-                        let mut children = Vec::with_capacity(expression.len() + 3);
-                        children.push(NT::Token(GreenToken::new(OSK::Caret.into(), sup)));
-                        children.push(NT::Token(GreenToken::new(
-                            OSK::LeftCurlyBracket.into(),
-                            lb_str(lb),
-                        )));
-                        children.extend(expression);
-                        children.push(NT::Token(GreenToken::new(
-                            OSK::RightCurlyBracket.into(),
-                            rb_str(rb),
-                        )));
-
-                        Ok(NT::Node(GreenNode::new(
-                            syntax_kind.clone().into(),
-                            children,
-                        )))
-                    }
-                }
-            }
-        });
-
-    // ^ SIGN CHARS FINAL
     let sign = one_of("+-").or_not();
-    let t3 = just(c).then(sign).then(chars_final_parser()).try_map_with(
-        move |((sup, sign), content), e| match e.state().prev_char {
-            None => Err(Rich::custom(e.span(), format!("CHAR is empty"))),
-            Some(c) if matches!(c, ' ' | '\t') => {
-                Err(Rich::custom(e.span(), format!("CHAR is whitesace")))
+    let t3_t1_t2 = just(c)
+        .try_map_with(|s, e| {
+            // check PRE
+            let pre_valid = (e.state() as &mut RollbackState<ParserState>)
+                .prev_char
+                .map_or(false, |c| !c.is_whitespace());
+
+            match pre_valid {
+                true => Ok(s),
+                false => Err(Rich::<char>::custom(
+                    e.span(),
+                    format!(
+                        "sub/sup script parser: pre_valid={pre_valid}, PRE={:?} not valid",
+                        (e.state() as &mut RollbackState<ParserState>).prev_char
+                    ),
+                )),
             }
-            _ => {
-                e.state().prev_char = content.chars().last();
+        })
+        .then(choice((
+            // CHAR^ SIGN CHARS FINAL
+            sign.then(chars_final_parser())
+                .to_slice()
+                .map_with(|sign_content, e| {
+                    (e.state() as &mut RollbackState<ParserState>).prev_char =
+                        sign_content.chars().last();
 
-                let mut children = vec![];
-                children.push(NT::Token(GreenToken::new(OSK::Caret.into(), sup)));
-                let text = sign.map_or_else(|| content.clone(), |s| format!("{s}{content}"));
-                children.push(NT::Token(GreenToken::new(OSK::Text.into(), &text)));
+                    vec![NT::Token(GreenToken::new(OSK::Text.into(), sign_content))]
+                }),
+            // CHAR^* or CHAR_*
+            just("*").map_with(|aes, e| {
+                (e.state() as &mut RollbackState<ParserState>).prev_char = Some('*');
+                vec![NT::Token(GreenToken::new(OSK::Text.into(), aes))]
+            }),
+            // CHAR^{expression} / CHAR^(EXPRESSION)
+            one_of("({")
+                .map_with(|s: char, e| {
+                    // update state for next expression parser: nest + state + ctx
+                    (e.state() as &mut RollbackState<ParserState>).prev_char = Some(s);
+                    s
+                })
+                .then(expression)
+                .then_with_ctx(
+                    // ctx type -> expression has ctx type
+                    just('a').configure(|cfg, ctx: &(char, _)| {
+                        let bracket_close = match (*ctx).0 {
+                            '(' => ')',
+                            '{' => '}',
+                            _ => unreachable!(),
+                        };
+                        cfg.seq(bracket_close)
+                    }),
+                )
+                .map_with(move |((lb, expression), rb), e| {
+                    (e.state() as &mut RollbackState<ParserState>).prev_char = Some(rb);
 
-                Ok(NT::Node(GreenNode::new(syntax_kind.into(), children)))
-            }
-        },
-    );
+                    let mut children = Vec::with_capacity(expression.len() + 2);
+                    children.push(NT::Token(GreenToken::new(
+                        match lb {
+                            '{' => OSK::LeftCurlyBracket.into(),
+                            '(' => OSK::LeftRoundBracket.into(),
+                            _ => unreachable!(),
+                        },
+                        lb_str(lb),
+                    )));
+                    children.extend(expression);
+                    children.push(NT::Token(GreenToken::new(
+                        OSK::RightCurlyBracket.into(),
+                        rb_str(rb),
+                    )));
 
-    Parser::boxed(choice((t3, t1, t2)))
-    // t1.or(t3).or(t2)
+                    children
+                }),
+        )))
+        .map(move |(sup, others)| {
+            let mut children = vec![];
+
+            let token = match sup {
+                "^" => NT::Token(GreenToken::new(OSK::Caret.into(), sup)),
+                "_" => NT::Token(GreenToken::new(OSK::Underscore.into(), sup)),
+                _ => unreachable!(),
+            };
+            children.push(token);
+            children.extend(others);
+
+            NT::Node(GreenNode::new(syntax_kind.clone().into(), children))
+        })
+        .boxed();
+
+    t3_t1_t2
 }
 
 pub(crate) fn subscript_parser<'a, C: 'a>(
@@ -272,7 +252,7 @@ mod tests {
             r###"Root@0..7
   Text@0..3 "fox"
   Subscript@3..7
-    Caret@3..4 "_"
+    Underscore@3..4 "_"
     Text@4..7 "bar"
 "###
         );
@@ -282,7 +262,7 @@ mod tests {
             r###"Root@0..9
   Text@0..3 "fox"
   Subscript@3..9
-    Caret@3..4 "_"
+    Underscore@3..4 "_"
     LeftCurlyBracket@4..5 "{"
     Text@5..8 "bar"
     RightCurlyBracket@8..9 "}"
@@ -296,6 +276,39 @@ mod tests {
             get_parsers_output(object::objects_parser::<()>(), r"fo _{bar}"),
             r###"Root@0..9
   Text@0..9 "fo _{bar}"
+"###
+        );
+    }
+
+    #[test]
+    fn test_subscript_03() {
+        assert_eq!(
+            get_parsers_output(object::objects_parser::<()>(), r"a {*b_foo*}"),
+            r###"Root@0..11
+  Text@0..3 "a {"
+  Bold@3..10
+    Asterisk@3..4 "*"
+    Text@4..5 "b"
+    Subscript@5..9
+      Underscore@5..6 "_"
+      Text@6..9 "foo"
+    Asterisk@9..10 "*"
+  Text@10..11 "}"
+"###
+        );
+    }
+
+    #[test]
+    fn test_subscript_04() {
+        assert_eq!(
+            get_parsers_output(object::objects_parser::<()>(), r"a {*_foo*}"),
+            r###"Root@0..10
+  Text@0..3 "a {"
+  Bold@3..9
+    Asterisk@3..4 "*"
+    Text@4..8 "_foo"
+    Asterisk@8..9 "*"
+  Text@9..10 "}"
 "###
         );
     }

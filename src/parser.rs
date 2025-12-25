@@ -17,12 +17,10 @@ static RADIO_TARGETS: OnceLock<HashSet<String>> = OnceLock::new();
 // 上下文状态：当前解析的标题级别
 // - item_indent:
 // - prev_char: previous char
-// - prev_char_backup: previous char backup manually set for later resume back
 #[derive(Clone, Debug)]
 pub struct ParserState {
     prev_char: Option<char>,                     // previous char
     item_indent: smallvec::SmallVec<[usize; 4]>, // list's nested length
-    prev_char_backup: smallvec::SmallVec<[Option<char>; 4]>,
 }
 
 impl Default for ParserState {
@@ -31,7 +29,6 @@ impl Default for ParserState {
             // smallvec and rc
             prev_char: None,
             item_indent: smallvec::smallvec![],
-            prev_char_backup: smallvec::smallvec![None],
         }
     }
 }

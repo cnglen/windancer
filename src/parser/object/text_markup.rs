@@ -36,29 +36,17 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
             )
             .to_slice()
             .try_map_with(|content:&str, e| {
-                // https://github.com/zesterer/chumsky/issues/624
-                let pre_valid = (e.state() as &mut RollbackState<ParserState>).prev_char.map_or(true, |c| {
-                    matches!(
-                        c,
-                        ' '| '\t'| '​'|              // whitespace character
-                        '-'| '('| '{'| '"'| '\''|
-                        '\r'| '\n' // beginning of a line
-                    )
-                });
-
                 let content_end_valid = match content.chars().last() {
                     Some(c) if matches!(c, ' ' | '\t' | '​') => false,
                     _ => true
                 };
 
-                // println!("text-markup:content: pre_valid={pre_valid}, content_end_valid={content_end_valid}:\n  - content={content:?} Not valid if ends with whitesace\n  - PRE={:?} not valid if not in <whitespace and -({{ and others>", e.state().prev_char);
+                match content_end_valid {
+                    true => {Ok(())},
 
-                match (pre_valid, content_end_valid) {
-                    (true, true) => {Ok(())},
-
-                    _ => {Err(Rich::custom(
+                    false => {Err(Rich::custom(
                         e.span(),
-                        format!("text-markup:content: pre_valid={pre_valid}, content_end_valid={content_end_valid}:\n  - content={content:?} ends with whitesace\n  - PRE={:?} not valid", (e.state() as & mut RollbackState<ParserState>).prev_char),
+                        format!("text-markup:content: content_end_valid={content_end_valid}:\n  - content={content:?} ends with whitesace"),
                     ))}
 
                 }
@@ -73,6 +61,35 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
         .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
 
     let bold = just("*")
+        .try_map_with(|s, e| {
+            let span = e.span();
+            let state: &mut RollbackState<ParserState> = e.state();
+
+            // https://github.com/zesterer/chumsky/issues/624
+            let pre_valid = state.prev_char.map_or(true, |c| {
+                matches!(
+                    c,
+                    ' '| '\t'| '​'|              // whitespace character
+                    '-'| '('| '{'| '"'| '\''|
+                    '\r'| '\n' // beginning of a line
+                )
+            });
+
+            match pre_valid {
+                true => {
+                    state.prev_char = None; // make subscript's PREV state none
+
+                    Ok(s)
+                }
+                false => Err(Rich::<char>::custom(
+                    span,
+                    format!(
+                        "text markup parser: pre_valid={pre_valid}, PRE={:?}",
+                        state.prev_char,
+                    ),
+                )),
+            }
+        })
         .then(standard_objects_parser.clone().nested_in(get_content('*')))
         .then(just("*"))
         .then_ignore(post.rewind())
@@ -95,6 +112,35 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
         });
 
     let italic = just("/")
+        .try_map_with(|s, e| {
+            let span = e.span();
+            let state: &mut RollbackState<ParserState> = e.state();
+
+            // https://github.com/zesterer/chumsky/issues/624
+            let pre_valid = state.prev_char.map_or(true, |c| {
+                matches!(
+                    c,
+                    ' '| '\t'| '​'|              // whitespace character
+                    '-'| '('| '{'| '"'| '\''|
+                    '\r'| '\n' // beginning of a line
+                )
+            });
+
+            match pre_valid {
+                true => {
+                    state.prev_char = None; // make subscript's PREV state none
+
+                    Ok(s)
+                }
+                false => Err(Rich::<char>::custom(
+                    span,
+                    format!(
+                        "text markup parser: pre_valid={pre_valid}, PRE={:?}",
+                        state.prev_char,
+                    ),
+                )),
+            }
+        })
         .then(standard_objects_parser.clone().nested_in(get_content('/'))) // 这里objects_parser可能会执行plain_text_parser, 会更新prev_char!!(不应更新)
         .then(just("/"))
         .then_ignore(post.rewind())
@@ -111,6 +157,35 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
         });
 
     let underline = just("_")
+        .try_map_with(|s, e| {
+            let span = e.span();
+            let state: &mut RollbackState<ParserState> = e.state();
+
+            // https://github.com/zesterer/chumsky/issues/624
+            let pre_valid = state.prev_char.map_or(true, |c| {
+                matches!(
+                    c,
+                    ' '| '\t'| '​'|              // whitespace character
+                    '-'| '('| '{'| '"'| '\''|
+                    '\r'| '\n' // beginning of a line
+                )
+            });
+
+            match pre_valid {
+                true => {
+                    state.prev_char = None; // make subscript's PREV state none
+
+                    Ok(s)
+                }
+                false => Err(Rich::<char>::custom(
+                    span,
+                    format!(
+                        "text markup parser: pre_valid={pre_valid}, PRE={:?}",
+                        state.prev_char,
+                    ),
+                )),
+            }
+        })
         .then(standard_objects_parser.clone().nested_in(get_content('_')))
         .then(just("_"))
         .then_ignore(post.rewind())
@@ -133,6 +208,35 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
         });
 
     let strikethrough = just("+")
+        .try_map_with(|s, e| {
+            let span = e.span();
+            let state: &mut RollbackState<ParserState> = e.state();
+
+            // https://github.com/zesterer/chumsky/issues/624
+            let pre_valid = state.prev_char.map_or(true, |c| {
+                matches!(
+                    c,
+                    ' '| '\t'| '​'|              // whitespace character
+                    '-'| '('| '{'| '"'| '\''|
+                    '\r'| '\n' // beginning of a line
+                )
+            });
+
+            match pre_valid {
+                true => {
+                    state.prev_char = None; // make subscript's PREV state none
+
+                    Ok(s)
+                }
+                false => Err(Rich::<char>::custom(
+                    span,
+                    format!(
+                        "text markup parser: pre_valid={pre_valid}, PRE={:?}",
+                        state.prev_char,
+                    ),
+                )),
+            }
+        })
         .then(standard_objects_parser.clone().nested_in(get_content('+')))
         .then(just("+"))
         .then_ignore(post.rewind())
@@ -152,6 +256,35 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
         });
 
     let code = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("~")
+        .try_map_with(|s, e| {
+            let span = e.span();
+            let state: &mut RollbackState<ParserState> = e.state();
+
+            // https://github.com/zesterer/chumsky/issues/624
+            let pre_valid = state.prev_char.map_or(true, |c| {
+                matches!(
+                    c,
+                    ' '| '\t'| '​'|              // whitespace character
+                    '-'| '('| '{'| '"'| '\''|
+                    '\r'| '\n' // beginning of a line
+                )
+            });
+
+            match pre_valid {
+                true => {
+                    state.prev_char = None; // make subscript's PREV state none
+
+                    Ok(s)
+                }
+                false => Err(Rich::<char>::custom(
+                    span,
+                    format!(
+                        "text markup parser: pre_valid={pre_valid}, PRE={:?}",
+                        state.prev_char,
+                    ),
+                )),
+            }
+        })
         .then(get_content('~'))
         .then(just("~"))
         .then_ignore(post.rewind())
@@ -169,6 +302,35 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
         });
 
     let verbatim = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("=")
+        .try_map_with(|s, e| {
+            let span = e.span();
+            let state: &mut RollbackState<ParserState> = e.state();
+
+            // https://github.com/zesterer/chumsky/issues/624
+            let pre_valid = state.prev_char.map_or(true, |c| {
+                matches!(
+                    c,
+                    ' '| '\t'| '​'|              // whitespace character
+                    '-'| '('| '{'| '"'| '\''|
+                    '\r'| '\n' // beginning of a line
+                )
+            });
+
+            match pre_valid {
+                true => {
+                    state.prev_char = None; // make subscript's PREV state none
+
+                    Ok(s)
+                }
+                false => Err(Rich::<char>::custom(
+                    span,
+                    format!(
+                        "text markup parser: pre_valid={pre_valid}, PRE={:?}",
+                        state.prev_char,
+                    ),
+                )),
+            }
+        })
         .then(get_content('='))
         .then(just("="))
         .then_ignore(post.rewind())
@@ -548,12 +710,9 @@ _*/underline-bold-italic/*_
     Plus@264..265 "+"
     Italic@265..291
       Slash@265..266 "/"
-      Subscript@266..268
-        Caret@266..267 "_"
-        Text@267..268 "*"
-      Text@268..288 "strikethrough-italic"
+      Text@266..288 "_*strikethrough-italic"
       Subscript@288..290
-        Caret@288..289 "_"
+        Underscore@288..289 "_"
         Text@289..290 "*"
       Slash@290..291 "/"
     Plus@291..292 "+"
@@ -765,7 +924,7 @@ _*/underline-bold-italic/*_
     Underscore@10..11 "_"
   Text@11..14 " */"
   Subscript@14..24
-    Caret@14..15 "_"
+    Underscore@14..15 "_"
     Text@15..24 "underline"
   Text@24..33 "_ italic/"
 "##

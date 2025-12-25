@@ -76,7 +76,7 @@ mod tests {
   Paragraph@0..24
     Text@0..18 "0123456789 * faked"
     Subscript@18..24
-      Caret@18..19 "_"
+      Underscore@18..19 "_"
       Text@19..24 "title"
 "##
         );
