@@ -228,6 +228,23 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
     choice((bold, italic, underline, strikethrough, verbatim, code)).boxed()
 }
 
+// ONLY used for lookahead, no need of any object parser
+pub(crate) fn simple_text_markup_parser<'a, C: 'a>() -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
+> + Clone {
+    let bold = text_markup_parser_with_string('*');
+    let italic = text_markup_parser_with_string('/');
+    let underline = text_markup_parser_with_string('_');
+    let strikethrough = text_markup_parser_with_string('+');
+    let code = text_markup_parser_with_string('~');
+    let verbatim = text_markup_parser_with_string('=');
+
+    choice((bold, italic, underline, strikethrough, verbatim, code)).boxed()
+}
+
 #[cfg(test)]
 mod tests {
     use crate::parser::common::get_parsers_output;

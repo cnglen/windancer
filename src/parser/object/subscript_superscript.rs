@@ -203,6 +203,7 @@ fn create_script_parser<'a, C: 'a>(
     t3_t1_t2
 }
 
+
 pub(crate) fn subscript_parser<'a, C: 'a>(
     object_parser: impl Parser<
         'a,
@@ -235,6 +236,158 @@ pub(crate) fn superscript_parser<'a, C: 'a>(
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
     create_script_parser(ScriptType::Super, object_parser)
+}
+
+fn create_simple_script_parser<'a, C: 'a>(
+    script_type: ScriptType,
+) -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
+> + Clone {
+    let (c, syntax_kind) = match script_type {
+        ScriptType::Super => ("^", OSK::Superscript),
+        ScriptType::Sub => ("_", OSK::Subscript),
+    };
+
+    // expression
+    let var = none_of("{}()\r\n").repeated().at_least(1).to_slice();
+    let mut single_expression = Recursive::declare(); // foo / (foo) / (((foo)))
+    single_expression.define(
+        var.or(just("(")
+            .then(single_expression.clone().repeated())
+            .then(just(")"))
+            .to_slice())
+            .or(just("{")
+                .then(single_expression.clone().repeated())
+                .then(just("}"))
+                .to_slice()),
+    );
+    let expression = single_expression.clone().repeated().to_slice(); // foo(bar){(def)ghi}
+
+    // bracket char to str
+    let lb_str = |lb| match lb {
+        '(' => "(",
+        '{' => "{",
+        _ => unreachable!(),
+    };
+    let rb_str = |rb| match rb {
+        ')' => ")",
+        '}' => "}",
+        _ => unreachable!(),
+    };
+
+    let sign = one_of("+-").or_not();
+    let t3_t1_t2 = just(c)
+        .try_map_with(|s, e| {
+            // check PRE
+            let pre_valid = (e.state() as &mut RollbackState<ParserState>)
+                .prev_char
+                .map_or(false, |c| !c.is_whitespace());
+
+            match pre_valid {
+                true => Ok(s),
+                false => Err(Rich::<char>::custom(
+                    e.span(),
+                    format!(
+                        "sub/sup script parser: pre_valid={pre_valid}, PRE={:?} not valid",
+                        (e.state() as &mut RollbackState<ParserState>).prev_char
+                    ),
+                )),
+            }
+        })
+        .then(choice((
+            // CHAR^ SIGN CHARS FINAL
+            sign.then(chars_final_parser())
+                .to_slice()
+                .map_with(|sign_content, e| {
+                    (e.state() as &mut RollbackState<ParserState>).prev_char =
+                        sign_content.chars().last();
+
+                    vec![NT::Token(GreenToken::new(OSK::Text.into(), sign_content))]
+                }),
+            // CHAR^* or CHAR_*
+            just("*").map_with(|aes, e| {
+                (e.state() as &mut RollbackState<ParserState>).prev_char = Some('*');
+                vec![NT::Token(GreenToken::new(OSK::Text.into(), aes))]
+            }),
+            // CHAR^{expression} / CHAR^(EXPRESSION)
+            one_of("({")
+                .map_with(|s: char, e| {
+                    // update state for next expression parser: nest + state + ctx
+                    (e.state() as &mut RollbackState<ParserState>).prev_char = Some(s);
+                    s
+                })
+                .then(expression)
+                .then_with_ctx(
+                    // ctx type -> expression has ctx type
+                    just('a').configure(|cfg, ctx: &(char, _)| {
+                        let bracket_close = match (*ctx).0 {
+                            '(' => ')',
+                            '{' => '}',
+                            _ => unreachable!(),
+                        };
+                        cfg.seq(bracket_close)
+                    }),
+                )
+                .map_with(move |((lb, expression), rb): ((_, &str), _), e| {
+                    (e.state() as &mut RollbackState<ParserState>).prev_char = Some(rb);
+
+                    let mut children = Vec::with_capacity(expression.len() + 2);
+                    children.push(NT::Token(GreenToken::new(
+                        match lb {
+                            '{' => OSK::LeftCurlyBracket.into(),
+                            '(' => OSK::LeftRoundBracket.into(),
+                            _ => unreachable!(),
+                        },
+                        lb_str(lb),
+                    )));
+                    // children.extend(expression);
+                    children.push(NT::Token(GreenToken::new(
+                        OSK::RightCurlyBracket.into(),
+                        rb_str(rb),
+                    )));
+
+                    children
+                }),
+        )))
+        .map(move |(sup, others)| {
+            let mut children = vec![];
+
+            let token = match sup {
+                "^" => NT::Token(GreenToken::new(OSK::Caret.into(), sup)),
+                "_" => NT::Token(GreenToken::new(OSK::Underscore.into(), sup)),
+                _ => unreachable!(),
+            };
+            children.push(token);
+            children.extend(others);
+
+            NT::Node(GreenNode::new(syntax_kind.clone().into(), children))
+        })
+        .boxed();
+
+    t3_t1_t2
+}
+
+pub(crate) fn simple_subscript_parser<'a, C: 'a>(
+) -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
+> + Clone {
+    create_simple_script_parser(ScriptType::Sub)
+}
+
+pub(crate) fn simple_superscript_parser<'a, C: 'a>(
+) -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
+> + Clone {
+    create_simple_script_parser(ScriptType::Super)
 }
 
 #[cfg(test)]

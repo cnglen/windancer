@@ -424,7 +424,15 @@ pub(crate) fn get_object_parser<'a, C: 'a>() -> (
         subscript.clone(),
         superscript.clone(),
     )));
-    let plain_text_for_minimal = plain_text_parser(non_plain_text_for_minimal.clone());
+    let non_plain_text_for_minimal_lookahead = Parser::boxed(choice((
+        latex_fragment.clone(),
+        entity.clone(),
+        text_markup::simple_text_markup_parser(),
+        subscript_superscript::simple_subscript_parser(),
+        subscript_superscript::simple_superscript_parser(),
+    )));
+    
+    let plain_text_for_minimal = plain_text_parser(non_plain_text_for_minimal_lookahead);
     minimal_set_object.define(choice((non_plain_text_for_minimal, plain_text_for_minimal)));
 
     // object allowed in regular link: 13
@@ -442,8 +450,24 @@ pub(crate) fn get_object_parser<'a, C: 'a>() -> (
         angle_link.clone(),
         plain_link.clone(),
     )));
+    // object allowed in regular link: 13
+    let non_plain_text_parsers_for_regular_link_lookahead = Parser::boxed(choice((
+        latex_fragment.clone(),
+        entity.clone(),
+        text_markup::simple_text_markup_parser(),
+        subscript_superscript::simple_subscript_parser(),
+        subscript_superscript::simple_superscript_parser(),
+        // export_snippet.clone(),
+        // inline_babel_call.clone(),
+        // inline_src_block.clone(),
+        r#macro.clone(),
+        // statistics_cookie.clone(),
+        angle_link.clone(),
+        plain_link.clone(),
+    )));
+    
     let plain_text_parser_for_regular_link =
-        plain_text_parser(non_plain_text_parsers_for_regular_link.clone());
+        plain_text_parser(non_plain_text_parsers_for_regular_link_lookahead);
     object_in_regular_link.define(choice((
         non_plain_text_parsers_for_regular_link,
         plain_text_parser_for_regular_link,
@@ -468,8 +492,27 @@ pub(crate) fn get_object_parser<'a, C: 'a>() -> (
         target.clone(),
         timestamp.clone(),
     )));
+    let non_plain_text_parsers_for_table_cell_lookahead = Parser::boxed(choice((
+        latex_fragment.clone(),
+        entity.clone(),
+        text_markup::simple_text_markup_parser(),
+        subscript_superscript::simple_subscript_parser(),
+        subscript_superscript::simple_superscript_parser(),
+        // citation.clone(),
+        // export_snippet.clone(),
+        footnote_reference.clone(),
+        angle_link.clone(),
+        plain_link.clone(),
+        regular_link.clone(),
+        radio_link.clone(),
+        r#macro.clone(),
+        radio_target.clone(),
+        target.clone(),
+        timestamp.clone(),
+    )));
+    
     let plain_text_parser_for_table_cell =
-        plain_text_parser(non_plain_text_parsers_for_table_cell.clone());
+        plain_text_parser(non_plain_text_parsers_for_table_cell_lookahead);
     object_in_table_cell.define(choice((
         non_plain_text_parsers_for_table_cell,
         plain_text_parser_for_table_cell,
@@ -487,7 +530,21 @@ pub(crate) fn get_object_parser<'a, C: 'a>() -> (
         footnote_reference.clone(), // 1个
                                     // citation.clone(),             // 1个
     )));
-    let plain_text_for_standard = plain_text_parser(standard_set_without_plain_text.clone());
+    let standard_set_without_plain_text_lookahead = Parser::boxed(choice((
+        radio_link.clone(),         // 1个
+        regular_link.clone(),       // 1个
+        independent_object.clone(), // 12个
+        radio_target.clone(),       // 1个
+        text_markup::simple_text_markup_parser(),
+        subscript_superscript::simple_subscript_parser(),
+        subscript_superscript::simple_superscript_parser(),
+        // subscript.clone(),          // 1个
+        // superscript.clone(),        // 1个
+        footnote_reference.clone(), // 1个
+                                    // citation.clone(),             // 1个
+    )));
+    
+    let plain_text_for_standard = plain_text_parser(standard_set_without_plain_text_lookahead);
     standard_set_object.define(choice((
         standard_set_without_plain_text,
         plain_text_for_standard,
@@ -508,7 +565,21 @@ pub(crate) fn get_object_parser<'a, C: 'a>() -> (
                                     // table_cell,            // table cell only in table_row of table, DONOT INCLUDE THIS
                                     // citation_reference,
     )));
-    let plain_text_for_full = plain_text_parser(full_set_without_plain_text.clone());
+    let full_set_without_plain_text_lookahead = Parser::boxed(choice((
+        radio_link.clone(),         // 1
+        regular_link.clone(),       // 1
+        independent_object.clone(), // 12
+        radio_target.clone(),       // 1
+        text_markup::simple_text_markup_parser(),
+        subscript_superscript::simple_subscript_parser(),
+        subscript_superscript::simple_superscript_parser(),
+        footnote_reference.clone(), // 1
+                                    // citation.clone(),             // 1
+
+                                    // table_cell,            // table cell only in table_row of table, DONOT INCLUDE THIS
+                                    // citation_reference,
+    )));
+    let plain_text_for_full = plain_text_parser(full_set_without_plain_text_lookahead);
     full_set_object.define(choice((full_set_without_plain_text, plain_text_for_full)));
 
     let non_plain_text_parsers_for_keyword = Parser::boxed(choice((
@@ -521,8 +592,18 @@ pub(crate) fn get_object_parser<'a, C: 'a>() -> (
         superscript.clone(),        // 1个
                                     // citation.clone(),             // 1个
     )));
+    let non_plain_text_parsers_for_keyword_lookahead = Parser::boxed(choice((
+        radio_link.clone(),         // 1个
+        regular_link.clone(),       // 1个
+        independent_object.clone(), // 12个
+        radio_target.clone(),       // 1个
+        text_markup::simple_text_markup_parser(),
+        subscript_superscript::simple_subscript_parser(),
+        subscript_superscript::simple_superscript_parser(),
+                                    // citation.clone(),             // 1个
+    )));
     let plain_text_parser_for_keyword =
-        plain_text_parser(non_plain_text_parsers_for_keyword.clone());
+        plain_text_parser(non_plain_text_parsers_for_keyword_lookahead);
     object_in_keyword.define(choice((
         non_plain_text_parsers_for_keyword,
         plain_text_parser_for_keyword,
