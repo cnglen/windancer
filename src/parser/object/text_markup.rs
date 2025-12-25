@@ -7,8 +7,203 @@ use rowan::{GreenNode, GreenToken, NodeOrToken};
 type NT = NodeOrToken<GreenNode, GreenToken>;
 type OSK = OrgSyntaxKind;
 
-// todo: use ctx combine 6 parser  for better lesser code
-/// text markup parser
+pub(crate) fn contents_parser<'a, C: 'a>(
+    marker: char,
+) -> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+{
+    let post = one_of(" \t​-.,;:!?)}]\"'\\\r\n").or(end().to('x'));
+
+    none_of(" \t​")              // not begin with whitespace.
+        .then(any()
+              .and_is(
+                  just(marker).ignore_then(post).ignored().not()
+              )
+              .repeated()
+        )
+        .to_slice()
+        .try_map_with(|content:&str, e| { // not end with whitespace.
+            let content_end_valid = match content.chars().last() {
+                Some(c) if matches!(c, ' ' | '\t' | '​') => false,
+                _ => true
+            };
+
+            match content_end_valid {
+                true => {Ok(())},
+                false => {Err(Rich::custom(
+                    e.span(),
+                    format!("text-markup:content: content_end_valid={content_end_valid}:\n  - content={content:?} ends with whitesace"),
+                ))}
+            }
+        })
+        .to_slice()
+}
+
+// bold/italic/underline/strikethrough
+// PRE MARKER CONTENTS MARKER POST
+// where CONTENTS is a series of objects from the standard set
+fn text_markup_parser_with_object<'a, C: 'a>(
+    object_parser: impl Parser<
+        'a,
+        &'a str,
+        NodeOrToken<GreenNode, GreenToken>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
+    > + Clone
+    + 'a,
+    marker: char,
+) -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
+> + Clone {
+    let post = one_of(" \t​-.,;:!?)}]\"'\\\r\n").or(end().to('x'));
+
+    let (token_kind, node_kind) = match marker {
+        '*' => (OSK::Asterisk, OSK::Bold),
+        '_' => (OSK::Underscore, OSK::Underline),
+        '/' => (OSK::Slash, OSK::Italic),
+        '+' => (OSK::Plus, OSK::Strikethrough),
+        '~' => (OSK::Tilde, OSK::Code),
+        '=' => (OSK::Equals, OSK::Verbatim),
+        _ => unreachable!(),
+    };
+
+    let standard_objects_parser = object_parser
+        .clone()
+        .repeated()
+        .at_least(1)
+        .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
+
+    just(marker)
+        .try_map_with(|s, e| {
+            let span = e.span();
+            let state: &mut RollbackState<ParserState> = e.state();
+
+            // https://github.com/zesterer/chumsky/issues/624
+            let pre_valid = state.prev_char.map_or(true, |c| {
+                matches!(
+                    c,
+                    ' '| '\t'| '​'|              // whitespace character
+                    '-'| '('| '{'| '"'| '\''|
+                    '\r'| '\n' // beginning of a line
+                )
+            });
+
+            match pre_valid {
+                true => {
+                    state.prev_char = None; // make subscript's PREV state none
+
+                    Ok(s)
+                }
+                false => Err(Rich::<char>::custom(
+                    span,
+                    format!(
+                        "text markup parser: pre_valid={pre_valid}, PRE={:?}",
+                        state.prev_char,
+                    ),
+                )),
+            }
+        })
+        .then(
+            standard_objects_parser
+                .clone()
+                .nested_in(contents_parser(marker)),
+        )
+        .then(just(marker))
+        .then_ignore(post.rewind())
+        .try_map_with(move |((start_marker, content), end_marker), e| {
+            (e.state() as &mut RollbackState<ParserState>).prev_char = Some(end_marker);
+
+            let mut children = Vec::with_capacity(2 + content.len());
+            children.push(NT::Token(GreenToken::new(
+                token_kind.into(),
+                &start_marker.to_string(),
+            )));
+            children.extend(content);
+            children.push(NT::Token(GreenToken::new(
+                token_kind.into(),
+                &end_marker.to_string(),
+            )));
+
+            Ok(NT::Node(GreenNode::new(node_kind.into(), children)))
+        })
+        .boxed()
+}
+
+// verbatim/code
+// PRE MARKER CONTENTS MARKER POST
+// where CONTENTS is a string
+fn text_markup_parser_with_string<'a, C: 'a>(
+    marker: char,
+) -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
+> + Clone {
+    let post = one_of(" \t​-.,;:!?)}]\"'\\\r\n").or(end().to('x'));
+
+    let (token_kind, node_kind) = match marker {
+        '*' => (OSK::Asterisk, OSK::Bold),
+        '_' => (OSK::Underscore, OSK::Underline),
+        '/' => (OSK::Slash, OSK::Italic),
+        '+' => (OSK::Plus, OSK::Strikethrough),
+        '~' => (OSK::Tilde, OSK::Code),
+        '=' => (OSK::Equals, OSK::Verbatim),
+        _ => unreachable!(),
+    };
+
+    just(marker)
+        .try_map_with(|s, e| {
+            let span = e.span();
+            let state: &mut RollbackState<ParserState> = e.state();
+
+            // https://github.com/zesterer/chumsky/issues/624
+            let pre_valid = state.prev_char.map_or(true, |c| {
+                matches!(
+                    c,
+                    ' '| '\t'| '​'|              // whitespace character
+                    '-'| '('| '{'| '"'| '\''|
+                    '\r'| '\n' // beginning of a line
+                )
+            });
+
+            match pre_valid {
+                true => {
+                    state.prev_char = None; // make subscript's PREV state none
+
+                    Ok(s)
+                }
+                false => Err(Rich::<char>::custom(
+                    span,
+                    format!(
+                        "text markup parser: pre_valid={pre_valid}, PRE={:?}",
+                        state.prev_char,
+                    ),
+                )),
+            }
+        })
+        .then(contents_parser(marker))
+        .then(just(marker))
+        .then_ignore(post.rewind())
+        .map_with(move |((start_marker, content), end_marker), e| {
+            (e.state() as &mut RollbackState<ParserState>).prev_char = Some(end_marker);
+
+            NT::Node(GreenNode::new(
+                node_kind.into(),
+                vec![
+                    NT::Token(GreenToken::new(
+                        token_kind.into(),
+                        &start_marker.to_string(),
+                    )),
+                    NT::Token(GreenToken::new(OSK::Text.into(), content)),
+                    NT::Token(GreenToken::new(token_kind.into(), &end_marker.to_string())),
+                ],
+            ))
+        })
+        .boxed()
+}
+
 pub(crate) fn text_markup_parser<'a, C: 'a>(
     object_parser: impl Parser<
         'a,
@@ -23,338 +218,14 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
-    let post = one_of(" \t​-.,;:!?)}]\"'\\\r\n").or(end().to('x'));
+    let bold = text_markup_parser_with_object(object_parser.clone(), '*');
+    let italic = text_markup_parser_with_object(object_parser.clone(), '/');
+    let underline = text_markup_parser_with_object(object_parser.clone(), '_');
+    let strikethrough = text_markup_parser_with_object(object_parser, '+');
+    let code = text_markup_parser_with_string('~');
+    let verbatim = text_markup_parser_with_string('=');
 
-    // a string may not begin or end with whitespace.
-    let get_content = |marker: char| {
-        none_of(" \t​")
-            .then(any()
-                  .and_is(
-                      just(marker).ignore_then(post).ignored().not()
-                  )
-                  .repeated()
-            )
-            .to_slice()
-            .try_map_with(|content:&str, e| {
-                let content_end_valid = match content.chars().last() {
-                    Some(c) if matches!(c, ' ' | '\t' | '​') => false,
-                    _ => true
-                };
-
-                match content_end_valid {
-                    true => {Ok(())},
-
-                    false => {Err(Rich::custom(
-                        e.span(),
-                        format!("text-markup:content: content_end_valid={content_end_valid}:\n  - content={content:?} ends with whitesace"),
-                    ))}
-
-                }
-            })
-            .to_slice()
-    };
-
-    let standard_objects_parser = object_parser
-        .clone()
-        .repeated()
-        .at_least(1)
-        .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
-
-    let bold = just("*")
-        .try_map_with(|s, e| {
-            let span = e.span();
-            let state: &mut RollbackState<ParserState> = e.state();
-
-            // https://github.com/zesterer/chumsky/issues/624
-            let pre_valid = state.prev_char.map_or(true, |c| {
-                matches!(
-                    c,
-                    ' '| '\t'| '​'|              // whitespace character
-                    '-'| '('| '{'| '"'| '\''|
-                    '\r'| '\n' // beginning of a line
-                )
-            });
-
-            match pre_valid {
-                true => {
-                    state.prev_char = None; // make subscript's PREV state none
-
-                    Ok(s)
-                }
-                false => Err(Rich::<char>::custom(
-                    span,
-                    format!(
-                        "text markup parser: pre_valid={pre_valid}, PRE={:?}",
-                        state.prev_char,
-                    ),
-                )),
-            }
-        })
-        .then(standard_objects_parser.clone().nested_in(get_content('*')))
-        .then(just("*"))
-        .then_ignore(post.rewind())
-        .try_map_with(|((start_marker, content), end_marker), e| {
-            // pre valid should NOT be deteced here, state.prev_char is update by standard object parser
-            // let old_state = e.state().prev_char;
-
-            (e.state() as &mut RollbackState<ParserState>).prev_char = end_marker.chars().last();
-            // println!("bold: {:?}{:?}{:?}, set prev_char {:?} -> {:?}", start_marker, content, end_marker, old_state, e.state().prev_char);
-
-            let mut children = Vec::with_capacity(2 + content.len());
-            children.push(NT::Token(GreenToken::new(
-                OSK::Asterisk.into(),
-                start_marker,
-            )));
-            children.extend(content);
-            children.push(NT::Token(GreenToken::new(OSK::Asterisk.into(), end_marker)));
-
-            Ok(NT::Node(GreenNode::new(OSK::Bold.into(), children)))
-        });
-
-    let italic = just("/")
-        .try_map_with(|s, e| {
-            let span = e.span();
-            let state: &mut RollbackState<ParserState> = e.state();
-
-            // https://github.com/zesterer/chumsky/issues/624
-            let pre_valid = state.prev_char.map_or(true, |c| {
-                matches!(
-                    c,
-                    ' '| '\t'| '​'|              // whitespace character
-                    '-'| '('| '{'| '"'| '\''|
-                    '\r'| '\n' // beginning of a line
-                )
-            });
-
-            match pre_valid {
-                true => {
-                    state.prev_char = None; // make subscript's PREV state none
-
-                    Ok(s)
-                }
-                false => Err(Rich::<char>::custom(
-                    span,
-                    format!(
-                        "text markup parser: pre_valid={pre_valid}, PRE={:?}",
-                        state.prev_char,
-                    ),
-                )),
-            }
-        })
-        .then(standard_objects_parser.clone().nested_in(get_content('/'))) // 这里objects_parser可能会执行plain_text_parser, 会更新prev_char!!(不应更新)
-        .then(just("/"))
-        .then_ignore(post.rewind())
-        .try_map_with(|((start_marker, content), end_marker), e| {
-            // pre valid should NOT be deteced here, state.prev_char is update by standard object parser
-            (e.state() as &mut RollbackState<ParserState>).prev_char = end_marker.chars().last();
-
-            let mut children = Vec::with_capacity(2 + content.len());
-            children.push(NT::Token(GreenToken::new(OSK::Slash.into(), start_marker)));
-            children.extend(content);
-            children.push(NT::Token(GreenToken::new(OSK::Slash.into(), end_marker)));
-
-            Ok(NT::Node(GreenNode::new(OSK::Italic.into(), children)))
-        });
-
-    let underline = just("_")
-        .try_map_with(|s, e| {
-            let span = e.span();
-            let state: &mut RollbackState<ParserState> = e.state();
-
-            // https://github.com/zesterer/chumsky/issues/624
-            let pre_valid = state.prev_char.map_or(true, |c| {
-                matches!(
-                    c,
-                    ' '| '\t'| '​'|              // whitespace character
-                    '-'| '('| '{'| '"'| '\''|
-                    '\r'| '\n' // beginning of a line
-                )
-            });
-
-            match pre_valid {
-                true => {
-                    state.prev_char = None; // make subscript's PREV state none
-
-                    Ok(s)
-                }
-                false => Err(Rich::<char>::custom(
-                    span,
-                    format!(
-                        "text markup parser: pre_valid={pre_valid}, PRE={:?}",
-                        state.prev_char,
-                    ),
-                )),
-            }
-        })
-        .then(standard_objects_parser.clone().nested_in(get_content('_')))
-        .then(just("_"))
-        .then_ignore(post.rewind())
-        .try_map_with(|((start_marker, content), end_marker), e| {
-            // pre valid should NOT be deteced here, state.prev_char is update by standard object parser
-            (e.state() as &mut RollbackState<ParserState>).prev_char = end_marker.chars().last();
-
-            let mut children = Vec::with_capacity(2 + content.len());
-            children.push(NT::Token(GreenToken::new(
-                OSK::Underscore.into(),
-                start_marker,
-            )));
-            children.extend(content);
-            children.push(NT::Token(GreenToken::new(
-                OSK::Underscore.into(),
-                end_marker,
-            )));
-
-            Ok(NT::Node(GreenNode::new(OSK::Underline.into(), children)))
-        });
-
-    let strikethrough = just("+")
-        .try_map_with(|s, e| {
-            let span = e.span();
-            let state: &mut RollbackState<ParserState> = e.state();
-
-            // https://github.com/zesterer/chumsky/issues/624
-            let pre_valid = state.prev_char.map_or(true, |c| {
-                matches!(
-                    c,
-                    ' '| '\t'| '​'|              // whitespace character
-                    '-'| '('| '{'| '"'| '\''|
-                    '\r'| '\n' // beginning of a line
-                )
-            });
-
-            match pre_valid {
-                true => {
-                    state.prev_char = None; // make subscript's PREV state none
-
-                    Ok(s)
-                }
-                false => Err(Rich::<char>::custom(
-                    span,
-                    format!(
-                        "text markup parser: pre_valid={pre_valid}, PRE={:?}",
-                        state.prev_char,
-                    ),
-                )),
-            }
-        })
-        .then(standard_objects_parser.clone().nested_in(get_content('+')))
-        .then(just("+"))
-        .then_ignore(post.rewind())
-        .try_map_with(|((start_marker, content), end_marker), e| {
-            // pre valid should NOT be deteced here, state.prev_char is update by standard object parser
-            (e.state() as &mut RollbackState<ParserState>).prev_char = end_marker.chars().last();
-
-            let mut children = Vec::with_capacity(2 + content.len());
-            children.push(NT::Token(GreenToken::new(OSK::Plus.into(), start_marker)));
-            children.extend(content);
-            children.push(NT::Token(GreenToken::new(OSK::Plus.into(), end_marker)));
-
-            Ok(NT::Node(GreenNode::new(
-                OSK::Strikethrough.into(),
-                children,
-            )))
-        });
-
-    let code = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("~")
-        .try_map_with(|s, e| {
-            let span = e.span();
-            let state: &mut RollbackState<ParserState> = e.state();
-
-            // https://github.com/zesterer/chumsky/issues/624
-            let pre_valid = state.prev_char.map_or(true, |c| {
-                matches!(
-                    c,
-                    ' '| '\t'| '​'|              // whitespace character
-                    '-'| '('| '{'| '"'| '\''|
-                    '\r'| '\n' // beginning of a line
-                )
-            });
-
-            match pre_valid {
-                true => {
-                    state.prev_char = None; // make subscript's PREV state none
-
-                    Ok(s)
-                }
-                false => Err(Rich::<char>::custom(
-                    span,
-                    format!(
-                        "text markup parser: pre_valid={pre_valid}, PRE={:?}",
-                        state.prev_char,
-                    ),
-                )),
-            }
-        })
-        .then(get_content('~'))
-        .then(just("~"))
-        .then_ignore(post.rewind())
-        .try_map_with(|((start_marker, content), end_marker), e| {
-            (e.state() as &mut RollbackState<ParserState>).prev_char = end_marker.chars().last();
-
-            Ok(NT::Node(GreenNode::new(
-                OSK::Code.into(),
-                vec![
-                    NT::Token(GreenToken::new(OSK::Tilde.into(), start_marker)),
-                    NT::Token(GreenToken::new(OSK::Text.into(), content)),
-                    NT::Token(GreenToken::new(OSK::Tilde.into(), end_marker)),
-                ],
-            )))
-        });
-
-    let verbatim = just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("=")
-        .try_map_with(|s, e| {
-            let span = e.span();
-            let state: &mut RollbackState<ParserState> = e.state();
-
-            // https://github.com/zesterer/chumsky/issues/624
-            let pre_valid = state.prev_char.map_or(true, |c| {
-                matches!(
-                    c,
-                    ' '| '\t'| '​'|              // whitespace character
-                    '-'| '('| '{'| '"'| '\''|
-                    '\r'| '\n' // beginning of a line
-                )
-            });
-
-            match pre_valid {
-                true => {
-                    state.prev_char = None; // make subscript's PREV state none
-
-                    Ok(s)
-                }
-                false => Err(Rich::<char>::custom(
-                    span,
-                    format!(
-                        "text markup parser: pre_valid={pre_valid}, PRE={:?}",
-                        state.prev_char,
-                    ),
-                )),
-            }
-        })
-        .then(get_content('='))
-        .then(just("="))
-        .then_ignore(post.rewind())
-        .try_map_with(|((start_marker, content), end_marker), e| {
-            (e.state() as &mut RollbackState<ParserState>).prev_char = end_marker.chars().last();
-
-            Ok(NT::Node(GreenNode::new(
-                OSK::Verbatim.into(),
-                vec![
-                    NT::Token(GreenToken::new(OSK::Equals.into(), start_marker)),
-                    NT::Token(GreenToken::new(OSK::Text.into(), content)),
-                    NT::Token(GreenToken::new(OSK::Equals.into(), end_marker)),
-                ],
-            )))
-        });
-
-    Parser::boxed(choice((
-        bold,
-        italic,
-        underline,
-        strikethrough,
-        verbatim,
-        code,
-    )))
+    choice((bold, italic, underline, strikethrough, verbatim, code)).boxed()
 }
 
 #[cfg(test)]
