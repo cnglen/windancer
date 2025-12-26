@@ -7,6 +7,45 @@ use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 /// radio target parser: <<<TARGET>>>
+fn radio_target_parser_inner<'a, C: 'a>(
+    target_parser: impl Parser<
+        'a,
+        &'a str,
+        Vec<NodeOrToken<GreenNode, GreenToken>>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
+    > + Clone
+    + 'a,
+) -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
+> + Clone {
+    just("<<<")
+        .then(target_parser)
+        .then(just(">>>"))
+        .map_with(|((lbracket3, target), rbracket3), e| {
+            (e.state() as &mut RollbackState<ParserState>).prev_char = rbracket3.chars().last();
+
+            let mut children = Vec::with_capacity(2 + target.len());
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::LeftAngleBracket3.into(),
+                lbracket3,
+            )));
+            children.extend(target);
+            children.push(NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::RightAngleBracket3.into(),
+                rbracket3,
+            )));
+
+            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
+                OrgSyntaxKind::RadioTarget.into(),
+                children,
+            ))
+        })
+        .boxed()
+}
+
 pub(crate) fn radio_target_parser<'a, C: 'a>(
     object_parser: impl Parser<
         'a,
@@ -46,31 +85,43 @@ pub(crate) fn radio_target_parser<'a, C: 'a>(
                 .or_not(),
         )
         .to_slice();
-    let target = minimal_objects_parser.nested_in(target_inner);
+    let target_parser = minimal_objects_parser.nested_in(target_inner);
 
-    just("<<<")
-        .then(target)
-        .then(just(">>>"))
-        .map_with(|((lbracket3, target), rbracket3), e| {
-            (e.state() as &mut RollbackState<ParserState>).prev_char = rbracket3.chars().last();
+    radio_target_parser_inner(target_parser)
+}
 
-            let mut children = Vec::with_capacity(2 + target.len());
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::LeftAngleBracket3.into(),
-                lbracket3,
-            )));
-            children.extend(target);
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::RightAngleBracket3.into(),
-                rbracket3,
-            )));
-
-            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                OrgSyntaxKind::RadioTarget.into(),
-                children,
-            ))
-        })
-        .boxed()
+pub(crate) fn simple_radio_target_parser<'a, C: 'a>() -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
+> + Clone {
+    let target_inner = none_of("<>\n \t") // starting with a non-whitespce character
+        .then(
+            none_of("<>\n")
+                .repeated()
+                .at_least(1)
+                .to_slice()
+                .try_map_with(|s: &str, e| {
+                    if s.chars().last().expect("at least 1").is_whitespace() {
+                        Err(Rich::custom(
+                            e.span(),
+                            format!("the last char of '{}' can't be whitespace", s),
+                        ))
+                    } else {
+                        Ok(s)
+                    }
+                })
+                .or_not(),
+        )
+        .to_slice()
+        .map(|s: &str| {
+            vec![NodeOrToken::Token(GreenToken::new(
+                OrgSyntaxKind::Text.into(),
+                s,
+            ))]
+        });
+    radio_target_parser_inner(target_inner)
 }
 
 #[cfg(test)]

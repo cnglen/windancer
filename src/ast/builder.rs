@@ -880,9 +880,9 @@ impl Converter {
     ) -> Result<Option<Object>, AstError> {
         let is_anoymous = node
             .children_with_tokens()
-            .filter(|e| e.kind() == OrgSyntaxKind::Colon2)
+            .filter(|e| e.kind() == OrgSyntaxKind::FootnoteReferenceLabel)
             .count()
-            > 0;
+            == 0;
 
         // todo: bold  fixme
         let is_inline = node

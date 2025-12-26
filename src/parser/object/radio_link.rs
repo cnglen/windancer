@@ -68,27 +68,23 @@ fn radio_parser<'a, C: 'a>()
     })
 }
 
-/// radio link parser: PRE RADIO POST
-pub(crate) fn radio_link_parser<'a, C: 'a>(
-    object_parser: impl Parser<
-        'a,
-        &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone
-    + 'a,
+pub(crate) fn radio_link_parser_inner<'a, C: 'a, E>(
+    radio_parser_slice_or_object: E,
 ) -> impl Parser<
     'a,
     &'a str,
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
-    let minimal_objects_parser = object_parser
-        .clone()
-        .repeated()
-        .at_least(1)
-        .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
-    let radio = minimal_objects_parser.nested_in(radio_parser().to_slice());
+> + Clone
+where
+    E: Parser<
+            'a,
+            &'a str,
+            Vec<NodeOrToken<GreenNode, GreenToken>>,
+            extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
+        > + Clone
+        + 'a,
+{
     let post = any()
         .filter(|c: &char| !c.is_alphanumeric())
         .or(end().to('x'));
@@ -112,7 +108,7 @@ pub(crate) fn radio_link_parser<'a, C: 'a>(
             }
         })
         .rewind()
-        .then(radio)
+        .then(radio_parser_slice_or_object)
         .then_ignore(post.rewind())
         .map_with(|(_s, radio), e| {
             // fixme: faster to get radio last char?
@@ -133,4 +129,44 @@ pub(crate) fn radio_link_parser<'a, C: 'a>(
             ))
         })
         .boxed()
+}
+
+/// radio link parser: PRE RADIO POST
+pub(crate) fn radio_link_parser<'a, C: 'a>(
+    object_parser: impl Parser<
+        'a,
+        &'a str,
+        NodeOrToken<GreenNode, GreenToken>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
+    > + Clone
+    + 'a,
+) -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
+> + Clone {
+    let minimal_objects_parser = object_parser
+        .clone()
+        .repeated()
+        .at_least(1)
+        .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
+    let radio_parser_object = minimal_objects_parser.nested_in(radio_parser().to_slice());
+
+    radio_link_parser_inner(radio_parser_object)
+}
+
+pub(crate) fn simple_radio_link_parser<'a, C: 'a>() -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
+> + Clone {
+    let radio_parser_slice = radio_parser().to_slice().map(|s: &str| {
+        vec![NodeOrToken::Token(GreenToken::new(
+            OrgSyntaxKind::Text.into(),
+            s,
+        ))]
+    });
+    radio_link_parser_inner(radio_parser_slice)
 }

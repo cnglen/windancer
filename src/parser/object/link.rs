@@ -3,6 +3,7 @@ use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::{ParserState, object};
 use std::ops::Range;
 
+use chumsky::input::InputRef;
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
@@ -19,7 +20,7 @@ pub(crate) static LINK_PROTOCOLS: phf::Set<&'static str> = phf_set! {
 /// PROTOCOL: A string which is one of the link type strings in org-link-parameters
 // - Consume only verified to reduce # of backtracks: rollbackstate.on_save 1761022 -> 1661398 (94.3%)
 // #[allow(unused)]
-use chumsky::input::InputRef;
+
 pub(crate) fn protocol<'a, C: 'a>()
 -> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
 {
@@ -270,11 +271,11 @@ pub(crate) fn angle_link_parser<'a, C: 'a>() -> impl Parser<
 }
 
 /// regular link parser
-pub(crate) fn regular_link_parser<'a, C: 'a>(
-    object_parser: impl Parser<
+pub(crate) fn regular_link_parser_inner<'a, C: 'a>(
+    description_parser: impl Parser<
         'a,
         &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
+        Vec<NodeOrToken<GreenNode, GreenToken>>,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
     > + Clone
     + 'a,
@@ -284,23 +285,8 @@ pub(crate) fn regular_link_parser<'a, C: 'a>(
     NodeOrToken<GreenNode, GreenToken>,
     extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
 > + Clone {
-    let minimal_and_other_objects_parser = object_parser
-        .clone()
-        .repeated()
-        .at_least(1)
-        .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
-
     let description = just("[")
-        .then(
-            minimal_and_other_objects_parser.nested_in(
-                // any().and_is(just("]]").not()) // slow version
-                none_of("]")
-                    .to_slice()
-                    .or(just("]").then(none_of("]")).to_slice())
-                    .repeated()
-                    .to_slice(),
-            ),
-        )
+        .then(description_parser)
         .then(just("]"))
         .or_not()
         .map(|description| match description {
@@ -345,24 +331,19 @@ pub(crate) fn regular_link_parser<'a, C: 'a>(
                 .at_least(1),
         )
         .to_slice();
-
     let protocol_pathinner = protocol()
         .then(just(":"))
         .then(just("//").or_not())
         .then(string_without_brackets)
         .to_slice();
-
     let id = just("id:")
         .then(one_of("0123456789abcdef-").repeated().at_least(1))
         .to_slice();
-
     let custom_id = just("#").then(string_without_brackets).to_slice();
-
     let codef_ref = just("(")
         .then(string_without_brackets)
         .then(just(")"))
         .to_slice();
-
     let fuzzy = string_without_brackets;
 
     let pathreg = just("[")
@@ -392,7 +373,7 @@ pub(crate) fn regular_link_parser<'a, C: 'a>(
             ))
         });
 
-    just::<_, _, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("[")
+    just("[")
         .then(pathreg)
         .then(description)
         .then(just("]"))
@@ -414,9 +395,9 @@ pub(crate) fn regular_link_parser<'a, C: 'a>(
                     rbracket,
                 )));
 
-                e.state().prev_char = rbracket.chars().last();
+                (e.state() as &mut RollbackState<ParserState>).prev_char = rbracket.chars().last();
                 children.extend(maybe_newline.into_iter().map(|nl| {
-                    e.state().prev_char = nl.chars().last();
+                    (e.state() as &mut RollbackState<ParserState>).prev_char = nl.chars().last();
                     NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Newline.into(), &nl))
                 }));
 
@@ -427,6 +408,59 @@ pub(crate) fn regular_link_parser<'a, C: 'a>(
             },
         )
         .boxed()
+}
+
+pub(crate) fn regular_link_parser<'a, C: 'a>(
+    object_parser: impl Parser<
+        'a,
+        &'a str,
+        NodeOrToken<GreenNode, GreenToken>,
+        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
+    > + Clone
+    + 'a,
+) -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
+> + Clone {
+    let minimal_and_other_objects_parser = object_parser
+        .clone()
+        .repeated()
+        .at_least(1)
+        .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
+
+    let description_inner_parser = none_of("]")
+        .to_slice()
+        .or(just("]").then(none_of("]")).to_slice()) // any().and_is(just("]]").not())
+        .repeated()
+        .to_slice();
+
+    let description_parser = minimal_and_other_objects_parser.nested_in(description_inner_parser);
+
+    regular_link_parser_inner(description_parser)
+}
+
+pub(crate) fn simple_regular_link_parser<'a, C: 'a>() -> impl Parser<
+    'a,
+    &'a str,
+    NodeOrToken<GreenNode, GreenToken>,
+    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
+> + Clone {
+    let description_inner_parser = none_of("]")
+        .to_slice()
+        .or(just("]").then(none_of("]")).to_slice()) // any().and_is(just("]]").not())
+        .repeated()
+        .to_slice();
+
+    let description_parser = description_inner_parser.map(|s: &str| {
+        vec![NodeOrToken::Token(GreenToken::new(
+            OrgSyntaxKind::Text.into(),
+            s,
+        ))]
+    });
+
+    regular_link_parser_inner(description_parser)
 }
 
 #[cfg(test)]
