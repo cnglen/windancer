@@ -1,20 +1,13 @@
 //! timestamp parser
-use crate::parser::ParserState;
-use crate::parser::syntax::OrgSyntaxKind;
-
-use chumsky::inspector::RollbackState;
+use crate::parser::{MyExtra, NT, OSK};
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
+use rowan::{GreenNode, GreenToken};
 
 use super::whitespaces_g1;
 
 /// timestamp parser: <<TIMESTAMP>>
-pub(crate) fn timestamp_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn timestamp_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone
+{
     let yyyymmdd = one_of("0123456789")
         .repeated()
         .at_least(4)
@@ -55,12 +48,9 @@ pub(crate) fn timestamp_parser<'a, C: 'a>() -> impl Parser<
         .map_with(|s, e| {
             e.state().prev_char = s.chars().last();
 
-            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                OrgSyntaxKind::Timestamp.into(),
-                vec![NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    s,
-                ))],
+            NT::Node(GreenNode::new(
+                OSK::Timestamp.into(),
+                vec![NT::Token(GreenToken::new(OSK::Text.into(), s))],
             ))
         });
 
@@ -78,12 +68,9 @@ pub(crate) fn timestamp_parser<'a, C: 'a>() -> impl Parser<
         .map_with(|s, e| {
             e.state().prev_char = s.chars().last();
 
-            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                OrgSyntaxKind::Timestamp.into(),
-                vec![NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    s,
-                ))],
+            NT::Node(GreenNode::new(
+                OSK::Timestamp.into(),
+                vec![NT::Token(GreenToken::new(OSK::Text.into(), s))],
             ))
         });
 
@@ -95,12 +82,9 @@ pub(crate) fn timestamp_parser<'a, C: 'a>() -> impl Parser<
         .map_with(|s, e| {
             e.state().prev_char = s.chars().last();
 
-            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                OrgSyntaxKind::Timestamp.into(),
-                vec![NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    s,
-                ))],
+            NT::Node(GreenNode::new(
+                OSK::Timestamp.into(),
+                vec![NT::Token(GreenToken::new(OSK::Text.into(), s))],
             ))
         });
 
@@ -112,12 +96,9 @@ pub(crate) fn timestamp_parser<'a, C: 'a>() -> impl Parser<
         .map_with(|s, e| {
             e.state().prev_char = s.chars().last();
 
-            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                OrgSyntaxKind::Timestamp.into(),
-                vec![NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    s,
-                ))],
+            NT::Node(GreenNode::new(
+                OSK::Timestamp.into(),
+                vec![NT::Token(GreenToken::new(OSK::Text.into(), s))],
             ))
         });
 
@@ -134,12 +115,9 @@ pub(crate) fn timestamp_parser<'a, C: 'a>() -> impl Parser<
         .to_slice()
         .map_with(|s, e| {
             e.state().prev_char = s.chars().last();
-            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                OrgSyntaxKind::Timestamp.into(),
-                vec![NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    s,
-                ))],
+            NT::Node(GreenNode::new(
+                OSK::Timestamp.into(),
+                vec![NT::Token(GreenToken::new(OSK::Text.into(), s))],
             ))
         });
 
@@ -157,12 +135,9 @@ pub(crate) fn timestamp_parser<'a, C: 'a>() -> impl Parser<
         .map_with(|s, e| {
             e.state().prev_char = s.chars().last();
 
-            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                OrgSyntaxKind::Timestamp.into(),
-                vec![NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    s,
-                ))],
+            NT::Node(GreenNode::new(
+                OSK::Timestamp.into(),
+                vec![NT::Token(GreenToken::new(OSK::Text.into(), s))],
             ))
         });
 

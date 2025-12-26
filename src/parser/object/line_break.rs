@@ -1,17 +1,11 @@
 //! Line break parser
-use crate::parser::syntax::OrgSyntaxKind;
-use crate::parser::{ParserState, object};
-
-use chumsky::inspector::RollbackState;
+use crate::parser::object;
+use crate::parser::{MyExtra, NT, OSK};
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
+use rowan::{GreenNode, GreenToken};
 
-pub(crate) fn line_break_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn line_break_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone
+{
     // // todo
     // any()
     //     .map_with(|s, e|)
@@ -29,25 +23,19 @@ pub(crate) fn line_break_parser<'a, C: 'a>() -> impl Parser<
             } else {
                 let mut children = Vec::with_capacity(2);
 
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::BackSlash2.into(),
+                children.push(NT::Token(GreenToken::new(
+                    OSK::BackSlash2.into(),
                     line_break,
                 )));
 
                 if !maybe_ws.is_empty() {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Whitespace.into(),
-                        maybe_ws,
-                    )));
+                    children.push(NT::Token(GreenToken::new(OSK::Whitespace.into(), maybe_ws)));
                     e.state().prev_char = maybe_ws.chars().last();
                 } else {
                     e.state().prev_char = line_break.chars().last();
                 }
 
-                Ok(NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                    OrgSyntaxKind::LineBreak.into(),
-                    children,
-                )))
+                Ok(NT::Node(GreenNode::new(OSK::LineBreak.into(), children)))
             }
         })
         .boxed()

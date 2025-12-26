@@ -1,12 +1,12 @@
 //! link parser, including angle/plain/regular link
-use crate::parser::syntax::OrgSyntaxKind;
+use crate::parser::{MyExtra, NT, OSK};
 use crate::parser::{ParserState, object};
 use std::ops::Range;
 
 use chumsky::input::InputRef;
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
+use rowan::{GreenNode, GreenToken};
 
 use phf::phf_set;
 
@@ -21,43 +21,33 @@ pub(crate) static LINK_PROTOCOLS: phf::Set<&'static str> = phf_set! {
 // - Consume only verified to reduce # of backtracks: rollbackstate.on_save 1761022 -> 1661398 (94.3%)
 // #[allow(unused)]
 
-pub(crate) fn protocol<'a, C: 'a>()
--> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
-    custom(
-        |inp: &mut InputRef<
-            'a,
-            '_,
-            &'a str,
-            extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-        >| {
-            let before = &inp.cursor();
-            let remaining = inp.slice_from(std::ops::RangeFrom {
-                start: &inp.cursor(),
-            });
-
-            let protocol: String = remaining
-                .chars()
-                .take_while(|c| c.is_ascii_lowercase() || *c == '+')
-                .collect();
-
-            if protocol.is_empty() || !LINK_PROTOCOLS.contains(protocol.as_str()) {
-                return Err(Rich::custom(
-                    inp.span_since(before),
-                    format!("invalid protocol: '{}'", protocol),
-                ));
+pub(crate) fn protocol<'a, C: 'a>() -> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Clone {
+    custom(|inp: &mut InputRef<'a, '_, &'a str, MyExtra<'a, C>>| {
+        let before = inp.cursor();
+        loop {
+            match inp.peek() {
+                Some(c) if c.is_ascii_lowercase() || matches!(c, '+') => {
+                    inp.next();
+                }
+                _ => {
+                    break;
+                }
             }
+        }
+        let protocol: &str = inp.slice_since(&before..);
 
-            for _ in 0..protocol.len() {
-                inp.next();
-            }
+        if protocol.is_empty() || !LINK_PROTOCOLS.contains(protocol) {
+            return Err(Rich::custom(
+                inp.span_since(&before),
+                format!("invalid protocol: '{}'", protocol),
+            ));
+        }
 
-            Ok(protocol)
-        },
-    )
+        Ok(protocol)
+    })
 }
 // pub(crate) fn protocol_old<'a, C: 'a>()
-// -> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+// -> impl Parser<'a, &'a str, String, MyExtra<'a, C>> + Clone
 // {
 //     any()
 //         .filter(|c: &char| matches!(c, 'a'..'z' | '+'))
@@ -68,10 +58,8 @@ pub(crate) fn protocol<'a, C: 'a>()
 // }
 
 // pathplain parser
-fn path_plain_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
-    custom::<_, &str, _, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>(|inp| {
+fn path_plain_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, String, MyExtra<'a, C>> + Clone {
+    custom::<_, &str, _, MyExtra<'a, C>>(|inp| {
         let remaining = inp.slice_from(std::ops::RangeFrom {
             start: &inp.cursor(),
         });
@@ -182,12 +170,8 @@ fn path_plain_parser<'a, C: 'a>()
 }
 
 /// plain link parser
-pub(crate) fn plain_link_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn plain_link_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone
+{
     let protocol = protocol();
     let post = any()
         .filter(|c: &char| !c.is_alphanumeric())
@@ -203,18 +187,12 @@ pub(crate) fn plain_link_parser<'a, C: 'a>() -> impl Parser<
                 true => {
                     e.state().prev_char = pathplain.chars().last();
 
-                    Ok(NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                        OrgSyntaxKind::PlainLink.into(),
+                    Ok(NT::Node(GreenNode::new(
+                        OSK::PlainLink.into(),
                         vec![
-                            NodeOrToken::Token(GreenToken::new(
-                                OrgSyntaxKind::Text.into(),
-                                &protocol,
-                            )),
-                            NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Colon.into(), colon)),
-                            NodeOrToken::Token(GreenToken::new(
-                                OrgSyntaxKind::Text.into(),
-                                &pathplain,
-                            )),
+                            NT::Token(GreenToken::new(OSK::Text.into(), &protocol)),
+                            NT::Token(GreenToken::new(OSK::Colon.into(), colon)),
+                            NT::Token(GreenToken::new(OSK::Text.into(), &pathplain)),
                         ],
                     )))
                 }
@@ -231,12 +209,8 @@ pub(crate) fn plain_link_parser<'a, C: 'a>() -> impl Parser<
 }
 
 /// angle link parser
-pub(crate) fn angle_link_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn angle_link_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone
+{
     let path_angle = none_of(">") // . is permitted: orgmode.org, xx@xx.com
         .repeated()
         .at_least(1)
@@ -249,20 +223,14 @@ pub(crate) fn angle_link_parser<'a, C: 'a>() -> impl Parser<
         .then(just(">"))
         .map(
             |((((left_angle, protocol), colon), path_angle), right_angle)| {
-                NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                    OrgSyntaxKind::AngleLink.into(),
+                NT::Node(GreenNode::new(
+                    OSK::AngleLink.into(),
                     vec![
-                        NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::LeftAngleBracket.into(),
-                            left_angle,
-                        )),
-                        NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Text.into(), &protocol)),
-                        NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Colon.into(), colon)),
-                        NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Text.into(), path_angle)),
-                        NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::RightAngleBracket.into(),
-                            right_angle,
-                        )),
+                        NT::Token(GreenToken::new(OSK::LeftAngleBracket.into(), left_angle)),
+                        NT::Token(GreenToken::new(OSK::Text.into(), &protocol)),
+                        NT::Token(GreenToken::new(OSK::Colon.into(), colon)),
+                        NT::Token(GreenToken::new(OSK::Text.into(), path_angle)),
+                        NT::Token(GreenToken::new(OSK::RightAngleBracket.into(), right_angle)),
                     ],
                 ))
             },
@@ -272,19 +240,8 @@ pub(crate) fn angle_link_parser<'a, C: 'a>() -> impl Parser<
 
 /// regular link parser
 pub(crate) fn regular_link_parser_inner<'a, C: 'a>(
-    description_parser: impl Parser<
-        'a,
-        &'a str,
-        Vec<NodeOrToken<GreenNode, GreenToken>>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone
-    + 'a,
-) -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+    description_parser: impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let description = just("[")
         .then(description_parser)
         .then(just("]"))
@@ -293,22 +250,19 @@ pub(crate) fn regular_link_parser_inner<'a, C: 'a>(
             None => None,
 
             Some(((lbracket, content), rbracket)) => {
-                Some(NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                    OrgSyntaxKind::LinkDescription.into(),
-                    {
-                        let mut children = Vec::with_capacity(2 + content.len());
-                        children.push(NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::LeftSquareBracket.into(),
-                            lbracket,
-                        )));
-                        children.extend(content);
-                        children.push(NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::RightSquareBracket.into(),
-                            rbracket,
-                        )));
-                        children
-                    },
-                )))
+                Some(NT::Node(GreenNode::new(OSK::LinkDescription.into(), {
+                    let mut children = Vec::with_capacity(2 + content.len());
+                    children.push(NT::Token(GreenToken::new(
+                        OSK::LeftSquareBracket.into(),
+                        lbracket,
+                    )));
+                    children.extend(content);
+                    children.push(NT::Token(GreenToken::new(
+                        OSK::RightSquareBracket.into(),
+                        rbracket,
+                    )));
+                    children
+                })))
             }
         });
 
@@ -357,18 +311,12 @@ pub(crate) fn regular_link_parser_inner<'a, C: 'a>(
         )))
         .then(just("]"))
         .map(|((lbracket, path), rbracket)| {
-            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                OrgSyntaxKind::LinkPath.into(),
+            NT::Node(GreenNode::new(
+                OSK::LinkPath.into(),
                 vec![
-                    NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::LeftSquareBracket.into(),
-                        lbracket,
-                    )),
-                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Text.into(), path)),
-                    NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::RightSquareBracket.into(),
-                        rbracket,
-                    )),
+                    NT::Token(GreenToken::new(OSK::LeftSquareBracket.into(), lbracket)),
+                    NT::Token(GreenToken::new(OSK::Text.into(), path)),
+                    NT::Token(GreenToken::new(OSK::RightSquareBracket.into(), rbracket)),
                 ],
             ))
         });
@@ -381,8 +329,8 @@ pub(crate) fn regular_link_parser_inner<'a, C: 'a>(
         .map_with(
             |((((lbracket, path), maybe_desc), rbracket), maybe_newline), e| {
                 let mut children = Vec::new();
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::LeftSquareBracket.into(),
+                children.push(NT::Token(GreenToken::new(
+                    OSK::LeftSquareBracket.into(),
                     lbracket,
                 )));
 
@@ -390,45 +338,31 @@ pub(crate) fn regular_link_parser_inner<'a, C: 'a>(
 
                 children.extend(maybe_desc.into_iter());
 
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::RightSquareBracket.into(),
+                children.push(NT::Token(GreenToken::new(
+                    OSK::RightSquareBracket.into(),
                     rbracket,
                 )));
 
                 (e.state() as &mut RollbackState<ParserState>).prev_char = rbracket.chars().last();
                 children.extend(maybe_newline.into_iter().map(|nl| {
                     (e.state() as &mut RollbackState<ParserState>).prev_char = nl.chars().last();
-                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Newline.into(), &nl))
+                    NT::Token(GreenToken::new(OSK::Newline.into(), &nl))
                 }));
 
-                NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                    OrgSyntaxKind::Link.into(),
-                    children,
-                ))
+                NT::Node(GreenNode::new(OSK::Link.into(), children))
             },
         )
         .boxed()
 }
 
 pub(crate) fn regular_link_parser<'a, C: 'a>(
-    object_parser: impl Parser<
-        'a,
-        &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone
-    + 'a,
-) -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+    object_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let minimal_and_other_objects_parser = object_parser
         .clone()
         .repeated()
         .at_least(1)
-        .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
+        .collect::<Vec<NT>>();
 
     let description_inner_parser = none_of("]")
         .to_slice()
@@ -441,24 +375,16 @@ pub(crate) fn regular_link_parser<'a, C: 'a>(
     regular_link_parser_inner(description_parser)
 }
 
-pub(crate) fn simple_regular_link_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn simple_regular_link_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let description_inner_parser = none_of("]")
         .to_slice()
         .or(just("]").then(none_of("]")).to_slice()) // any().and_is(just("]]").not())
         .repeated()
         .to_slice();
 
-    let description_parser = description_inner_parser.map(|s: &str| {
-        vec![NodeOrToken::Token(GreenToken::new(
-            OrgSyntaxKind::Text.into(),
-            s,
-        ))]
-    });
+    let description_parser = description_inner_parser
+        .map(|s: &str| vec![NT::Token(GreenToken::new(OSK::Text.into(), s))]);
 
     regular_link_parser_inner(description_parser)
 }

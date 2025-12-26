@@ -1,24 +1,16 @@
 //! Entity parser
 use crate::constants::entity::ENTITYNAME_SET;
-use crate::parser::syntax::OrgSyntaxKind;
+use crate::parser::{MyExtra, NT, OSK};
 use crate::parser::{ParserState, object};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
-
-type NT = NodeOrToken<GreenNode, GreenToken>;
-type OSK = OrgSyntaxKind;
+use rowan::{GreenNode, GreenToken};
 
 /// Entity parser
 /// - \NAME{}
 /// - \NAME POST
 /// - \_SPACES
-pub(crate) fn entity_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn entity_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     // name := A string with a valid association in either org-entities or org-entities-user
     let name_parser = object::keyword_cs_parser(&ENTITYNAME_SET);
 

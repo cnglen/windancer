@@ -1,18 +1,12 @@
 //! target parser
 use crate::parser::ParserState;
-use crate::parser::syntax::OrgSyntaxKind;
-
+use crate::parser::{MyExtra, NT, OSK};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
+use rowan::{GreenNode, GreenToken};
 
 /// target parser: <<TARGET>>
-pub(crate) fn target_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn target_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let target = none_of("<>\n \t")
         .then(
             none_of("<>\n")
@@ -41,21 +35,12 @@ pub(crate) fn target_parser<'a, C: 'a>() -> impl Parser<
             state.prev_char = Some('>');
 
             let children = vec![
-                NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::LeftAngleBracket2.into(),
-                    lbracket2,
-                )),
-                NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Text.into(), target)),
-                NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::RightAngleBracket2.into(),
-                    rbracket2,
-                )),
+                NT::Token(GreenToken::new(OSK::LeftAngleBracket2.into(), lbracket2)),
+                NT::Token(GreenToken::new(OSK::Text.into(), target)),
+                NT::Token(GreenToken::new(OSK::RightAngleBracket2.into(), rbracket2)),
             ];
 
-            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                OrgSyntaxKind::Target.into(),
-                children,
-            ))
+            NT::Node(GreenNode::new(OSK::Target.into(), children))
         })
         .boxed()
 }

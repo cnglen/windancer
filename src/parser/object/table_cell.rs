@@ -1,30 +1,13 @@
-use crate::parser::ParserState;
 use crate::parser::object;
-use crate::parser::syntax::OrgSyntaxKind;
-
-use chumsky::inspector::RollbackState;
+use crate::parser::{MyExtra, NT, OSK};
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
+use rowan::{GreenNode, GreenToken};
 
 /// table cell parser
 pub(crate) fn table_cell_parser<'a, C: 'a>(
-    object_parser: impl Parser<
-        'a,
-        &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone
-    + 'a,
-) -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
-    let minimal_and_other_objects_parser = object_parser
-        .clone()
-        .repeated()
-        .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
+    object_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    let minimal_and_other_objects_parser = object_parser.clone().repeated().collect::<Vec<NT>>();
 
     // CONTENTS SPACES|
     let contents_inner = none_of("|\n")
@@ -46,21 +29,12 @@ pub(crate) fn table_cell_parser<'a, C: 'a>(
             children.extend(contents);
 
             if !ws.is_empty() {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    &ws,
-                )));
+                children.push(NT::Token(GreenToken::new(OSK::Whitespace.into(), &ws)));
             }
 
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Pipe.into(),
-                &pipe,
-            )));
+            children.push(NT::Token(GreenToken::new(OSK::Pipe.into(), &pipe)));
 
-            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                OrgSyntaxKind::TableCell.into(),
-                children,
-            ))
+            NT::Node(GreenNode::new(OSK::TableCell.into(), children))
         })
         .boxed()
 }

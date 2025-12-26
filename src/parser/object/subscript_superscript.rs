@@ -1,21 +1,17 @@
 //! Subscript and Superscript
 use crate::parser::ParserState;
-use crate::parser::syntax::OrgSyntaxKind;
+use crate::parser::{MyExtra, NT, OSK};
 
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
+use rowan::{GreenNode, GreenToken};
 
 use std::ops::Range;
-type NT = NodeOrToken<GreenNode, GreenToken>;
-type OSK = OrgSyntaxKind;
 
 // CHARS FINAL parser:
 // - find the longest string consisting of <alphanumeric characters, commas, backslashes, and dots>, whose length>=1
 // - find the last alphnumeric character as FINAL
-fn chars_final_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
+fn chars_final_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, String, MyExtra<'a, C>> + Clone {
     custom(|inp| {
         let remaining: &str = inp.slice_from(std::ops::RangeFrom {
             start: &inp.cursor(),
@@ -62,20 +58,9 @@ enum ScriptType {
 fn create_script_parser_inner<'a, C: 'a, E>(
     script_type: ScriptType,
     expression_parser: E,
-) -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone
 where
-    E: Parser<
-            'a,
-            &'a str,
-            Vec<NodeOrToken<GreenNode, GreenToken>>,
-            extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-        > + Clone
-        + 'a,
+    E: Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone + 'a,
 {
     let (c, syntax_kind) = match script_type {
         ScriptType::Super => ("^", OSK::Superscript),
@@ -188,12 +173,7 @@ where
 
 fn create_simple_script_parser<'a, C: 'a>(
     script_type: ScriptType,
-) -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let var = none_of("{}()\r\n").repeated().at_least(1).to_slice();
     let mut single_expression = Recursive::declare(); // foo / (foo) / (((foo)))
     single_expression.define(
@@ -218,19 +198,8 @@ fn create_simple_script_parser<'a, C: 'a>(
 
 fn create_script_parser<'a, C: 'a>(
     script_type: ScriptType,
-    object_parser: impl Parser<
-        'a,
-        &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone
-    + 'a,
-) -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+    object_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let var = none_of("{}()\r\n").repeated().at_least(1).to_slice();
     let mut single_expression = Recursive::declare(); // foo / (foo) / (((foo)))
     single_expression.define(
@@ -248,7 +217,7 @@ fn create_script_parser<'a, C: 'a>(
         .clone()
         .repeated()
         .at_least(1)
-        .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
+        .collect::<Vec<NT>>();
 
     let expression_parser =
         standard_objects_parser.nested_in(single_expression.clone().repeated().to_slice());
@@ -257,54 +226,24 @@ fn create_script_parser<'a, C: 'a>(
 }
 
 pub(crate) fn subscript_parser<'a, C: 'a>(
-    object_parser: impl Parser<
-        'a,
-        &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone
-    + 'a,
-) -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+    object_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     create_script_parser(ScriptType::Sub, object_parser)
 }
 
 pub(crate) fn superscript_parser<'a, C: 'a>(
-    object_parser: impl Parser<
-        'a,
-        &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone
-    + 'a,
-) -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+    object_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     create_script_parser(ScriptType::Super, object_parser)
 }
 
-pub(crate) fn simple_subscript_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn simple_subscript_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     create_simple_script_parser(ScriptType::Sub)
 }
 
-pub(crate) fn simple_superscript_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn simple_superscript_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     create_simple_script_parser(ScriptType::Super)
 }
 

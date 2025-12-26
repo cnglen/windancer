@@ -1,16 +1,13 @@
 //! Text markup parser, including bold, italic, underline, strikethrough, verbatim and code.
 use crate::parser::ParserState;
-use crate::parser::syntax::OrgSyntaxKind;
+use crate::parser::{MyExtra, NT, OSK};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
-type NT = NodeOrToken<GreenNode, GreenToken>;
-type OSK = OrgSyntaxKind;
+use rowan::{GreenNode, GreenToken};
 
 pub(crate) fn contents_parser<'a, C: 'a>(
     marker: char,
-) -> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
+) -> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Clone {
     let post = one_of(" \t​-.,;:!?)}]\"'\\\r\n").or(end().to('x'));
 
     none_of(" \t​")              // not begin with whitespace.
@@ -42,20 +39,9 @@ pub(crate) fn contents_parser<'a, C: 'a>(
 // PRE MARKER CONTENTS MARKER POST
 // where CONTENTS is a series of objects from the standard set
 fn text_markup_parser_with_object<'a, C: 'a>(
-    object_parser: impl Parser<
-        'a,
-        &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone
-    + 'a,
+    object_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
     marker: char,
-) -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let post = one_of(" \t​-.,;:!?)}]\"'\\\r\n").or(end().to('x'));
 
     let (token_kind, node_kind) = match marker {
@@ -72,7 +58,7 @@ fn text_markup_parser_with_object<'a, C: 'a>(
         .clone()
         .repeated()
         .at_least(1)
-        .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
+        .collect::<Vec<NT>>();
 
     just(marker)
         .try_map_with(|s, e| {
@@ -135,12 +121,7 @@ fn text_markup_parser_with_object<'a, C: 'a>(
 // where CONTENTS is a string
 fn text_markup_parser_with_string<'a, C: 'a>(
     marker: char,
-) -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let post = one_of(" \t​-.,;:!?)}]\"'\\\r\n").or(end().to('x'));
 
     let (token_kind, node_kind) = match marker {
@@ -205,19 +186,8 @@ fn text_markup_parser_with_string<'a, C: 'a>(
 }
 
 pub(crate) fn text_markup_parser<'a, C: 'a>(
-    object_parser: impl Parser<
-        'a,
-        &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone
-    + 'a,
-) -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+    object_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let bold = text_markup_parser_with_object(object_parser.clone(), '*');
     let italic = text_markup_parser_with_object(object_parser.clone(), '/');
     let underline = text_markup_parser_with_object(object_parser.clone(), '_');
@@ -229,12 +199,8 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
 }
 
 // ONLY used for lookahead, no need of any object parser
-pub(crate) fn simple_text_markup_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn simple_text_markup_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let bold = text_markup_parser_with_string('*');
     let italic = text_markup_parser_with_string('/');
     let underline = text_markup_parser_with_string('_');

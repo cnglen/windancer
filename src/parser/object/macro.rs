@@ -1,17 +1,11 @@
 use crate::parser::ParserState;
-use crate::parser::syntax::OrgSyntaxKind;
-
+use crate::parser::{MyExtra, NT, OSK};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
+use rowan::{GreenNode, GreenToken};
 
 /// Macro parser
-pub(crate) fn macro_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn macro_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let name = any()
         .filter(|c: &char| c.is_alphabetic())
         .then(
@@ -47,41 +41,35 @@ pub(crate) fn macro_parser<'a, C: 'a>() -> impl Parser<
                 state.prev_char = Some('}');
 
                 let mut children = Vec::with_capacity(6);
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::LeftCurlyBracket3.into(),
+                children.push(NT::Token(GreenToken::new(
+                    OSK::LeftCurlyBracket3.into(),
                     left_3curly,
                 )));
 
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::MacroName.into(),
-                    name,
-                )));
+                children.push(NT::Token(GreenToken::new(OSK::MacroName.into(), name)));
 
                 if let Some(((left_round, args), right_round)) = maybe_leftround_args_rightround {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::LeftRoundBracket.into(),
+                    children.push(NT::Token(GreenToken::new(
+                        OSK::LeftRoundBracket.into(),
                         left_round,
                     )));
 
                     if !args.is_empty() {
-                        children.push(NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::MacroArgs.into(),
-                            args,
-                        )));
+                        children.push(NT::Token(GreenToken::new(OSK::MacroArgs.into(), args)));
                     }
 
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::RightRoundBracket.into(),
+                    children.push(NT::Token(GreenToken::new(
+                        OSK::RightRoundBracket.into(),
                         right_round,
                     )));
                 }
 
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::RightCurlyBracket3.into(),
+                children.push(NT::Token(GreenToken::new(
+                    OSK::RightCurlyBracket3.into(),
                     right_3curly,
                 )));
 
-                NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Macro.into(), children))
+                NT::Node(GreenNode::new(OSK::Macro.into(), children))
             },
         )
         .boxed()

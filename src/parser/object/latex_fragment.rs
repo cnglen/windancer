@@ -1,22 +1,14 @@
 //! Latex fragment parser
 use crate::constants::entity::ENTITYNAME_TO_HTML;
 use crate::parser::ParserState;
-use crate::parser::syntax::OrgSyntaxKind;
+use crate::parser::{MyExtra, NT, OSK};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
-
-type NT = NodeOrToken<GreenNode, GreenToken>;
-type OSK = OrgSyntaxKind;
+use rowan::{GreenNode, GreenToken};
 
 // Latex Frament parser
-pub(crate) fn latex_fragment_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone
-+ 'a {
+pub(crate) fn latex_fragment_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a {
     // latex style:
     // - \(CONTENTS\)
     // - \[CONTENTS\]

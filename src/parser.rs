@@ -14,6 +14,10 @@ pub(crate) mod object;
 pub(crate) mod syntax;
 static RADIO_TARGETS: OnceLock<HashSet<String>> = OnceLock::new();
 
+type NT = NodeOrToken<GreenNode, GreenToken>;
+type OSK = OrgSyntaxKind;
+type MyExtra<'a, C> = extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>;
+
 // 上下文状态：当前解析的标题级别
 // - item_indent:
 // - prev_char: previous char

@@ -28,31 +28,26 @@ fn special_name_parser<'a, C: 'a>()
 -> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
 {
     custom(|inp| {
-        let before = &inp.cursor();
-        let remaining: &str = inp.slice_from(std::ops::RangeFrom {
-            start: &inp.cursor(),
-        });
-
-        let name: String = remaining
-            .chars()
-            .take_while(|c| !c.is_whitespace())
-            .collect();
-
+        let before = inp.cursor();
+        loop {
+            match inp.peek() {
+                Some(c) if !(c as char).is_whitespace() => {
+                    inp.next();
+                }
+                _ => {
+                    break;
+                }
+            }
+        }
+        let name: &str = inp.slice_since(&before..);
         if name.is_empty() || ORG_BLOCK_NON_SPECIAL_NAMES.contains(&name.to_uppercase()) {
             return Err(Rich::custom(
-                inp.span_since(before),
+                inp.span_since(&before),
                 format!("invalid special block name: '{}'", name),
             ));
         }
 
-        let bound = name.len();
-        let ans = &remaining[0..bound];
-
-        for _ in 0..name.len() {
-            inp.next();
-        }
-
-        Ok(ans)
+        Ok(name)
     })
 
     // any()
