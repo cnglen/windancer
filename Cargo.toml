@@ -1,6 +1,6 @@
 [package]
 name = "windancer"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["cnglen <cnglen@gmail.com>"]
 edition = "2024"
 description = "An org-mode toolkit, including parser, renderer."

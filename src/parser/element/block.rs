@@ -1,12 +1,87 @@
 //! Block parser
-use crate::parser::syntax::OrgSyntaxKind;
-use crate::parser::{ParserState, element, object};
-use chumsky::inspector::RollbackState;
+// - center/quote/special
+// - export
+// - src
+// - verse
+// - example
+// - comment
+// todo:
+// - lots of redundancy code, combine to one block_parser(), which include bold/verse/example
+// - #+BEGIN the same prefix to reduce rewind number
+// begin_row: #+begin_name[ data][ ]\n
+// for quote/center/comment/example/verse
+// not for src/export/special
+// begin_row <- #+BEGIN_NAME DATA?
+// DATA <- !newline any*
+// special: dynamic name
+// export: data is mandatory
+// src: data langugae
+// data_parser
+// name_parser
+// fn block_parser_todo<'a, C: 'a, E, F>(
+//     name_parser: E,
+//     data_parser: F
+// ) -> impl Parser<
+//     'a,
+//     &'a str,
+//     NT,
+//     MyExtra<'a, C>,
+//     > + Clone
+// where E: Parser<
+//     'a,
+//     &'a str,
+//     &'a str,
+//     MyExtra<'a, C>,
+//     > + Clone,
+// F:  Parser<
+//     'a,
+//     &'a str,
+//     Vec<NT>,
+//     MyExtra<'a, C>,
+//     > + Clone,
+// {
+//     object::whitespaces()
+//         .then(object::just_case_insensitive("#+begin_"))
+//         .then(
+//             // example
+//             // src
+//         )
+//         .then()
+//         .then(name_parser)
+//         .then(data_parser)
+//         .then(object::newline())
+//         .then(content_parser)
+//         .then()
+//         .map(((((whitespaces, hash_plus_begin_underscore), name), data), newline)) {
+//             let mut children = Vec::with_capacity(7);
+//             if !whitespaces.is_empty() {
+//                 children.push(NT::Token(GreenToken::new(
+//                     OSK::Whitespace.into(),
+//                     whitespaces,
+//                 )));
+//             }
+
+//             children.push(NT::Token(GreenToken::new(
+//                 OSK::Text.into(),
+//                 begin,
+//             )));
+//             children.push(NT::Token(GreenToken::new(
+//                 OSK::Text.into(),
+//                 name
+//             )));
+//             children.extend(data);
+//             children.push(NT::Token(GreenToken::new(
+//                 OSK::Newline.into(),
+//                 &nl,
+//             )));
+//         }
+// }
+
+use crate::parser::{MyExtra, NT, OSK};
+use crate::parser::{element, object};
 use chumsky::prelude::*;
 use phf::phf_set;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
-
-type OSK = OrgSyntaxKind;
 
 #[allow(unused)]
 #[derive(Clone, Debug)]
@@ -24,9 +99,7 @@ pub(crate) static ORG_BLOCK_NON_SPECIAL_NAMES: phf::Set<&'static str> = phf_set!
     "SRC", "EXPORT", "EXAMPLE", "COMMENT", "VERSE", "CENTER", "QUOTE"
 };
 
-fn special_name_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
+fn special_name_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Clone {
     custom(|inp| {
         let before = inp.cursor();
         loop {
@@ -49,30 +122,11 @@ fn special_name_parser<'a, C: 'a>()
 
         Ok(name)
     })
-
-    // any()
-    //     .filter(|c: &char| !c.is_whitespace())
-    //     .repeated()
-    //     .at_least(1)
-    //     .to_slice()
-    //     .try_map_with(|s: &str, e| match s.to_uppercase().as_str() {
-    //         "SRC" | "EXPORT" | "EXAMPLE" | "COMMENT" | "VERSE" | "CENTER" | "QUOTE" => {
-    //             let error =
-    //                 Rich::custom::<&str>(e.span(), &format!("{s} is not special block name"));
-    //             Err(error)
-    //         }
-    //         _ => Ok(s),
-    //     })
-    //     .to_slice()
 }
 
 /// export block
-pub(crate) fn export_block_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn export_block_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let data = none_of("\n \t").repeated().at_least(1).to_slice();
     let begin_row = object::whitespaces()
         .then(object::just_case_insensitive("#+BEGIN_"))
@@ -108,57 +162,42 @@ pub(crate) fn export_block_parser<'a, C: 'a>() -> impl Parser<
                     let (ws1, begin, block_type, ws2, data, ws3, nl) = begin_row;
                     let mut children = Vec::with_capacity(7);
                     if !ws1.is_empty() {
-                        children.push(NodeOrToken::Token(GreenToken::new(
-                            OSK::Whitespace.into(),
-                            ws1,
-                        )));
+                        children.push(NT::Token(GreenToken::new(OSK::Whitespace.into(), ws1)));
                     }
 
-                    children.push(NodeOrToken::Token(GreenToken::new(OSK::Text.into(), begin)));
+                    children.push(NT::Token(GreenToken::new(OSK::Text.into(), begin)));
 
-                    children.push(NodeOrToken::Token(GreenToken::new(
+                    children.push(NT::Token(GreenToken::new(
                         OSK::Text.into(),
                         &block_type.to_uppercase(),
                     )));
 
                     if !ws2.is_empty() {
-                        children.push(NodeOrToken::Token(GreenToken::new(
-                            OSK::Whitespace.into(),
-                            ws2,
-                        )));
+                        children.push(NT::Token(GreenToken::new(OSK::Whitespace.into(), ws2)));
                     }
 
-                    children.push(NodeOrToken::Token(GreenToken::new(OSK::Text.into(), data)));
+                    children.push(NT::Token(GreenToken::new(OSK::Text.into(), data)));
 
                     if !ws3.is_empty() {
-                        children.push(NodeOrToken::Token(GreenToken::new(
-                            OSK::Whitespace.into(),
-                            &ws3,
-                        )));
+                        children.push(NT::Token(GreenToken::new(OSK::Whitespace.into(), &ws3)));
                     }
 
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OSK::Newline.into(),
-                        &nl,
-                    )));
-                    NodeOrToken::Node(GreenNode::new(OSK::BlockBegin.into(), children))
+                    children.push(NT::Token(GreenToken::new(OSK::Newline.into(), &nl)));
+                    NT::Node(GreenNode::new(OSK::BlockBegin.into(), children))
                 };
                 children.push(block_begin_node);
 
                 if !content.is_empty() {
-                    let node = NodeOrToken::Node(GreenNode::new(
+                    let node = NT::Node(GreenNode::new(
                         OSK::BlockContent.into(),
-                        vec![NodeOrToken::Token(GreenToken::new(
-                            OSK::Text.into(),
-                            content,
-                        ))],
+                        vec![NT::Token(GreenToken::new(OSK::Text.into(), content))],
                     ));
                     children.push(node);
                 }
 
                 children.push(end_row);
                 children.extend(blank_lines);
-                NodeOrToken::Node(GreenNode::new(OSK::ExportBlock.into(), children))
+                NT::Node(GreenNode::new(OSK::ExportBlock.into(), children))
             },
         )
         .boxed()
@@ -166,8 +205,7 @@ pub(crate) fn export_block_parser<'a, C: 'a>() -> impl Parser<
 
 /// simple export block
 pub(crate) fn simple_export_block_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
+-> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
     let data = none_of("\n \t").repeated().at_least(1).to_slice();
     let begin_row = object::whitespaces()
         .then(object::just_case_insensitive("#+BEGIN_"))
@@ -196,8 +234,7 @@ pub(crate) fn simple_export_block_parser<'a, C: 'a>()
 }
 
 pub(crate) fn simple_src_block_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
+-> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
     let language = none_of(" \t\n").repeated().at_least(1).to_slice();
     let switch_p1 = just("-l")
         .then(object::whitespaces_g1())
@@ -237,12 +274,8 @@ pub(crate) fn simple_src_block_parser<'a, C: 'a>()
 }
 
 /// src block
-pub(crate) fn src_block_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn src_block_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone
+{
     let language = none_of(" \t\n").repeated().at_least(1).to_slice();
     let switch_p1 = just("-l")
         .then(object::whitespaces_g1())
@@ -314,79 +347,58 @@ pub(crate) fn src_block_parser<'a, C: 'a>() -> impl Parser<
                     ) = begin_row;
                     let mut children = Vec::with_capacity(10);
                     if !ws1.is_empty() {
-                        children.push(NodeOrToken::Token(GreenToken::new(
-                            OSK::Whitespace.into(),
-                            &ws1,
-                        )));
+                        children.push(NT::Token(GreenToken::new(OSK::Whitespace.into(), &ws1)));
                     }
 
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OSK::Text.into(),
-                        &begin,
-                    )));
+                    children.push(NT::Token(GreenToken::new(OSK::Text.into(), &begin)));
 
-                    children.push(NodeOrToken::Token(GreenToken::new(
+                    children.push(NT::Token(GreenToken::new(
                         OSK::Text.into(),
                         &block_type.to_uppercase(),
                     )));
 
                     if !ws2.is_empty() {
-                        children.push(NodeOrToken::Token(GreenToken::new(
-                            OSK::Whitespace.into(),
-                            &ws2,
-                        )));
+                        children.push(NT::Token(GreenToken::new(OSK::Whitespace.into(), &ws2)));
                     }
 
-                    children.push(NodeOrToken::Token(GreenToken::new(
+                    children.push(NT::Token(GreenToken::new(
                         OSK::SrcBlockLanguage.into(),
                         language,
                     )));
 
                     if let Some((ws3, switches)) = maybe_ws3_switches {
-                        children.push(NodeOrToken::Token(GreenToken::new(
-                            OSK::Whitespace.into(),
-                            &ws3,
-                        )));
+                        children.push(NT::Token(GreenToken::new(OSK::Whitespace.into(), &ws3)));
 
-                        children.push(NodeOrToken::Token(GreenToken::new(
+                        children.push(NT::Token(GreenToken::new(
                             OSK::SrcBlockSwitches.into(),
                             switches,
                         )));
                     }
 
                     if let Some((ws4, arguments)) = maybe_ws4_arguments {
-                        children.push(NodeOrToken::Token(GreenToken::new(
-                            OSK::Whitespace.into(),
-                            &ws4,
-                        )));
+                        children.push(NT::Token(GreenToken::new(OSK::Whitespace.into(), &ws4)));
 
-                        children.push(NodeOrToken::Token(GreenToken::new(
+                        children.push(NT::Token(GreenToken::new(
                             OSK::SrcBlockHeaderArguments.into(),
                             arguments,
                         )));
                     }
 
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OSK::Newline.into(),
-                        &nl,
-                    )));
-                    NodeOrToken::Node(GreenNode::new(OSK::BlockBegin.into(), children))
+                    children.push(NT::Token(GreenToken::new(OSK::Newline.into(), &nl)));
+                    NT::Node(GreenNode::new(OSK::BlockBegin.into(), children))
                 };
                 children.push(block_begin_node);
                 if !content.is_empty() {
-                    let node = NodeOrToken::Node(GreenNode::new(
+                    let node = NT::Node(GreenNode::new(
                         OSK::BlockContent.into(),
-                        vec![NodeOrToken::Token(GreenToken::new(
-                            OSK::Text.into(),
-                            &content,
-                        ))],
+                        vec![NT::Token(GreenToken::new(OSK::Text.into(), &content))],
                     ));
                     children.push(node);
                 }
                 children.push(end_row);
                 children.extend(blank_lines);
 
-                NodeOrToken::Node(GreenNode::new(OSK::SrcBlock.into(), children))
+                NT::Node(GreenNode::new(OSK::SrcBlock.into(), children))
             },
         )
         .boxed()
@@ -394,12 +406,7 @@ pub(crate) fn src_block_parser<'a, C: 'a>() -> impl Parser<
 
 fn comment_or_example_block_parser<'a, C: 'a>(
     block_type: BlockType,
-) -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let name = match block_type {
         BlockType::Comment => "comment",
         BlockType::Example => "example",
@@ -430,12 +437,8 @@ fn comment_or_example_block_parser<'a, C: 'a>(
 
                 if !content.is_empty() {
                     let mut c_children = Vec::with_capacity(1);
-                    c_children.push(NodeOrToken::Token(GreenToken::new(
-                        OSK::Text.into(),
-                        &content,
-                    )));
-                    let node =
-                        NodeOrToken::Node(GreenNode::new(OSK::BlockContent.into(), c_children));
+                    c_children.push(NT::Token(GreenToken::new(OSK::Text.into(), &content)));
+                    let node = NT::Node(GreenNode::new(OSK::BlockContent.into(), c_children));
                     children.push(node);
                 }
 
@@ -445,10 +448,10 @@ fn comment_or_example_block_parser<'a, C: 'a>(
 
                 match block_type {
                     BlockType::Comment => {
-                        NodeOrToken::Node(GreenNode::new(OSK::CommentBlock.into(), children))
+                        NT::Node(GreenNode::new(OSK::CommentBlock.into(), children))
                     }
                     BlockType::Example => {
-                        NodeOrToken::Node(GreenNode::new(OSK::ExampleBlock.into(), children))
+                        NT::Node(GreenNode::new(OSK::ExampleBlock.into(), children))
                     }
                     _ => {
                         panic!("not supported type")
@@ -460,29 +463,20 @@ fn comment_or_example_block_parser<'a, C: 'a>(
 }
 
 /// comment block
-pub(crate) fn comment_block_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn comment_block_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     comment_or_example_block_parser(BlockType::Comment)
 }
 
 /// example block
-pub(crate) fn example_block_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn example_block_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     comment_or_example_block_parser(BlockType::Example)
 }
 
 fn simple_comment_or_example_block_parser<'a, C: 'a>(
     block_type: BlockType,
-) -> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
+) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
     let name = match block_type {
         BlockType::Comment => "comment",
         BlockType::Example => "example",
@@ -507,25 +501,19 @@ fn simple_comment_or_example_block_parser<'a, C: 'a>(
 
 /// simple comment block
 pub(crate) fn simple_comment_block_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
+-> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
     simple_comment_or_example_block_parser(BlockType::Comment)
 }
 
 /// simple example block
 pub(crate) fn simple_example_block_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
+-> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
     simple_comment_or_example_block_parser(BlockType::Example)
 }
 
 /// verse block
-pub(crate) fn verse_block_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn verse_block_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone
+{
     let begin_row = begin_row_parser("verse");
     let end_row = end_row_parser("verse");
 
@@ -533,7 +521,7 @@ pub(crate) fn verse_block_parser<'a, C: 'a>() -> impl Parser<
         .clone()
         .repeated()
         .at_least(1)
-        .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
+        .collect::<Vec<NT>>();
     let content_inner = object::line_parser_allow_blank()
         .and_is(end_row.clone().ignored().not()) // No line may start with #+end_NAME.
         .and_is(
@@ -561,24 +549,20 @@ pub(crate) fn verse_block_parser<'a, C: 'a>() -> impl Parser<
 
                 children.push(begin_row);
 
-                children.push(NodeOrToken::Node(GreenNode::new(
-                    OSK::BlockContent.into(),
-                    content,
-                )));
+                children.push(NT::Node(GreenNode::new(OSK::BlockContent.into(), content)));
 
                 children.push(end_row);
 
                 children.extend(blank_lines);
 
-                NodeOrToken::Node(GreenNode::new(OSK::VerseBlock.into(), children))
+                NT::Node(GreenNode::new(OSK::VerseBlock.into(), children))
             },
         )
         .boxed()
 }
 
 pub(crate) fn simple_verse_block_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
+-> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
     let begin_row = begin_row_parser("verse");
     let end_row = end_row_parser("verse");
     let content_inner = object::line_parser_allow_blank()
@@ -599,80 +583,47 @@ pub(crate) fn simple_verse_block_parser<'a, C: 'a>()
         .boxed()
 }
 
-// begin_row: #+begin_name[ data][ ]\n
-// for quote/center/comment/example
 fn begin_row_parser<'a, C: 'a>(
     name: &'a str,
-) -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
-    let data = none_of("\n").repeated().at_least(1).to_slice();
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    let data = none_of("\n").repeated().to_slice();
+
     object::whitespaces()
         .then(object::just_case_insensitive("#+begin_"))
         .then(object::just_case_insensitive(name))
         .then(object::whitespaces_g1().then(data).or_not())
-        .then(object::whitespaces()) // fixme: ? delete
-        .then(just("\n"))
-        .map(
-            |(((((ws1, begin), block_type), maybe_ws2_data), ws3), nl)| {
-                let mut children = Vec::with_capacity(7);
-                if !ws1.is_empty() {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OSK::Whitespace.into(),
-                        &ws1,
-                    )));
+        .then(object::newline())
+        .map(|((((ws1, begin), block_type), maybe_ws2_data), nl)| {
+            let mut children = Vec::with_capacity(7);
+            if !ws1.is_empty() {
+                children.push(NT::Token(GreenToken::new(OSK::Whitespace.into(), &ws1)));
+            }
+
+            children.push(NT::Token(GreenToken::new(OSK::Text.into(), &begin)));
+
+            children.push(NT::Token(GreenToken::new(
+                OSK::Text.into(),
+                &block_type.to_uppercase(),
+            )));
+
+            if let Some((ws2, data)) = maybe_ws2_data {
+                if !ws2.is_empty() {
+                    children.push(NT::Token(GreenToken::new(OSK::Whitespace.into(), &ws2)));
                 }
 
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OSK::Text.into(),
-                    &begin,
-                )));
+                children.push(NT::Token(GreenToken::new(OSK::Text.into(), data)));
+            }
 
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OSK::Text.into(),
-                    &block_type.to_uppercase(),
-                )));
+            children.push(NT::Token(GreenToken::new(OSK::Newline.into(), &nl)));
 
-                if let Some((ws2, data)) = maybe_ws2_data {
-                    if !ws2.is_empty() {
-                        children.push(NodeOrToken::Token(GreenToken::new(
-                            OSK::Whitespace.into(),
-                            &ws2,
-                        )));
-                    }
-
-                    children.push(NodeOrToken::Token(GreenToken::new(OSK::Text.into(), data)));
-                }
-
-                if !ws3.is_empty() {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OSK::Whitespace.into(),
-                        &ws3,
-                    )));
-                }
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OSK::Newline.into(),
-                    &nl,
-                )));
-
-                NodeOrToken::Node(GreenNode::new(OSK::BlockBegin.into(), children))
-            },
-        )
+            NT::Node(GreenNode::new(OSK::BlockBegin.into(), children))
+        })
 }
 
 // for non-special block
 fn end_row_parser<'a, C: 'a>(
     name: &'a str,
-) -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     object::whitespaces()
         .then(object::just_case_insensitive("#+end_"))
         .then(object::just_case_insensitive(name))
@@ -681,40 +632,28 @@ fn end_row_parser<'a, C: 'a>(
         .map(|((((ws1, end), name), ws2), nl)| {
             let mut children = Vec::with_capacity(5);
             if !ws1.is_empty() {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OSK::Whitespace.into(),
-                    &ws1,
-                )));
+                children.push(NT::Token(GreenToken::new(OSK::Whitespace.into(), &ws1)));
             }
-            children.push(NodeOrToken::Token(GreenToken::new(OSK::Text.into(), &end)));
-            children.push(NodeOrToken::Token(GreenToken::new(
+            children.push(NT::Token(GreenToken::new(OSK::Text.into(), &end)));
+            children.push(NT::Token(GreenToken::new(
                 OSK::Text.into(),
                 &name.to_uppercase(),
             )));
 
             if !ws2.is_empty() {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OSK::Whitespace.into(),
-                    &ws2,
-                )));
+                children.push(NT::Token(GreenToken::new(OSK::Whitespace.into(), &ws2)));
             }
 
             if let Some(e) = nl {
-                children.push(NodeOrToken::Token(GreenToken::new(OSK::Newline.into(), &e)));
+                children.push(NT::Token(GreenToken::new(OSK::Newline.into(), &e)));
             }
-            NodeOrToken::Node(GreenNode::new(OSK::BlockEnd.into(), children))
+            NT::Node(GreenNode::new(OSK::BlockEnd.into(), children))
         })
 }
 
 fn content_inner_parser<'a, C: 'a>(
-    end_row: impl Parser<
-        'a,
-        &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone,
-) -> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
+    end_row: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone,
+) -> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Clone {
     object::line_parser()
         .or(object::blank_line_str_parser())
         .and_is(end_row.ignored().not()) // No line may start with #+end_NAME.
@@ -728,20 +667,9 @@ fn content_inner_parser<'a, C: 'a>(
 }
 
 fn center_or_quote_block_parser<'a, C: 'a>(
-    element_parser: impl Parser<
-        'a,
-        &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone
-    + 'a,
+    element_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
     block_type: BlockType,
-) -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let name = match block_type {
         BlockType::Center => "center",
         BlockType::Quote => "quote",
@@ -766,7 +694,7 @@ fn center_or_quote_block_parser<'a, C: 'a>(
         .repeated()
         .collect::<Vec<_>>()
         .nested_in(content_inner)
-        .map(|s| NodeOrToken::Node(GreenNode::new(OSK::BlockContent.into(), s)));
+        .map(|s| NT::Node(GreenNode::new(OSK::BlockContent.into(), s)));
 
     let affiliated_keywords = element::keyword::affiliated_keyword_parser()
         .repeated()
@@ -789,11 +717,9 @@ fn center_or_quote_block_parser<'a, C: 'a>(
 
                 match block_type {
                     BlockType::Center => {
-                        NodeOrToken::Node(GreenNode::new(OSK::CenterBlock.into(), children))
+                        NT::Node(GreenNode::new(OSK::CenterBlock.into(), children))
                     }
-                    BlockType::Quote => {
-                        NodeOrToken::Node(GreenNode::new(OSK::QuoteBlock.into(), children))
-                    }
+                    BlockType::Quote => NT::Node(GreenNode::new(OSK::QuoteBlock.into(), children)),
                     _ => {
                         panic!("xxx")
                     }
@@ -804,43 +730,20 @@ fn center_or_quote_block_parser<'a, C: 'a>(
 }
 
 pub(crate) fn center_block_parser<'a, C: 'a>(
-    element_parser: impl Parser<
-        'a,
-        &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone
-    + 'a,
-) -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+    element_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     center_or_quote_block_parser(element_parser, BlockType::Center)
 }
 
 pub(crate) fn quote_block_parser<'a, C: 'a>(
-    element_parser: impl Parser<
-        'a,
-        &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone
-    + 'a,
-) -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+    element_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     center_or_quote_block_parser(element_parser, BlockType::Quote)
 }
 
 fn simple_center_or_quote_block_parser<'a, C: 'a>(
     block_type: BlockType,
-) -> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
+) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
     let name = match block_type {
         BlockType::Center => "center",
         BlockType::Quote => "quote",
@@ -871,31 +774,18 @@ fn simple_center_or_quote_block_parser<'a, C: 'a>(
 }
 
 pub(crate) fn simple_center_block_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
+-> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
     simple_center_or_quote_block_parser(BlockType::Center)
 }
 
 pub(crate) fn simple_quote_block_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
+-> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
     simple_center_or_quote_block_parser(BlockType::Quote)
 }
 
 pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
-    element_parser: impl Parser<
-        'a,
-        &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone
-    + 'a,
-) -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+    element_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let affiliated_keywords = element::keyword::affiliated_keyword_parser()
         .repeated()
         .collect::<Vec<_>>();
@@ -978,37 +868,31 @@ pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
                 let begin_node = {
                     let mut children = Vec::with_capacity(6);
                     if !begin_whitespaces1.is_empty() {
-                        children.push(NodeOrToken::Token(GreenToken::new(
+                        children.push(NT::Token(GreenToken::new(
                             OSK::Whitespace.into(),
                             begin_whitespaces1,
                         )));
                     }
-                    children.push(NodeOrToken::Token(GreenToken::new(OSK::Text.into(), begin)));
-                    children.push(NodeOrToken::Token(GreenToken::new(
+                    children.push(NT::Token(GreenToken::new(OSK::Text.into(), begin)));
+                    children.push(NT::Token(GreenToken::new(
                         OSK::Text.into(),
                         &begin_name.to_uppercase(),
                     )));
 
                     if let Some((ws, parameters)) = maybe_ws_parameters {
                         if !ws.is_empty() {
-                            children.push(NodeOrToken::Token(GreenToken::new(
-                                OSK::Whitespace.into(),
-                                &ws,
-                            )));
+                            children.push(NT::Token(GreenToken::new(OSK::Whitespace.into(), &ws)));
                         }
 
-                        children.push(NodeOrToken::Token(GreenToken::new(
-                            OSK::Text.into(),
-                            parameters,
-                        )));
+                        children.push(NT::Token(GreenToken::new(OSK::Text.into(), parameters)));
                     }
 
-                    children.push(NodeOrToken::Token(GreenToken::new(
+                    children.push(NT::Token(GreenToken::new(
                         OSK::Newline.into(),
                         begin_newline,
                     )));
 
-                    NodeOrToken::Node(GreenNode::new(OSK::BlockBegin.into(), children))
+                    NT::Node(GreenNode::new(OSK::BlockBegin.into(), children))
                 };
                 children.push(begin_node);
 
@@ -1032,46 +916,42 @@ pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
                 let end_node = {
                     let mut children = Vec::with_capacity(5);
                     if !end_whitespaces1.is_empty() {
-                        children.push(NodeOrToken::Token(GreenToken::new(
+                        children.push(NT::Token(GreenToken::new(
                             OSK::Whitespace.into(),
                             end_whitespaces1,
                         )));
                     }
 
-                    children.push(NodeOrToken::Token(GreenToken::new(OSK::Text.into(), &end_)));
+                    children.push(NT::Token(GreenToken::new(OSK::Text.into(), &end_)));
 
-                    children.push(NodeOrToken::Token(GreenToken::new(
+                    children.push(NT::Token(GreenToken::new(
                         OSK::Text.into(),
                         &end_name.to_uppercase(),
                     )));
 
                     if !end_whitespaces2.is_empty() {
-                        children.push(NodeOrToken::Token(GreenToken::new(
+                        children.push(NT::Token(GreenToken::new(
                             OSK::Whitespace.into(),
                             end_whitespaces2,
                         )));
                     }
 
                     if let Some(newline) = end_maybe_newline {
-                        children.push(NodeOrToken::Token(GreenToken::new(
-                            OSK::Newline.into(),
-                            &newline,
-                        )));
+                        children.push(NT::Token(GreenToken::new(OSK::Newline.into(), &newline)));
                     }
-                    NodeOrToken::Node(GreenNode::new(OSK::BlockEnd.into(), children))
+                    NT::Node(GreenNode::new(OSK::BlockEnd.into(), children))
                 };
                 children.push(end_node);
                 children.extend(blanklines);
 
-                NodeOrToken::Node(GreenNode::new(OSK::SpecialBlock.into(), children))
+                NT::Node(GreenNode::new(OSK::SpecialBlock.into(), children))
             },
         )
         .boxed()
 }
 
 pub(crate) fn simple_special_block_parser<'a, C: 'a + std::default::Default>()
--> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
+-> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
     let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser().repeated();
 
     let begin_row = object::whitespaces()
