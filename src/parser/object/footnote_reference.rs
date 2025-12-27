@@ -8,6 +8,7 @@ use rowan::{GreenNode, GreenToken};
 // - [fn:LABEL]
 // - [fn:LABEL:DEFINITION]
 // - [fn::DEFINITION]
+// PEG: footnote <- "[fn:" ((LABEL (":" DEFINITION)?) / (":" DEFINITION)) "]"
 pub(crate) fn footnote_reference_parser_inner<'a, C: 'a>(
     definition_parser: impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone + 'a,
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
@@ -127,6 +128,7 @@ pub(crate) fn simple_footnote_reference_parser<'a, C: 'a>()
 
     footnote_reference_parser_inner(definition_parser)
 }
+
 #[cfg(test)]
 mod tests {
     use crate::parser::common::get_parsers_output;

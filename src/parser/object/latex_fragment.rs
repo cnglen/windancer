@@ -6,7 +6,7 @@ use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken};
 
-// Latex Frament parser
+/// Latex Frament parser
 pub(crate) fn latex_fragment_parser<'a, C: 'a>()
 -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a {
     // latex style:

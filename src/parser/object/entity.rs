@@ -7,25 +7,25 @@ use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken};
 
 /// Entity parser
-/// - \NAME{}
-/// - \NAME POST
-/// - \_SPACES
+// PEG:
+//    entity <- \NAME{} / \NAME &POST / \_SPACES
+//    POST   <- EOL / (!alphabetic .)
 pub(crate) fn entity_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     // name := A string with a valid association in either org-entities or org-entities-user
     let name_parser = object::keyword_cs_parser(&ENTITYNAME_SET);
-
     let post_parser = any()
         .filter(|c: &char| !c.is_alphabetic())
-        .or(end().to('x'));
+        .or(just('\n'))
+        .or(end().to('x'))      // why?
+        ;
 
-    // priority: `a2` > `a1` since `a2` is longer and includes `a1`, or "\pi{}" will be parsed into <Entity(\pi) + Text({})>, while <Entity(\pi{})> is expected
-    let a2_or_a1_or_a3 = just(r"\")
+    just(r"\")
         .then(choice((
             name_parser
                 .clone()
                 .then(choice((
-                    just("{}").to(true),
-                    post_parser.rewind().to(false),
+                    just("{}").to(true),            // \NAME {}
+                    post_parser.rewind().to(false), // \NAME &POST
                 )))
                 .map_with(|(name, is_pattern2), e| {
                     if is_pattern2 {
@@ -43,7 +43,7 @@ pub(crate) fn entity_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra
                     }
                 }),
             just("_")
-                .then(just(" ").repeated().at_least(1).at_most(20).to_slice())
+                .then(just(" ").repeated().at_least(1).at_most(20).to_slice()) // \_SPACES
                 .map_with(|(us, ws): (_, &str), e| {
                     (e.state() as &mut RollbackState<ParserState>).prev_char = ws.chars().last();
                     vec![
@@ -59,9 +59,7 @@ pub(crate) fn entity_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra
 
             NT::Node(GreenNode::new(OSK::Entity.into(), children))
         })
-        .boxed();
-
-    a2_or_a1_or_a3
+        .boxed()
 }
 
 #[cfg(test)]
@@ -202,6 +200,20 @@ mod tests {
   LatexFragment@7..14
     Text@7..14 "\\deltab"
   Text@14..15 " "
+"###
+        );
+    }
+
+    #[test]
+    fn test_05_entity() {
+        // "\pi{}" should be parsed into "Entity(\pi{})", NOT "Entity(\pi) Text({})"
+        assert_eq!(
+            get_parser_output(entity_parser::<()>(), r"\pi{}"),
+            r###"Entity@0..5
+  BackSlash@0..1 "\\"
+  EntityName@1..3 "pi"
+  LeftCurlyBracket@3..4 "{"
+  RightCurlyBracket@4..5 "}"
 "###
         );
     }
