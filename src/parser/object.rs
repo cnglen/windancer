@@ -1,5 +1,5 @@
 //! Object paser
-extern crate test;
+// extern crate test;
 pub mod entity;
 mod footnote_reference;
 mod latex_fragment;
@@ -537,7 +537,7 @@ mod tests {
     use chumsky::inspector::RollbackState;
     use pretty_assertions::assert_eq;
     use rowan::GreenToken;
-    use test::Bencher;
+    // use test::Bencher;
 
     fn get_objects_string() -> String {
         r##"
@@ -605,21 +605,21 @@ other objects (2):
         }
     }
 
-    #[bench]
-    fn bench_just_ignore_case(b: &mut Bencher) {
-        let test_cases = vec![
-            r##"\BEGIN{test}"##,
-            r##"\begin{test}"##,
-            r##"\Begin{test}"##,
-            r##"\BeGiN{test}"##,
-        ];
-        let parser = just_case_insensitive::<()>(r"\BeGiN{test}");
-        b.iter(|| {
-            for case in &test_cases {
-                assert!(!parser.parse(case).has_errors());
-            }
-        })
-    }
+    // #[bench]
+    // fn bench_just_ignore_case(b: &mut Bencher) {
+    //     let test_cases = vec![
+    //         r##"\BEGIN{test}"##,
+    //         r##"\begin{test}"##,
+    //         r##"\Begin{test}"##,
+    //         r##"\BeGiN{test}"##,
+    //     ];
+    //     let parser = just_case_insensitive::<()>(r"\BeGiN{test}");
+    //     b.iter(|| {
+    //         for case in &test_cases {
+    //             assert!(!parser.parse(case).has_errors());
+    //         }
+    //     })
+    // }
 
     #[test]
     fn test_blank_line() {

@@ -165,12 +165,12 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>()
 #[cfg(test)]
 mod tests {
     use super::*;
-    extern crate test;
+    // extern crate test;
     use crate::parser::common::get_parser_output;
     use crate::parser::common::get_parsers_output;
     use crate::parser::object::standard_set_object_parser;
     use pretty_assertions::assert_eq;
-    use test::Bencher;
+    // use test::Bencher;
 
     #[test]
     fn test_latex_fragment_01() {
@@ -248,11 +248,11 @@ mod tests {
         );
     }
 
-    #[bench]
-    fn test_latex_fragment_01_bench(b: &mut Bencher) {
-        let parser = latex_fragment_parser::<()>();
-        b.iter(|| {
-            assert!(!parser.parse(r"\(\alpha\)").has_errors());
-        })
-    }
+    // #[bench]
+    // fn test_latex_fragment_01_bench(b: &mut Bencher) {
+    //     let parser = latex_fragment_parser::<()>();
+    //     b.iter(|| {
+    //         assert!(!parser.parse(r"\(\alpha\)").has_errors());
+    //     })
+    // }
 }
