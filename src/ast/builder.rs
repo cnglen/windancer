@@ -859,7 +859,7 @@ impl Converter {
 
         let (protocol, path) = Self::parse_pathreg(pathreg);
 
-        let is_image = protocol == "file"
+        let is_image = (protocol == "file" || protocol == "https")
             && [".jpg", ".jpeg", ".png", ".gif", ".svg"]
                 .iter()
                 .any(|ext| path.to_lowercase().ends_with(ext));
