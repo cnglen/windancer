@@ -1,17 +1,14 @@
 //! Drawer parser
-use crate::parser::syntax::OrgSyntaxKind;
-use crate::parser::{ParserState, element, object};
-use chumsky::inspector::RollbackState;
+use crate::parser::{MyExtra, NT, OSK};
+use crate::parser::{element, object};
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 use std::ops::Range;
 
 use crate::parser::object::just_case_insensitive;
 
-fn name_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
-    custom::<_, &str, _, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>(|inp| {
+fn name_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, String, MyExtra<'a, C>> + Clone {
+    custom::<_, &str, _, MyExtra<'a, C>>(|inp| {
         let remaining = inp.slice_from(std::ops::RangeFrom {
             start: &inp.cursor(),
         });
@@ -45,12 +42,8 @@ fn name_parser<'a, C: 'a>()
     })
 }
 
-pub(crate) fn node_property_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn node_property_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, NodeOrToken<GreenNode, GreenToken>, MyExtra<'a, C>> + Clone {
     let name = name_parser();
     let value = none_of(object::CRLF).repeated().to_slice();
     let blank_lines = object::blank_line_parser().repeated().collect::<Vec<_>>();
@@ -70,69 +63,30 @@ pub(crate) fn node_property_parser<'a, C: 'a>() -> impl Parser<
             )| {
                 let mut children = Vec::with_capacity(8 + blank_lines.len());
                 if !ws0.is_empty() {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Whitespace.into(),
-                        ws0,
-                    )));
+                    children.push(crate::token!(OSK::Whitespace, ws0));
                 }
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Colon.into(),
-                    colon1,
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    &name,
-                )));
-
+                children.push(crate::token!(OSK::Colon, colon1));
+                children.push(crate::token!(OSK::Text, &name));
                 if let Some(plus) = maybe_plus {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Plus.into(),
-                        plus,
-                    )));
+                    children.push(crate::token!(OSK::Plus, plus));
                 }
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Colon.into(),
-                    colon,
-                )));
-
+                children.push(crate::token!(OSK::Colon, colon));
                 if !ws1.is_empty() {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Whitespace.into(),
-                        ws1,
-                    )));
+                    children.push(crate::token!(OSK::Whitespace, ws1));
                 }
-
                 if !value.is_empty() {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Text.into(),
-                        value,
-                    )));
+                    children.push(crate::token!(OSK::Text, value));
                 }
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Newline.into(),
-                    newline,
-                )));
-
+                children.push(crate::token!(OSK::Newline, newline));
                 children.extend(blank_lines);
 
-                NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                    OrgSyntaxKind::NodeProperty.into(),
-                    children,
-                ))
+                crate::node!(OSK::NodeProperty, children)
             },
         )
 }
 
-pub(crate) fn property_drawer_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn property_drawer_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, NodeOrToken<GreenNode, GreenToken>, MyExtra<'a, C>> + Clone {
     let begin_row = object::whitespaces()
         .then(just_case_insensitive(":properties:"))
         .then(object::whitespaces())
@@ -167,85 +121,59 @@ pub(crate) fn property_drawer_parser<'a, C: 'a>() -> impl Parser<
                     6 + start_blank_lines.len() + contents.len() + blank_lines.len(),
                 );
                 if !ws1.is_empty() {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Whitespace.into(),
-                        ws1,
-                    )));
+                    children.push(crate::token!(OSK::Whitespace, ws1));
                 }
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    properties,
-                )));
-
+                children.push(crate::token!(OSK::Text, properties));
                 if !ws2.is_empty() {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Whitespace.into(),
-                        ws2,
-                    )));
+                    children.push(crate::token!(OSK::Whitespace, ws2));
                 }
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Newline.into(),
-                    nl1,
-                )));
-
+                children.push(crate::token!(OSK::Newline, nl1));
                 children.extend(start_blank_lines);
                 children.extend(contents);
-
                 if !ws3.is_empty() {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Whitespace.into(),
-                        ws3,
-                    )));
+                    children.push(crate::token!(OSK::Whitespace, ws3));
                 }
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    end,
-                )));
-
+                children.push(crate::token!(OSK::Text, end));
                 if !ws4.is_empty() {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Whitespace.into(),
-                        ws4,
-                    )));
+                    children.push(crate::token!(OSK::Whitespace, ws4));
                 }
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Newline.into(),
-                    nl2,
-                )));
-
+                children.push(crate::token!(OSK::Newline, nl2));
                 children.extend(blank_lines);
 
-                NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                    OrgSyntaxKind::PropertyDrawer.into(),
-                    children,
-                ))
+                crate::node!(OSK::PropertyDrawer, children)
             },
         )
         .boxed()
 }
 
-pub(crate) fn drawer_parser<'a, C: 'a>(
-    element_parser: impl Parser<
-        'a,
-        &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone
-    + 'a,
-) -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
-    let affiliated_keywords = element::keyword::affiliated_keyword_parser()
-        .repeated()
-        .collect::<Vec<_>>();
+pub(crate) fn drawer_end_row_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    object::whitespaces()
+        .then(object::just_case_insensitive(":end:"))
+        .then(object::whitespaces())
+        .then(object::newline_or_ending())
+        .map(|(((ws1, end), ws2), nl)| {
+            let mut tokens = Vec::with_capacity(4);
+            if !ws1.is_empty() {
+                tokens.push(crate::token!(OSK::Whitespace, ws1));
+            }
+            tokens.push(crate::token!(OSK::Text, end));
+            if !ws2.is_empty() {
+                tokens.push(crate::token!(OSK::Whitespace, ws2));
+            }
+            if let Some(_nl) = nl {
+                tokens.push(crate::token!(OSK::Newline, _nl));
+            }
 
+            crate::node!(OSK::DrawerEnd, tokens)
+        })
+        .boxed()
+}
+
+pub(crate) fn drawer_parser_inner<'a, C: 'a>(
+    affiliated_keywords_parser: impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone + 'a,
+    content_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let drawer_name_row = object::whitespaces()
         .then(just(":"))
         .then(
@@ -265,104 +193,26 @@ pub(crate) fn drawer_parser<'a, C: 'a>(
             // );
             let mut tokens = Vec::with_capacity(6);
             if !ws1.is_empty() {
-                tokens.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    ws1,
-                )));
+                tokens.push(crate::token!(OSK::Whitespace, ws1));
             }
-            tokens.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Colon.into(),
-                c1,
-            )));
-            tokens.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                name,
-            )));
-            tokens.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Colon.into(),
-                c2,
-            )));
+            tokens.push(crate::token!(OSK::Colon, c1));
+            tokens.push(crate::token!(OSK::Text, name));
+            tokens.push(crate::token!(OSK::Colon, c2));
             if !ws2.is_empty() {
-                tokens.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    ws2,
-                )));
+                tokens.push(crate::token!(OSK::Whitespace, ws2));
             }
-            tokens.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Newline.into(),
-                nl,
-            )));
+            tokens.push(crate::token!(OSK::Newline, nl));
 
-            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                OrgSyntaxKind::DrawerBegin.into(),
-                tokens,
-            ))
+            crate::node!(OSK::DrawerBegin, tokens)
         });
 
-    let drawer_end_row = object::whitespaces()
-        .then(object::just_case_insensitive(":end:"))
-        .then(object::whitespaces())
-        .then(object::newline_or_ending())
-        .map(|(((ws1, end), ws2), nl)| {
-            let mut tokens = Vec::with_capacity(4);
-
-            if !ws1.is_empty() {
-                tokens.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    ws1,
-                )));
-            }
-            tokens.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                &end,
-            )));
-            if !ws2.is_empty() {
-                tokens.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    ws2,
-                )));
-            }
-            if let Some(_nl) = nl {
-                tokens.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Newline.into(),
-                    _nl,
-                )));
-            }
-
-            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                OrgSyntaxKind::DrawerEnd.into(),
-                tokens,
-            ))
-        });
-
-    let drawer_content_inner = object::line_parser()
-        .or(object::blank_line_str_parser())
-        .and_is(drawer_end_row.clone().ignored().not())
-        .and_is(
-            element::heading::simple_heading_row_parser()
-                .ignored()
-                .not(),
-        ) // fixme: use heading row?
-        .repeated()
-        .to_slice();
-
-    let drawer_content = element_parser
-        .repeated()
-        .collect::<Vec<_>>()
-        .nested_in(drawer_content_inner)
-        .map(|children| {
-            NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::DrawerContent.into(),
-                children,
-            ))
-        });
     let blank_lines = object::blank_line_parser().repeated().collect::<Vec<_>>();
 
-    affiliated_keywords
+    affiliated_keywords_parser
         .then(drawer_name_row)
         .then(blank_lines.clone())
-        .then(drawer_content)
-        .then(drawer_end_row)
+        .then(content_parser)
+        .then(drawer_end_row_parser())
         .then(blank_lines)
         .map(
             |(((((keywords, begin), start_blank_lines), content), end), blank_lines)| {
@@ -377,59 +227,60 @@ pub(crate) fn drawer_parser<'a, C: 'a>(
                 children.push(end);
                 children.extend(blank_lines);
 
-                NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                    OrgSyntaxKind::Drawer.into(),
-                    children,
-                ))
+                crate::node!(OSK::Drawer, children)
             },
         )
         .boxed()
 }
 
-pub(crate) fn simple_drawer_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
-    let affiliated_keywords = element::keyword::affiliated_keyword_parser().repeated();
-
-    let drawer_name_row = object::whitespaces()
-        .ignore_then(just(":"))
-        .ignore_then(
-            any()
-                .filter(|c: &char| c.is_alphanumeric() || matches!(c, '_' | '-'))
-                .repeated()
-                .at_least(1)
-                .to_slice(),
-        )
-        .ignore_then(just(":"))
-        .ignore_then(object::whitespaces())
-        .ignore_then(object::newline())
-        .ignored();
-
-    let drawer_end_row = object::whitespaces()
-        .ignore_then(object::just_case_insensitive(":end:"))
-        .ignore_then(object::whitespaces())
-        .ignore_then(object::newline_or_ending())
-        .ignored();
+pub(crate) fn drawer_parser<'a, C: 'a>(
+    element_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    let affiliated_keywords_parser = element::keyword::affiliated_keyword_parser()
+        .repeated()
+        .collect::<Vec<_>>();
 
     let drawer_content_inner = object::line_parser()
         .or(object::blank_line_str_parser())
-        .and_is(drawer_end_row.clone().ignored().not())
+        .and_is(drawer_end_row_parser().not())
         .and_is(
             element::heading::simple_heading_row_parser()
                 .ignored()
                 .not(),
-        ) // fixme: use heading row?
-        .repeated();
+        )
+        .repeated()
+        .to_slice();
 
-    let blank_lines = object::blank_line_parser().repeated();
+    let content_parser = element_parser
+        .repeated()
+        .collect::<Vec<_>>()
+        .nested_in(drawer_content_inner)
+        .map(|children| crate::node!(OSK::DrawerContent, children));
 
-    affiliated_keywords
-        .ignore_then(drawer_name_row)
-        .ignore_then(blank_lines.clone())
-        .ignore_then(drawer_content_inner)
-        .ignore_then(drawer_end_row)
-        .ignore_then(blank_lines)
-        .boxed()
+    drawer_parser_inner(affiliated_keywords_parser, content_parser)
+}
+
+pub(crate) fn simple_drawer_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
+    let affiliated_keywords_parser = element::keyword::simple_affiliated_keyword_parser()
+        .repeated()
+        .collect::<Vec<_>>();
+
+    let drawer_content_inner = object::line_parser()
+        .or(object::blank_line_str_parser())
+        .and_is(drawer_end_row_parser().not())
+        .and_is(
+            element::heading::simple_heading_row_parser()
+                .ignored()
+                .not(),
+        )
+        .repeated()
+        .to_slice();
+
+    let content_parser = drawer_content_inner
+        .map(|s| crate::node!(OSK::DrawerContent, vec![crate::token!(OSK::Text, s)]));
+
+    drawer_parser_inner(affiliated_keywords_parser, content_parser).ignored()
 }
 
 #[cfg(test)]

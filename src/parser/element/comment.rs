@@ -1,16 +1,10 @@
 //! Comment parser
-use crate::parser::syntax::OrgSyntaxKind;
-use crate::parser::{ParserState, object};
-use chumsky::inspector::RollbackState;
+use crate::parser::object;
+use crate::parser::{MyExtra, NT, OSK};
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
-pub(crate) fn comment_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn comment_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let comment_line = object::whitespaces()
         .then(just("#"))
         .then(
@@ -23,34 +17,18 @@ pub(crate) fn comment_parser<'a, C: 'a>() -> impl Parser<
             let mut children = Vec::with_capacity(5);
 
             if !ws1.is_empty() {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    ws1,
-                )));
+                children.push(crate::token!(OSK::Whitespace, ws1));
             }
 
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Hash.into(),
-                hash,
-            )));
+            children.push(crate::token!(OSK::Hash, hash));
 
             if let Some((ws2, content)) = maybe_ws2_content {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    ws2,
-                )));
-
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    content,
-                )));
+                children.push(crate::token!(OSK::Whitespace, ws2));
+                children.push(crate::token!(OSK::Text, content));
             }
 
             if let Some(nl) = maybe_nl {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Newline.into(),
-                    nl,
-                )));
+                children.push(crate::token!(OSK::Newline, nl));
             }
             children
         });
@@ -66,7 +44,7 @@ pub(crate) fn comment_parser<'a, C: 'a>() -> impl Parser<
             children.extend(vn.into_iter().flatten());
             children.extend(blanklines);
 
-            NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Comment.into(), children))
+            crate::node!(OSK::Comment, children)
         })
         .boxed()
 }

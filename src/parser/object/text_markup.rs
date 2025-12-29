@@ -3,7 +3,7 @@ use crate::parser::ParserState;
 use crate::parser::{MyExtra, NT, OSK};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken};
+use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 pub(crate) fn contents_parser<'a, C: 'a>(
     marker: char,
@@ -25,23 +25,22 @@ pub(crate) fn contents_parser<'a, C: 'a>(
             };
 
             match content_end_valid {
-                true => {Ok(())},
+                true => {Ok(content)},
                 false => {Err(Rich::custom(
                     e.span(),
                     format!("text-markup:content: content_end_valid={content_end_valid}:\n  - content={content:?} ends with whitesace"),
                 ))}
             }
         })
-        .to_slice()
 }
 
-// bold/italic/underline/strikethrough
-// PRE MARKER CONTENTS MARKER POST
-// where CONTENTS is a series of objects from the standard set
-fn text_markup_parser_with_object<'a, C: 'a>(
-    object_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
+fn text_markup_parser_inner<'a, C: 'a, T>(
+    my_contents_parser: T,
     marker: char,
-) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone
+where
+    T: Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone + 'a,
+{
     let post = one_of(" \t​-.,;:!?)}]\"'\\\r\n").or(end().to('x'));
 
     let (token_kind, node_kind) = match marker {
@@ -53,12 +52,6 @@ fn text_markup_parser_with_object<'a, C: 'a>(
         '=' => (OSK::Equals, OSK::Verbatim),
         _ => unreachable!(),
     };
-
-    let standard_objects_parser = object_parser
-        .clone()
-        .repeated()
-        .at_least(1)
-        .collect::<Vec<NT>>();
 
     just(marker)
         .try_map_with(|s, e| {
@@ -90,110 +83,66 @@ fn text_markup_parser_with_object<'a, C: 'a>(
                 )),
             }
         })
-        .then(
-            standard_objects_parser
-                .clone()
-                .nested_in(contents_parser(marker)),
-        )
+        .then(my_contents_parser)
         .then(just(marker))
         .then_ignore(post.rewind())
         .try_map_with(move |((start_marker, content), end_marker), e| {
             (e.state() as &mut RollbackState<ParserState>).prev_char = Some(end_marker);
 
             let mut children = Vec::with_capacity(2 + content.len());
-            children.push(NT::Token(GreenToken::new(
-                token_kind.into(),
-                &start_marker.to_string(),
-            )));
+            children.push(crate::token!(token_kind, &start_marker.to_string()));
             children.extend(content);
-            children.push(NT::Token(GreenToken::new(
-                token_kind.into(),
-                &end_marker.to_string(),
-            )));
+            children.push(crate::token!(token_kind, &end_marker.to_string()));
 
-            Ok(NT::Node(GreenNode::new(node_kind.into(), children)))
+            Ok(crate::node!(node_kind, children))
         })
         .boxed()
 }
 
-// verbatim/code
-// PRE MARKER CONTENTS MARKER POST
-// where CONTENTS is a string
-fn text_markup_parser_with_string<'a, C: 'a>(
-    marker: char,
-) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    let post = one_of(" \t​-.,;:!?)}]\"'\\\r\n").or(end().to('x'));
-
-    let (token_kind, node_kind) = match marker {
-        '*' => (OSK::Asterisk, OSK::Bold),
-        '_' => (OSK::Underscore, OSK::Underline),
-        '/' => (OSK::Slash, OSK::Italic),
-        '+' => (OSK::Plus, OSK::Strikethrough),
-        '~' => (OSK::Tilde, OSK::Code),
-        '=' => (OSK::Equals, OSK::Verbatim),
-        _ => unreachable!(),
-    };
-
-    just(marker)
-        .try_map_with(|s, e| {
-            let span = e.span();
-            let state: &mut RollbackState<ParserState> = e.state();
-
-            // https://github.com/zesterer/chumsky/issues/624
-            let pre_valid = state.prev_char.map_or(true, |c| {
-                matches!(
-                    c,
-                    ' '| '\t'| '​'|              // whitespace character
-                    '-'| '('| '{'| '"'| '\''|
-                    '\r'| '\n' // beginning of a line
-                )
-            });
-
-            match pre_valid {
-                true => {
-                    state.prev_char = None; // make subscript's PREV state none
-
-                    Ok(s)
-                }
-                false => Err(Rich::<char>::custom(
-                    span,
-                    format!(
-                        "text markup parser: pre_valid={pre_valid}, PRE={:?}",
-                        state.prev_char,
-                    ),
-                )),
-            }
-        })
-        .then(contents_parser(marker))
-        .then(just(marker))
-        .then_ignore(post.rewind())
-        .map_with(move |((start_marker, content), end_marker), e| {
-            (e.state() as &mut RollbackState<ParserState>).prev_char = Some(end_marker);
-
-            NT::Node(GreenNode::new(
-                node_kind.into(),
-                vec![
-                    NT::Token(GreenToken::new(
-                        token_kind.into(),
-                        &start_marker.to_string(),
-                    )),
-                    NT::Token(GreenToken::new(OSK::Text.into(), content)),
-                    NT::Token(GreenToken::new(token_kind.into(), &end_marker.to_string())),
-                ],
-            ))
-        })
-        .boxed()
-}
-
+// bold/italic/underline/strikethrough: PRE MARKER CONTENTS MARKER POST where CONTENTS is a series of objects from the standard set
+// verbatim/code: PRE MARKER CONTENTS MARKER POST where CONTENTS is a string
 pub(crate) fn text_markup_parser<'a, C: 'a>(
     object_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    let bold = text_markup_parser_with_object(object_parser.clone(), '*');
-    let italic = text_markup_parser_with_object(object_parser.clone(), '/');
-    let underline = text_markup_parser_with_object(object_parser.clone(), '_');
-    let strikethrough = text_markup_parser_with_object(object_parser, '+');
-    let code = text_markup_parser_with_string('~');
-    let verbatim = text_markup_parser_with_string('=');
+    let standard_objects_parser = object_parser
+        .clone()
+        .repeated()
+        .at_least(1)
+        .collect::<Vec<NT>>();
+
+    let bold = text_markup_parser_inner(
+        standard_objects_parser
+            .clone()
+            .nested_in(contents_parser('*')),
+        '*',
+    );
+    let italic = text_markup_parser_inner(
+        standard_objects_parser
+            .clone()
+            .nested_in(contents_parser('/')),
+        '/',
+    );
+    let underline = text_markup_parser_inner(
+        standard_objects_parser
+            .clone()
+            .nested_in(contents_parser('_')),
+        '_',
+    );
+    let strikethrough = text_markup_parser_inner(
+        standard_objects_parser
+            .clone()
+            .nested_in(contents_parser('+')),
+        '+',
+    );
+
+    let code = text_markup_parser_inner(
+        contents_parser('~').map(|s| vec![crate::token!(OSK::Text, s)]),
+        '~',
+    );
+    let verbatim = text_markup_parser_inner(
+        contents_parser('=').map(|s| vec![crate::token!(OSK::Text, s)]),
+        '=',
+    );
 
     choice((bold, italic, underline, strikethrough, verbatim, code)).boxed()
 }
@@ -201,12 +150,31 @@ pub(crate) fn text_markup_parser<'a, C: 'a>(
 // ONLY used for lookahead, no need of any object parser
 pub(crate) fn simple_text_markup_parser<'a, C: 'a>()
 -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    let bold = text_markup_parser_with_string('*');
-    let italic = text_markup_parser_with_string('/');
-    let underline = text_markup_parser_with_string('_');
-    let strikethrough = text_markup_parser_with_string('+');
-    let code = text_markup_parser_with_string('~');
-    let verbatim = text_markup_parser_with_string('=');
+    let bold = text_markup_parser_inner(
+        contents_parser('*').map(|s| vec![crate::token!(OSK::Text, s)]),
+        '*',
+    );
+    let italic = text_markup_parser_inner(
+        contents_parser('/').map(|s| vec![crate::token!(OSK::Text, s)]),
+        '/',
+    );
+    let underline = text_markup_parser_inner(
+        contents_parser('_').map(|s| vec![crate::token!(OSK::Text, s)]),
+        '_',
+    );
+    let strikethrough = text_markup_parser_inner(
+        contents_parser('+').map(|s| vec![crate::token!(OSK::Text, s)]),
+        '+',
+    );
+
+    let code = text_markup_parser_inner(
+        contents_parser('~').map(|s| vec![crate::token!(OSK::Text, s)]),
+        '~',
+    );
+    let verbatim = text_markup_parser_inner(
+        contents_parser('=').map(|s| vec![crate::token!(OSK::Text, s)]),
+        '=',
+    );
 
     choice((bold, italic, underline, strikethrough, verbatim, code)).boxed()
 }

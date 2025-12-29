@@ -1,20 +1,12 @@
-//! Table parser
-use crate::parser::syntax::OrgSyntaxKind;
-use crate::parser::{ParserState, element, object};
-use chumsky::inspector::RollbackState;
+//! latex environment parser
+use crate::parser::{MyExtra, NT, OSK};
+use crate::parser::{element, object};
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
-pub(crate) fn latex_environment_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
-    let affiliated_keywords = element::keyword::affiliated_keyword_parser()
-        .repeated()
-        .collect::<Vec<_>>();
-
+fn latex_environment_parser_inner<'a, C: 'a>(
+    affiliated_keywords_parser: impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let begin_row = object::whitespaces()
         .then(object::just_case_insensitive(r##"\BEGIN{"##))
         .then(
@@ -75,7 +67,7 @@ pub(crate) fn latex_environment_parser<'a, C: 'a>() -> impl Parser<
 
     let contents = any().and_is(end_row.ignored().not()).repeated().to_slice();
 
-    affiliated_keywords
+    affiliated_keywords_parser
         .then(begin_row.then_with_ctx(contents.then(end_row)))
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
         .map(
@@ -112,153 +104,81 @@ pub(crate) fn latex_environment_parser<'a, C: 'a>() -> impl Parser<
                 let begin_row_node = {
                     let mut children = Vec::with_capacity(7);
                     if !begin_whitespaces1.is_empty() {
-                        children.push(crate::token!(OrgSyntaxKind::Whitespace, begin_whitespaces1));
+                        children.push(crate::token!(OSK::Whitespace, begin_whitespaces1));
                     }
-
                     children.push(crate::token!(
-                        OrgSyntaxKind::Text,
+                        OSK::Text,
                         &begin_left_curly[0..begin_left_curly.len() - 1]
                     ));
-
                     children.push(crate::token!(
-                        OrgSyntaxKind::LeftCurlyBracket,
+                        OSK::LeftCurlyBracket,
                         &begin_left_curly[begin_left_curly.len() - 1..]
                     ));
-
-                    children.push(crate::token!(OrgSyntaxKind::Text, begin_name));
-
-                    children.push(crate::token!(
-                        OrgSyntaxKind::RightCurlyBracket,
-                        begin_right_curly
-                    ));
-
+                    children.push(crate::token!(OSK::Text, begin_name));
+                    children.push(crate::token!(OSK::RightCurlyBracket, begin_right_curly));
                     if !begin_whitespaces2.is_empty() {
-                        children.push(crate::token!(OrgSyntaxKind::Whitespace, begin_whitespaces2));
+                        children.push(crate::token!(OSK::Whitespace, begin_whitespaces2));
                     }
+                    children.push(crate::token!(OSK::Newline, begin_newline));
 
-                    children.push(crate::token!(OrgSyntaxKind::Newline, begin_newline));
-
-                    crate::node!(OrgSyntaxKind::LatexEnvironmentBegin, children)
+                    crate::node!(OSK::LatexEnvironmentBegin, children)
                 };
                 children.push(begin_row_node);
 
                 if !contents.is_empty() {
-                    children.push(crate::token!(OrgSyntaxKind::Text, contents));
+                    children.push(crate::token!(OSK::Text, contents));
                 }
 
                 let end_row_node = {
                     let mut children = Vec::with_capacity(7);
                     if !end_whitespaces1.is_empty() {
-                        children.push(crate::token!(OrgSyntaxKind::Whitespace, end_whitespaces1));
+                        children.push(crate::token!(OSK::Whitespace, end_whitespaces1));
                     }
-
                     children.push(crate::token!(
-                        OrgSyntaxKind::Text,
+                        OSK::Text,
                         &end_left_curly[0..end_left_curly.len() - 1]
                     ));
-
                     children.push(crate::token!(
-                        OrgSyntaxKind::LeftCurlyBracket,
+                        OSK::LeftCurlyBracket,
                         &end_left_curly[end_left_curly.len() - 1..]
                     ));
-
-                    children.push(crate::token!(OrgSyntaxKind::Text, end_name));
-
-                    children.push(crate::token!(
-                        OrgSyntaxKind::RightCurlyBracket,
-                        end_right_curly
-                    ));
-
+                    children.push(crate::token!(OSK::Text, end_name));
+                    children.push(crate::token!(OSK::RightCurlyBracket, end_right_curly));
                     if !end_whitespaces2.is_empty() {
-                        children.push(crate::token!(OrgSyntaxKind::Whitespace, end_whitespaces2));
+                        children.push(crate::token!(OSK::Whitespace, end_whitespaces2));
                     }
-
                     if let Some(newline) = end_maybe_newline {
-                        children.push(crate::token!(OrgSyntaxKind::Newline, newline));
+                        children.push(crate::token!(OSK::Newline, newline));
                     }
 
-                    crate::node!(OrgSyntaxKind::LatexEnvironmentEnd, children)
+                    crate::node!(OSK::LatexEnvironmentEnd, children)
                 };
                 children.push(end_row_node);
 
                 children.extend(blank_lines);
 
-                crate::node!(OrgSyntaxKind::LatexEnvironment, children)
+                crate::node!(OSK::LatexEnvironment, children)
             },
         )
         .boxed()
 }
 
+pub(crate) fn latex_environment_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    let affiliated_keywords_parser = element::keyword::affiliated_keyword_parser()
+        .repeated()
+        .collect::<Vec<_>>();
+
+    latex_environment_parser_inner(affiliated_keywords_parser)
+}
+
 pub(crate) fn simple_latex_environment_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
-    let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser().repeated();
+-> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
+    let affiliated_keywords_parser = element::keyword::simple_affiliated_keyword_parser()
+        .repeated()
+        .collect::<Vec<_>>();
 
-    let begin_row = object::whitespaces()
-        .then(object::just_case_insensitive(r##"\BEGIN{"##))
-        .then(
-            any()
-                .filter(|c: &char| c.is_ascii_alphanumeric() || *c == '*')
-                .repeated()
-                .at_least(1)
-                .to_slice(),
-        )
-        .then(just("}"))
-        .then(object::whitespaces())
-        .then(object::newline())
-        .map(
-            |(
-                (
-                    (((begin_whitespaces1, begin_left_curly), begin_name), begin_right_curly),
-                    begin_whitespaces2,
-                ),
-                begin_newline,
-            )| {
-                (
-                    begin_whitespaces1,
-                    begin_left_curly,
-                    begin_name,
-                    begin_right_curly,
-                    begin_whitespaces2,
-                    begin_newline,
-                )
-            },
-        );
-
-    let end_row = object::whitespaces()
-        .then(object::just_case_insensitive(r##"\END{"##))
-        .then(
-            just("").configure(|cfg, ctx: &(&str, &str, &str, &str, &str, &str)| cfg.seq((*ctx).2)),
-        )
-        .then(just("}"))
-        .then(object::whitespaces())
-        .then(object::newline_or_ending())
-        .map(
-            |(
-                (
-                    (((end_whitespaces1, end_left_curly), end_name), end_right_curly),
-                    end_whitespaces2,
-                ),
-                end_maybe_newline,
-            )| {
-                (
-                    end_whitespaces1,
-                    end_left_curly,
-                    end_name,
-                    end_right_curly,
-                    end_whitespaces2,
-                    end_maybe_newline,
-                )
-            },
-        );
-
-    let contents = any().and_is(end_row.ignored().not()).repeated().to_slice();
-
-    affiliated_keywords
-        .then(begin_row.then_with_ctx(contents.then(end_row)))
-        .then(object::blank_line_parser().repeated())
-        .ignored()
-        .boxed()
+    latex_environment_parser_inner(affiliated_keywords_parser).ignored()
 }
 
 #[cfg(test)]
