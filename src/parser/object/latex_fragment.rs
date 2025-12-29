@@ -4,7 +4,7 @@ use crate::parser::ParserState;
 use crate::parser::{MyExtra, NT, OSK};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken};
+use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 /// Latex Frament parser
 pub(crate) fn latex_fragment_parser<'a, C: 'a>()
@@ -30,16 +30,16 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>()
                 NT::Node(GreenNode::new(
                     OSK::LatexFragment.into(),
                     vec![
-                        NT::Token(GreenToken::new(OSK::BackSlash.into(), backslash_open)),
+                        crate::token!(OSK::BackSlash, backslash_open),
                         match lb {
-                            r"(" => NT::Token(GreenToken::new(OSK::LeftRoundBracket.into(), lb)),
-                            _ => NT::Token(GreenToken::new(OSK::LeftSquareBracket.into(), lb)),
+                            r"(" => crate::token!(OSK::LeftRoundBracket, lb),
+                            _ => crate::token!(OSK::LeftSquareBracket, lb),
                         },
-                        NT::Token(GreenToken::new(OSK::Text.into(), content)),
-                        NT::Token(GreenToken::new(OSK::BackSlash.into(), backslash_close)),
+                        crate::token!(OSK::Text, content),
+                        crate::token!(OSK::BackSlash, backslash_close),
                         match rb {
-                            r")" => NT::Token(GreenToken::new(OSK::RightRoundBracket.into(), rb)),
-                            _ => NT::Token(GreenToken::new(OSK::RightSquareBracket.into(), rb)),
+                            r")" => crate::token!(OSK::RightRoundBracket, rb),
+                            _ => crate::token!(OSK::RightSquareBracket, rb),
                         },
                     ],
                 ))
@@ -64,9 +64,9 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>()
             NT::Node(GreenNode::new(
                 OSK::LatexFragment.into(),
                 vec![
-                    NT::Token(GreenToken::new(OSK::Dollar2.into(), dd_pre)),
-                    NT::Token(GreenToken::new(OSK::Text.into(), content)),
-                    NT::Token(GreenToken::new(OSK::Dollar2.into(), dd_post)),
+                    crate::token!(OSK::Dollar2, dd_pre),
+                    crate::token!(OSK::Text, content),
+                    crate::token!(OSK::Dollar2, dd_post),
                 ],
             ))
         });
@@ -112,9 +112,9 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>()
             NT::Node(GreenNode::new(
                 OSK::LatexFragment.into(),
                 vec![
-                    NT::Token(GreenToken::new(OSK::Dollar.into(), d_open)),
-                    NT::Token(GreenToken::new(OSK::Text.into(), body)),
-                    NT::Token(GreenToken::new(OSK::Dollar.into(), d_close)),
+                    crate::token!(OSK::Dollar, d_open),
+                    crate::token!(OSK::Text, body),
+                    crate::token!(OSK::Dollar, d_close),
                 ],
             ))
         });
@@ -150,7 +150,7 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>()
         .map(|s| {
             NT::Node(GreenNode::new(
                 OSK::LatexFragment.into(),
-                vec![NT::Token(GreenToken::new(OSK::Text.into(), s))],
+                vec![crate::token!(OSK::Text, s)],
             ))
         });
 

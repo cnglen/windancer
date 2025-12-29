@@ -112,114 +112,78 @@ pub(crate) fn latex_environment_parser<'a, C: 'a>() -> impl Parser<
                 let begin_row_node = {
                     let mut children = Vec::with_capacity(7);
                     if !begin_whitespaces1.is_empty() {
-                        children.push(NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::Whitespace.into(),
-                            begin_whitespaces1,
-                        )));
+                        children.push(crate::token!(OrgSyntaxKind::Whitespace, begin_whitespaces1));
                     }
 
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Text.into(),
-                        &begin_left_curly[0..begin_left_curly.len() - 1],
-                    )));
+                    children.push(crate::token!(
+                        OrgSyntaxKind::Text,
+                        &begin_left_curly[0..begin_left_curly.len() - 1]
+                    ));
 
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::LeftCurlyBracket.into(),
-                        &begin_left_curly[begin_left_curly.len() - 1..],
-                    )));
+                    children.push(crate::token!(
+                        OrgSyntaxKind::LeftCurlyBracket,
+                        &begin_left_curly[begin_left_curly.len() - 1..]
+                    ));
 
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Text.into(),
-                        begin_name,
-                    )));
+                    children.push(crate::token!(OrgSyntaxKind::Text, begin_name));
 
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::RightCurlyBracket.into(),
-                        begin_right_curly,
-                    )));
+                    children.push(crate::token!(
+                        OrgSyntaxKind::RightCurlyBracket,
+                        begin_right_curly
+                    ));
 
                     if !begin_whitespaces2.is_empty() {
-                        children.push(NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::Whitespace.into(),
-                            begin_whitespaces2,
-                        )));
+                        children.push(crate::token!(OrgSyntaxKind::Whitespace, begin_whitespaces2));
                     }
 
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Newline.into(),
-                        begin_newline,
-                    )));
+                    children.push(crate::token!(OrgSyntaxKind::Newline, begin_newline));
 
-                    NodeOrToken::Node(GreenNode::new(
-                        OrgSyntaxKind::LatexEnvironmentBegin.into(),
-                        children,
-                    ))
+                    crate::node!(OrgSyntaxKind::LatexEnvironmentBegin, children)
                 };
                 children.push(begin_row_node);
 
                 if !contents.is_empty() {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Text.into(),
-                        contents,
-                    )));
+                    children.push(crate::token!(OrgSyntaxKind::Text, contents));
                 }
 
                 let end_row_node = {
                     let mut children = Vec::with_capacity(7);
                     if !end_whitespaces1.is_empty() {
-                        children.push(NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::Whitespace.into(),
-                            end_whitespaces1,
-                        )));
+                        children.push(crate::token!(OrgSyntaxKind::Whitespace, end_whitespaces1));
                     }
 
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Text.into(),
-                        &end_left_curly[0..end_left_curly.len() - 1],
-                    )));
+                    children.push(crate::token!(
+                        OrgSyntaxKind::Text,
+                        &end_left_curly[0..end_left_curly.len() - 1]
+                    ));
 
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::LeftCurlyBracket.into(),
-                        &end_left_curly[end_left_curly.len() - 1..],
-                    )));
+                    children.push(crate::token!(
+                        OrgSyntaxKind::LeftCurlyBracket,
+                        &end_left_curly[end_left_curly.len() - 1..]
+                    ));
 
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Text.into(),
-                        end_name,
-                    )));
+                    children.push(crate::token!(OrgSyntaxKind::Text, end_name));
 
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::RightCurlyBracket.into(),
-                        end_right_curly,
-                    )));
+                    children.push(crate::token!(
+                        OrgSyntaxKind::RightCurlyBracket,
+                        end_right_curly
+                    ));
 
                     if !end_whitespaces2.is_empty() {
-                        children.push(NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::Whitespace.into(),
-                            end_whitespaces2,
-                        )));
+                        children.push(crate::token!(OrgSyntaxKind::Whitespace, end_whitespaces2));
                     }
 
                     if let Some(newline) = end_maybe_newline {
-                        children.push(NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::Newline.into(),
-                            newline,
-                        )));
+                        children.push(crate::token!(OrgSyntaxKind::Newline, newline));
                     }
 
-                    NodeOrToken::Node(GreenNode::new(
-                        OrgSyntaxKind::LatexEnvironmentEnd.into(),
-                        children,
-                    ))
+                    crate::node!(OrgSyntaxKind::LatexEnvironmentEnd, children)
                 };
                 children.push(end_row_node);
 
                 children.extend(blank_lines);
 
-                NodeOrToken::Node(GreenNode::new(
-                    OrgSyntaxKind::LatexEnvironment.into(),
-                    children,
-                ))
+                crate::node!(OrgSyntaxKind::LatexEnvironment, children)
             },
         )
         .boxed()

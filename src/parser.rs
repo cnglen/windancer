@@ -181,6 +181,20 @@ impl Default for OrgConfig {
     }
 }
 
+#[macro_export]
+macro_rules! token {
+    ($kind:expr , $value:expr) => {
+        NodeOrToken::<GreenNode, GreenToken>::Token(GreenToken::new($kind.into(), $value))
+    };
+}
+
+#[macro_export]
+macro_rules! node {
+    ($kind:expr , $value:expr) => {
+        NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new($kind.into(), $value))
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

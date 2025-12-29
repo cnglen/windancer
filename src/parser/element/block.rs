@@ -160,44 +160,35 @@ pub(crate) fn export_block_parser<'a, C: 'a>()
 
                 let block_begin_node = {
                     let (ws1, begin, block_type, ws2, data, ws3, nl) = begin_row;
+
                     let mut children = Vec::with_capacity(7);
                     if !ws1.is_empty() {
-                        children.push(NT::Token(GreenToken::new(OSK::Whitespace.into(), ws1)));
+                        children.push(crate::token!(OSK::Whitespace, ws1));
                     }
-
-                    children.push(NT::Token(GreenToken::new(OSK::Text.into(), begin)));
-
-                    children.push(NT::Token(GreenToken::new(
-                        OSK::Text.into(),
-                        &block_type.to_uppercase(),
-                    )));
-
+                    children.push(crate::token!(OSK::Text, begin));
+                    children.push(crate::token!(OSK::Text, &block_type.to_uppercase()));
                     if !ws2.is_empty() {
-                        children.push(NT::Token(GreenToken::new(OSK::Whitespace.into(), ws2)));
+                        children.push(crate::token!(OSK::Whitespace, ws2));
                     }
-
-                    children.push(NT::Token(GreenToken::new(OSK::Text.into(), data)));
-
+                    children.push(crate::token!(OSK::Text, data));
                     if !ws3.is_empty() {
-                        children.push(NT::Token(GreenToken::new(OSK::Whitespace.into(), &ws3)));
+                        children.push(crate::token!(OSK::Whitespace, &ws3));
                     }
+                    children.push(crate::token!(OSK::Newline, &nl));
 
-                    children.push(NT::Token(GreenToken::new(OSK::Newline.into(), &nl)));
-                    NT::Node(GreenNode::new(OSK::BlockBegin.into(), children))
+                    crate::node!(OSK::BlockBegin, children)
                 };
                 children.push(block_begin_node);
 
                 if !content.is_empty() {
-                    let node = NT::Node(GreenNode::new(
-                        OSK::BlockContent.into(),
-                        vec![NT::Token(GreenToken::new(OSK::Text.into(), content))],
-                    ));
+                    let node =
+                        crate::node!(OSK::BlockContent, vec![crate::token!(OSK::Text, content)]);
                     children.push(node);
                 }
 
                 children.push(end_row);
                 children.extend(blank_lines);
-                NT::Node(GreenNode::new(OSK::ExportBlock.into(), children))
+                crate::node!(OSK::ExportBlock, children)
             },
         )
         .boxed()
@@ -347,58 +338,44 @@ pub(crate) fn src_block_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyEx
                     ) = begin_row;
                     let mut children = Vec::with_capacity(10);
                     if !ws1.is_empty() {
-                        children.push(NT::Token(GreenToken::new(OSK::Whitespace.into(), &ws1)));
+                        children.push(crate::token!(OSK::Whitespace, &ws1));
                     }
 
-                    children.push(NT::Token(GreenToken::new(OSK::Text.into(), &begin)));
+                    children.push(crate::token!(OSK::Text, &begin));
 
-                    children.push(NT::Token(GreenToken::new(
-                        OSK::Text.into(),
-                        &block_type.to_uppercase(),
-                    )));
+                    children.push(crate::token!(OSK::Text, &block_type.to_uppercase()));
 
                     if !ws2.is_empty() {
-                        children.push(NT::Token(GreenToken::new(OSK::Whitespace.into(), &ws2)));
+                        children.push(crate::token!(OSK::Whitespace, &ws2));
                     }
 
-                    children.push(NT::Token(GreenToken::new(
-                        OSK::SrcBlockLanguage.into(),
-                        language,
-                    )));
+                    children.push(crate::token!(OSK::SrcBlockLanguage, language));
 
                     if let Some((ws3, switches)) = maybe_ws3_switches {
-                        children.push(NT::Token(GreenToken::new(OSK::Whitespace.into(), &ws3)));
+                        children.push(crate::token!(OSK::Whitespace, &ws3));
 
-                        children.push(NT::Token(GreenToken::new(
-                            OSK::SrcBlockSwitches.into(),
-                            switches,
-                        )));
+                        children.push(crate::token!(OSK::SrcBlockSwitches, switches));
                     }
 
                     if let Some((ws4, arguments)) = maybe_ws4_arguments {
-                        children.push(NT::Token(GreenToken::new(OSK::Whitespace.into(), &ws4)));
+                        children.push(crate::token!(OSK::Whitespace, &ws4));
 
-                        children.push(NT::Token(GreenToken::new(
-                            OSK::SrcBlockHeaderArguments.into(),
-                            arguments,
-                        )));
+                        children.push(crate::token!(OSK::SrcBlockHeaderArguments, arguments));
                     }
 
-                    children.push(NT::Token(GreenToken::new(OSK::Newline.into(), &nl)));
-                    NT::Node(GreenNode::new(OSK::BlockBegin.into(), children))
+                    children.push(crate::token!(OSK::Newline, &nl));
+                    crate::node!(OSK::BlockBegin, children)
                 };
                 children.push(block_begin_node);
                 if !content.is_empty() {
-                    let node = NT::Node(GreenNode::new(
-                        OSK::BlockContent.into(),
-                        vec![NT::Token(GreenToken::new(OSK::Text.into(), &content))],
-                    ));
+                    let node =
+                        crate::node!(OSK::BlockContent, vec![crate::token!(OSK::Text, &content)]);
                     children.push(node);
                 }
                 children.push(end_row);
                 children.extend(blank_lines);
 
-                NT::Node(GreenNode::new(OSK::SrcBlock.into(), children))
+                crate::node!(OSK::SrcBlock, children)
             },
         )
         .boxed()
@@ -437,8 +414,8 @@ fn comment_or_example_block_parser<'a, C: 'a>(
 
                 if !content.is_empty() {
                     let mut c_children = Vec::with_capacity(1);
-                    c_children.push(NT::Token(GreenToken::new(OSK::Text.into(), &content)));
-                    let node = NT::Node(GreenNode::new(OSK::BlockContent.into(), c_children));
+                    c_children.push(crate::token!(OSK::Text, &content));
+                    let node = crate::node!(OSK::BlockContent, c_children);
                     children.push(node);
                 }
 
@@ -448,10 +425,10 @@ fn comment_or_example_block_parser<'a, C: 'a>(
 
                 match block_type {
                     BlockType::Comment => {
-                        NT::Node(GreenNode::new(OSK::CommentBlock.into(), children))
+                        crate::node!(OSK::CommentBlock, children)
                     }
                     BlockType::Example => {
-                        NT::Node(GreenNode::new(OSK::ExampleBlock.into(), children))
+                        crate::node!(OSK::ExampleBlock, children)
                     }
                     _ => {
                         panic!("not supported type")
@@ -549,13 +526,13 @@ pub(crate) fn verse_block_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, My
 
                 children.push(begin_row);
 
-                children.push(NT::Node(GreenNode::new(OSK::BlockContent.into(), content)));
+                children.push(crate::node!(OSK::BlockContent, content));
 
                 children.push(end_row);
 
                 children.extend(blank_lines);
 
-                NT::Node(GreenNode::new(OSK::VerseBlock.into(), children))
+                crate::node!(OSK::VerseBlock, children)
             },
         )
         .boxed()
@@ -596,27 +573,24 @@ fn begin_row_parser<'a, C: 'a>(
         .map(|((((ws1, begin), block_type), maybe_ws2_data), nl)| {
             let mut children = Vec::with_capacity(7);
             if !ws1.is_empty() {
-                children.push(NT::Token(GreenToken::new(OSK::Whitespace.into(), &ws1)));
+                children.push(crate::token!(OSK::Whitespace, &ws1));
             }
 
-            children.push(NT::Token(GreenToken::new(OSK::Text.into(), &begin)));
+            children.push(crate::token!(OSK::Text, &begin));
 
-            children.push(NT::Token(GreenToken::new(
-                OSK::Text.into(),
-                &block_type.to_uppercase(),
-            )));
+            children.push(crate::token!(OSK::Text, &block_type.to_uppercase()));
 
             if let Some((ws2, data)) = maybe_ws2_data {
                 if !ws2.is_empty() {
-                    children.push(NT::Token(GreenToken::new(OSK::Whitespace.into(), &ws2)));
+                    children.push(crate::token!(OSK::Whitespace, &ws2));
                 }
 
-                children.push(NT::Token(GreenToken::new(OSK::Text.into(), data)));
+                children.push(crate::token!(OSK::Text, data));
             }
 
-            children.push(NT::Token(GreenToken::new(OSK::Newline.into(), &nl)));
+            children.push(crate::token!(OSK::Newline, &nl));
 
-            NT::Node(GreenNode::new(OSK::BlockBegin.into(), children))
+            crate::node!(OSK::BlockBegin, children)
         })
 }
 
@@ -632,22 +606,19 @@ fn end_row_parser<'a, C: 'a>(
         .map(|((((ws1, end), name), ws2), nl)| {
             let mut children = Vec::with_capacity(5);
             if !ws1.is_empty() {
-                children.push(NT::Token(GreenToken::new(OSK::Whitespace.into(), &ws1)));
+                children.push(crate::token!(OSK::Whitespace, &ws1));
             }
-            children.push(NT::Token(GreenToken::new(OSK::Text.into(), &end)));
-            children.push(NT::Token(GreenToken::new(
-                OSK::Text.into(),
-                &name.to_uppercase(),
-            )));
+            children.push(crate::token!(OSK::Text, &end));
+            children.push(crate::token!(OSK::Text, &name.to_uppercase()));
 
             if !ws2.is_empty() {
-                children.push(NT::Token(GreenToken::new(OSK::Whitespace.into(), &ws2)));
+                children.push(crate::token!(OSK::Whitespace, &ws2));
             }
 
             if let Some(e) = nl {
-                children.push(NT::Token(GreenToken::new(OSK::Newline.into(), &e)));
+                children.push(crate::token!(OSK::Newline, &e));
             }
-            NT::Node(GreenNode::new(OSK::BlockEnd.into(), children))
+            crate::node!(OSK::BlockEnd, children)
         })
 }
 
@@ -694,7 +665,7 @@ fn center_or_quote_block_parser<'a, C: 'a>(
         .repeated()
         .collect::<Vec<_>>()
         .nested_in(content_inner)
-        .map(|s| NT::Node(GreenNode::new(OSK::BlockContent.into(), s)));
+        .map(|s| crate::node!(OSK::BlockContent, s));
 
     let affiliated_keywords = element::keyword::affiliated_keyword_parser()
         .repeated()
@@ -717,9 +688,9 @@ fn center_or_quote_block_parser<'a, C: 'a>(
 
                 match block_type {
                     BlockType::Center => {
-                        NT::Node(GreenNode::new(OSK::CenterBlock.into(), children))
+                        crate::node!(OSK::CenterBlock, children)
                     }
-                    BlockType::Quote => NT::Node(GreenNode::new(OSK::QuoteBlock.into(), children)),
+                    BlockType::Quote => crate::node!(OSK::QuoteBlock, children),
                     _ => {
                         panic!("xxx")
                     }
@@ -868,31 +839,22 @@ pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
                 let begin_node = {
                     let mut children = Vec::with_capacity(6);
                     if !begin_whitespaces1.is_empty() {
-                        children.push(NT::Token(GreenToken::new(
-                            OSK::Whitespace.into(),
-                            begin_whitespaces1,
-                        )));
+                        children.push(crate::token!(OSK::Whitespace, begin_whitespaces1));
                     }
-                    children.push(NT::Token(GreenToken::new(OSK::Text.into(), begin)));
-                    children.push(NT::Token(GreenToken::new(
-                        OSK::Text.into(),
-                        &begin_name.to_uppercase(),
-                    )));
+                    children.push(crate::token!(OSK::Text, begin));
+                    children.push(crate::token!(OSK::Text, &begin_name.to_uppercase()));
 
                     if let Some((ws, parameters)) = maybe_ws_parameters {
                         if !ws.is_empty() {
-                            children.push(NT::Token(GreenToken::new(OSK::Whitespace.into(), &ws)));
+                            children.push(crate::token!(OSK::Whitespace, &ws));
                         }
 
-                        children.push(NT::Token(GreenToken::new(OSK::Text.into(), parameters)));
+                        children.push(crate::token!(OSK::Text, parameters));
                     }
 
-                    children.push(NT::Token(GreenToken::new(
-                        OSK::Newline.into(),
-                        begin_newline,
-                    )));
+                    children.push(crate::token!(OSK::Newline, begin_newline));
 
-                    NT::Node(GreenNode::new(OSK::BlockBegin.into(), children))
+                    crate::node!(OSK::BlockBegin, children)
                 };
                 children.push(begin_node);
 
@@ -902,12 +864,7 @@ pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
                     .clone()
                     .repeated()
                     .collect::<Vec<_>>()
-                    .map(|s| {
-                        NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                            OSK::BlockContent.into(),
-                            s,
-                        ))
-                    })
+                    .map(|s| crate::node!(OSK::BlockContent, s))
                     .parse_with_state(contents, &mut state)
                     .into_output()
                     .unwrap();
@@ -916,35 +873,26 @@ pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
                 let end_node = {
                     let mut children = Vec::with_capacity(5);
                     if !end_whitespaces1.is_empty() {
-                        children.push(NT::Token(GreenToken::new(
-                            OSK::Whitespace.into(),
-                            end_whitespaces1,
-                        )));
+                        children.push(crate::token!(OSK::Whitespace, end_whitespaces1));
                     }
 
-                    children.push(NT::Token(GreenToken::new(OSK::Text.into(), &end_)));
+                    children.push(crate::token!(OSK::Text, &end_));
 
-                    children.push(NT::Token(GreenToken::new(
-                        OSK::Text.into(),
-                        &end_name.to_uppercase(),
-                    )));
+                    children.push(crate::token!(OSK::Text, &end_name.to_uppercase()));
 
                     if !end_whitespaces2.is_empty() {
-                        children.push(NT::Token(GreenToken::new(
-                            OSK::Whitespace.into(),
-                            end_whitespaces2,
-                        )));
+                        children.push(crate::token!(OSK::Whitespace, end_whitespaces2));
                     }
 
                     if let Some(newline) = end_maybe_newline {
-                        children.push(NT::Token(GreenToken::new(OSK::Newline.into(), &newline)));
+                        children.push(crate::token!(OSK::Newline, &newline));
                     }
-                    NT::Node(GreenNode::new(OSK::BlockEnd.into(), children))
+                    crate::node!(OSK::BlockEnd, children)
                 };
                 children.push(end_node);
                 children.extend(blanklines);
 
-                NT::Node(GreenNode::new(OSK::SpecialBlock.into(), children))
+                crate::node!(OSK::SpecialBlock, children)
             },
         )
         .boxed()

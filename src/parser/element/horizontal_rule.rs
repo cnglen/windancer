@@ -14,45 +14,34 @@ pub(crate) fn horizontal_rule_parser<'a, C: 'a>() -> impl Parser<
     object::whitespaces()
         .then(just("-").repeated().at_least(5).to_slice())
         .then(object::whitespaces())
-        .then(object::newline_or_ending())
-        .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
-        .map(|((((ws1, dashes), ws2), nl), blanklines)| {
-            let mut children = Vec::with_capacity(3 + blanklines.len());
+        .then(choice((
+            object::newline()
+                .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
+                .map(|(newline, blanklines)| {
+                    let mut children = Vec::with_capacity(1 + blanklines.len());
+                    children.push(crate::token!(OrgSyntaxKind::Newline, newline));
+                    children.extend(blanklines);
+
+                    children
+                }),
+            end().to(vec![]),
+        )))
+        .map(|(((ws1, dashes), ws2), others)| {
+            let mut children = Vec::with_capacity(3 + others.len());
             if !ws1.is_empty() {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    ws1,
-                )));
+                children.push(crate::token!(OrgSyntaxKind::Whitespace, ws1));
             }
-
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                dashes,
-            )));
-
+            children.push(crate::token!(OrgSyntaxKind::Text, dashes));
             if !ws2.is_empty() {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    ws2,
-                )));
+                children.push(crate::token!(OrgSyntaxKind::Whitespace, ws2));
             }
+            children.extend(others);
 
-            if let Some(newline) = nl {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Newline.into(),
-                    newline,
-                )));
-            }
-
-            children.extend(blanklines);
-
-            NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::HorizontalRule.into(),
-                children,
-            ))
+            crate::node!(OrgSyntaxKind::HorizontalRule, children)
         })
         .boxed()
 }
+
 #[cfg(test)]
 mod tests {
     use crate::parser::common::get_parser_output;

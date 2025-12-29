@@ -588,10 +588,7 @@ impl HtmlRenderer {
                         path,
                         description,
                         is_image,
-                    } if description.len() == 0 && *is_image =>
-                    {
-                        true
-                    }
+                    } if description.len() == 0 && *is_image => true,
                     _ => false,
                 })
                 .count()

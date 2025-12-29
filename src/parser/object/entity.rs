@@ -4,7 +4,7 @@ use crate::parser::{MyExtra, NT, OSK};
 use crate::parser::{ParserState, object};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken};
+use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 /// Entity parser
 // PEG:
@@ -31,15 +31,15 @@ pub(crate) fn entity_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra
                     if is_pattern2 {
                         (e.state() as &mut RollbackState<ParserState>).prev_char = Some('}');
                         vec![
-                            NT::Token(GreenToken::new(OSK::EntityName.into(), name)),
-                            NT::Token(GreenToken::new(OSK::LeftCurlyBracket.into(), "{")),
-                            NT::Token(GreenToken::new(OSK::RightCurlyBracket.into(), "}")),
+                            crate::token!(OSK::EntityName, name),
+                            crate::token!(OSK::LeftCurlyBracket, "{"),
+                            crate::token!(OSK::RightCurlyBracket, "}"),
                         ]
                     } else {
                         // Pattern1: \NAME POST
                         (e.state() as &mut RollbackState<ParserState>).prev_char =
                             name.chars().last();
-                        vec![NT::Token(GreenToken::new(OSK::EntityName.into(), name))]
+                        vec![crate::token!(OSK::EntityName, name)]
                     }
                 }),
             just("_")
@@ -47,17 +47,17 @@ pub(crate) fn entity_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra
                 .map_with(|(us, ws): (_, &str), e| {
                     (e.state() as &mut RollbackState<ParserState>).prev_char = ws.chars().last();
                     vec![
-                        NT::Token(GreenToken::new(OSK::Underscore.into(), us)),
-                        NT::Token(GreenToken::new(OSK::Spaces.into(), ws)),
+                        crate::token!(OSK::Underscore, us),
+                        crate::token!(OSK::Spaces, ws),
                     ]
                 }),
         )))
         .map(|(backslash, others)| {
             let mut children = Vec::with_capacity(1 + others.len());
-            children.push(NT::Token(GreenToken::new(OSK::BackSlash.into(), backslash)));
+            children.push(crate::token!(OSK::BackSlash, backslash));
             children.extend(others);
 
-            NT::Node(GreenNode::new(OSK::Entity.into(), children))
+            crate::node!(OSK::Entity, children)
         })
         .boxed()
 }
