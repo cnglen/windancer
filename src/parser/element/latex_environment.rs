@@ -2,7 +2,6 @@
 use crate::parser::{MyExtra, NT, OSK};
 use crate::parser::{element, object};
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 fn latex_environment_parser_inner<'a, C: 'a>(
     affiliated_keywords_parser: impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone + 'a,

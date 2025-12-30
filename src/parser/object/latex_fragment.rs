@@ -4,7 +4,6 @@ use crate::parser::ParserState;
 use crate::parser::{MyExtra, NT, OSK};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 /// Latex Frament parser
 pub(crate) fn latex_fragment_parser<'a, C: 'a>()
@@ -27,8 +26,8 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>()
             |(backslash_open, (((lb, content), backslash_close), rb)), e| {
                 (e.state() as &mut RollbackState<ParserState>).prev_char = rb.chars().last();
 
-                NT::Node(GreenNode::new(
-                    OSK::LatexFragment.into(),
+                crate::node!(
+                    OSK::LatexFragment,
                     vec![
                         crate::token!(OSK::BackSlash, backslash_open),
                         match lb {
@@ -40,9 +39,9 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>()
                         match rb {
                             r")" => crate::token!(OSK::RightRoundBracket, rb),
                             _ => crate::token!(OSK::RightSquareBracket, rb),
-                        },
-                    ],
-                ))
+                        }
+                    ]
+                )
             },
         );
 
@@ -61,14 +60,14 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>()
             let state: &mut RollbackState<ParserState> = e.state();
             state.prev_char = Some('$');
 
-            NT::Node(GreenNode::new(
-                OSK::LatexFragment.into(),
+            crate::node!(
+                OSK::LatexFragment,
                 vec![
                     crate::token!(OSK::Dollar2, dd_pre),
                     crate::token!(OSK::Text, content),
                     crate::token!(OSK::Dollar2, dd_post),
-                ],
-            ))
+                ]
+            )
         });
 
     // PRE$CHAR$POST
@@ -109,14 +108,14 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>()
         )))
         .map_with(|(d_open, (body, d_close)), e| {
             (e.state() as &mut RollbackState<ParserState>).prev_char = Some('$');
-            NT::Node(GreenNode::new(
-                OSK::LatexFragment.into(),
+            crate::node!(
+                OSK::LatexFragment,
                 vec![
                     crate::token!(OSK::Dollar, d_open),
                     crate::token!(OSK::Text, body),
                     crate::token!(OSK::Dollar, d_close),
-                ],
-            ))
+                ]
+            )
         });
 
     // \NAME BRACKETS
@@ -147,12 +146,7 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>()
             .or_not(),
         )
         .to_slice()
-        .map(|s| {
-            NT::Node(GreenNode::new(
-                OSK::LatexFragment.into(),
-                vec![crate::token!(OSK::Text, s)],
-            ))
-        });
+        .map(|s| crate::node!(OSK::LatexFragment, vec![crate::token!(OSK::Text, s)]));
 
     Parser::boxed(choice((
         t_latex,

@@ -3,7 +3,6 @@ use crate::parser::ParserState;
 use crate::parser::{MyExtra, NT, OSK};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 pub(crate) fn contents_parser<'a, C: 'a>(
     marker: char,

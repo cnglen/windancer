@@ -81,7 +81,6 @@ use crate::parser::{MyExtra, NT, OSK};
 use crate::parser::{element, object};
 use chumsky::prelude::*;
 use phf::phf_set;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 #[allow(unused)]
 #[derive(Clone, Debug)]

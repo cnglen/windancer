@@ -184,14 +184,18 @@ impl Default for OrgConfig {
 #[macro_export]
 macro_rules! token {
     ($kind:expr , $value:expr) => {
-        NodeOrToken::<GreenNode, GreenToken>::Token(GreenToken::new($kind.into(), $value))
+        $crate::parser::NodeOrToken::<$crate::parser::GreenNode, $crate::parser::GreenToken>::Token(
+            $crate::parser::GreenToken::new($kind.into(), $value),
+        )
     };
 }
 
 #[macro_export]
 macro_rules! node {
     ($kind:expr , $value:expr) => {
-        NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new($kind.into(), $value))
+        $crate::parser::NodeOrToken::<$crate::parser::GreenNode, $crate::parser::GreenToken>::Node(
+            $crate::parser::GreenNode::new($kind.into(), $value),
+        )
     };
 }
 

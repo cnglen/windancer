@@ -4,7 +4,6 @@ use crate::parser::{MyExtra, NT, OSK};
 use crate::parser::{ParserState, object};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 /// Entity parser
 // PEG:
