@@ -1,6 +1,5 @@
 //! Keyword parser
 use crate::constants::keyword::ORG_ELEMENT_KEYWORDS_NONVALUE_STRING;
-use crate::constants::keyword::ORG_ELEMENT_KEYWORDS_OPTVALUE;
 use crate::constants::keyword::ORG_ELEMENT_KEYWORDS_OPTVALUE_PARSED;
 use crate::constants::keyword::ORG_ELEMENT_KEYWORDS_OPTVALUE_STRING;
 use crate::parser::object::blank_line_parser;

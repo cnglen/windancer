@@ -26,7 +26,3 @@ pub(crate) static ORG_ELEMENT_KEYWORDS_NONVALUE_STRING: phf::Set<&'static str> =
     "SRCNAME",
     "TBLNAME"
 };
-// used for simple_affiliated_keyword_parser: merge ORG_ELEMENT_KEYWORDS_OPTVALUE_PARSED and ORG_ELEMENT_KEYWORDS_OPTVALUE_STRING
-pub(crate) static ORG_ELEMENT_KEYWORDS_OPTVALUE: phf::Set<&'static str> = phf_set! {
-    "CAPTION", "RESULTS"
-};
