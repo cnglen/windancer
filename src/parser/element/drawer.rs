@@ -169,7 +169,7 @@ pub(crate) fn drawer_end_row_parser<'a, C: 'a>()
         .boxed()
 }
 
-pub(crate) fn drawer_parser_inner<'a, C: 'a>(
+fn drawer_parser_inner<'a, C: 'a>(
     affiliated_keywords_parser: impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone + 'a,
     content_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {

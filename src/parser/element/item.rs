@@ -4,6 +4,64 @@ use crate::parser::{MyExtra, NT, OSK};
 use chumsky::prelude::*;
 use std::ops::Range;
 
+fn item_parser_inner<'a, C: 'a>(
+    item_content_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    item_indent_parser()
+        .then(item_bullet_parser())
+        .then(item_counter_set_parser().or_not())
+        .then(item_checkbox_parser().or_not())
+        .then(item_tag_parser().or_not())
+        .validate(|((((indent, bullet), maybe_counter), maybe_checkbox), maybe_tag), e, emitter|{
+            // update item_indent state: push
+            let current_indent = usize::from(indent.text_len());
+            let state_indent_length = e.state().item_indent.len();
+
+            if state_indent_length > 0 { // indent_length vecntor is not empty
+                let last_state = e.state().item_indent[state_indent_length - 1];
+                if current_indent < last_state {
+                    let error = Rich::custom::<&str>(
+                        SimpleSpan::from(Range {
+                            start: e.span().start(),
+                            end: e.span().end(),
+                        }),
+                        &format!("item_indent_parser: lesser indernt found: current_indent({current_indent}) < state_indent({last_state})"),
+                    );
+                    emitter.emit(error)
+                } else if current_indent > last_state {
+                    e.state().item_indent.push(current_indent); // first item of Non-First list in doc
+                } else {
+                }
+            } else {
+                e.state().item_indent.push(current_indent); // update state only at the first item of one list
+            }
+            ((((indent, bullet), maybe_counter), maybe_checkbox), maybe_tag)
+        })
+        .then(item_content_parser.or_not())
+        .then(object::blank_line_parser().or_not())
+        .try_map_with(
+            |(
+                (((((indent, bullet), maybe_counter), maybe_checkbox), maybe_tag), maybe_content,),
+                maybe_blankline,
+            ), _e| {
+                let mut children = Vec::with_capacity(8);
+                children.push(indent);
+                children.push(bullet);
+
+                children.extend(maybe_counter.into_iter());
+                children.extend(maybe_checkbox.into_iter());
+                children.extend(maybe_tag.into_iter());
+                children.extend(maybe_content.into_iter());
+                children.extend(maybe_blankline);
+
+                Ok(crate::node!(
+                  OSK::ListItem,
+                  children
+                ))
+            },
+        ).boxed()
+}
+
 pub(crate) fn item_parser<'a, C: 'a>(
     element_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
@@ -29,63 +87,11 @@ pub(crate) fn item_parser<'a, C: 'a>(
         .nested_in(item_content_inner)
         .map(|children| crate::node!(OSK::ListItemContent, children));
 
-    item_indent_parser()
-        .then(item_bullet_parser())
-        .then(item_counter_set_parser().or_not())
-        .then(item_checkbox_parser().or_not())
-        .then(item_tag_parser().or_not())
-        .validate(|((((indent, bullet), maybe_counter), maybe_checkbox), maybe_tag), e, emitter|{
-            // update item_indent state: push
-            let current_indent = usize::from(indent.text_len());
-            let state_indent_length = e.state().item_indent.len();
-
-            if state_indent_length > 0 { // indent_length vecntor is not empty
-                let last_state = e.state().item_indent[state_indent_length - 1];
-                if current_indent < last_state {
-                    let error = Rich::custom::<&str>(
-                        SimpleSpan::from(Range {
-                            start: e.span().start(),
-                            end: e.span().end(),
-                        }),
-                        &format!("item_indent_parser: lesser indernt found: current_indent({current_indent}) < state_indent({last_state})"),
-                    );
-                    emitter.emit(error)
-                } else if current_indent > last_state {
-                    e.state().item_indent.push(current_indent); // first item of Non-First list in doc
-                } else {
-                }
-            } else {
-                e.state().item_indent.push(current_indent); // update state only at the first item of one list
-            }
-            ((((indent, bullet), maybe_counter), maybe_checkbox), maybe_tag)
-        })
-        .then(item_content_parser.clone().or_not())
-        .then(object::blank_line_parser().or_not())
-        .try_map_with(
-            |(
-                (((((indent, bullet), maybe_counter), maybe_checkbox), maybe_tag), maybe_content,),
-                maybe_blankline,
-            ), _e| {
-                let mut children = Vec::with_capacity(8);
-                children.push(indent);
-                children.push(bullet);
-
-                children.extend(maybe_counter.into_iter());
-                children.extend(maybe_checkbox.into_iter());
-                children.extend(maybe_tag.into_iter());
-                children.extend(maybe_content.into_iter());
-                children.extend(maybe_blankline);
-
-                Ok(crate::node!(
-                  OSK::ListItem,
-                  children
-                ))
-            },
-        ).boxed()
+    item_parser_inner(item_content_parser)
 }
 
 // only used in lookahead
-pub(crate) fn simple_item_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone
+pub(crate) fn simple_item_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone
 {
     let item_content_inner = object::line_parser() // no need to test indent since this is the first row of item
         .then(
@@ -100,42 +106,13 @@ pub(crate) fn simple_item_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, (), My
                         .not(),
                 ) // two consecutive blank lines
                 .repeated(),
-        );
+        )
+        .to_slice();
 
-    item_indent_parser()
-        .then(item_bullet_parser())
-        .then(item_counter_set_parser().or_not())
-        .then(item_checkbox_parser().or_not())
-        .then(item_tag_parser().or_not())
-        .validate(|((((indent, bullet), maybe_counter), maybe_checkbox), maybe_tag), e, emitter|{
-            // update item_indent state: push
-            let current_indent = usize::from(indent.text_len());
-            let state_indent_length = e.state().item_indent.len();
+    let item_content_parser = item_content_inner
+        .map(|s| crate::node!(OSK::ListItemContent, vec![crate::token!(OSK::Text, s)]));
 
-            if state_indent_length > 0 { // indent_length vecntor is not empty
-                let last_state = e.state().item_indent[state_indent_length - 1];
-                if current_indent < last_state {
-                    let error = Rich::custom::<&str>(
-                        SimpleSpan::from(Range {
-                            start: e.span().start(),
-                            end: e.span().end(),
-                        }),
-                        &format!("item_indent_parser: lesser indernt found: current_indent({current_indent}) < state_indent({last_state})"),
-                    );
-                    emitter.emit(error)
-                } else if current_indent > last_state {
-                    e.state().item_indent.push(current_indent); // first item of Non-First list in doc
-                } else {
-                }
-            } else {
-                e.state().item_indent.push(current_indent); // update state only at the first item of one list
-            }
-            ((((indent, bullet), maybe_counter), maybe_checkbox), maybe_tag)
-        })
-        .then(item_content_inner.or_not())
-        .then(object::blank_line_parser().or_not())
-        .ignored()
-        .boxed()
+    item_parser_inner(item_content_parser)
 }
 
 /// Item Indent Parser

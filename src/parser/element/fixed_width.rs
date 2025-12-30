@@ -4,12 +4,9 @@ use crate::parser::{MyExtra, NT, OSK};
 use crate::parser::{element, object};
 use chumsky::prelude::*;
 
-pub(crate) fn fixed_width_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone
-{
-    let affiliated_keywords = element::keyword::affiliated_keyword_parser()
-        .repeated()
-        .collect::<Vec<_>>();
-
+pub(crate) fn fixed_width_parser_inner<'a, C: 'a>(
+    affiliated_keywords_parser: impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let fixed_width_line = object::whitespaces()
         .then(just(":"))
         .then(
@@ -43,7 +40,7 @@ pub(crate) fn fixed_width_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, My
 
     let blank_lines = object::blank_line_parser().repeated().collect::<Vec<_>>();
 
-    affiliated_keywords
+    affiliated_keywords_parser
         .then(fixed_width_line.repeated().at_least(1).collect::<Vec<_>>())
         .then(blank_lines)
         .map(|((keywords, lines), blank_lines)| {
@@ -57,27 +54,22 @@ pub(crate) fn fixed_width_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, My
         .boxed()
 }
 
+pub(crate) fn fixed_width_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone
+{
+    let affiliated_keywords_parser = element::keyword::affiliated_keyword_parser()
+        .repeated()
+        .collect::<Vec<_>>();
+
+    fixed_width_parser_inner(affiliated_keywords_parser)
+}
+
 pub(crate) fn simple_fixed_width_parser<'a, C: 'a>()
 -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
-    let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser().repeated();
+    let affiliated_keywords_parser = element::keyword::simple_affiliated_keyword_parser()
+        .repeated()
+        .collect::<Vec<_>>();
 
-    let fixed_width_line = object::whitespaces()
-        .ignore_then(just(":"))
-        .ignore_then(
-            whitespaces_g1()
-                .then(none_of(object::CRLF).repeated())
-                .to_slice()
-                .or_not(),
-        )
-        .ignore_then(object::newline_or_ending());
-
-    let blank_lines = object::blank_line_parser().repeated();
-
-    affiliated_keywords
-        .ignore_then(fixed_width_line.repeated().at_least(1))
-        .ignore_then(blank_lines)
-        .ignored()
-        .boxed()
+    fixed_width_parser_inner(affiliated_keywords_parser).ignored()
 }
 
 #[cfg(test)]

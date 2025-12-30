@@ -3,46 +3,25 @@ use crate::parser::{MyExtra, NT, OSK};
 use crate::parser::{element, object};
 use chumsky::prelude::*;
 
-pub(crate) fn footnote_definition_parser<'a, C: 'a>(
-    element_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
-) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    let affiliated_keywords = element::keyword::affiliated_keyword_parser()
-        .repeated()
-        .collect::<Vec<_>>();
-
-    let label = any()
+pub(crate) fn label_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Clone
+{
+    any()
         .filter(|c: &char| c.is_alphanumeric() || matches!(c, '_' | '-'))
         .repeated()
         .at_least(1)
-        .to_slice();
+        .to_slice()
+}
 
-    let content_begin = just("[fn:").then(label.clone()).then(just("]"));
-
-    let content_inner = object::line_parser()
-        .or(object::blank_line_str_parser())
-        .and_is(just("*").ignored().not()) // ends at the next heading
-        .and_is(
-            object::blank_line_parser()
-                .repeated()
-                .at_least(2)
-                .ignored()
-                .not(),
-        ) // two consecutive blank lines
-        .and_is(content_begin.ignored().not()) // ends at the next footnote definition
-        .repeated()
-        .to_slice();
-
-    let content = element_parser
-        .repeated()
-        .collect::<Vec<_>>()
-        .nested_in(content_inner);
-
-    affiliated_keywords
+pub(crate) fn footnote_definition_inner<'a, C: 'a>(
+    affiliated_keywords_parser: impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone + 'a,
+    content_parser: impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    affiliated_keywords_parser
         .then(just("[fn:"))
-        .then(label)
+        .then(label_parser())
         .then(just("]"))
         .then(object::whitespaces_g1())
-        .then(content.clone())
+        .then(content_parser)
         .map(|(((((keywords, _lfnc), label), rbracket), ws1), content)| {
             let mut children = Vec::with_capacity(8 + content.len());
             children.extend(keywords);
@@ -62,18 +41,14 @@ pub(crate) fn footnote_definition_parser<'a, C: 'a>(
         .boxed()
 }
 
-// only used in lookahead
-pub(crate) fn simple_footnote_definition_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
-    let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser().repeated();
-
-    let label = any()
-        .filter(|c: &char| c.is_alphanumeric() || matches!(c, '_' | '-'))
+pub(crate) fn footnote_definition_parser<'a, C: 'a>(
+    element_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    let affiliated_keywords_parser = element::keyword::affiliated_keyword_parser()
         .repeated()
-        .at_least(1);
+        .collect::<Vec<_>>();
 
-    let content_begin = just("[fn:").then(label.clone()).then(just("]"));
-
+    let content_begin = just("[fn:").then(label_parser()).then(just("]"));
     let content_inner = object::line_parser()
         .or(object::blank_line_str_parser())
         .and_is(just("*").ignored().not()) // ends at the next heading
@@ -85,16 +60,42 @@ pub(crate) fn simple_footnote_definition_parser<'a, C: 'a>()
                 .not(),
         ) // two consecutive blank lines
         .and_is(content_begin.ignored().not()) // ends at the next footnote definition
-        .repeated();
+        .repeated()
+        .to_slice();
 
-    affiliated_keywords
-        .then(just("[fn:"))
-        .then(label)
-        .then(just("]"))
-        .then(object::whitespaces_g1())
-        .then(content_inner)
-        .ignored()
-        .boxed()
+    let content_parser = element_parser
+        .repeated()
+        .collect::<Vec<_>>()
+        .nested_in(content_inner);
+
+    footnote_definition_inner(affiliated_keywords_parser, content_parser)
+}
+
+// only used in lookahead
+pub(crate) fn simple_footnote_definition_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
+    let affiliated_keywords_parser = element::keyword::simple_affiliated_keyword_parser()
+        .repeated()
+        .collect::<Vec<_>>();
+
+    let content_begin = just("[fn:").then(label_parser()).then(just("]"));
+    let content_inner = object::line_parser()
+        .or(object::blank_line_str_parser())
+        .and_is(just("*").ignored().not()) // ends at the next heading
+        .and_is(
+            object::blank_line_parser()
+                .repeated()
+                .at_least(2)
+                .ignored()
+                .not(),
+        ) // two consecutive blank lines
+        .and_is(content_begin.ignored().not()) // ends at the next footnote definition
+        .repeated()
+        .to_slice();
+
+    let content_parser = content_inner.map(|s| vec![crate::token!(OSK::Text, s)]);
+
+    footnote_definition_inner(affiliated_keywords_parser, content_parser).ignored()
 }
 
 #[cfg(test)]

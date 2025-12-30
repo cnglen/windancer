@@ -9,13 +9,9 @@ use crate::parser::{element, object};
 use chumsky::prelude::*;
 use std::ops::Range;
 
-// affliated keyword is NOT a element, it's part of some element.
-// #+KEY: VALUE(string)
-// #+KEY[OPTVAL]: VALUE(string)
-// #+KEY[OPTVAL]: VALUE(objects)
-// #+attr_BACKEND: VALUE
-pub(crate) fn affiliated_keyword_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+pub(crate) fn affiliated_keyword_parser_inner<'a, C: 'a>(
+    value_parser: impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let key_optvalue_parsed = object::keyword_ci_parser(&ORG_ELEMENT_KEYWORDS_OPTVALUE_PARSED); // 1
     let key_optvalue_string = object::keyword_ci_parser(&ORG_ELEMENT_KEYWORDS_OPTVALUE_STRING); // 1
     let key_nonvalue_string = object::keyword_ci_parser(&ORG_ELEMENT_KEYWORDS_NONVALUE_STRING); // 11
@@ -35,11 +31,6 @@ pub(crate) fn affiliated_keyword_parser<'a, C: 'a>()
             .to_slice()),
     );
     let optval = single_expression.clone().repeated().at_least(1).to_slice();
-
-    let objects_parser = object::object_in_keyword_parser()
-        .repeated()
-        .at_least(1)
-        .collect::<Vec<NT>>();
 
     just("#+")
         .then(choice((
@@ -84,7 +75,7 @@ pub(crate) fn affiliated_keyword_parser<'a, C: 'a>()
                 .then(just("[").then(optval.clone()).then(just("]")).or_not())
                 .then(just(":"))
                 .then(object::whitespaces())
-                .then(objects_parser.clone().nested_in(string_without_nl))
+                .then(value_parser)
                 .map_with(|((((key, maybe_lsb_optval_rsb), colon), ws), value), _e| {
                     let mut children = Vec::with_capacity(7);
                     children.push(crate::node!(
@@ -176,60 +167,30 @@ pub(crate) fn affiliated_keyword_parser<'a, C: 'a>()
         })
 }
 
+// affliated keyword is NOT a element, it's part of some element.
+// #+KEY: VALUE(string)
+// #+KEY[OPTVAL]: VALUE(string)
+// #+KEY[OPTVAL]: VALUE(objects)
+// #+attr_BACKEND: VALUE
+pub(crate) fn affiliated_keyword_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    let string_without_nl = none_of(object::CRLF).repeated().at_least(1).to_slice();
+    let objects_parser = object::object_in_keyword_parser()
+        .repeated()
+        .at_least(1)
+        .collect::<Vec<NT>>();
+    let value_parser = objects_parser.nested_in(string_without_nl);
+
+    affiliated_keyword_parser_inner(value_parser)
+}
+
 // only for lookahead, no object_parser is need
 pub(crate) fn simple_affiliated_keyword_parser<'a, C: 'a>()
 -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    let key_optvalue = object::keyword_ci_parser(&ORG_ELEMENT_KEYWORDS_OPTVALUE); // 2
-    let key_nonvalue_string = object::keyword_ci_parser(&ORG_ELEMENT_KEYWORDS_NONVALUE_STRING); // 11
-    let backend = any()
-        .filter(|c: &char| matches!(c, '-' | '_') || c.is_alphanumeric())
-        .repeated()
-        .at_least(1);
     let string_without_nl = none_of(object::CRLF).repeated().at_least(1).to_slice();
-    let mut single_expression = Recursive::declare(); // foo / [foo] / [[[foo]]]
-    single_expression.define(
-        (none_of("[]\r\n").repeated().at_least(1).to_slice()).or(just("[")
-            .then(single_expression.clone().repeated())
-            .then(just("]"))
-            .to_slice()),
-    );
-    let optval = single_expression.clone().repeated().at_least(1);
+    let value_parser = string_without_nl.map(|s| vec![crate::token!(OSK::Text, s)]);
 
-    just("#+")
-        .then(choice((
-            // #+KEY[OPTVAL]: VALUE(string/object)
-            key_optvalue
-                .then(just("[").then(optval.clone()).then(just("]")).or_not())
-                .then(just(":"))
-                .then(object::whitespaces())
-                .then(string_without_nl)
-                .map_with(|((((_, _), _), _), value), e| {
-                    e.state().prev_char = value.chars().last();
-                    ()
-                }),
-            // #+KEY: VALUE(string)
-            key_nonvalue_string
-                .then(just(":"))
-                .then(object::whitespaces())
-                .then(string_without_nl)
-                .map_with(|(((_, _), _), value), e| {
-                    e.state().prev_char = value.chars().last();
-                    ()
-                }),
-            // #+attr_BACKEND: VALUE
-            object::just_case_insensitive("attr_")
-                .then(backend)
-                .to_slice()
-                .then(just(":"))
-                .then(object::whitespaces())
-                .then(string_without_nl)
-                .map_with(|(((_, _), _), value), e| {
-                    e.state().prev_char = value.chars().last();
-                    ()
-                }),
-        )))
-        .then(object::newline_or_ending())
-        .to(crate::node!(OSK::AffiliatedKeyword, vec![]))
+    affiliated_keyword_parser_inner(value_parser).to(crate::node!(OSK::AffiliatedKeyword, vec![]))
 }
 
 // find last colon(:), all previous chars are `key`, such as "#+key:with:colon: value"
@@ -266,9 +227,9 @@ fn key_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, String, MyExtra<'a, C>> +
     })
 }
 
-// element_parser: <element with affiliated word>
-pub(crate) fn keyword_parser<'a, C: 'a + std::default::Default>()
--> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+pub(crate) fn keyword_parser_inner<'a, C: 'a + std::default::Default>(
+    value_parser: impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let element_parser_having_affiliated_keywords_for_lookahead = choice((
         element::footnote_definition::simple_footnote_definition_parser(),
         element::list::simple_plain_list_parser(element::item::simple_item_parser()),
@@ -297,10 +258,6 @@ pub(crate) fn keyword_parser<'a, C: 'a + std::default::Default>()
     // last if not :
     let string_without_nl = none_of(object::CRLF).repeated().at_least(1).to_slice();
     let key_with_objects = object::keyword_ci_parser(&ORG_ELEMENT_KEYWORDS_OPTVALUE_PARSED); // 1
-    let objects_parser = object::object_in_keyword_parser()
-        .repeated()
-        .at_least(1)
-        .collect::<Vec<NT>>();
 
     // FIXME: better method? element vs blankline?
     // #+KEY: VALUE(string)
@@ -382,7 +339,7 @@ pub(crate) fn keyword_parser<'a, C: 'a + std::default::Default>()
         .then(key_with_objects)
         .then(just(":"))
         .then(object::whitespaces())
-        .then(objects_parser.clone().nested_in(string_without_nl));
+        .then(value_parser);
 
     let p1a = choice((
         p1a_part1.clone().then(end().to(None)),
@@ -433,60 +390,25 @@ pub(crate) fn keyword_parser<'a, C: 'a + std::default::Default>()
     Parser::boxed(choice((p1a, p1)))
 }
 
+// element_parser: <element with affiliated word>
+pub(crate) fn keyword_parser<'a, C: 'a + std::default::Default>()
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    let string_without_nl = none_of(object::CRLF).repeated().at_least(1).to_slice();
+    let objects_parser = object::object_in_keyword_parser()
+        .repeated()
+        .at_least(1)
+        .collect::<Vec<NT>>();
+    let value_parser = objects_parser.clone().nested_in(string_without_nl);
+
+    keyword_parser_inner(value_parser)
+}
+
 pub(crate) fn simple_keyword_parser<'a, C: 'a + std::default::Default>()
 -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
-    let element_parser_having_affiliated_keywords_for_lookahead = choice((
-        element::footnote_definition::simple_footnote_definition_parser(),
-        element::list::simple_plain_list_parser(element::item::simple_item_parser()),
-        element::block::simple_center_block_parser(),
-        element::block::simple_quote_block_parser(),
-        element::block::simple_special_block_parser(),
-        element::block::simple_verse_block_parser(),
-        element::table::simple_table_parser(),
-        element::horizontal_rule::horizontal_rule_parser().ignored(),
-        element::latex_environment::simple_latex_environment_parser(),
-        element::block::simple_src_block_parser(),
-        element::block::simple_export_block_parser(),
-        element::block::simple_example_block_parser(),
-        element::block::simple_comment_block_parser(),
-        element::fixed_width::simple_fixed_width_parser(),
-        element::paragraph::paragraph_parser_with_at_least_n_affiliated_keywords(
-            choice((
-                element::horizontal_rule::horizontal_rule_parser().ignored(), // placeholder
-            )),
-            1,
-        )
-        .ignored(),
-    ));
     let string_without_nl = none_of(object::CRLF).repeated().at_least(1).to_slice();
+    let value_parser = string_without_nl.map(|s| vec![crate::token!(OSK::Text, s)]);
 
-    let p1_part1 = just("#+")
-        .then(key_parser())
-        .then(just(":"))
-        .then(object::whitespaces())
-        .then(string_without_nl);
-
-    choice((
-        p1_part1.clone().then(end().to(None)),
-        p1_part1
-            .clone()
-            .then(object::newline().then(end()).to_slice().map(|s| Some(s))),
-        p1_part1
-            .clone()
-            .then(object::newline().map(|c| Some(c)))
-            .then_ignore(blank_line_parser().repeated().at_least(1).rewind()),
-        p1_part1
-            .clone()
-            .then(object::newline().map(|c| Some(c)))
-            .and_is(
-                element_parser_having_affiliated_keywords_for_lookahead
-                    .clone()
-                    .ignored()
-                    .not(),
-            ),
-    ))
-    .ignore_then(object::blank_line_parser().repeated())
-    .ignored()
+    keyword_parser_inner(value_parser).ignored()
 }
 
 #[cfg(test)]

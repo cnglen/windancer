@@ -100,9 +100,10 @@ pub(crate) fn table_formula_parser<'a, C: 'a>()
         })
 }
 
-pub(crate) fn table_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+pub(crate) fn table_parser_inner<'a, C: 'a>(
+    affiliated_keywords_parser: impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     // fixme: standard objects without footnote reference
-    let affiliated_keywords_parser = affiliated_keyword_parser().repeated().collect::<Vec<_>>();
     let rows = table_rule_row()
         .or(table_standard_row())
         .repeated()
@@ -128,37 +129,20 @@ pub(crate) fn table_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<
         .boxed()
 }
 
+pub(crate) fn table_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    let affiliated_keywords_parser = affiliated_keyword_parser().repeated().collect::<Vec<_>>();
+
+    table_parser_inner(affiliated_keywords_parser)
+}
+
 // used for negative lookahead
 pub(crate) fn simple_table_parser<'a, C: 'a>()
 -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
-    let affiliated_keywords = simple_affiliated_keyword_parser().ignored().repeated();
-    let rows = (object::whitespaces()
-        .ignore_then(just("|"))
-        .ignore_then(just("-"))
-        .ignore_then(none_of("\n").repeated().to_slice())
-        .ignore_then(object::newline_or_ending())
-        .ignored())
-    .or(object::whitespaces()
-        .ignore_then(just("|"))
-        .ignore_then(
-            // CONTENTS SPACES|
-            none_of("|\n")
-                .and_is(object::whitespaces().ignore_then(just("|").ignored()).not())
-                .repeated()
-                .then(object::whitespaces())
-                .then(just("|"))
-                .repeated(),
-        )
-        .ignore_then(object::newline_or_ending())
-        .ignored())
-    .repeated()
-    .at_least(1);
-    let formulas = table_formula_parser().repeated();
-    affiliated_keywords
-        .ignore_then(rows)
-        .ignore_then(formulas)
-        .ignore_then(object::blank_line_parser().repeated())
-        .ignored()
+    let affiliated_keywords_parser = simple_affiliated_keyword_parser()
+        .repeated()
+        .collect::<Vec<_>>();
+
+    table_parser_inner(affiliated_keywords_parser).ignored()
 }
 
 #[cfg(test)]

@@ -3,13 +3,11 @@ use crate::parser::{MyExtra, NT, OSK};
 use crate::parser::{element, object};
 use chumsky::prelude::*;
 
-pub(crate) fn plain_list_parser<'a, C: 'a>(
+pub(crate) fn plain_list_parser_inner<'a, C: 'a>(
+    affiliated_keywords_parser: impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone + 'a,
     item_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    let affiliated_keywords = element::keyword::affiliated_keyword_parser()
-        .repeated()
-        .collect::<Vec<_>>();
-    affiliated_keywords
+    affiliated_keywords_parser
         .then(item_parser.repeated().at_least(1).collect::<Vec<_>>())
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
         .map_with(|((keywords, items), blanklines), e| {
@@ -24,16 +22,24 @@ pub(crate) fn plain_list_parser<'a, C: 'a>(
         .boxed()
 }
 
-pub(crate) fn simple_plain_list_parser<'a, C: 'a>(
-    item_parser: impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone + 'a,
-) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
-    let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser().repeated();
+pub(crate) fn plain_list_parser<'a, C: 'a>(
+    item_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    let affiliated_keywords_parser = element::keyword::affiliated_keyword_parser()
+        .repeated()
+        .collect::<Vec<_>>();
 
-    affiliated_keywords
-        .then(item_parser.repeated().at_least(1))
-        .then(object::blank_line_parser().repeated())
-        .ignored()
-        .boxed()
+    plain_list_parser_inner(affiliated_keywords_parser, item_parser)
+}
+
+pub(crate) fn simple_plain_list_parser<'a, C: 'a>(
+    item_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
+    let affiliated_keywords_parser = element::keyword::simple_affiliated_keyword_parser()
+        .repeated()
+        .collect::<Vec<_>>();
+
+    plain_list_parser_inner(affiliated_keywords_parser, item_parser).ignored()
 }
 
 #[cfg(test)]
