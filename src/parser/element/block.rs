@@ -56,22 +56,22 @@
 //             let mut children = Vec::with_capacity(7);
 //             if !whitespaces.is_empty() {
 //                 children.push(NT::Token(GreenToken::new(
-//                     OSK::Whitespace.into(),
+//                     OSK::Whitespace,
 //                     whitespaces,
 //                 )));
 //             }
 
 //             children.push(NT::Token(GreenToken::new(
-//                 OSK::Text.into(),
+//                 OSK::Text,
 //                 begin,
 //             )));
 //             children.push(NT::Token(GreenToken::new(
-//                 OSK::Text.into(),
+//                 OSK::Text,
 //                 name
 //             )));
 //             children.extend(data);
 //             children.push(NT::Token(GreenToken::new(
-//                 OSK::Newline.into(),
+//                 OSK::Newline,
 //                 &nl,
 //             )));
 //         }

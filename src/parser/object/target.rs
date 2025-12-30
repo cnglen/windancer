@@ -3,7 +3,6 @@ use crate::parser::ParserState;
 use crate::parser::{MyExtra, NT, OSK};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken};
 
 /// target parser: <<TARGET>>
 pub(crate) fn target_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
@@ -35,12 +34,12 @@ pub(crate) fn target_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra
             state.prev_char = Some('>');
 
             let children = vec![
-                NT::Token(GreenToken::new(OSK::LeftAngleBracket2.into(), lbracket2)),
-                NT::Token(GreenToken::new(OSK::Text.into(), target)),
-                NT::Token(GreenToken::new(OSK::RightAngleBracket2.into(), rbracket2)),
+                crate::token!(OSK::LeftAngleBracket2, lbracket2),
+                crate::token!(OSK::Text, target),
+                crate::token!(OSK::RightAngleBracket2, rbracket2),
             ];
 
-            NT::Node(GreenNode::new(OSK::Target.into(), children))
+            crate::node!(OSK::Target, children)
         })
         .boxed()
 }

@@ -2,7 +2,6 @@
 use crate::parser::{MyExtra, NT, OSK};
 use crate::parser::{element, object};
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
 use std::ops::Range;
 
 use crate::parser::object::just_case_insensitive;
@@ -43,7 +42,7 @@ fn name_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, String, MyExtra<'a, C>> 
 }
 
 pub(crate) fn node_property_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, NodeOrToken<GreenNode, GreenToken>, MyExtra<'a, C>> + Clone {
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let name = name_parser();
     let value = none_of(object::CRLF).repeated().to_slice();
     let blank_lines = object::blank_line_parser().repeated().collect::<Vec<_>>();
@@ -86,7 +85,7 @@ pub(crate) fn node_property_parser<'a, C: 'a>()
 }
 
 pub(crate) fn property_drawer_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, NodeOrToken<GreenNode, GreenToken>, MyExtra<'a, C>> + Clone {
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let begin_row = object::whitespaces()
         .then(just_case_insensitive(":properties:"))
         .then(object::whitespaces())

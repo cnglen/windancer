@@ -1,17 +1,11 @@
 //! Fixed width parser
 use crate::parser::object::whitespaces_g1;
-use crate::parser::syntax::OrgSyntaxKind;
-use crate::parser::{ParserState, element, object};
-use chumsky::inspector::RollbackState;
+use crate::parser::{MyExtra, NT, OSK};
+use crate::parser::{element, object};
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
 
-pub(crate) fn fixed_width_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn fixed_width_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone
+{
     let affiliated_keywords = element::keyword::affiliated_keyword_parser()
         .repeated()
         .collect::<Vec<_>>();
@@ -30,35 +24,20 @@ pub(crate) fn fixed_width_parser<'a, C: 'a>() -> impl Parser<
                 let mut children = Vec::with_capacity(4);
 
                 if !ws.is_empty() {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Whitespace.into(),
-                        ws,
-                    )));
+                    children.push(crate::token!(OSK::Whitespace, ws));
                 }
 
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Colon.into(),
-                    colon,
-                )));
+                children.push(crate::token!(OSK::Colon, colon));
 
                 if let Some(content) = maybe_content {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Text.into(),
-                        content,
-                    )));
+                    children.push(crate::token!(OSK::Text, content));
                 }
 
                 if let Some(newline) = eol_or_eof {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Newline.into(),
-                        &newline,
-                    )));
+                    children.push(crate::token!(OSK::Newline, newline));
                 }
 
-                NodeOrToken::Node(GreenNode::new(
-                    OrgSyntaxKind::FixedWidthLine.into(),
-                    children,
-                ))
+                crate::node!(OSK::FixedWidthLine, children)
             },
         );
 
@@ -73,17 +52,13 @@ pub(crate) fn fixed_width_parser<'a, C: 'a>() -> impl Parser<
             children.extend(lines);
             children.extend(blank_lines);
 
-            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                OrgSyntaxKind::FixedWidth.into(),
-                children,
-            ))
+            crate::node!(OSK::FixedWidth, children)
         })
         .boxed()
 }
 
 pub(crate) fn simple_fixed_width_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
+-> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
     let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser().repeated();
 
     let fixed_width_line = object::whitespaces()

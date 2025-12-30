@@ -1,24 +1,11 @@
 //! List parser
-use crate::parser::syntax::OrgSyntaxKind;
-use crate::parser::{ParserState, element, object};
-use chumsky::inspector::RollbackState;
+use crate::parser::{MyExtra, NT, OSK};
+use crate::parser::{element, object};
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 pub(crate) fn plain_list_parser<'a, C: 'a>(
-    item_parser: impl Parser<
-        'a,
-        &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone
-    + 'a,
-) -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+    item_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let affiliated_keywords = element::keyword::affiliated_keyword_parser()
         .repeated()
         .collect::<Vec<_>>();
@@ -32,24 +19,14 @@ pub(crate) fn plain_list_parser<'a, C: 'a>(
             children.extend(blanklines);
             e.state().item_indent.pop();
 
-            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                OrgSyntaxKind::List.into(),
-                children,
-            ))
+            crate::node!(OSK::List, children)
         })
         .boxed()
 }
 
 pub(crate) fn simple_plain_list_parser<'a, C: 'a>(
-    item_parser: impl Parser<
-        'a,
-        &'a str,
-        (),
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone
-    + 'a,
-) -> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
+    item_parser: impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
     let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser().repeated();
 
     affiliated_keywords

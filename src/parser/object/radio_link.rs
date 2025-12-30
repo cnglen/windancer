@@ -7,7 +7,6 @@ use chumsky::input::InputRef;
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::SyntaxNode;
-use rowan::{GreenNode, GreenToken};
 
 fn try_match_string<'a, C: 'a>(
     stream: &mut InputRef<'a, '_, &'a str, MyExtra<'a, C>>,
@@ -95,7 +94,7 @@ where
         .then_ignore(post.rewind())
         .map_with(|(_s, radio), e| {
             // fixme: faster to get radio last char?
-            let root = NT::Node(GreenNode::new(OSK::Root.into(), radio.clone()));
+            let root = crate::node!(OSK::Root, radio.clone());
             let syntax_tree: SyntaxNode<OrgLanguage> =
                 SyntaxNode::new_root(root.into_node().expect("xx"));
             let last_char = syntax_tree
@@ -103,7 +102,7 @@ where
                 .map_or(None, |x| x.text().chars().last());
             (e.state() as &mut RollbackState<ParserState>).prev_char = last_char;
 
-            NT::Node(GreenNode::new(OSK::RadioLink.into(), radio))
+            crate::node!(OSK::RadioLink, radio)
         })
         .boxed()
 }
@@ -126,6 +125,6 @@ pub(crate) fn simple_radio_link_parser<'a, C: 'a>()
 -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let radio_parser_slice = radio_parser()
         .to_slice()
-        .map(|s: &str| vec![NT::Token(GreenToken::new(OSK::Text.into(), s))]);
+        .map(|s: &str| vec![crate::token!(OSK::Text, s)]);
     radio_link_parser_inner(radio_parser_slice)
 }

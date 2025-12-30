@@ -2,26 +2,21 @@
 use crate::parser::ParserState;
 use crate::parser::element::{drawer, planning, section};
 use crate::parser::object;
-use crate::parser::syntax::OrgSyntaxKind;
+use crate::parser::{MyExtra, NT, OSK};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 pub(crate) fn heading_subtree_parser<'a>(
     element_parser: impl Parser<
         'a,
         &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
+        NT,
         extra::Full<Rich<'a, char>, RollbackState<ParserState>, usize>,
     > + Clone
     + 'a,
     prev_level: usize,
-) -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
-> + Clone {
+) -> impl Parser<'a, &'a str, NT, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+{
     let mut heading_subtree = Recursive::declare();
 
     let maybe_keyword_ws = choice((just("TODO"), just("DONE")))
@@ -130,44 +125,29 @@ pub(crate) fn heading_subtree_parser<'a>(
             )| {
                 let mut children = vec![];
 
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::HeadingRowStars.into(),
-                    "*".repeat(stars).as_str(),
-                    // "*".repeat(stars.prev_heading_level).as_str(),
-                    // "*".repeat(e.ctx().prev_heading_level).as_str(),
-                )));
-
-                children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
-                    GreenToken::new(OrgSyntaxKind::Whitespace.into(), whitespace1),
+                children.push(crate::token!(
+                    OSK::HeadingRowStars,
+                    "*".repeat(stars).as_str() // "*".repeat(stars.prev_heading_level).as_str(),
+                                               // "*".repeat(e.ctx().prev_heading_level).as_str(),
                 ));
+
+                children.push(crate::token!(OSK::Whitespace, whitespace1));
 
                 match maybe_keyword_ws {
                     Some((kw, ws)) if kw.to_uppercase() == "TODO" => {
-                        children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
-                            GreenToken::new(OrgSyntaxKind::HeadingRowKeywordTodo.into(), kw),
-                        ));
-                        children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
-                            GreenToken::new(OrgSyntaxKind::Whitespace.into(), &ws),
-                        ));
+                        children.push(crate::token!(OSK::HeadingRowKeywordTodo, kw));
+                        children.push(crate::token!(OSK::Whitespace, &ws));
                     }
                     Some((kw, ws)) if kw.to_uppercase() == "DONE" => {
-                        children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
-                            GreenToken::new(OrgSyntaxKind::HeadingRowKeywordDone.into(), kw),
-                        ));
+                        children.push(crate::token!(OSK::HeadingRowKeywordDone, kw));
 
-                        children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
-                            GreenToken::new(OrgSyntaxKind::Whitespace.into(), &ws),
-                        ));
+                        children.push(crate::token!(OSK::Whitespace, &ws));
                     }
 
                     Some((kw, ws)) => {
-                        children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
-                            GreenToken::new(OrgSyntaxKind::HeadingRowKeywordOther.into(), kw),
-                        ));
+                        children.push(crate::token!(OSK::HeadingRowKeywordOther, kw));
 
-                        children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
-                            GreenToken::new(OrgSyntaxKind::Whitespace.into(), &ws),
-                        ));
+                        children.push(crate::token!(OSK::Whitespace, &ws));
                     }
                     None => {}
                 }
@@ -176,98 +156,55 @@ pub(crate) fn heading_subtree_parser<'a>(
                     maybe_priority
                 {
                     let p_children = vec![
-                        NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::LeftSquareBracket.into(),
-                            &leftbracket_hash[0..1],
-                        )),
-                        NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::Hash.into(),
-                            &leftbracket_hash[1..2],
-                        )),
-                        NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::Text.into(),
-                            &level.to_string(),
-                        )),
-                        NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::RightSquareBracket.into(),
-                            rightbracket,
-                        )),
+                        crate::token!(OSK::LeftSquareBracket, &leftbracket_hash[0..1]),
+                        crate::token!(OSK::Hash, &leftbracket_hash[1..2]),
+                        crate::token!(OSK::Text, &level.to_string()),
+                        crate::token!(OSK::RightSquareBracket, rightbracket),
                     ];
 
-                    let priority_node = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                        OrgSyntaxKind::HeadingRowPriority.into(),
-                        p_children,
-                    ));
+                    let priority_node = crate::node!(OSK::HeadingRowPriority, p_children);
 
-                    let ws_token = NodeOrToken::<GreenNode, GreenToken>::Token(GreenToken::new(
-                        OrgSyntaxKind::Whitespace.into(),
-                        whitespace,
-                    ));
+                    let ws_token = crate::token!(OSK::Whitespace, whitespace);
 
                     children.push(priority_node);
                     children.push(ws_token);
                 }
 
                 if let Some((comment, whitespace)) = maybe_comment {
-                    children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
-                        GreenToken::new(OrgSyntaxKind::HeadingRowComment.into(), comment),
-                    ));
+                    children.push(crate::token!(OSK::HeadingRowComment, comment));
 
-                    children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
-                        GreenToken::new(OrgSyntaxKind::Whitespace.into(), whitespace),
-                    ));
+                    children.push(crate::token!(OSK::Whitespace, whitespace));
                 }
 
                 if let Some((title, whitespace)) = maybe_title {
-                    let title_token = NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::HeadingRowTitle.into(),
-                        title,
-                    ));
+                    let title_token = crate::token!(OSK::HeadingRowTitle, title);
                     children.push(title_token);
 
                     if !whitespace.is_empty() {
-                        let ws_token = NodeOrToken::<GreenNode, GreenToken>::Token(
-                            GreenToken::new(OrgSyntaxKind::Whitespace.into(), whitespace),
-                        );
+                        let ws_token = crate::token!(OSK::Whitespace, whitespace);
                         children.push(ws_token);
                     }
                 }
 
                 if let Some((((left_colon, tags), right_colon), whitespace)) = maybe_tag {
-                    let mut tag_token_children: Vec<NodeOrToken<GreenNode, GreenToken>> = vec![];
-                    tag_token_children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Colon.into(),
-                        &left_colon.to_string(),
-                    )));
+                    let mut tag_token_children: Vec<NT> = vec![];
+                    tag_token_children.push(crate::token!(OSK::Colon, &left_colon.to_string()));
 
                     for tag in tags {
-                        tag_token_children.push(NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::HeadingRowTag.into(),
-                            tag,
-                        )));
+                        tag_token_children.push(crate::token!(OSK::HeadingRowTag, tag));
 
-                        tag_token_children.push(NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::Colon.into(),
-                            right_colon,
-                        )));
+                        tag_token_children.push(crate::token!(OSK::Colon, right_colon));
                     }
 
-                    let tag_node: NodeOrToken<GreenNode, GreenToken> = NodeOrToken::Node(
-                        GreenNode::new(OrgSyntaxKind::HeadingRowTags.into(), tag_token_children),
-                    );
+                    let tag_node: NT = crate::node!(OSK::HeadingRowTags, tag_token_children);
                     children.push(tag_node);
 
                     if whitespace.len() > 0 {
-                        children.push(NodeOrToken::<GreenNode, GreenToken>::Token(
-                            GreenToken::new(OrgSyntaxKind::Whitespace.into(), whitespace),
-                        ));
+                        children.push(crate::token!(OSK::Whitespace, whitespace));
                     }
                 }
 
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Newline.into(),
-                    newline,
-                )));
+                children.push(crate::token!(OSK::Newline, newline));
 
                 if let Some(planning) = maybe_planning {
                     children.push(planning);
@@ -278,10 +215,7 @@ pub(crate) fn heading_subtree_parser<'a>(
                 }
 
                 children.extend(blanklines);
-                let head_row = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                    OrgSyntaxKind::HeadingRow.into(),
-                    children,
-                ));
+                let head_row = crate::node!(OSK::HeadingRow, children);
 
                 let mut children = vec![];
                 children.push(head_row);
@@ -291,10 +225,7 @@ pub(crate) fn heading_subtree_parser<'a>(
                 for subtree in subtrees {
                     children.push(subtree);
                 }
-                NodeOrToken::Node(GreenNode::new(
-                    OrgSyntaxKind::HeadingSubtree.into(),
-                    children,
-                ))
+                crate::node!(OSK::HeadingSubtree, children)
             },
         ),)));
     heading_subtree.with_ctx(prev_level).boxed()
@@ -303,8 +234,7 @@ pub(crate) fn heading_subtree_parser<'a>(
 /// A simple heading row parser WITHOUT state, ONLY used for look ahead
 // - section parser: to check whether the next part is heading to stop
 pub(crate) fn simple_heading_row_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
+-> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Clone {
     let stars = just('*').repeated().at_least(1);
     let whitespaces = one_of(" \t").repeated().at_least(1);
     let title = none_of(object::CRLF).repeated();

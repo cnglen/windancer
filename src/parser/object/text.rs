@@ -4,7 +4,6 @@ use crate::parser::ParserState;
 use crate::parser::{MyExtra, NT, OSK};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use rowan::GreenToken;
 
 // plain text Parser
 pub(crate) fn plain_text_parser<'a, C: 'a>(
@@ -32,7 +31,7 @@ pub(crate) fn plain_text_parser<'a, C: 'a>(
                 (e.state() as &mut RollbackState<ParserState>).prev_char = Some(c);
             }
 
-            NT::Token(GreenToken::new(OSK::Text.into(), &s))
+            crate::token!(OSK::Text, &s)
         })
         .boxed()
 }

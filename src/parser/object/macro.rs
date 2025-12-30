@@ -2,7 +2,6 @@ use crate::parser::ParserState;
 use crate::parser::{MyExtra, NT, OSK};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken};
 
 /// Macro parser
 pub(crate) fn macro_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
@@ -41,35 +40,23 @@ pub(crate) fn macro_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<
                 state.prev_char = Some('}');
 
                 let mut children = Vec::with_capacity(6);
-                children.push(NT::Token(GreenToken::new(
-                    OSK::LeftCurlyBracket3.into(),
-                    left_3curly,
-                )));
+                children.push(crate::token!(OSK::LeftCurlyBracket3, left_3curly));
 
-                children.push(NT::Token(GreenToken::new(OSK::MacroName.into(), name)));
+                children.push(crate::token!(OSK::MacroName, name));
 
                 if let Some(((left_round, args), right_round)) = maybe_leftround_args_rightround {
-                    children.push(NT::Token(GreenToken::new(
-                        OSK::LeftRoundBracket.into(),
-                        left_round,
-                    )));
+                    children.push(crate::token!(OSK::LeftRoundBracket, left_round));
 
                     if !args.is_empty() {
-                        children.push(NT::Token(GreenToken::new(OSK::MacroArgs.into(), args)));
+                        children.push(crate::token!(OSK::MacroArgs, args));
                     }
 
-                    children.push(NT::Token(GreenToken::new(
-                        OSK::RightRoundBracket.into(),
-                        right_round,
-                    )));
+                    children.push(crate::token!(OSK::RightRoundBracket, right_round));
                 }
 
-                children.push(NT::Token(GreenToken::new(
-                    OSK::RightCurlyBracket3.into(),
-                    right_3curly,
-                )));
+                children.push(crate::token!(OSK::RightCurlyBracket3, right_3curly));
 
-                NT::Node(GreenNode::new(OSK::Macro.into(), children))
+                crate::node!(OSK::Macro, children)
             },
         )
         .boxed()

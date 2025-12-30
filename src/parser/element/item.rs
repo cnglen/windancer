@@ -1,25 +1,12 @@
 //! Item parser
-use crate::parser::syntax::OrgSyntaxKind;
-use crate::parser::{ParserState, object};
-use chumsky::inspector::RollbackState;
+use crate::parser::object;
+use crate::parser::{MyExtra, NT, OSK};
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
 use std::ops::Range;
 
 pub(crate) fn item_parser<'a, C: 'a>(
-    element_parser: impl Parser<
-        'a,
-        &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone
-    + 'a,
-) -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+    element_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let item_content_inner = object::line_parser() // no need to test indent since this is the first row of item
         .then(
             object::line_parser()
@@ -40,12 +27,7 @@ pub(crate) fn item_parser<'a, C: 'a>(
         .repeated()
         .collect::<Vec<_>>()
         .nested_in(item_content_inner)
-        .map(|children| {
-            NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::ListItemContent.into(),
-                children,
-            ))
-        });
+        .map(|children| crate::node!(OSK::ListItemContent, children));
 
     item_indent_parser()
         .then(item_bullet_parser())
@@ -94,17 +76,16 @@ pub(crate) fn item_parser<'a, C: 'a>(
                 children.extend(maybe_content.into_iter());
                 children.extend(maybe_blankline);
 
-                Ok(NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                  OrgSyntaxKind::ListItem.into(),
-                  children,
-                )))
+                Ok(crate::node!(
+                  OSK::ListItem,
+                  children
+                ))
             },
         ).boxed()
 }
 
 // only used in lookahead
-pub(crate) fn simple_item_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
+pub(crate) fn simple_item_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone
 {
     let item_content_inner = object::line_parser() // no need to test indent since this is the first row of item
         .then(
@@ -165,126 +146,86 @@ pub(crate) fn simple_item_parser<'a, C: 'a>()
 ///   - 仅当是“任意一个List的第一个item”时才更新state["item_indent"]: push
 ///   - ItemIndent状态不能在这里更新，避免任意一行content的数据，更新状态，导致状态混乱
 ///   - 保证ItemIndent状态在item_content前更新
-pub(crate) fn item_indent_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn item_indent_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone
+{
     object::whitespaces().map(|whitespaces| {
         let children = if !whitespaces.is_empty() {
-            vec![NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Whitespace.into(),
-                whitespaces,
-            ))]
+            vec![crate::token!(OSK::Whitespace, whitespaces)]
         } else {
             vec![]
         };
-        NodeOrToken::Node(GreenNode::new(
-            OrgSyntaxKind::ListItemIndent.into(),
-            children,
-        ))
+        crate::node!(OSK::ListItemIndent, children)
     })
 }
 
 pub(crate) fn counter_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, &'a str, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
+-> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Clone {
     text::int(10)
         .to_slice()
         .or(one_of("abcdefghijklmnopqrstuvwxyz").to_slice())
 }
 
 /// Item Bullet Parser
-pub(crate) fn item_bullet_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn item_bullet_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone
+{
     one_of("*+-")
         .to_slice()
         .or(counter_parser().then(one_of(".)")).to_slice())
         .then(object::whitespaces_g1())
         .map(|(bullet, ws)| {
-            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                OrgSyntaxKind::ListItemBullet.into(),
+            crate::node!(
+                OSK::ListItemBullet,
                 vec![
-                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Text.into(), bullet)),
-                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Whitespace.into(), &ws)),
-                ],
-            ))
+                    crate::token!(OSK::Text, bullet),
+                    crate::token!(OSK::Whitespace, &ws),
+                ]
+            )
         })
 }
 
 /// Item Counter Parser
-pub(crate) fn item_counter_set_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn item_counter_set_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     just("[@")
         .then(text::int(10))
         .then(just("]"))
         .then(object::whitespaces_g1())
         .map(|(((_lbracket_at, number), rbracket), ws)| {
-            NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::ListItemCounter.into(),
+            crate::node!(
+                OSK::ListItemCounter,
                 vec![
-                    NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::LeftSquareBracket.into(),
-                        "[",
-                    )),
-                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::At.into(), "@")),
-                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Text.into(), number)),
-                    NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::RightSquareBracket.into(),
-                        rbracket,
-                    )),
-                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Whitespace.into(), &ws)),
-                ],
-            ))
+                    crate::token!(OSK::LeftSquareBracket, "["),
+                    crate::token!(OSK::At, "@"),
+                    crate::token!(OSK::Text, number),
+                    crate::token!(OSK::RightSquareBracket, rbracket),
+                    crate::token!(OSK::Whitespace, &ws),
+                ]
+            )
         })
 }
 
 /// Item Checkbox Parser
-pub(crate) fn item_checkbox_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn item_checkbox_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     just("[")
         .then(just(" ").or(just("-")).or(just("X")))
         .then(just("]"))
         .then(object::whitespaces_g1())
         .map(|(((lbracket, check), rbracket), ws)| {
-            NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::ListItemCheckbox.into(),
+            crate::node!(
+                OSK::ListItemCheckbox,
                 vec![
-                    NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::LeftSquareBracket.into(),
-                        lbracket,
-                    )),
-                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Text.into(), check)),
-                    NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::RightSquareBracket.into(),
-                        rbracket,
-                    )),
-                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Whitespace.into(), ws)),
-                ],
-            ))
+                    crate::token!(OSK::LeftSquareBracket, lbracket),
+                    crate::token!(OSK::Text, check),
+                    crate::token!(OSK::RightSquareBracket, rbracket),
+                    crate::token!(OSK::Whitespace, ws),
+                ]
+            )
         })
 }
 
 /// Item Tag Parser
-pub(crate) fn item_tag_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> {
+pub(crate) fn item_tag_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> {
     none_of(object::CRLF)
         .and_is(
             object::whitespaces_g1()
@@ -300,15 +241,15 @@ pub(crate) fn item_tag_parser<'a, C: 'a>() -> impl Parser<
         .then(just("::"))
         .then(object::whitespaces_g1())
         .map(|(((tag, ws1), double_colon), ws2)| {
-            NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::ListItemTag.into(),
+            crate::node!(
+                OSK::ListItemTag,
                 vec![
-                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Text.into(), tag)),
-                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Whitespace.into(), ws1)),
-                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Colon2.into(), double_colon)),
-                    NodeOrToken::Token(GreenToken::new(OrgSyntaxKind::Whitespace.into(), ws2)),
-                ],
-            ))
+                    crate::token!(OSK::Text, tag),
+                    crate::token!(OSK::Whitespace, ws1),
+                    crate::token!(OSK::Colon2, double_colon),
+                    crate::token!(OSK::Whitespace, ws2),
+                ]
+            )
         })
 }
 
@@ -318,9 +259,7 @@ pub(crate) fn item_tag_parser<'a, C: 'a>() -> impl Parser<
 //   - The next item.
 //   - The first line less or equally indented than the starting line, not counting lines within other non-paragraph elements or inlinetask boundaries.
 //   - Two consecutive blank lines.
-fn greater_indent_termination<'a, C: 'a>()
--> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
+fn greater_indent_termination<'a, C: 'a>() -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
     // todo: not counting non-paragraph elements or inline task boudaries
     object::whitespaces()
         .try_map_with(|ws, e| {

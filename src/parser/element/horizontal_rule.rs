@@ -1,16 +1,10 @@
 //! Horizontal rule parser
-use crate::parser::syntax::OrgSyntaxKind;
-use crate::parser::{ParserState, object};
-use chumsky::inspector::RollbackState;
+use crate::parser::object;
+use crate::parser::{MyExtra, NT, OSK};
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
 
-pub(crate) fn horizontal_rule_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn horizontal_rule_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     object::whitespaces()
         .then(just("-").repeated().at_least(5).to_slice())
         .then(object::whitespaces())
@@ -19,7 +13,7 @@ pub(crate) fn horizontal_rule_parser<'a, C: 'a>() -> impl Parser<
                 .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
                 .map(|(newline, blanklines)| {
                     let mut children = Vec::with_capacity(1 + blanklines.len());
-                    children.push(crate::token!(OrgSyntaxKind::Newline, newline));
+                    children.push(crate::token!(OSK::Newline, newline));
                     children.extend(blanklines);
 
                     children
@@ -29,15 +23,15 @@ pub(crate) fn horizontal_rule_parser<'a, C: 'a>() -> impl Parser<
         .map(|(((ws1, dashes), ws2), others)| {
             let mut children = Vec::with_capacity(3 + others.len());
             if !ws1.is_empty() {
-                children.push(crate::token!(OrgSyntaxKind::Whitespace, ws1));
+                children.push(crate::token!(OSK::Whitespace, ws1));
             }
-            children.push(crate::token!(OrgSyntaxKind::Text, dashes));
+            children.push(crate::token!(OSK::Text, dashes));
             if !ws2.is_empty() {
-                children.push(crate::token!(OrgSyntaxKind::Whitespace, ws2));
+                children.push(crate::token!(OSK::Whitespace, ws2));
             }
             children.extend(others);
 
-            crate::node!(OrgSyntaxKind::HorizontalRule, children)
+            crate::node!(OSK::HorizontalRule, children)
         })
         .boxed()
 }

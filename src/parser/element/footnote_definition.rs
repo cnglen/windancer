@@ -1,24 +1,11 @@
 //! Footnote definition parser
-use crate::parser::syntax::OrgSyntaxKind;
-use crate::parser::{ParserState, element, object};
-use chumsky::inspector::RollbackState;
+use crate::parser::{MyExtra, NT, OSK};
+use crate::parser::{element, object};
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 pub(crate) fn footnote_definition_parser<'a, C: 'a>(
-    element_parser: impl Parser<
-        'a,
-        &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone
-    + 'a,
-) -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+    element_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let affiliated_keywords = element::keyword::affiliated_keyword_parser()
         .repeated()
         .collect::<Vec<_>>();
@@ -60,46 +47,24 @@ pub(crate) fn footnote_definition_parser<'a, C: 'a>(
             let mut children = Vec::with_capacity(8 + content.len());
             children.extend(keywords);
 
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::LeftSquareBracket.into(),
-                "[",
-            )));
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                "fn",
-            )));
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Colon.into(),
-                ":",
-            )));
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Text.into(),
-                label,
-            )));
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::RightSquareBracket.into(),
-                rbracket,
-            )));
+            children.push(crate::token!(OSK::LeftSquareBracket, "["));
+            children.push(crate::token!(OSK::Text, "fn"));
+            children.push(crate::token!(OSK::Colon, ":"));
+            children.push(crate::token!(OSK::Text, label));
+            children.push(crate::token!(OSK::RightSquareBracket, rbracket));
 
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Whitespace.into(),
-                &ws1,
-            )));
+            children.push(crate::token!(OSK::Whitespace, &ws1));
 
             children.extend(content);
 
-            NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::FootnoteDefinition.into(),
-                children,
-            ))
+            crate::node!(OSK::FootnoteDefinition, children)
         })
         .boxed()
 }
 
 // only used in lookahead
 pub(crate) fn simple_footnote_definition_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
+-> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
     let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser().repeated();
 
     let label = any()

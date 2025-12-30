@@ -3,7 +3,6 @@ use crate::parser::ParserState;
 use crate::parser::{MyExtra, NT, OSK};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken};
 
 // - [fn:LABEL]
 // - [fn:LABEL:DEFINITION]
@@ -29,22 +28,13 @@ pub(crate) fn footnote_reference_parser_inner<'a, C: 'a>(
                 .then(just("]"))
                 .map(|((label, maybe_colon_defintion), right_bracket)| {
                     let mut children = Vec::with_capacity(4);
-                    children.push(NT::Token(GreenToken::new(
-                        OSK::FootnoteReferenceLabel.into(),
-                        label,
-                    )));
+                    children.push(crate::token!(OSK::FootnoteReferenceLabel, label));
 
                     if let Some((colon, definition)) = maybe_colon_defintion {
-                        children.push(NT::Token(GreenToken::new(OSK::Colon.into(), colon)));
-                        children.push(NT::Node(GreenNode::new(
-                            OSK::FootnoteReferenceDefintion.into(),
-                            definition,
-                        )));
+                        children.push(crate::token!(OSK::Colon, colon));
+                        children.push(crate::node!(OSK::FootnoteReferenceDefintion, definition));
                     }
-                    children.push(NT::Token(GreenToken::new(
-                        OSK::RightSquareBracket.into(),
-                        right_bracket,
-                    )));
+                    children.push(crate::token!(OSK::RightSquareBracket, right_bracket));
 
                     children
                 }),
@@ -52,15 +42,9 @@ pub(crate) fn footnote_reference_parser_inner<'a, C: 'a>(
             just(":").then(definition_parser).then(just("]")).map(
                 |((colon, definition), right_bracket)| {
                     vec![
-                        NT::Token(GreenToken::new(OSK::Colon.into(), colon)),
-                        NT::Node(GreenNode::new(
-                            OSK::FootnoteReferenceDefintion.into(),
-                            definition,
-                        )),
-                        NT::Token(GreenToken::new(
-                            OSK::RightSquareBracket.into(),
-                            right_bracket,
-                        )),
+                        crate::token!(OSK::Colon, colon),
+                        crate::node!(OSK::FootnoteReferenceDefintion, definition),
+                        crate::token!(OSK::RightSquareBracket, right_bracket),
                     ]
                 },
             ),
@@ -70,14 +54,14 @@ pub(crate) fn footnote_reference_parser_inner<'a, C: 'a>(
 
             let mut children = Vec::with_capacity(3 + others.len());
             children.extend(vec![
-                NT::Token(GreenToken::new(OSK::LeftSquareBracket.into(), lbracket)),
-                NT::Token(GreenToken::new(OSK::Text.into(), fn_text)),
-                NT::Token(GreenToken::new(OSK::Colon.into(), colon)),
+                crate::token!(OSK::LeftSquareBracket, lbracket),
+                crate::token!(OSK::Text, fn_text),
+                crate::token!(OSK::Colon, colon),
             ]);
 
             children.extend(others);
 
-            NT::Node(GreenNode::new(OSK::FootnoteReference.into(), children))
+            crate::node!(OSK::FootnoteReference, children)
         })
         .boxed()
 }
@@ -124,7 +108,7 @@ pub(crate) fn simple_footnote_reference_parser<'a, C: 'a>()
         .clone()
         .repeated()
         .to_slice()
-        .map(|s: &str| vec![NT::Token(GreenToken::new(OSK::Text.into(), s))]);
+        .map(|s: &str| vec![crate::token!(OSK::Text, s)]);
 
     footnote_reference_parser_inner(definition_parser)
 }

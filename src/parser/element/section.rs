@@ -1,9 +1,7 @@
 //! Section parser
-use crate::parser::syntax::OrgSyntaxKind;
-use crate::parser::{ParserState, element};
-use chumsky::inspector::RollbackState;
+use crate::parser::element;
+use crate::parser::{MyExtra, NT, OSK};
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 /// Section解析器，返回包含`GreenNode`的ParserResult
 ///
@@ -19,19 +17,8 @@ use rowan::{GreenNode, GreenToken, NodeOrToken};
 // blank_line``
 // other_parser
 pub(crate) fn section_parser<'a, C: 'a>(
-    element_parser: impl Parser<
-        'a,
-        &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone
-    + 'a,
-) -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+    element_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     Parser::boxed(
         element_parser
             .and_is(
@@ -43,9 +30,7 @@ pub(crate) fn section_parser<'a, C: 'a>(
             .at_least(1)
             .collect::<Vec<_>>()
             .labelled("section parse")
-            .map(|children| {
-                NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Section.into(), children))
-            }),
+            .map(|children| crate::node!(OSK::Section, children)),
     )
 }
 

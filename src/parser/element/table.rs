@@ -1,19 +1,12 @@
 //! Table parser
 use crate::parser::element::keyword::affiliated_keyword_parser;
 use crate::parser::element::keyword::simple_affiliated_keyword_parser;
-use crate::parser::syntax::OrgSyntaxKind;
-use crate::parser::{ParserState, object};
-use chumsky::inspector::RollbackState;
+use crate::parser::object;
+use crate::parser::{MyExtra, NT, OSK};
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 // Any line with ‘|’ as the first non-whitespace character, then any number of table cells
-fn table_standard_row<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+fn table_standard_row<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     object::whitespaces()
         .then(just("|"))
         .then(
@@ -25,37 +18,20 @@ fn table_standard_row<'a, C: 'a>() -> impl Parser<
         .map(|(((ws, pipe), cells), maybe_newline)| {
             let mut children = Vec::with_capacity(3 + cells.len());
             if !ws.is_empty() {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    ws,
-                )));
+                children.push(crate::token!(OSK::Whitespace, ws));
             }
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Pipe.into(),
-                pipe,
-            )));
+            children.push(crate::token!(OSK::Pipe, pipe));
             children.extend(cells);
             if let Some(newline) = maybe_newline {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Newline.into(),
-                    newline,
-                )));
+                children.push(crate::token!(OSK::Newline, newline));
             }
 
-            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                OrgSyntaxKind::TableStandardRow.into(),
-                children,
-            ))
+            crate::node!(OSK::TableStandardRow, children)
         })
 }
 
 // Any line with ‘|’ as the first non-whitespace character, then a line starting with ‘|-’ is a horizontal rule.  It separates rows explicitly.
-fn table_rule_row<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+fn table_rule_row<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     object::whitespaces()
         .then(just("|"))
         .then(just("-"))
@@ -64,49 +40,27 @@ fn table_rule_row<'a, C: 'a>() -> impl Parser<
         .map(|((((ws, pipe), dash), content), maybe_newline)| {
             let mut children = Vec::with_capacity(5);
             if !ws.is_empty() {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    ws,
-                )));
+                children.push(crate::token!(OSK::Whitespace, ws));
             }
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Pipe.into(),
-                pipe,
-            )));
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Dash.into(),
-                dash,
-            )));
+            children.push(crate::token!(OSK::Pipe, pipe));
+            children.push(crate::token!(OSK::Dash, dash));
             if content.len() > 0 {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    content,
-                )));
+                children.push(crate::token!(OSK::Text, content));
             }
 
             match maybe_newline {
                 Some(newline) => {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Newline.into(),
-                        newline,
-                    )));
+                    children.push(crate::token!(OSK::Newline, newline));
                 }
                 None => {}
             }
 
-            NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                OrgSyntaxKind::TableRuleRow.into(),
-                children,
-            ))
+            crate::node!(OSK::TableRuleRow, children)
         })
 }
 
-pub(crate) fn table_formula_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn table_formula_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     just("#+")
         .then(object::just_case_insensitive("TBLFM"))
         .then(just(":"))
@@ -116,62 +70,39 @@ pub(crate) fn table_formula_parser<'a, C: 'a>() -> impl Parser<
         .map_with(|(((((hash_plus, tblfm), colon), ws), formula), nl), e| {
             let mut children = Vec::with_capacity(6);
 
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::HashPlus.into(),
-                hash_plus,
-            )));
+            children.push(crate::token!(OSK::HashPlus, hash_plus));
 
-            children.push(NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::KeywordKey.into(),
-                vec![NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    tblfm,
-                ))],
-            )));
+            children.push(crate::node!(
+                OSK::KeywordKey,
+                vec![crate::token!(OSK::Text, tblfm)]
+            ));
 
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Colon.into(),
-                colon,
-            )));
+            children.push(crate::token!(OSK::Colon, colon));
 
             if !ws.is_empty() {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    ws,
-                )));
+                children.push(crate::token!(OSK::Whitespace, ws));
             }
 
-            children.push(NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::TableFormulaValue.into(),
-                vec![NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    formula,
-                ))],
-            )));
+            children.push(crate::node!(
+                OSK::TableFormulaValue,
+                vec![crate::token!(OSK::Text, formula)]
+            ));
 
             match nl {
                 Some(newline) => {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Newline.into(),
-                        newline,
-                    )));
+                    children.push(crate::token!(OSK::Newline, newline));
                     e.state().prev_char = newline.chars().last();
                 }
                 None => {}
             }
 
-            NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::TableFormula.into(), children))
+            crate::node!(OSK::TableFormula, children)
         })
 }
 
-pub(crate) fn table_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn table_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     // fixme: standard objects without footnote reference
-    let affiliated_keywords = affiliated_keyword_parser().repeated().collect::<Vec<_>>();
+    let affiliated_keywords_parser = affiliated_keyword_parser().repeated().collect::<Vec<_>>();
     let rows = table_rule_row()
         .or(table_standard_row())
         .repeated()
@@ -179,7 +110,7 @@ pub(crate) fn table_parser<'a, C: 'a>() -> impl Parser<
         .collect::<Vec<_>>();
     let formulas = table_formula_parser().repeated().collect::<Vec<_>>();
 
-    affiliated_keywords
+    affiliated_keywords_parser
         .then(rows)
         .then(formulas)
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
@@ -192,15 +123,14 @@ pub(crate) fn table_parser<'a, C: 'a>() -> impl Parser<
             children.extend(formulas);
             children.extend(blanklines);
 
-            NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Table.into(), children))
+            crate::node!(OSK::Table, children)
         })
         .boxed()
 }
 
 // used for negative lookahead
 pub(crate) fn simple_table_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
+-> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
     let affiliated_keywords = simple_affiliated_keyword_parser().ignored().repeated();
     let rows = (object::whitespaces()
         .ignore_then(just("|"))
@@ -234,7 +164,9 @@ pub(crate) fn simple_table_parser<'a, C: 'a>()
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::parser::ParserState;
     use crate::parser::SyntaxNode;
+    use chumsky::inspector::RollbackState;
 
     #[test]
     fn test_table() {

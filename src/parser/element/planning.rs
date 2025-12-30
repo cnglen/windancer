@@ -1,16 +1,9 @@
 //! Planning parser
-use crate::parser::syntax::OrgSyntaxKind;
-use crate::parser::{ParserState, object};
-use chumsky::inspector::RollbackState;
+use crate::parser::object;
+use crate::parser::{MyExtra, NT, OSK};
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
 
-pub(crate) fn planning_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn planning_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     object::whitespaces()
         .then(choice((
             just("DEADLINE"),
@@ -24,24 +17,12 @@ pub(crate) fn planning_parser<'a, C: 'a>() -> impl Parser<
         .map(|((((ws1, keyword), colon), ws2), ts)| {
             let mut children = Vec::with_capacity(5);
             if !ws1.is_empty() {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    ws1,
-                )));
+                children.push(crate::token!(OSK::Whitespace, ws1));
             }
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::PlanningKeyword.into(),
-                keyword,
-            )));
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Colon.into(),
-                colon,
-            )));
+            children.push(crate::token!(OSK::PlanningKeyword, keyword));
+            children.push(crate::token!(OSK::Colon, colon));
             if !ws2.is_empty() {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    ws2,
-                )));
+                children.push(crate::token!(OSK::Whitespace, ws2));
             }
             children.push(ts);
 
@@ -62,20 +43,14 @@ pub(crate) fn planning_parser<'a, C: 'a>() -> impl Parser<
             }
 
             if ws.len() > 0 {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    ws,
-                )));
+                children.push(crate::token!(OSK::Whitespace, ws));
             }
 
             if let Some(nl) = maybe_nl {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Newline.into(),
-                    nl,
-                )));
+                children.push(crate::token!(OSK::Newline, nl));
             }
 
-            NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Planning.into(), children))
+            crate::node!(OSK::Planning, children)
         })
         .boxed()
 }

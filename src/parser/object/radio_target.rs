@@ -3,7 +3,6 @@ use crate::parser::ParserState;
 use crate::parser::{MyExtra, NT, OSK};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken};
 
 /// radio target parser: <<<TARGET>>>
 fn radio_target_parser_inner<'a, C: 'a>(
@@ -16,17 +15,11 @@ fn radio_target_parser_inner<'a, C: 'a>(
             (e.state() as &mut RollbackState<ParserState>).prev_char = rbracket3.chars().last();
 
             let mut children = Vec::with_capacity(2 + target.len());
-            children.push(NT::Token(GreenToken::new(
-                OSK::LeftAngleBracket3.into(),
-                lbracket3,
-            )));
+            children.push(crate::token!(OSK::LeftAngleBracket3, lbracket3));
             children.extend(target);
-            children.push(NT::Token(GreenToken::new(
-                OSK::RightAngleBracket3.into(),
-                rbracket3,
-            )));
+            children.push(crate::token!(OSK::RightAngleBracket3, rbracket3));
 
-            NT::Node(GreenNode::new(OSK::RadioTarget.into(), children))
+            crate::node!(OSK::RadioTarget, children)
         })
         .boxed()
 }
@@ -85,7 +78,7 @@ pub(crate) fn simple_radio_target_parser<'a, C: 'a>()
                 .or_not(),
         )
         .to_slice()
-        .map(|s: &str| vec![NT::Token(GreenToken::new(OSK::Text.into(), s))]);
+        .map(|s: &str| vec![crate::token!(OSK::Text, s)]);
     radio_target_parser_inner(target_inner)
 }
 

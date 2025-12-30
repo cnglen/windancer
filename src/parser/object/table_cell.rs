@@ -1,7 +1,6 @@
 use crate::parser::object;
 use crate::parser::{MyExtra, NT, OSK};
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken};
 
 /// table cell parser
 pub(crate) fn table_cell_parser<'a, C: 'a>(
@@ -29,12 +28,12 @@ pub(crate) fn table_cell_parser<'a, C: 'a>(
             children.extend(contents);
 
             if !ws.is_empty() {
-                children.push(NT::Token(GreenToken::new(OSK::Whitespace.into(), &ws)));
+                children.push(crate::token!(OSK::Whitespace, &ws));
             }
 
-            children.push(NT::Token(GreenToken::new(OSK::Pipe.into(), &pipe)));
+            children.push(crate::token!(OSK::Pipe, &pipe));
 
-            NT::Node(GreenNode::new(OSK::TableCell.into(), children))
+            crate::node!(OSK::TableCell, children)
         })
         .boxed()
 }

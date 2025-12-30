@@ -4,11 +4,9 @@ use crate::constants::keyword::ORG_ELEMENT_KEYWORDS_OPTVALUE;
 use crate::constants::keyword::ORG_ELEMENT_KEYWORDS_OPTVALUE_PARSED;
 use crate::constants::keyword::ORG_ELEMENT_KEYWORDS_OPTVALUE_STRING;
 use crate::parser::object::blank_line_parser;
-use crate::parser::syntax::OrgSyntaxKind;
-use crate::parser::{ParserState, element, object};
-use chumsky::inspector::RollbackState;
+use crate::parser::{MyExtra, NT, OSK};
+use crate::parser::{element, object};
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
 use std::ops::Range;
 
 // affliated keyword is NOT a element, it's part of some element.
@@ -16,12 +14,8 @@ use std::ops::Range;
 // #+KEY[OPTVAL]: VALUE(string)
 // #+KEY[OPTVAL]: VALUE(objects)
 // #+attr_BACKEND: VALUE
-pub(crate) fn affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn affiliated_keyword_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let key_optvalue_parsed = object::keyword_ci_parser(&ORG_ELEMENT_KEYWORDS_OPTVALUE_PARSED); // 1
     let key_optvalue_string = object::keyword_ci_parser(&ORG_ELEMENT_KEYWORDS_OPTVALUE_STRING); // 1
     let key_nonvalue_string = object::keyword_ci_parser(&ORG_ELEMENT_KEYWORDS_NONVALUE_STRING); // 11
@@ -45,7 +39,7 @@ pub(crate) fn affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
     let objects_parser = object::object_in_keyword_parser()
         .repeated()
         .at_least(1)
-        .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
+        .collect::<Vec<NT>>();
 
     just("#+")
         .then(choice((
@@ -57,51 +51,30 @@ pub(crate) fn affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
                 .then(string_without_nl)
                 .map_with(|((((key, maybe_lsb_optval_rsb), colon), ws), value), e| {
                     let mut children = Vec::with_capacity(7);
-                    children.push(NodeOrToken::Node(GreenNode::new(
-                        OrgSyntaxKind::KeywordKey.into(),
-                        vec![NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::Text.into(),
-                            key,
-                        ))],
-                    )));
+                    children.push(crate::node!(
+                        OSK::KeywordKey,
+                        vec![crate::token!(OSK::Text, key)]
+                    ));
 
                     if let Some(((lsb, optval), rsb)) = maybe_lsb_optval_rsb {
-                        children.push(NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::LeftSquareBracket.into(),
-                            lsb,
-                        )));
+                        children.push(crate::token!(OSK::LeftSquareBracket, lsb));
 
-                        children.push(NodeOrToken::Node(GreenNode::new(
-                            OrgSyntaxKind::KeywordOptvalue.into(),
-                            vec![NodeOrToken::Token(GreenToken::new(
-                                OrgSyntaxKind::Text.into(),
-                                optval,
-                            ))],
-                        )));
+                        children.push(crate::node!(
+                            OSK::KeywordOptvalue,
+                            vec![crate::token!(OSK::Text, optval)]
+                        ));
 
-                        children.push(NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::RightSquareBracket.into(),
-                            rsb,
-                        )));
+                        children.push(crate::token!(OSK::RightSquareBracket, rsb));
                     }
 
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Colon.into(),
-                        colon,
-                    )));
+                    children.push(crate::token!(OSK::Colon, colon));
                     if !ws.is_empty() {
-                        children.push(NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::Whitespace.into(),
-                            ws,
-                        )));
+                        children.push(crate::token!(OSK::Whitespace, ws));
                     }
-                    children.push(NodeOrToken::Node(GreenNode::new(
-                        OrgSyntaxKind::KeywordValue.into(),
-                        vec![NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::Text.into(),
-                            value,
-                        ))],
-                    )));
+                    children.push(crate::node!(
+                        OSK::KeywordValue,
+                        vec![crate::token!(OSK::Text, value)]
+                    ));
 
                     e.state().prev_char = value.chars().last();
                     children
@@ -114,47 +87,26 @@ pub(crate) fn affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
                 .then(objects_parser.clone().nested_in(string_without_nl))
                 .map_with(|((((key, maybe_lsb_optval_rsb), colon), ws), value), _e| {
                     let mut children = Vec::with_capacity(7);
-                    children.push(NodeOrToken::Node(GreenNode::new(
-                        OrgSyntaxKind::KeywordKey.into(),
-                        vec![NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::Text.into(),
-                            key,
-                        ))],
-                    )));
+                    children.push(crate::node!(
+                        OSK::KeywordKey,
+                        vec![crate::token!(OSK::Text, key)]
+                    ));
 
                     if let Some(((lsb, optval), rsb)) = maybe_lsb_optval_rsb {
-                        children.push(NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::LeftSquareBracket.into(),
-                            lsb,
-                        )));
+                        children.push(crate::token!(OSK::LeftSquareBracket, lsb));
 
-                        children.push(NodeOrToken::Node(GreenNode::new(
-                            OrgSyntaxKind::KeywordOptvalue.into(),
-                            vec![NodeOrToken::Token(GreenToken::new(
-                                OrgSyntaxKind::Text.into(),
-                                optval,
-                            ))],
-                        )));
+                        children.push(crate::node!(
+                            OSK::KeywordOptvalue,
+                            vec![crate::token!(OSK::Text, optval)]
+                        ));
 
-                        children.push(NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::RightSquareBracket.into(),
-                            rsb,
-                        )));
+                        children.push(crate::token!(OSK::RightSquareBracket, rsb));
                     }
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Colon.into(),
-                        colon,
-                    )));
+                    children.push(crate::token!(OSK::Colon, colon));
                     if !ws.is_empty() {
-                        children.push(NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::Whitespace.into(),
-                            ws,
-                        )));
+                        children.push(crate::token!(OSK::Whitespace, ws));
                     }
-                    children.push(NodeOrToken::Node(GreenNode::new(
-                        OrgSyntaxKind::KeywordValue.into(),
-                        value,
-                    )));
+                    children.push(crate::node!(OSK::KeywordValue, value));
                     children
                 }),
             // #+KEY: VALUE(string)
@@ -164,30 +116,18 @@ pub(crate) fn affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
                 .then(string_without_nl)
                 .map_with(|(((key, colon), ws), value), e| {
                     let mut children = Vec::with_capacity(4);
-                    children.push(NodeOrToken::Node(GreenNode::new(
-                        OrgSyntaxKind::KeywordKey.into(),
-                        vec![NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::Text.into(),
-                            key,
-                        ))],
-                    )));
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Colon.into(),
-                        colon,
-                    )));
+                    children.push(crate::node!(
+                        OSK::KeywordKey,
+                        vec![crate::token!(OSK::Text, key)]
+                    ));
+                    children.push(crate::token!(OSK::Colon, colon));
                     if !ws.is_empty() {
-                        children.push(NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::Whitespace.into(),
-                            ws,
-                        )));
+                        children.push(crate::token!(OSK::Whitespace, ws));
                     }
-                    children.push(NodeOrToken::Node(GreenNode::new(
-                        OrgSyntaxKind::KeywordValue.into(),
-                        vec![NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::Text.into(),
-                            value,
-                        ))],
-                    )));
+                    children.push(crate::node!(
+                        OSK::KeywordValue,
+                        vec![crate::token!(OSK::Text, value)]
+                    ));
 
                     e.state().prev_char = value.chars().last();
                     children
@@ -202,33 +142,21 @@ pub(crate) fn affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
                 .map_with(|(((attr_backend, colon), ws), value), e| {
                     let mut children = Vec::with_capacity(4);
 
-                    children.push(NodeOrToken::Node(GreenNode::new(
-                        OrgSyntaxKind::KeywordKey.into(),
-                        vec![NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::Text.into(),
-                            attr_backend,
-                        ))],
-                    )));
+                    children.push(crate::node!(
+                        OSK::KeywordKey,
+                        vec![crate::token!(OSK::Text, attr_backend)]
+                    ));
 
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Colon.into(),
-                        colon,
-                    )));
+                    children.push(crate::token!(OSK::Colon, colon));
 
                     if !ws.is_empty() {
-                        children.push(NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::Whitespace.into(),
-                            ws,
-                        )));
+                        children.push(crate::token!(OSK::Whitespace, ws));
                     }
 
-                    children.push(NodeOrToken::Node(GreenNode::new(
-                        OrgSyntaxKind::KeywordValue.into(),
-                        vec![NodeOrToken::Token(GreenToken::new(
-                            OrgSyntaxKind::Text.into(),
-                            value,
-                        ))],
-                    )));
+                    children.push(crate::node!(
+                        OSK::KeywordValue,
+                        vec![crate::token!(OSK::Text, value)]
+                    ));
 
                     e.state().prev_char = value.chars().last();
                     children
@@ -237,33 +165,20 @@ pub(crate) fn affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
         .then(object::newline_or_ending())
         .map_with(|((hash_plus, others), maybe_newline), e| {
             let mut children = Vec::with_capacity(2 + others.len());
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::HashPlus.into(),
-                hash_plus,
-            )));
+            children.push(crate::token!(OSK::HashPlus, hash_plus));
             children.extend(others);
             if let Some(newline) = maybe_newline {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Newline.into(),
-                    newline,
-                )));
+                children.push(crate::token!(OSK::Newline, newline));
                 e.state().prev_char = newline.chars().last();
             }
 
-            NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::AffiliatedKeyword.into(),
-                children,
-            ))
+            crate::node!(OSK::AffiliatedKeyword, children)
         })
 }
 
 // only for lookahead, no object_parser is need
-pub(crate) fn simple_affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn simple_affiliated_keyword_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let key_optvalue = object::keyword_ci_parser(&ORG_ELEMENT_KEYWORDS_OPTVALUE); // 2
     let key_nonvalue_string = object::keyword_ci_parser(&ORG_ELEMENT_KEYWORDS_NONVALUE_STRING); // 11
     let backend = any()
@@ -314,17 +229,12 @@ pub(crate) fn simple_affiliated_keyword_parser<'a, C: 'a>() -> impl Parser<
                 }),
         )))
         .then(object::newline_or_ending())
-        .to(NodeOrToken::Node(GreenNode::new(
-            OrgSyntaxKind::AffiliatedKeyword.into(),
-            vec![],
-        )))
+        .to(crate::node!(OSK::AffiliatedKeyword, vec![]))
 }
 
 // find last colon(:), all previous chars are `key`, such as "#+key:with:colon: value"
-fn key_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
-    custom::<_, &str, _, extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>>(|inp| {
+fn key_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, String, MyExtra<'a, C>> + Clone {
+    custom::<_, &str, _, MyExtra<'a, C>>(|inp| {
         let remaining = inp.slice_from(std::ops::RangeFrom {
             start: &inp.cursor(),
         });
@@ -357,12 +267,8 @@ fn key_parser<'a, C: 'a>()
 }
 
 // element_parser: <element with affiliated word>
-pub(crate) fn keyword_parser<'a, C: 'a + std::default::Default>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn keyword_parser<'a, C: 'a + std::default::Default>()
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let element_parser_having_affiliated_keywords_for_lookahead = choice((
         element::footnote_definition::simple_footnote_definition_parser(),
         element::list::simple_plain_list_parser(element::item::simple_item_parser()),
@@ -394,7 +300,7 @@ pub(crate) fn keyword_parser<'a, C: 'a + std::default::Default>() -> impl Parser
     let objects_parser = object::object_in_keyword_parser()
         .repeated()
         .at_least(1)
-        .collect::<Vec<NodeOrToken<GreenNode, GreenToken>>>();
+        .collect::<Vec<NT>>();
 
     // FIXME: better method? element vs blankline?
     // #+KEY: VALUE(string)
@@ -434,45 +340,27 @@ pub(crate) fn keyword_parser<'a, C: 'a + std::default::Default>() -> impl Parser
         |((((((hash_plus, key), colon), ws), value), nl), blank_lines), e| {
             let mut children = Vec::with_capacity(6 + blank_lines.len());
 
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::HashPlus.into(),
-                hash_plus,
-            )));
+            children.push(crate::token!(OSK::HashPlus, hash_plus));
 
-            children.push(NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::KeywordKey.into(),
-                vec![NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    &key,
-                ))],
-            )));
+            children.push(crate::node!(
+                OSK::KeywordKey,
+                vec![crate::token!(OSK::Text, &key)]
+            ));
 
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Colon.into(),
-                colon,
-            )));
+            children.push(crate::token!(OSK::Colon, colon));
 
             if !ws.is_empty() {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    ws,
-                )));
+                children.push(crate::token!(OSK::Whitespace, ws));
             }
 
-            children.push(NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::KeywordValue.into(),
-                vec![NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    &value,
-                ))],
-            )));
+            children.push(crate::node!(
+                OSK::KeywordValue,
+                vec![crate::token!(OSK::Text, &value)]
+            ));
 
             match nl {
                 Some(newline) => {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Newline.into(),
-                        newline,
-                    )));
+                    children.push(crate::token!(OSK::Newline, newline));
                     e.state().prev_char = newline.chars().last();
                 }
                 None => {
@@ -485,7 +373,7 @@ pub(crate) fn keyword_parser<'a, C: 'a + std::default::Default>() -> impl Parser
                 e.state().prev_char = Some('\n');
             }
 
-            NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Keyword.into(), children))
+            crate::node!(OSK::Keyword, children)
         },
     );
 
@@ -516,37 +404,19 @@ pub(crate) fn keyword_parser<'a, C: 'a + std::default::Default>() -> impl Parser
     .map_with(
         |((((((hash_plus, key), colon), ws), value), nl), blank_lines), e| {
             let mut children = Vec::with_capacity(6 + blank_lines.len());
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::HashPlus.into(),
-                hash_plus,
-            )));
-            children.push(NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::KeywordKey.into(),
-                vec![NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Text.into(),
-                    &key,
-                ))],
-            )));
-            children.push(NodeOrToken::Token(GreenToken::new(
-                OrgSyntaxKind::Colon.into(),
-                colon,
-            )));
+            children.push(crate::token!(OSK::HashPlus, hash_plus));
+            children.push(crate::node!(
+                OSK::KeywordKey,
+                vec![crate::token!(OSK::Text, &key)]
+            ));
+            children.push(crate::token!(OSK::Colon, colon));
             if !ws.is_empty() {
-                children.push(NodeOrToken::Token(GreenToken::new(
-                    OrgSyntaxKind::Whitespace.into(),
-                    ws,
-                )));
+                children.push(crate::token!(OSK::Whitespace, ws));
             }
-            children.push(NodeOrToken::Node(GreenNode::new(
-                OrgSyntaxKind::KeywordValue.into(),
-                value,
-            )));
+            children.push(crate::node!(OSK::KeywordValue, value));
             match nl {
                 Some(newline) => {
-                    children.push(NodeOrToken::Token(GreenToken::new(
-                        OrgSyntaxKind::Newline.into(),
-                        newline,
-                    )));
+                    children.push(crate::token!(OSK::Newline, newline));
                     e.state().prev_char = newline.chars().last();
                 }
                 None => {}
@@ -556,7 +426,7 @@ pub(crate) fn keyword_parser<'a, C: 'a + std::default::Default>() -> impl Parser
                 e.state().prev_char = Some('\n');
             }
 
-            NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Keyword.into(), children))
+            crate::node!(OSK::Keyword, children)
         },
     );
 
@@ -564,8 +434,7 @@ pub(crate) fn keyword_parser<'a, C: 'a + std::default::Default>() -> impl Parser
 }
 
 pub(crate) fn simple_keyword_parser<'a, C: 'a + std::default::Default>()
--> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
+-> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
     let element_parser_having_affiliated_keywords_for_lookahead = choice((
         element::footnote_definition::simple_footnote_definition_parser(),
         element::list::simple_plain_list_parser(element::item::simple_item_parser()),

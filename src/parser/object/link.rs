@@ -1,14 +1,11 @@
 //! link parser, including angle/plain/regular link
 use crate::parser::{MyExtra, NT, OSK};
 use crate::parser::{ParserState, object};
-use std::ops::Range;
-
 use chumsky::input::InputRef;
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken};
-
 use phf::phf_set;
+use std::ops::Range;
 
 pub(crate) static LINK_PROTOCOLS: phf::Set<&'static str> = phf_set! {
     "treemacs", "eww", "rmail", "mhe", "irc", "info", "gnus", "docview",
@@ -187,14 +184,14 @@ pub(crate) fn plain_link_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyE
                 true => {
                     e.state().prev_char = pathplain.chars().last();
 
-                    Ok(NT::Node(GreenNode::new(
-                        OSK::PlainLink.into(),
+                    Ok(crate::node!(
+                        OSK::PlainLink,
                         vec![
-                            NT::Token(GreenToken::new(OSK::Text.into(), &protocol)),
-                            NT::Token(GreenToken::new(OSK::Colon.into(), colon)),
-                            NT::Token(GreenToken::new(OSK::Text.into(), &pathplain)),
-                        ],
-                    )))
+                            crate::token!(OSK::Text, &protocol),
+                            crate::token!(OSK::Colon, colon),
+                            crate::token!(OSK::Text, &pathplain),
+                        ]
+                    ))
                 }
                 false => Err(Rich::custom(
                     e.span(),
@@ -223,16 +220,16 @@ pub(crate) fn angle_link_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyE
         .then(just(">"))
         .map(
             |((((left_angle, protocol), colon), path_angle), right_angle)| {
-                NT::Node(GreenNode::new(
-                    OSK::AngleLink.into(),
+                crate::node!(
+                    OSK::AngleLink,
                     vec![
-                        NT::Token(GreenToken::new(OSK::LeftAngleBracket.into(), left_angle)),
-                        NT::Token(GreenToken::new(OSK::Text.into(), &protocol)),
-                        NT::Token(GreenToken::new(OSK::Colon.into(), colon)),
-                        NT::Token(GreenToken::new(OSK::Text.into(), path_angle)),
-                        NT::Token(GreenToken::new(OSK::RightAngleBracket.into(), right_angle)),
-                    ],
-                ))
+                        crate::token!(OSK::LeftAngleBracket, left_angle),
+                        crate::token!(OSK::Text, &protocol),
+                        crate::token!(OSK::Colon, colon),
+                        crate::token!(OSK::Text, path_angle),
+                        crate::token!(OSK::RightAngleBracket, right_angle),
+                    ]
+                )
             },
         )
         .boxed()
@@ -249,21 +246,13 @@ pub(crate) fn regular_link_parser_inner<'a, C: 'a>(
         .map(|description| match description {
             None => None,
 
-            Some(((lbracket, content), rbracket)) => {
-                Some(NT::Node(GreenNode::new(OSK::LinkDescription.into(), {
-                    let mut children = Vec::with_capacity(2 + content.len());
-                    children.push(NT::Token(GreenToken::new(
-                        OSK::LeftSquareBracket.into(),
-                        lbracket,
-                    )));
-                    children.extend(content);
-                    children.push(NT::Token(GreenToken::new(
-                        OSK::RightSquareBracket.into(),
-                        rbracket,
-                    )));
-                    children
-                })))
-            }
+            Some(((lbracket, content), rbracket)) => Some(crate::node!(OSK::LinkDescription, {
+                let mut children = Vec::with_capacity(2 + content.len());
+                children.push(crate::token!(OSK::LeftSquareBracket, lbracket));
+                children.extend(content);
+                children.push(crate::token!(OSK::RightSquareBracket, rbracket));
+                children
+            })),
         });
 
     let normal_char = none_of("[]\\");
@@ -311,14 +300,14 @@ pub(crate) fn regular_link_parser_inner<'a, C: 'a>(
         )))
         .then(just("]"))
         .map(|((lbracket, path), rbracket)| {
-            NT::Node(GreenNode::new(
-                OSK::LinkPath.into(),
+            crate::node!(
+                OSK::LinkPath,
                 vec![
-                    NT::Token(GreenToken::new(OSK::LeftSquareBracket.into(), lbracket)),
-                    NT::Token(GreenToken::new(OSK::Text.into(), path)),
-                    NT::Token(GreenToken::new(OSK::RightSquareBracket.into(), rbracket)),
-                ],
-            ))
+                    crate::token!(OSK::LeftSquareBracket, lbracket),
+                    crate::token!(OSK::Text, path),
+                    crate::token!(OSK::RightSquareBracket, rbracket),
+                ]
+            )
         });
 
     just("[")
@@ -329,27 +318,21 @@ pub(crate) fn regular_link_parser_inner<'a, C: 'a>(
         .map_with(
             |((((lbracket, path), maybe_desc), rbracket), maybe_newline), e| {
                 let mut children = Vec::new();
-                children.push(NT::Token(GreenToken::new(
-                    OSK::LeftSquareBracket.into(),
-                    lbracket,
-                )));
+                children.push(crate::token!(OSK::LeftSquareBracket, lbracket));
 
                 children.push(path);
 
                 children.extend(maybe_desc.into_iter());
 
-                children.push(NT::Token(GreenToken::new(
-                    OSK::RightSquareBracket.into(),
-                    rbracket,
-                )));
+                children.push(crate::token!(OSK::RightSquareBracket, rbracket));
 
                 (e.state() as &mut RollbackState<ParserState>).prev_char = rbracket.chars().last();
                 children.extend(maybe_newline.into_iter().map(|nl| {
                     (e.state() as &mut RollbackState<ParserState>).prev_char = nl.chars().last();
-                    NT::Token(GreenToken::new(OSK::Newline.into(), &nl))
+                    crate::token!(OSK::Newline, &nl)
                 }));
 
-                NT::Node(GreenNode::new(OSK::Link.into(), children))
+                crate::node!(OSK::Link, children)
             },
         )
         .boxed()
@@ -383,8 +366,8 @@ pub(crate) fn simple_regular_link_parser<'a, C: 'a>()
         .repeated()
         .to_slice();
 
-    let description_parser = description_inner_parser
-        .map(|s: &str| vec![NT::Token(GreenToken::new(OSK::Text.into(), s))]);
+    let description_parser =
+        description_inner_parser.map(|s: &str| vec![crate::token!(OSK::Text, s)]);
 
     regular_link_parser_inner(description_parser)
 }

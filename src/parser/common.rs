@@ -1,18 +1,14 @@
 use crate::parser::ParserState;
-use crate::parser::syntax::{OrgLanguage, OrgSyntaxKind};
+use crate::parser::syntax::OrgLanguage;
+use crate::parser::{MyExtra, NT, OSK};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
+use rowan::NodeOrToken;
 use rowan::SyntaxNode;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 #[allow(dead_code)]
 pub(crate) fn get_parser_output<'a, C: 'a + std::default::Default>(
-    parser: impl Parser<
-        'a,
-        &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone,
+    parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone,
     input: &'a str,
 ) -> String {
     let state = RollbackState(ParserState::default());
@@ -21,12 +17,7 @@ pub(crate) fn get_parser_output<'a, C: 'a + std::default::Default>(
 
 #[allow(dead_code)]
 pub(crate) fn get_parser_output_with_state<'a, C: 'a + std::default::Default>(
-    parser: impl Parser<
-        'a,
-        &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone,
+    parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone,
     input: &'a str,
     mut state: RollbackState<ParserState>,
 ) -> String {
@@ -42,10 +33,7 @@ pub(crate) fn get_parser_output_with_state<'a, C: 'a + std::default::Default>(
             }
 
             NodeOrToken::Token(token) => {
-                let root = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-                    OrgSyntaxKind::Root.into(),
-                    vec![NodeOrToken::Token(token)],
-                ));
+                let root = crate::node!(OSK::Root, vec![NodeOrToken::Token(token)]);
                 let syntax_tree: SyntaxNode<OrgLanguage> =
                     SyntaxNode::new_root(root.into_node().expect("xx"));
 
@@ -59,24 +47,14 @@ pub(crate) fn get_parser_output_with_state<'a, C: 'a + std::default::Default>(
 
 #[allow(dead_code)]
 pub(crate) fn get_parsers_output<'a, C: 'a + std::default::Default>(
-    parser: impl Parser<
-        'a,
-        &'a str,
-        Vec<NodeOrToken<GreenNode, GreenToken>>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone,
+    parser: impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone,
     input: &'a str,
 ) -> String {
     let state = RollbackState(ParserState::default());
     get_parsers_output_with_state(parser, input, state)
 }
 pub(crate) fn get_parsers_output_with_state<'a, C: 'a + std::default::Default>(
-    parser: impl Parser<
-        'a,
-        &'a str,
-        Vec<NodeOrToken<GreenNode, GreenToken>>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone,
+    parser: impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone,
     input: &'a str,
     mut state: RollbackState<ParserState>,
 ) -> String {
@@ -85,10 +63,7 @@ pub(crate) fn get_parsers_output_with_state<'a, C: 'a + std::default::Default>(
         .into_output_errors();
     // let ans = parser.parse_with_state(input, &mut state).unwrap();
     let children = ans.expect("has_output");
-    let root = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
-        OrgSyntaxKind::Root.into(),
-        children,
-    ));
+    let root = crate::node!(OSK::Root, children);
     println!("c={root:?}");
     let syntax_tree: SyntaxNode<OrgLanguage> = SyntaxNode::new_root(root.into_node().expect("xx"));
 

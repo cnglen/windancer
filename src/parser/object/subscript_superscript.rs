@@ -1,10 +1,8 @@
 //! Subscript and Superscript
 use crate::parser::ParserState;
 use crate::parser::{MyExtra, NT, OSK};
-
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken};
 
 use std::ops::Range;
 
@@ -106,12 +104,12 @@ where
                     (e.state() as &mut RollbackState<ParserState>).prev_char =
                         sign_content.chars().last();
 
-                    vec![NT::Token(GreenToken::new(OSK::Text.into(), sign_content))]
+                    vec![crate::token!(OSK::Text, sign_content)]
                 }),
             // CHAR^* or CHAR_*
             just("*").map_with(|aes, e| {
                 (e.state() as &mut RollbackState<ParserState>).prev_char = Some('*');
-                vec![NT::Token(GreenToken::new(OSK::Text.into(), aes))]
+                vec![crate::token!(OSK::Text, aes)]
             }),
             // CHAR^{expression} / CHAR^(EXPRESSION)
             one_of("({")
@@ -136,19 +134,16 @@ where
                     (e.state() as &mut RollbackState<ParserState>).prev_char = Some(rb);
 
                     let mut children = Vec::with_capacity(expression.len() + 2);
-                    children.push(NT::Token(GreenToken::new(
+                    children.push(crate::token!(
                         match lb {
-                            '{' => OSK::LeftCurlyBracket.into(),
-                            '(' => OSK::LeftRoundBracket.into(),
+                            '{' => OSK::LeftCurlyBracket,
+                            '(' => OSK::LeftRoundBracket,
                             _ => unreachable!(),
                         },
-                        lb_str(lb),
-                    )));
+                        lb_str(lb)
+                    ));
                     children.extend(expression);
-                    children.push(NT::Token(GreenToken::new(
-                        OSK::RightCurlyBracket.into(),
-                        rb_str(rb),
-                    )));
+                    children.push(crate::token!(OSK::RightCurlyBracket, rb_str(rb)));
 
                     children
                 }),
@@ -157,14 +152,14 @@ where
             let mut children = vec![];
 
             let token = match sup {
-                "^" => NT::Token(GreenToken::new(OSK::Caret.into(), sup)),
-                "_" => NT::Token(GreenToken::new(OSK::Underscore.into(), sup)),
+                "^" => crate::token!(OSK::Caret, sup),
+                "_" => crate::token!(OSK::Underscore, sup),
                 _ => unreachable!(),
             };
             children.push(token);
             children.extend(others);
 
-            NT::Node(GreenNode::new(syntax_kind.clone().into(), children))
+            crate::node!(syntax_kind.clone(), children)
         })
         .boxed();
 
@@ -191,7 +186,7 @@ fn create_simple_script_parser<'a, C: 'a>(
         .clone()
         .repeated()
         .to_slice()
-        .map(|text: &str| vec![NT::Token(GreenToken::new(OSK::Text.into(), text))]);
+        .map(|text: &str| vec![crate::token!(OSK::Text, text)]);
 
     create_script_parser_inner(script_type, expression_parser)
 }

@@ -1,7 +1,6 @@
 //! timestamp parser
 use crate::parser::{MyExtra, NT, OSK};
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken};
 
 use super::whitespaces_g1;
 
@@ -48,10 +47,7 @@ pub(crate) fn timestamp_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyEx
         .map_with(|s, e| {
             e.state().prev_char = s.chars().last();
 
-            NT::Node(GreenNode::new(
-                OSK::Timestamp.into(),
-                vec![NT::Token(GreenToken::new(OSK::Text.into(), s))],
-            ))
+            crate::node!(OSK::Timestamp, vec![crate::token!(OSK::Text, s)])
         });
 
     let p1b = just("[")
@@ -68,10 +64,7 @@ pub(crate) fn timestamp_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyEx
         .map_with(|s, e| {
             e.state().prev_char = s.chars().last();
 
-            NT::Node(GreenNode::new(
-                OSK::Timestamp.into(),
-                vec![NT::Token(GreenToken::new(OSK::Text.into(), s))],
-            ))
+            crate::node!(OSK::Timestamp, vec![crate::token!(OSK::Text, s)])
         });
 
     let p2a = p1a
@@ -82,10 +75,7 @@ pub(crate) fn timestamp_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyEx
         .map_with(|s, e| {
             e.state().prev_char = s.chars().last();
 
-            NT::Node(GreenNode::new(
-                OSK::Timestamp.into(),
-                vec![NT::Token(GreenToken::new(OSK::Text.into(), s))],
-            ))
+            crate::node!(OSK::Timestamp, vec![crate::token!(OSK::Text, s)])
         });
 
     let p2b = p1b
@@ -96,10 +86,7 @@ pub(crate) fn timestamp_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyEx
         .map_with(|s, e| {
             e.state().prev_char = s.chars().last();
 
-            NT::Node(GreenNode::new(
-                OSK::Timestamp.into(),
-                vec![NT::Token(GreenToken::new(OSK::Text.into(), s))],
-            ))
+            crate::node!(OSK::Timestamp, vec![crate::token!(OSK::Text, s)])
         });
 
     let p3a = just("<")
@@ -115,10 +102,7 @@ pub(crate) fn timestamp_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyEx
         .to_slice()
         .map_with(|s, e| {
             e.state().prev_char = s.chars().last();
-            NT::Node(GreenNode::new(
-                OSK::Timestamp.into(),
-                vec![NT::Token(GreenToken::new(OSK::Text.into(), s))],
-            ))
+            crate::node!(OSK::Timestamp, vec![crate::token!(OSK::Text, s)])
         });
 
     let p3b = just("[")
@@ -135,10 +119,7 @@ pub(crate) fn timestamp_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyEx
         .map_with(|s, e| {
             e.state().prev_char = s.chars().last();
 
-            NT::Node(GreenNode::new(
-                OSK::Timestamp.into(),
-                vec![NT::Token(GreenToken::new(OSK::Text.into(), s))],
-            ))
+            crate::node!(OSK::Timestamp, vec![crate::token!(OSK::Text, s)])
         });
 
     choice((p2a, p2b, p3a, p3b, p1a, p1b)).boxed()

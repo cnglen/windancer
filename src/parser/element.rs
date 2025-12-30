@@ -15,32 +15,15 @@ pub(crate) mod planning;
 pub(crate) mod section;
 pub(crate) mod table;
 
-use crate::parser::ParserState;
-use chumsky::inspector::RollbackState;
+use crate::parser::{MyExtra, NT};
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 // heading should not be in here, since it's parsed by document!
 pub(crate) fn get_element_parser<'a, C: 'a + std::default::Default>() -> (
-    impl Parser<
-        'a,
-        &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone,
-    impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone,
-    impl Parser<
-        'a,
-        &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone,
-    impl Parser<
-        'a,
-        &'a str,
-        NodeOrToken<GreenNode, GreenToken>,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone,
+    impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone,
+    impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone,
+    impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone,
+    impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone,
 ) {
     // let mut element_in_pagraph = Recursive::declare();
     let mut element_without_tablerow_and_item = Recursive::declare();
@@ -159,22 +142,14 @@ pub(crate) fn get_element_parser<'a, C: 'a + std::default::Default>() -> (
     )
 }
 
-pub(crate) fn element_parser<'a, C: 'a + std::default::Default>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn element_parser<'a, C: 'a + std::default::Default>()
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     get_element_parser::<C>().0
 }
 
 #[allow(unused)]
-pub(crate) fn elements_parser<'a, C: 'a + std::default::Default>() -> impl Parser<
-    'a,
-    &'a str,
-    Vec<NodeOrToken<GreenNode, GreenToken>>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn elements_parser<'a, C: 'a + std::default::Default>()
+-> impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone {
     element_parser::<C>()
         .repeated()
         .at_least(1)
@@ -183,36 +158,23 @@ pub(crate) fn elements_parser<'a, C: 'a + std::default::Default>() -> impl Parse
 
 #[allow(unused)]
 pub(crate) fn element_in_paragraph_parser<'a, C: 'a + std::default::Default>()
--> impl Parser<'a, &'a str, (), extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>> + Clone
-{
+-> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
     get_element_parser::<C>().1
 }
 
-pub(crate) fn element_in_section_parser<'a, C: 'a + std::default::Default>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn element_in_section_parser<'a, C: 'a + std::default::Default>()
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     get_element_parser::<C>().2
 }
 
 #[allow(unused)]
-pub(crate) fn element_in_item_parser<'a, C: 'a + std::default::Default>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn element_in_item_parser<'a, C: 'a + std::default::Default>()
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     get_element_parser::<C>().2
 }
 
 #[allow(unused)]
-pub(crate) fn element_in_drawer_parser<'a, C: 'a + std::default::Default>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+pub(crate) fn element_in_drawer_parser<'a, C: 'a + std::default::Default>()
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     get_element_parser::<C>().3
 }

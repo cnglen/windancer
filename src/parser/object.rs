@@ -31,7 +31,6 @@ use crate::parser::object::timestamp::timestamp_parser;
 use crate::parser::{MyExtra, NT, OSK};
 
 use chumsky::prelude::*;
-use rowan::GreenToken;
 
 pub const LF: &str = "\n";
 pub const CRLF: &str = "\r\n";
@@ -210,7 +209,7 @@ pub(crate) fn blank_line_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyE
     whitespaces()
         .then(just(LF).or(just(CRLF)))
         .to_slice()
-        .map(|s| NT::Token(GreenToken::new(OSK::BlankLine.into(), s)))
+        .map(|s| crate::token!(OSK::BlankLine, s))
 }
 
 pub(crate) fn objects_parser<'a, C: 'a>()
@@ -536,7 +535,6 @@ mod tests {
     use crate::parser::{OrgConfig, OrgParser};
     use chumsky::inspector::RollbackState;
     use pretty_assertions::assert_eq;
-    use rowan::GreenToken;
     // use test::Bencher;
 
     fn get_objects_string() -> String {
@@ -629,7 +627,7 @@ other objects (2):
                 blank_line_parser::<()>()
                     .parse_with_state(input, &mut state)
                     .into_result(),
-                Ok(NT::Token(GreenToken::new(OSK::BlankLine.into(), input)))
+                Ok(crate::token!(OSK::BlankLine, input))
             );
         }
 

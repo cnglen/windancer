@@ -1,26 +1,13 @@
 //! Paragraph parser
 use crate::parser::element::keyword;
-use crate::parser::syntax::OrgSyntaxKind;
-use crate::parser::{ParserState, element, object};
-use chumsky::inspector::RollbackState;
+use crate::parser::{MyExtra, NT, OSK};
+use crate::parser::{element, object};
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 // non_paragraph_parser: used for negative lookahead
 pub(crate) fn paragraph_parser<'a, C: 'a + std::default::Default>(
-    non_paragraph_parser: impl Parser<
-        'a,
-        &'a str,
-        (),
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone
-    + 'a,
-) -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+    non_paragraph_parser: impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     paragraph_parser_with_at_least_n_affiliated_keywords(non_paragraph_parser, 0)
 }
 
@@ -28,20 +15,9 @@ pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<
     'a,
     C: 'a + std::default::Default,
 >(
-    non_paragraph_parser: impl Parser<
-        'a,
-        &'a str,
-        (),
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-    > + Clone
-    + 'a,
+    non_paragraph_parser: impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone + 'a,
     n: usize,
-) -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>,
-> + Clone {
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let affiliated_keywords = keyword::affiliated_keyword_parser()
         .repeated()
         .at_least(n)
@@ -94,7 +70,7 @@ pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<
             children.extend(keywords);
             children.extend(lines);
             children.extend(blanklines);
-            NodeOrToken::Node(GreenNode::new(OrgSyntaxKind::Paragraph.into(), children))
+            crate::node!(OSK::Paragraph, children)
         })
         .boxed()
 }

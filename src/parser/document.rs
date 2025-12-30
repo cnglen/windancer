@@ -1,19 +1,14 @@
 //! Document parser
 use crate::parser::ParserState;
-use crate::parser::syntax::OrgSyntaxKind;
+use crate::parser::{NT, OSK};
 use crate::parser::{element, object};
 use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 /// document <- zeroth_section? heading_subtree*
 /// zeroth_sectoin <- blank_line* comment? property_drawer? section?
-pub(crate) fn document_parser<'a>() -> impl Parser<
-    'a,
-    &'a str,
-    NodeOrToken<GreenNode, GreenToken>,
-    extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>,
-> {
+pub(crate) fn document_parser<'a>()
+-> impl Parser<'a, &'a str, NT, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> {
     let parser = object::blank_line_parser()
         .repeated()
         .at_least(1)
@@ -53,17 +48,13 @@ pub(crate) fn document_parser<'a>() -> impl Parser<
                 }
 
                 if !children_in_section.is_empty() {
-                    let zeroth_section = NodeOrToken::Node(GreenNode::new(
-                        OrgSyntaxKind::Section.into(),
-                        children_in_section,
-                    ));
+                    let zeroth_section = crate::node!(OSK::Section, children_in_section);
                     children.push(zeroth_section);
                 }
 
                 children.extend(headings);
-                let node = GreenNode::new(OrgSyntaxKind::Document.into(), children);
 
-                NodeOrToken::Node(node)
+                crate::node!(OSK::Document, children)
             },
         );
 
