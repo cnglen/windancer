@@ -24,6 +24,14 @@ see [[file:docs/status.org][status]] for status.
 #+end_src
 
 
+* Planning
+
+- support config of subscript
+- Error: Rich maybe slow
+- use group rather then nested then?
+- input as Vec<char> for prev
+- item_ident?
+
 * Reference
 
 - [[https://orgmode.org/worg/org-syntax.html][org-syntax]]

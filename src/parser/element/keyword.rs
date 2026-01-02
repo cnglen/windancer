@@ -164,6 +164,7 @@ pub(crate) fn affiliated_keyword_parser_inner<'a, C: 'a>(
 
             crate::node!(OSK::AffiliatedKeyword, children)
         })
+        .boxed()
 }
 
 // affliated keyword is NOT a element, it's part of some element.
@@ -189,7 +190,9 @@ pub(crate) fn simple_affiliated_keyword_parser<'a, C: 'a>()
     let string_without_nl = none_of(object::CRLF).repeated().at_least(1).to_slice();
     let value_parser = string_without_nl.map(|s| vec![crate::token!(OSK::Text, s)]);
 
-    affiliated_keyword_parser_inner(value_parser).to(crate::node!(OSK::AffiliatedKeyword, vec![]))
+    affiliated_keyword_parser_inner(value_parser)
+        .ignored()
+        .to(crate::node!(OSK::AffiliatedKeyword, vec![]))
 }
 
 // find last colon(:), all previous chars are `key`, such as "#+key:with:colon: value"

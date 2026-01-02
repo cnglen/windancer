@@ -13,17 +13,22 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>()
     // - \[CONTENTS\]
     let t_latex = just(r"\")
         .then(choice((
-            just(r"(")
-                .then(any().and_is(just(r"\)").not()).repeated().to_slice())
-                .then(just(r"\"))
-                .then(just(r")")),
-            just("[")
-                .then(any().and_is(just(r"\]").not()).repeated().to_slice())
-                .then(just(r"\"))
-                .then(just("]")),
+            group((
+                just(r"("),
+                any().and_is(just(r"\)").not()).repeated().to_slice(),
+                just(r"\"),
+                just(r")")
+            )),
+
+            group((
+                just("["),
+                any().and_is(just(r"\]").not()).repeated().to_slice(),
+                just(r"\"),
+                just("]")
+            ))
         )))
         .map_with(
-            |(backslash_open, (((lb, content), backslash_close), rb)), e| {
+            |(backslash_open, (lb, content, backslash_close, rb)), e| {
                 (e.state() as &mut RollbackState<ParserState>).prev_char = rb.chars().last();
 
                 crate::node!(
@@ -46,17 +51,17 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>()
         );
 
     // $$CONTENTS$$
-    let t_tex_display = just("$$")
-        .then(
-            // any().and_is(just("$$").not()).repeated().to_slice()
-            none_of('$')
-                .to_slice()
-                .or(just('$').then(none_of('$')).to_slice())
-                .repeated()
-                .to_slice(),
-        )
-        .then(just("$$"))
-        .map_with(|((dd_pre, content), dd_post), e| {
+    let t_tex_display = group((
+        just("$$"),
+        // any().and_is(just("$$").not()).repeated().to_slice()
+        none_of('$')
+            .to_slice()
+            .or(just('$').then(none_of('$')).to_slice())
+            .repeated()
+            .to_slice(),
+        just("$$")
+    ))
+        .map_with(|(dd_pre, content, dd_post), e| {
             let state: &mut RollbackState<ParserState> = e.state();
             state.prev_char = Some('$');
 

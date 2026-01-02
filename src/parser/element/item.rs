@@ -1,8 +1,13 @@
 //! Item parser
+// todo: don't use global item_indent state, use self container state to speedup
+// ctx: 当前whitespace的个数作为ctx, content的whitespace.repeated().at_least(ctx+1).configure()
+
 use crate::parser::object;
 use crate::parser::{MyExtra, NT, OSK};
 use chumsky::prelude::*;
 use std::ops::Range;
+
+
 
 fn item_parser_inner<'a, C: 'a>(
     item_content_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
