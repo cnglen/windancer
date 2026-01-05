@@ -35,6 +35,136 @@ use chumsky::prelude::*;
 pub const LF: &str = "\n";
 pub const CRLF: &str = "\r\n";
 
+// // Input which suppport get the previous Token
+// pub trait PrevInput<'src>: Input<'src> {
+//     unsafe fn prev(cache: &mut Self::Cache, cursor: &Self::Cursor) -> Option<Self::Token>;
+// }
+
+// impl<'src> PrevInput<'src> for &'src str {
+//     #[inline(always)]
+//     unsafe fn prev(this: &mut Self::Cache, cursor: &Self::Cursor) -> Option<Self::Token> {
+//         let idx_byte_current = *cursor;
+
+//         if idx_byte_current == 0 {
+//             return None;
+//         }
+
+//         let bytes = this.as_bytes();
+//         let start = idx_byte_current.saturating_sub(3);
+//         for idx in (start..idx_byte_current).rev() {
+//             let b = bytes[idx];
+//             // from is_utf8_char_boundary()
+//             // This is bit magic equivalent to: b < 128 || b >= 192
+//             if (b as i8) >= -0x40 {
+//                 return Some(unsafe {
+//                     this.get_unchecked(idx..).chars().next().unwrap_unchecked()
+//                 });
+//             }
+//         }
+
+//         if start > 0 && (bytes[start - 1] as i8) >= -0x40 {
+//             Some(unsafe {
+//                 this.get_unchecked(start - 1..)
+//                     .chars()
+//                     .next()
+//                     .unwrap_unchecked()
+//             })
+//         } else {
+//             None // this should be unreachable
+//         }
+//     }
+// }
+
+// // Add prev() API for InputRef
+// pub trait PrevInputRef<'src, I> {
+//     fn prev(&mut self) -> Option<I::Token>
+//     where
+//         I: PrevInput<'src>;
+// }
+
+// // fixme: InputRef input.rs cache: pub(crate) -> pub
+// impl<'src, 'parse, I: Input<'src>, E: extra::ParserExtra<'src, I>> PrevInputRef<'src, I>
+//     for chumsky::input::InputRef<'src, 'parse, I, E>
+// {
+//     #[inline(always)]
+//     fn prev(&mut self) -> Option<I::Token>
+//     where
+//         I: PrevInput<'src>,
+//     {
+
+//         // E0716
+//         let binding = self.cursor();
+//         let a = binding.inner();
+//         let token = unsafe { I::prev(self.cache, a) };
+
+//         token
+//     }
+// }
+
+// // // valid prev char using `f`
+// // pub(crate) fn prev_valid_parser<'a, C: 'a, F: Fn(Option<char>) -> bool + Clone>(
+// //     f: F,
+// // ) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
+// //     custom(move |inp| {
+// //         let before = inp.cursor();
+// //         let maybe_prev = inp.prev();
+// //         if f(maybe_prev) {
+// //             Ok(())
+// //         } else {
+// //             Err(Rich::custom(
+// //                 inp.span_since(&before),
+// //                 format!("invalid PRE: {maybe_prev:?}"),
+// //             ))
+// //         }
+// //     })
+// // }
+
+fn get_prev_char_index(s: &str, index: usize) -> Option<char> {
+    if index == 0 {
+        return None;
+    }
+
+    let bytes = s.as_bytes();
+    let start = index.saturating_sub(3);
+    for idx in (start..index).rev() {
+        let b = bytes[idx];
+        if (b as i8) >= -0x40 {
+            return Some(unsafe { s.get_unchecked(idx..).chars().next().unwrap_unchecked() });
+        }
+    }
+
+    if start > 0 && (bytes[start - 1] as i8) >= -0x40 {
+        Some(unsafe {
+            s.get_unchecked(start - 1..)
+                .chars()
+                .next()
+                .unwrap_unchecked()
+        })
+    } else {
+        None // this should be unreachable
+    }
+}
+
+pub(crate) fn prev_valid_parser<'a, C: 'a, F: Fn(Option<char>) -> bool + Clone>(
+    f: F,
+) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
+    custom(move |inp| {
+        let before = inp.cursor();
+        let idx_byte_current = before.inner();
+        // println!("s={}", inp.full_slice());
+        let maybe_prev = get_prev_char_index(inp.full_slice(), *idx_byte_current);
+
+        if f(maybe_prev) {
+            Ok(())
+        } else {
+            Err(Rich::custom(
+                inp.span_since(&before),
+                format!("invalid PRE: {maybe_prev:?}"),
+            ))
+        }
+    })
+}
+
 // case insensitive keyword parser:
 // - name <- (a-zA-Z0-9)*
 // - if name in allowe_keywords, Ok(name)
@@ -46,6 +176,7 @@ pub(crate) fn keyword_ci_parser<'a, C: 'a>(
 ) -> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Clone {
     custom(|inp| {
         let before = inp.cursor();
+
         loop {
             match inp.peek() {
                 Some(c) if matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9') => {
@@ -189,13 +320,7 @@ pub(crate) fn line_parser_allow_blank<'a, C: 'a>()
 
 pub(crate) fn blank_line_str_parser<'a, C: 'a>()
 -> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Clone + Copy {
-    whitespaces()
-        .then(just(LF).or(just(CRLF)))
-        .map_with(|(ws, maybecr_lf), e| {
-            e.state().prev_char = maybecr_lf.chars().last();
-            (ws, maybecr_lf)
-        })
-        .to_slice()
+    whitespaces().then(just(LF).or(just(CRLF))).to_slice()
 }
 
 /// Blank Line Parser := 空白字符后紧跟行终止符, PEG定义如下
@@ -530,12 +655,9 @@ pub(crate) fn get_object_parser<'a, C: 'a>() -> (
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::ParserState;
     use crate::parser::common::get_parsers_output;
     use crate::parser::{OrgConfig, OrgParser};
-    use chumsky::inspector::RollbackState;
     use pretty_assertions::assert_eq;
-    // use test::Bencher;
 
     fn get_objects_string() -> String {
         r##"
@@ -621,12 +743,10 @@ other objects (2):
 
     #[test]
     fn test_blank_line() {
-        let mut state = RollbackState(ParserState::default());
+        // let mut state = RollbackState(ParserState::default());
         for input in vec![" \n", "\t\n", "\n", " \t   \n"] {
             assert_eq!(
-                blank_line_parser::<()>()
-                    .parse_with_state(input, &mut state)
-                    .into_result(),
+                blank_line_parser::<()>().parse(input).into_result(),
                 Ok(crate::token!(OSK::BlankLine, input))
             );
         }
@@ -634,7 +754,8 @@ other objects (2):
         for input in vec![" \n "] {
             assert_eq!(
                 blank_line_parser::<()>()
-                    .parse_with_state(input, &mut state)
+                    // .parse_with_state(input, &mut state)
+                    .parse(input)
                     .has_errors(),
                 true
             );
@@ -643,9 +764,10 @@ other objects (2):
 
     #[test]
     fn test_line() {
-        let mut state = RollbackState(ParserState::default());
+        // let mut state = RollbackState(ParserState::default());
         let input = "a row\n";
-        let s = line_parser::<()>().parse_with_state(input, &mut state);
+        // let s = line_parser::<()>().parse_with_state(input, &mut state);
+        let s = line_parser::<()>().parse(input);
         println!("{:?}", s);
     }
 

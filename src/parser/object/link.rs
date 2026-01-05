@@ -1,8 +1,7 @@
 //! link parser, including angle/plain/regular link
+use crate::parser::object;
 use crate::parser::{MyExtra, NT, OSK};
-use crate::parser::{ParserState, object};
 use chumsky::input::InputRef;
-use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use phf::phf_set;
 use std::ops::Range;
@@ -173,34 +172,45 @@ pub(crate) fn plain_link_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyE
     let post = any()
         .filter(|c: &char| !c.is_alphanumeric())
         .or(end().to('x'));
-    protocol
+
+    object::prev_valid_parser(|c| c.map_or(true, |c| !c.is_alphanumeric()))
+        .ignore_then(protocol)
+        // protocol
         .then(just(":"))
         .then(path_plain_parser())
         .then_ignore(post.rewind())
-        .try_map_with(|((protocol, colon), pathplain), e| {
-            let pre_valid = e.state().prev_char.map_or(true, |c| !c.is_alphanumeric());
-
-            match pre_valid {
-                true => {
-                    e.state().prev_char = pathplain.chars().last();
-
-                    Ok(crate::node!(
-                        OSK::PlainLink,
-                        vec![
-                            crate::token!(OSK::Text, &protocol),
-                            crate::token!(OSK::Colon, colon),
-                            crate::token!(OSK::Text, &pathplain),
-                        ]
-                    ))
-                }
-                false => Err(Rich::custom(
-                    e.span(),
-                    format!(
-                        "plainlink_parser(): pre_valid={pre_valid}, PRE={:?} not valid",
-                        e.state().prev_char
-                    ),
-                )),
-            }
+        // .try_map_with(|((protocol, colon), pathplain), e| {
+        //     let pre_valid = e.state().prev_char.map_or(true, |c| !c.is_alphanumeric());
+        //     match pre_valid {
+        //         true => {
+        //             e.state().prev_char = pathplain.chars().last();
+        //             Ok(crate::node!(
+        //                 OSK::PlainLink,
+        //                 vec![
+        //                     crate::token!(OSK::Text, &protocol),
+        //                     crate::token!(OSK::Colon, colon),
+        //                     crate::token!(OSK::Text, &pathplain),
+        //                 ]
+        //             ))
+        //         }
+        //         false => Err(Rich::custom(
+        //             e.span(),
+        //             format!(
+        //                 "plainlink_parser(): pre_valid={pre_valid}, PRE={:?} not valid",
+        //                 e.state().prev_char
+        //             ),
+        //         )),
+        //     }
+        // })
+        .map(|((protocol, colon), pathplain)| {
+            crate::node!(
+                OSK::PlainLink,
+                vec![
+                    crate::token!(OSK::Text, &protocol),
+                    crate::token!(OSK::Colon, colon),
+                    crate::token!(OSK::Text, &pathplain),
+                ]
+            )
         })
         .boxed()
 }
@@ -315,22 +325,18 @@ pub(crate) fn regular_link_parser_inner<'a, C: 'a>(
         .then(description)
         .then(just("]"))
         .then(object::newline().or_not())
-        .map_with(
-            |((((lbracket, path), maybe_desc), rbracket), maybe_newline), e| {
+        .map(
+            |((((lbracket, path), maybe_desc), rbracket), maybe_newline)| {
                 let mut children = Vec::new();
                 children.push(crate::token!(OSK::LeftSquareBracket, lbracket));
-
                 children.push(path);
-
                 children.extend(maybe_desc.into_iter());
-
                 children.push(crate::token!(OSK::RightSquareBracket, rbracket));
-
-                (e.state() as &mut RollbackState<ParserState>).prev_char = rbracket.chars().last();
-                children.extend(maybe_newline.into_iter().map(|nl| {
-                    (e.state() as &mut RollbackState<ParserState>).prev_char = nl.chars().last();
-                    crate::token!(OSK::Newline, &nl)
-                }));
+                children.extend(
+                    maybe_newline
+                        .into_iter()
+                        .map(|nl| crate::token!(OSK::Newline, &nl)),
+                );
 
                 crate::node!(OSK::Link, children)
             },

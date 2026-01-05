@@ -1,8 +1,7 @@
 //! Entity parser
 use crate::constants::entity::ENTITYNAME_SET;
+use crate::parser::object;
 use crate::parser::{MyExtra, NT, OSK};
-use crate::parser::{ParserState, object};
-use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 
 /// Entity parser
@@ -26,9 +25,9 @@ pub(crate) fn entity_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra
                     just("{}").to(true),            // \NAME {}
                     post_parser.rewind().to(false), // \NAME &POST
                 )))
-                .map_with(|(name, is_pattern2), e| {
+                .map(|(name, is_pattern2)| {
                     if is_pattern2 {
-                        (e.state() as &mut RollbackState<ParserState>).prev_char = Some('}');
+                        // (e.state() as &mut RollbackState<ParserState>).prev_char = Some('}');
                         vec![
                             crate::token!(OSK::EntityName, name),
                             crate::token!(OSK::LeftCurlyBracket, "{"),
@@ -36,15 +35,15 @@ pub(crate) fn entity_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra
                         ]
                     } else {
                         // Pattern1: \NAME POST
-                        (e.state() as &mut RollbackState<ParserState>).prev_char =
-                            name.chars().last();
+                        // (e.state() as &mut RollbackState<ParserState>).prev_char =
+                        //     name.chars().last();
                         vec![crate::token!(OSK::EntityName, name)]
                     }
                 }),
             just("_")
                 .then(just(" ").repeated().at_least(1).at_most(20).to_slice()) // \_SPACES
-                .map_with(|(us, ws): (_, &str), e| {
-                    (e.state() as &mut RollbackState<ParserState>).prev_char = ws.chars().last();
+                .map(|(us, ws): (_, &str)| {
+                    // (e.state() as &mut RollbackState<ParserState>).prev_char = ws.chars().last();
                     vec![
                         crate::token!(OSK::Underscore, us),
                         crate::token!(OSK::Spaces, ws),

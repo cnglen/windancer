@@ -1,7 +1,6 @@
-use crate::parser::ParserState;
 use crate::parser::syntax::OrgLanguage;
 use crate::parser::{MyExtra, NT, OSK};
-use chumsky::inspector::RollbackState;
+use crate::parser::{MyState, ParserState};
 use chumsky::prelude::*;
 use rowan::NodeOrToken;
 use rowan::SyntaxNode;
@@ -11,7 +10,8 @@ pub(crate) fn get_parser_output<'a, C: 'a + std::default::Default>(
     parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone,
     input: &'a str,
 ) -> String {
-    let state = RollbackState(ParserState::default());
+    let state = extra::SimpleState::<ParserState>(ParserState::default());
+
     get_parser_output_with_state(parser, input, state)
 }
 
@@ -19,7 +19,7 @@ pub(crate) fn get_parser_output<'a, C: 'a + std::default::Default>(
 pub(crate) fn get_parser_output_with_state<'a, C: 'a + std::default::Default>(
     parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone,
     input: &'a str,
-    mut state: RollbackState<ParserState>,
+    mut state: MyState,
 ) -> String {
     let (maybe_output, errors) = parser
         .parse_with_state(input, &mut state)
@@ -50,18 +50,18 @@ pub(crate) fn get_parsers_output<'a, C: 'a + std::default::Default>(
     parser: impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone,
     input: &'a str,
 ) -> String {
-    let state = RollbackState(ParserState::default());
+    let state = extra::SimpleState::<ParserState>(ParserState::default());
+
     get_parsers_output_with_state(parser, input, state)
 }
 pub(crate) fn get_parsers_output_with_state<'a, C: 'a + std::default::Default>(
     parser: impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone,
     input: &'a str,
-    mut state: RollbackState<ParserState>,
+    mut state: MyState,
 ) -> String {
     let (ans, _errors) = parser
         .parse_with_state(input, &mut state)
         .into_output_errors();
-    // let ans = parser.parse_with_state(input, &mut state).unwrap();
     let children = ans.expect("has_output");
     let root = crate::node!(OSK::Root, children);
     println!("c={root:?}");

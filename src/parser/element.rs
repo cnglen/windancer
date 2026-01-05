@@ -6,11 +6,12 @@ pub(crate) mod fixed_width;
 pub(crate) mod footnote_definition;
 pub(crate) mod heading;
 pub(crate) mod horizontal_rule;
-pub(crate) mod item;
+// pub(crate) mod item;
 pub(crate) mod keyword;
 pub(crate) mod latex_environment;
-pub(crate) mod list;
+// pub(crate) mod list;
 pub(crate) mod paragraph;
+pub(crate) mod plain_list; // v2, to replace list.rs/item.rs
 pub(crate) mod planning;
 pub(crate) mod section;
 pub(crate) mod table;
@@ -60,8 +61,10 @@ pub(crate) fn get_element_parser<'a, C: 'a + std::default::Default>() -> (
     let quote_block = block::quote_block_parser(element_without_tablerow_and_item.clone());
     let special_block = block::special_block_parser(element_without_tablerow_and_item.clone());
     let drawer = drawer::drawer_parser(element_in_drawer.clone());
-    let plain_list =
-        list::plain_list_parser(item::item_parser(element_without_tablerow_and_item.clone()));
+    // let plain_list =
+    //     list::plain_list_parser(item::item_parser(element_without_tablerow_and_item.clone()));
+
+    let plain_list = plain_list::plain_list_parser(element_without_tablerow_and_item.clone());
 
     // ONLY used for lookhead
     // IN paragraph_parser(), simple_heading/simple_table/simple_footnote_definition is used for lookahead, no need here for performance:

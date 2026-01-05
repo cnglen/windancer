@@ -1,6 +1,4 @@
-use crate::parser::ParserState;
 use crate::parser::{MyExtra, NT, OSK};
-use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 
 /// Macro parser
@@ -30,14 +28,13 @@ pub(crate) fn macro_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<
                 .or_not(),
         )
         .then(just("}}}"))
-        .map_with(
+        .map(
             |(((left_3curly, name), maybe_leftround_args_rightround), right_3curly): (
                 ((&_, &_), Option<((&_, &str), &_)>),
                 &_,
-            ),
-             e| {
-                let state: &mut RollbackState<ParserState> = e.state();
-                state.prev_char = Some('}');
+            )| {
+                // let state: &mut RollbackState<ParserState> = e.state();
+                // state.prev_char = Some('}');
 
                 let mut children = Vec::with_capacity(6);
                 children.push(crate::token!(OSK::LeftCurlyBracket3, left_3curly));

@@ -1,14 +1,12 @@
 //! Document parser
-use crate::parser::ParserState;
-use crate::parser::{NT, OSK};
+use crate::parser::{MyState, NT, OSK};
 use crate::parser::{element, object};
-use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 
 /// document <- zeroth_section? heading_subtree*
 /// zeroth_sectoin <- blank_line* comment? property_drawer? section?
 pub(crate) fn document_parser<'a>()
--> impl Parser<'a, &'a str, NT, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> {
+-> impl Parser<'a, &'a str, NT, extra::Full<Rich<'a, char>, MyState, ()>> {
     let parser = object::blank_line_parser()
         .repeated()
         .at_least(1)
@@ -18,7 +16,7 @@ pub(crate) fn document_parser<'a>()
         .then(element::drawer::property_drawer_parser().or_not())
         .then(element::section::section_parser(element::element_in_section_parser()).or_not())
         .then(
-            element::heading::heading_subtree_parser(element::element_parser(), 0)
+            element::heading::heading_subtree_parser(element::element_parser(), "")
                 .repeated()
                 .collect::<Vec<_>>(),
         )

@@ -1,7 +1,5 @@
 //! Text markup parser, including bold, italic, underline, strikethrough, verbatim and code.
-use crate::parser::ParserState;
-use crate::parser::{MyExtra, NT, OSK};
-use chumsky::inspector::RollbackState;
+use crate::parser::{MyExtra, NT, OSK, object};
 use chumsky::prelude::*;
 
 pub(crate) fn contents_parser<'a, C: 'a>(
@@ -52,50 +50,29 @@ where
         _ => unreachable!(),
     };
 
-    just(marker)
-        .try_map_with(|s, e| {
-            let span = e.span();
-            let state: &mut RollbackState<ParserState> = e.state();
-
-            // https://github.com/zesterer/chumsky/issues/624
-            let pre_valid = state.prev_char.map_or(true, |c| {
-                matches!(
-                    c,
-                    ' '| '\t'| '​'|              // whitespace character
+    object::prev_valid_parser(|c| {
+        c.map_or(true, |c| {
+            matches!(
+                c,
+                ' '| '\t'| '​'|              // whitespace character
                     '-'| '('| '{'| '"'| '\''|
                     '\r'| '\n' // beginning of a line
-                )
-            });
-
-            match pre_valid {
-                true => {
-                    state.prev_char = None; // make subscript's PREV state none
-
-                    Ok(s)
-                }
-                false => Err(Rich::<char>::custom(
-                    span,
-                    format!(
-                        "text markup parser: pre_valid={pre_valid}, PRE={:?}",
-                        state.prev_char,
-                    ),
-                )),
-            }
+            )
         })
-        .then(my_contents_parser)
-        .then(just(marker))
-        .then_ignore(post.rewind())
-        .try_map_with(move |((start_marker, content), end_marker), e| {
-            (e.state() as &mut RollbackState<ParserState>).prev_char = Some(end_marker);
+    })
+    .ignore_then(just(marker))
+    .then(my_contents_parser)
+    .then(just(marker))
+    .then_ignore(post.rewind())
+    .map(move |((start_marker, content), end_marker)| {
+        let mut children = Vec::with_capacity(2 + content.len());
+        children.push(crate::token!(token_kind, &start_marker.to_string()));
+        children.extend(content);
+        children.push(crate::token!(token_kind, &end_marker.to_string()));
 
-            let mut children = Vec::with_capacity(2 + content.len());
-            children.push(crate::token!(token_kind, &start_marker.to_string()));
-            children.extend(content);
-            children.push(crate::token!(token_kind, &end_marker.to_string()));
-
-            Ok(crate::node!(node_kind, children))
-        })
-        .boxed()
+        crate::node!(node_kind, children)
+    })
+    .boxed()
 }
 
 // bold/italic/underline/strikethrough: PRE MARKER CONTENTS MARKER POST where CONTENTS is a series of objects from the standard set

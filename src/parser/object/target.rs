@@ -1,7 +1,5 @@
 //! target parser
-use crate::parser::ParserState;
 use crate::parser::{MyExtra, NT, OSK};
-use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 
 /// target parser: <<TARGET>>
@@ -29,10 +27,7 @@ pub(crate) fn target_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra
     just("<<")
         .then(target)
         .then(just(">>"))
-        .map_with(|((lbracket2, target), rbracket2), e| {
-            let state: &mut RollbackState<ParserState> = e.state();
-            state.prev_char = Some('>');
-
+        .map(|((lbracket2, target), rbracket2)| {
             let children = vec![
                 crate::token!(OSK::LeftAngleBracket2, lbracket2),
                 crate::token!(OSK::Text, target),

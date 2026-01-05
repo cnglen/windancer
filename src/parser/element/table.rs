@@ -67,7 +67,7 @@ pub(crate) fn table_formula_parser<'a, C: 'a>()
         .then(object::whitespaces())
         .then(none_of(object::CRLF).repeated().to_slice())
         .then(object::newline_or_ending())
-        .map_with(|(((((hash_plus, tblfm), colon), ws), formula), nl), e| {
+        .map(|(((((hash_plus, tblfm), colon), ws), formula), nl)| {
             let mut children = Vec::with_capacity(6);
 
             children.push(crate::token!(OSK::HashPlus, hash_plus));
@@ -91,7 +91,6 @@ pub(crate) fn table_formula_parser<'a, C: 'a>()
             match nl {
                 Some(newline) => {
                     children.push(crate::token!(OSK::Newline, newline));
-                    e.state().prev_char = newline.chars().last();
                 }
                 None => {}
             }
@@ -148,9 +147,9 @@ pub(crate) fn simple_table_parser<'a, C: 'a>()
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::ParserState;
+    // use crate::parser::ParserState;
     use crate::parser::SyntaxNode;
-    use chumsky::inspector::RollbackState;
+    // use chumsky::inspector::RollbackState;
 
     #[test]
     fn test_table() {
@@ -159,8 +158,9 @@ mod tests {
   | Peter |  1234 |  24 |
   | Anna  |  4321 |  25 |
 "##;
-        let mut state = RollbackState(ParserState::default());
-        let t = table_parser::<()>().parse_with_state(input, &mut state);
+        // let mut state = RollbackState(ParserState::default());
+        // let t = table_parser::<()>().parse_with_state(input, &mut state);
+        let t = table_parser::<()>().parse(input);
         let syntax_tree = SyntaxNode::new_root(t.into_result().unwrap().into_node().expect("xxx"));
 
         println!("{:#?}", syntax_tree);

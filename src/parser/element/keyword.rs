@@ -39,7 +39,7 @@ pub(crate) fn affiliated_keyword_parser_inner<'a, C: 'a>(
                 .then(just(":"))
                 .then(object::whitespaces())
                 .then(string_without_nl)
-                .map_with(|((((key, maybe_lsb_optval_rsb), colon), ws), value), e| {
+                .map(|((((key, maybe_lsb_optval_rsb), colon), ws), value)| {
                     let mut children = Vec::with_capacity(7);
                     children.push(crate::node!(
                         OSK::KeywordKey,
@@ -66,7 +66,7 @@ pub(crate) fn affiliated_keyword_parser_inner<'a, C: 'a>(
                         vec![crate::token!(OSK::Text, value)]
                     ));
 
-                    e.state().prev_char = value.chars().last();
+                    // e.state().prev_char = value.chars().last();
                     children
                 }),
             // #+KEY[OPTVAL]: VALUE(objects)
@@ -75,7 +75,7 @@ pub(crate) fn affiliated_keyword_parser_inner<'a, C: 'a>(
                 .then(just(":"))
                 .then(object::whitespaces())
                 .then(value_parser)
-                .map_with(|((((key, maybe_lsb_optval_rsb), colon), ws), value), _e| {
+                .map(|((((key, maybe_lsb_optval_rsb), colon), ws), value)| {
                     let mut children = Vec::with_capacity(7);
                     children.push(crate::node!(
                         OSK::KeywordKey,
@@ -104,7 +104,7 @@ pub(crate) fn affiliated_keyword_parser_inner<'a, C: 'a>(
                 .then(just(":"))
                 .then(object::whitespaces())
                 .then(string_without_nl)
-                .map_with(|(((key, colon), ws), value), e| {
+                .map(|(((key, colon), ws), value)| {
                     let mut children = Vec::with_capacity(4);
                     children.push(crate::node!(
                         OSK::KeywordKey,
@@ -119,7 +119,7 @@ pub(crate) fn affiliated_keyword_parser_inner<'a, C: 'a>(
                         vec![crate::token!(OSK::Text, value)]
                     ));
 
-                    e.state().prev_char = value.chars().last();
+                    // e.state().prev_char = value.chars().last();
                     children
                 }),
             // #+attr_BACKEND: VALUE
@@ -129,7 +129,7 @@ pub(crate) fn affiliated_keyword_parser_inner<'a, C: 'a>(
                 .then(just(":"))
                 .then(object::whitespaces())
                 .then(string_without_nl)
-                .map_with(|(((attr_backend, colon), ws), value), e| {
+                .map(|(((attr_backend, colon), ws), value)| {
                     let mut children = Vec::with_capacity(4);
 
                     children.push(crate::node!(
@@ -148,18 +148,18 @@ pub(crate) fn affiliated_keyword_parser_inner<'a, C: 'a>(
                         vec![crate::token!(OSK::Text, value)]
                     ));
 
-                    e.state().prev_char = value.chars().last();
+                    // e.state().prev_char = value.chars().last();
                     children
                 }),
         )))
         .then(object::newline_or_ending())
-        .map_with(|((hash_plus, others), maybe_newline), e| {
+        .map(|((hash_plus, others), maybe_newline)| {
             let mut children = Vec::with_capacity(2 + others.len());
             children.push(crate::token!(OSK::HashPlus, hash_plus));
             children.extend(others);
             if let Some(newline) = maybe_newline {
                 children.push(crate::token!(OSK::Newline, newline));
-                e.state().prev_char = newline.chars().last();
+                // e.state().prev_char = newline.chars().last();
             }
 
             crate::node!(OSK::AffiliatedKeyword, children)
@@ -234,7 +234,8 @@ pub(crate) fn keyword_parser_inner<'a, C: 'a + std::default::Default>(
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let element_parser_having_affiliated_keywords_for_lookahead = choice((
         element::footnote_definition::simple_footnote_definition_parser(),
-        element::list::simple_plain_list_parser(element::item::simple_item_parser()),
+        // element::list::simple_plain_list_parser(element::item::simple_item_parser()),
+        element::plain_list::simple_plain_list_parser(),
         element::block::simple_center_block_parser(),
         element::block::simple_quote_block_parser(),
         element::block::simple_special_block_parser(),
@@ -295,8 +296,8 @@ pub(crate) fn keyword_parser_inner<'a, C: 'a + std::default::Default>(
             ),
     ))
     .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
-    .map_with(
-        |((((((hash_plus, key), colon), ws), value), nl), blank_lines), e| {
+    .map(
+        |((((((hash_plus, key), colon), ws), value), nl), blank_lines)| {
             let mut children = Vec::with_capacity(6 + blank_lines.len());
 
             children.push(crate::token!(OSK::HashPlus, hash_plus));
@@ -320,16 +321,16 @@ pub(crate) fn keyword_parser_inner<'a, C: 'a + std::default::Default>(
             match nl {
                 Some(newline) => {
                     children.push(crate::token!(OSK::Newline, newline));
-                    e.state().prev_char = newline.chars().last();
+                    // e.state().prev_char = newline.chars().last();
                 }
                 None => {
-                    e.state().prev_char = value.chars().last();
+                    // e.state().prev_char = value.chars().last();
                 }
             }
 
             if blank_lines.len() > 0 {
                 children.extend(blank_lines);
-                e.state().prev_char = Some('\n');
+                // e.state().prev_char = Some('\n');
             }
 
             crate::node!(OSK::Keyword, children)
@@ -360,8 +361,8 @@ pub(crate) fn keyword_parser_inner<'a, C: 'a + std::default::Default>(
             .then_ignore(blank_line_parser().repeated().at_least(1).rewind()),
     ))
     .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
-    .map_with(
-        |((((((hash_plus, key), colon), ws), value), nl), blank_lines), e| {
+    .map(
+        |((((((hash_plus, key), colon), ws), value), nl), blank_lines)| {
             let mut children = Vec::with_capacity(6 + blank_lines.len());
             children.push(crate::token!(OSK::HashPlus, hash_plus));
             children.push(crate::node!(
@@ -376,13 +377,13 @@ pub(crate) fn keyword_parser_inner<'a, C: 'a + std::default::Default>(
             match nl {
                 Some(newline) => {
                     children.push(crate::token!(OSK::Newline, newline));
-                    e.state().prev_char = newline.chars().last();
+                    // e.state().prev_char = newline.chars().last();
                 }
                 None => {}
             }
             if blank_lines.len() > 0 {
                 children.extend(blank_lines);
-                e.state().prev_char = Some('\n');
+                // e.state().prev_char = Some('\n');
             }
 
             crate::node!(OSK::Keyword, children)

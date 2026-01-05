@@ -1,7 +1,5 @@
 //! footnote reference parser
-use crate::parser::ParserState;
 use crate::parser::{MyExtra, NT, OSK};
-use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 
 // - [fn:LABEL]
@@ -49,8 +47,8 @@ pub(crate) fn footnote_reference_parser_inner<'a, C: 'a>(
                 },
             ),
         )))
-        .map_with(|(((lbracket, fn_text), colon), others), e| {
-            e.state().prev_char = Some(']');
+        .map(|(((lbracket, fn_text), colon), others)| {
+            // e.state().prev_char = Some(']');
 
             let mut children = Vec::with_capacity(3 + others.len());
             children.extend(vec![
@@ -71,7 +69,8 @@ pub(crate) fn footnote_reference_parser<'a, C: 'a>(
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     // defintion must in oneline
     let var =
-        none_of::<&str, &str, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("[]\r\n")
+        // none_of::<&str, &str, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("[]\r\n")
+        none_of("[]\r\n")        
             .repeated()
             .at_least(1)
             .to_slice();
@@ -93,7 +92,8 @@ pub(crate) fn simple_footnote_reference_parser<'a, C: 'a>()
 -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     // defintion must in oneline
     let var =
-        none_of::<&str, &str, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("[]\r\n")
+    // none_of::<&str, &str, extra::Full<Rich<'_, char>, RollbackState<ParserState>, C>>("[]\r\n")
+        none_of("[]\r\n")        
             .repeated()
             .at_least(1)
             .to_slice();

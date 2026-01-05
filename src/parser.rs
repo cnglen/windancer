@@ -1,10 +1,8 @@
 //! Parser of org-mode
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::syntax::SyntaxNode;
-use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
 use rowan::{GreenNode, GreenToken, NodeOrToken, WalkEvent};
-use smallvec;
 use std::collections::HashSet;
 use std::sync::OnceLock;
 mod common;
@@ -16,24 +14,16 @@ static RADIO_TARGETS: OnceLock<HashSet<String>> = OnceLock::new();
 
 type NT = NodeOrToken<GreenNode, GreenToken>;
 type OSK = OrgSyntaxKind;
-type MyExtra<'a, C> = extra::Full<Rich<'a, char>, RollbackState<ParserState>, C>;
+type MyState = extra::SimpleState<ParserState>;
+// type MyState = chumsky::inspector::RollbackState<ParserState>;
+type MyExtra<'a, C> = extra::Full<Rich<'a, char>, MyState, C>;
 
-// 上下文状态：当前解析的标题级别
-// - item_indent:
-// - prev_char: previous char
 #[derive(Clone, Debug)]
-pub struct ParserState {
-    prev_char: Option<char>,                     // previous char
-    item_indent: smallvec::SmallVec<[usize; 4]>, // list's nested length
-}
+pub struct ParserState {}
 
 impl Default for ParserState {
     fn default() -> Self {
-        Self {
-            // smallvec and rc
-            prev_char: None,
-            item_indent: smallvec::smallvec![],
-        }
+        Self {}
     }
 }
 
@@ -130,7 +120,7 @@ impl OrgParser {
         }
 
         let parse_result = document::document_parser()
-            .parse_with_state(input, &mut RollbackState(ParserState::default()));
+            .parse_with_state(input, &mut extra::SimpleState(ParserState::default()));
 
         if parse_result.has_errors() {
             for e in parse_result.errors() {

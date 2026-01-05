@@ -44,11 +44,7 @@ pub(crate) fn timestamp_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyEx
         )
         .then(just(">"))
         .to_slice()
-        .map_with(|s, e| {
-            e.state().prev_char = s.chars().last();
-
-            crate::node!(OSK::Timestamp, vec![crate::token!(OSK::Text, s)])
-        });
+        .map(|s| crate::node!(OSK::Timestamp, vec![crate::token!(OSK::Text, s)]));
 
     let p1b = just("[")
         .then(date.clone())
@@ -61,33 +57,21 @@ pub(crate) fn timestamp_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyEx
         )
         .then(just("]"))
         .to_slice()
-        .map_with(|s, e| {
-            e.state().prev_char = s.chars().last();
-
-            crate::node!(OSK::Timestamp, vec![crate::token!(OSK::Text, s)])
-        });
+        .map(|s| crate::node!(OSK::Timestamp, vec![crate::token!(OSK::Text, s)]));
 
     let p2a = p1a
         .clone()
         .then(just("--"))
         .then(p1a.clone())
         .to_slice()
-        .map_with(|s, e| {
-            e.state().prev_char = s.chars().last();
-
-            crate::node!(OSK::Timestamp, vec![crate::token!(OSK::Text, s)])
-        });
+        .map(|s| crate::node!(OSK::Timestamp, vec![crate::token!(OSK::Text, s)]));
 
     let p2b = p1b
         .clone()
         .then(just("--"))
         .then(p1b.clone())
         .to_slice()
-        .map_with(|s, e| {
-            e.state().prev_char = s.chars().last();
-
-            crate::node!(OSK::Timestamp, vec![crate::token!(OSK::Text, s)])
-        });
+        .map(|s| crate::node!(OSK::Timestamp, vec![crate::token!(OSK::Text, s)]));
 
     let p3a = just("<")
         .then(date.clone())
@@ -100,10 +84,7 @@ pub(crate) fn timestamp_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyEx
         )
         .then(just(">"))
         .to_slice()
-        .map_with(|s, e| {
-            e.state().prev_char = s.chars().last();
-            crate::node!(OSK::Timestamp, vec![crate::token!(OSK::Text, s)])
-        });
+        .map(|s| crate::node!(OSK::Timestamp, vec![crate::token!(OSK::Text, s)]));
 
     let p3b = just("[")
         .then(date.clone())
@@ -116,11 +97,7 @@ pub(crate) fn timestamp_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyEx
         )
         .then(just("]"))
         .to_slice()
-        .map_with(|s, e| {
-            e.state().prev_char = s.chars().last();
-
-            crate::node!(OSK::Timestamp, vec![crate::token!(OSK::Text, s)])
-        });
+        .map(|s| crate::node!(OSK::Timestamp, vec![crate::token!(OSK::Text, s)]));
 
     choice((p2a, p2b, p3a, p3b, p1a, p1b)).boxed()
     // Parser::boxed(choice((p2a, p2b, p3a, p3b, p1a, p1b)))

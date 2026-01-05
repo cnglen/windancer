@@ -1,12 +1,9 @@
 //! radio link parser
-use crate::parser::syntax::OrgLanguage;
 use crate::parser::{MyExtra, NT, OSK};
-use crate::parser::{ParserState, RADIO_TARGETS};
+use crate::parser::{RADIO_TARGETS, object};
 use chumsky::container::Seq;
 use chumsky::input::InputRef;
-use chumsky::inspector::RollbackState;
 use chumsky::prelude::*;
-use rowan::SyntaxNode;
 
 fn try_match_string<'a, C: 'a>(
     stream: &mut InputRef<'a, '_, &'a str, MyExtra<'a, C>>,
@@ -71,39 +68,10 @@ where
         .filter(|c: &char| !c.is_alphanumeric())
         .or(end().to('x'));
 
-    any()
-        .try_map_with(|_s, e| {
-            // check with PRE
-            let pre_valid = (e.state() as &mut RollbackState<ParserState>)
-                .prev_char
-                .map_or(true, |c| !c.is_alphanumeric());
-
-            match pre_valid {
-                true => Ok(()),
-                false => Err(Rich::<char>::custom(
-                    e.span(),
-                    format!(
-                        "radio_link_parser: pre_valid={pre_valid}, PRE={:?} not valid",
-                        (e.state() as &mut RollbackState<ParserState>).prev_char
-                    ),
-                )),
-            }
-        })
-        .rewind()
-        .then(radio_parser_slice_or_object)
+    object::prev_valid_parser(|c| c.map_or(true, |c| !c.is_alphanumeric()))
+        .ignore_then(radio_parser_slice_or_object)
         .then_ignore(post.rewind())
-        .map_with(|(_s, radio), e| {
-            // fixme: faster to get radio last char?
-            let root = crate::node!(OSK::Root, radio.clone());
-            let syntax_tree: SyntaxNode<OrgLanguage> =
-                SyntaxNode::new_root(root.into_node().expect("xx"));
-            let last_char = syntax_tree
-                .last_token()
-                .map_or(None, |x| x.text().chars().last());
-            (e.state() as &mut RollbackState<ParserState>).prev_char = last_char;
-
-            crate::node!(OSK::RadioLink, radio)
-        })
+        .map(|radio| crate::node!(OSK::RadioLink, radio))
         .boxed()
 }
 

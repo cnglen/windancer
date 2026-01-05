@@ -1,22 +1,23 @@
 //! Heading parser, including HeadingRow, HeadingSubtree
-use crate::parser::ParserState;
 use crate::parser::element::{drawer, planning, section};
 use crate::parser::object;
-use crate::parser::{MyExtra, NT, OSK};
-use chumsky::inspector::RollbackState;
+use crate::parser::{MyExtra, MyState, NT, OSK};
 use chumsky::prelude::*;
 
+// todo: why usize in C
+// pub(crate) fn heading_subtree_parser<'a, C:'a + std::default::Default>(
 pub(crate) fn heading_subtree_parser<'a>(
     element_parser: impl Parser<
         'a,
         &'a str,
         NT,
-        extra::Full<Rich<'a, char>, RollbackState<ParserState>, usize>,
+        // extra::Full<Rich<'a, char>, RollbackState<ParserState>, &'a str>,
+        extra::Full<Rich<'a, char>, MyState, &'a str>,
     > + Clone
     + 'a,
-    prev_level: usize,
-) -> impl Parser<'a, &'a str, NT, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
-{
+    prev_level: &'a str,
+    // ) -> impl Parser<'a, &'a str, NT, extra::Full<Rich<'a, char>, RollbackState<ParserState>, ()>> + Clone
+) -> impl Parser<'a, &'a str, NT, extra::Full<Rich<'a, char>, MyState, ()>> + Clone {
     let mut heading_subtree = Recursive::declare();
 
     let maybe_keyword_ws = choice((just("TODO"), just("DONE")))
@@ -32,9 +33,11 @@ pub(crate) fn heading_subtree_parser<'a>(
     let maybe_comment = just("COMMENT").then(object::whitespaces_g1()).or_not();
     let stars = just('*')
         .repeated()
-        .configure(|cfg, ctx: &usize| cfg.at_least(ctx + 1))
+        .configure(|cfg, ctx: &&str| cfg.at_least((*ctx).len() + 1))
         .to_slice()
-        .map(|s: &str| s.len());
+        // .map(|s: &str| s.len())
+        ;
+
     let tags = just(":")
         .then(
             any()
@@ -127,8 +130,8 @@ pub(crate) fn heading_subtree_parser<'a>(
 
                 children.push(crate::token!(
                     OSK::HeadingRowStars,
-                    "*".repeat(stars).as_str() // "*".repeat(stars.prev_heading_level).as_str(),
-                                               // "*".repeat(e.ctx().prev_heading_level).as_str(),
+                    stars // "*".repeat(stars).as_str() // "*".repeat(stars.prev_heading_level).as_str(),
+                          // "*".repeat(e.ctx().prev_heading_level).as_str(),
                 ));
 
                 children.push(crate::token!(OSK::Whitespace, whitespace1));
@@ -255,7 +258,7 @@ mod tests {
     #[test]
     fn test_heading_subtree_01() {
         let input = "* 标题1\n 测试\n** 标题1.1\n测试\n测试\ntest \n*** 1.1.1 title\nContent\n";
-        let parser = heading_subtree_parser(element_parser(), 0);
+        let parser = heading_subtree_parser(element_parser(), "");
         assert_eq!(
             get_parser_output(parser, input),
             r##"HeadingSubtree@0..75
@@ -292,7 +295,7 @@ mod tests {
     #[test]
     fn test_heading_subtree_02() {
         let input = "* 标题1\n 测试\n** 标题1.1\n测试\n测试\ntest\n*** 1.1.1 title\nContent\n* Title\nI have a dream\n"; // overflow
-        let parser = heading_subtree_parser(element_parser(), 0)
+        let parser = heading_subtree_parser(element_parser(), "")
             .repeated()
             .collect::<Vec<_>>();
         assert_eq!(

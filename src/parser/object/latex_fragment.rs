@@ -1,8 +1,6 @@
 //! Latex fragment parser
 use crate::constants::entity::ENTITYNAME_TO_HTML;
-use crate::parser::ParserState;
-use crate::parser::{MyExtra, NT, OSK};
-use chumsky::inspector::RollbackState;
+use crate::parser::{MyExtra, NT, OSK, object};
 use chumsky::prelude::*;
 
 /// Latex Frament parser
@@ -17,38 +15,33 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>()
                 just(r"("),
                 any().and_is(just(r"\)").not()).repeated().to_slice(),
                 just(r"\"),
-                just(r")")
+                just(r")"),
             )),
-
             group((
                 just("["),
                 any().and_is(just(r"\]").not()).repeated().to_slice(),
                 just(r"\"),
-                just("]")
-            ))
+                just("]"),
+            )),
         )))
-        .map_with(
-            |(backslash_open, (lb, content, backslash_close, rb)), e| {
-                (e.state() as &mut RollbackState<ParserState>).prev_char = rb.chars().last();
-
-                crate::node!(
-                    OSK::LatexFragment,
-                    vec![
-                        crate::token!(OSK::BackSlash, backslash_open),
-                        match lb {
-                            r"(" => crate::token!(OSK::LeftRoundBracket, lb),
-                            _ => crate::token!(OSK::LeftSquareBracket, lb),
-                        },
-                        crate::token!(OSK::Text, content),
-                        crate::token!(OSK::BackSlash, backslash_close),
-                        match rb {
-                            r")" => crate::token!(OSK::RightRoundBracket, rb),
-                            _ => crate::token!(OSK::RightSquareBracket, rb),
-                        }
-                    ]
-                )
-            },
-        );
+        .map(|(backslash_open, (lb, content, backslash_close, rb))| {
+            crate::node!(
+                OSK::LatexFragment,
+                vec![
+                    crate::token!(OSK::BackSlash, backslash_open),
+                    match lb {
+                        r"(" => crate::token!(OSK::LeftRoundBracket, lb),
+                        _ => crate::token!(OSK::LeftSquareBracket, lb),
+                    },
+                    crate::token!(OSK::Text, content),
+                    crate::token!(OSK::BackSlash, backslash_close),
+                    match rb {
+                        r")" => crate::token!(OSK::RightRoundBracket, rb),
+                        _ => crate::token!(OSK::RightSquareBracket, rb),
+                    }
+                ]
+            )
+        });
 
     // $$CONTENTS$$
     let t_tex_display = group((
@@ -59,21 +52,18 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>()
             .or(just('$').then(none_of('$')).to_slice())
             .repeated()
             .to_slice(),
-        just("$$")
+        just("$$"),
     ))
-        .map_with(|(dd_pre, content, dd_post), e| {
-            let state: &mut RollbackState<ParserState> = e.state();
-            state.prev_char = Some('$');
-
-            crate::node!(
-                OSK::LatexFragment,
-                vec![
-                    crate::token!(OSK::Dollar2, dd_pre),
-                    crate::token!(OSK::Text, content),
-                    crate::token!(OSK::Dollar2, dd_post),
-                ]
-            )
-        });
+    .map(|(dd_pre, content, dd_post)| {
+        crate::node!(
+            OSK::LatexFragment,
+            vec![
+                crate::token!(OSK::Dollar2, dd_pre),
+                crate::token!(OSK::Text, content),
+                crate::token!(OSK::Dollar2, dd_post),
+            ]
+        )
+    });
 
     // PRE$CHAR$POST
     // PRE$BORDER1 BODY BORDER2$POST
@@ -82,16 +72,8 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>()
         .or(end().to('x'));
     let border1 = none_of("\r\n \t.,;$");
     let border2 = none_of("\r\n \t.,$");
-    let t_tex_inline = just("$")
-        .try_map_with(|s, e| {
-            let pre_valid = (e.state() as &mut RollbackState<ParserState>)
-                .prev_char
-                .map_or(true, |e| e != '$');
-            match pre_valid {
-                false => Err(Rich::<char>::custom(e.span(), format!("prev_char is $"))),
-                true => Ok(s),
-            }
-        })
+    let t_tex_inline = object::prev_valid_parser(|c| c.map_or(true, |e| e != '$'))
+        .ignore_then(just("$"))
         .then(choice((
             // PRE$CHAR$POST must be in first order, $|pia$, $pi|$
             // $pia$, $pi$ -> $|pia$, $pi|$
@@ -111,8 +93,7 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>()
                 .then(just("$"))
                 .then_ignore(post.rewind()),
         )))
-        .map_with(|(d_open, (body, d_close)), e| {
-            (e.state() as &mut RollbackState<ParserState>).prev_char = Some('$');
+        .map(|(d_open, (body, d_close))| {
             crate::node!(
                 OSK::LatexFragment,
                 vec![
@@ -136,18 +117,18 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>()
         .then(
             choice((
                 // [CONTENTS1]
-                just("[")
-                    .then(none_of("{}[]\r\n").repeated().to_slice())
-                    .then(just(']')),
+                group((
+                    just("["),
+                    none_of("{}[]\r\n").repeated().to_slice(),
+                    just(']'),
+                )),
                 // {CONTENTS2}
-                just("{")
-                    .then(none_of("{}\r\n").repeated().to_slice())
-                    .then(just('}')),
+                group((
+                    just("{"),
+                    none_of("{}\r\n").repeated().to_slice(),
+                    just('}'),
+                )),
             ))
-            .map_with(|((open, content), close), e| {
-                (e.state() as &mut RollbackState<ParserState>).prev_char = Some(close);
-                (open, content, close)
-            })
             .or_not(),
         )
         .to_slice()

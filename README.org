@@ -24,13 +24,25 @@ see [[file:docs/status.org][status]] for status.
 #+end_src
 
 
+* change log
+
+- 2026-01-05 20:12:45: Remove Rollback state, using ctx and *inp.full_slice()* to visit PRE(previous char), parse speed is 2x (for test file: 50ms -> 26ms). Note since chumsky full_slice() API is not public, so only local version chumsky worked. See [[https://github.com/zesterer/chumsky/issues/943][chumsky issue 946]]
+
+
 * Planning
 
 - support config of subscript
 - Error: Rich maybe slow
 - use group rather then nested then?
-- input as Vec<char> for prev
-- item_ident?
+
+
+** PRE during parsing
+
+https://github.com/zesterer/chumsky/issues/943
+
+- get byte index of previous utf8 char from input, rather than using state.
+- require chumsky's have public APT to visit the raw_input, such as InputRef::full_slice() be public.
+
 
 * Reference
 

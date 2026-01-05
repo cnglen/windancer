@@ -40,7 +40,8 @@ pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<
                     )
                     .ignore_then(just(":"))
                     .ignored(),
-                element::list::simple_plain_list_parser(element::item::simple_item_parser()),
+                // element::list::simple_plain_list_parser(element::item::simple_item_parser()),
+                element::plain_list::simple_plain_list_parser(),
                 element::drawer::simple_drawer_parser(),
                 element::block::simple_center_block_parser(),
                 element::block::simple_quote_block_parser(),
