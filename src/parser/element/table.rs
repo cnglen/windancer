@@ -1,16 +1,21 @@
 //! Table parser
-use crate::parser::element::keyword::affiliated_keyword_parser;
-use crate::parser::element::keyword::simple_affiliated_keyword_parser;
+use crate::parser::config::OrgParserConfig;
 use crate::parser::object;
 use crate::parser::{MyExtra, NT, OSK};
 use chumsky::prelude::*;
 
+use crate::parser::element::keyword::{
+    affiliated_keyword_parser, simple_affiliated_keyword_parser,
+};
+
 // Any line with ‘|’ as the first non-whitespace character, then any number of table cells
-fn table_standard_row<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+fn table_standard_row<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     object::whitespaces()
         .then(just("|"))
         .then(
-            object::table_cell::table_cell_parser(object::object_in_table_cell_parser())
+            object::table_cell::table_cell_parser(object::object_in_table_cell_parser(config))
                 .repeated()
                 .collect::<Vec<_>>(),
         )
@@ -100,11 +105,12 @@ pub(crate) fn table_formula_parser<'a, C: 'a>()
 }
 
 pub(crate) fn table_parser_inner<'a, C: 'a>(
+    config: OrgParserConfig,
     affiliated_keywords_parser: impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone + 'a,
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     // fixme: standard objects without footnote reference
     let rows = table_rule_row()
-        .or(table_standard_row())
+        .or(table_standard_row(config))
         .repeated()
         .at_least(1)
         .collect::<Vec<_>>();
@@ -128,20 +134,25 @@ pub(crate) fn table_parser_inner<'a, C: 'a>(
         .boxed()
 }
 
-pub(crate) fn table_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    let affiliated_keywords_parser = affiliated_keyword_parser().repeated().collect::<Vec<_>>();
-
-    table_parser_inner(affiliated_keywords_parser)
-}
-
-// used for negative lookahead
-pub(crate) fn simple_table_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
-    let affiliated_keywords_parser = simple_affiliated_keyword_parser()
+pub(crate) fn table_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    let affiliated_keywords_parser = affiliated_keyword_parser(config.clone())
         .repeated()
         .collect::<Vec<_>>();
 
-    table_parser_inner(affiliated_keywords_parser).ignored()
+    table_parser_inner(config, affiliated_keywords_parser)
+}
+
+// used for negative lookahead
+pub(crate) fn simple_table_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
+    let affiliated_keywords_parser = simple_affiliated_keyword_parser(config.clone())
+        .repeated()
+        .collect::<Vec<_>>();
+
+    table_parser_inner(config, affiliated_keywords_parser).ignored()
 }
 
 #[cfg(test)]
@@ -149,6 +160,8 @@ mod tests {
     use super::*;
     // use crate::parser::ParserState;
     use crate::parser::SyntaxNode;
+    use crate::parser::config::OrgParserConfig;
+
     // use chumsky::inspector::RollbackState;
 
     #[test]
@@ -160,7 +173,8 @@ mod tests {
 "##;
         // let mut state = RollbackState(ParserState::default());
         // let t = table_parser::<()>().parse_with_state(input, &mut state);
-        let t = table_parser::<()>().parse(input);
+        // let t = table_parser::<()>().parse(input);
+        let t = table_parser::<()>(OrgParserConfig::default()).parse(input);
         let syntax_tree = SyntaxNode::new_root(t.into_result().unwrap().into_node().expect("xxx"));
 
         println!("{:#?}", syntax_tree);

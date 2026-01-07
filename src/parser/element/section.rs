@@ -38,6 +38,7 @@ pub(crate) fn section_parser<'a, C: 'a>(
 mod tests {
     use super::*;
     use crate::parser::common::get_parser_output;
+    use crate::parser::config::OrgParserConfig;
     use crate::parser::element::element_in_section_parser;
     use pretty_assertions::assert_eq;
 
@@ -47,14 +48,14 @@ mod tests {
         let input = "section content
 * heading
 ";
-        let parser = section_parser(element_in_section_parser::<()>());
+        let parser = section_parser(element_in_section_parser::<()>(OrgParserConfig::default()));
         get_parser_output(parser, input);
     }
 
     #[test]
     fn test_section_02_fakedtitle() {
         let input = "0123456789 * faked_title";
-        let parser = section_parser(element_in_section_parser::<()>());
+        let parser = section_parser(element_in_section_parser::<()>(OrgParserConfig::default()));
         assert_eq!(
             get_parser_output(parser, input),
             r##"Section@0..24
@@ -71,14 +72,14 @@ mod tests {
     #[should_panic]
     fn test_section_03_vs_heading_subtree() {
         let input = "* title\n asf\n";
-        let parser = section_parser(element_in_section_parser::<()>());
+        let parser = section_parser(element_in_section_parser::<()>(OrgParserConfig::default()));
         get_parser_output(parser, input);
     }
 
     #[test]
     fn test_section_04_with_end() {
         let input = "0123456789";
-        let parser = section_parser(element_in_section_parser::<()>());
+        let parser = section_parser(element_in_section_parser::<()>(OrgParserConfig::default()));
         assert_eq!(
             get_parser_output(parser, input),
             r##"Section@0..10
@@ -91,7 +92,7 @@ mod tests {
     #[test]
     fn test_section_05_with_newline_end() {
         let input = "0123456789\n";
-        let parser = section_parser(element_in_section_parser::<()>());
+        let parser = section_parser(element_in_section_parser::<()>(OrgParserConfig::default()));
         assert_eq!(
             get_parser_output(parser, input),
             r##"Section@0..11
@@ -104,7 +105,7 @@ mod tests {
     #[test]
     fn test_section_06_with_newline_end() {
         let input = "0123456789\nfoo\nbar\nhello\nnice\nto meet you\n\n";
-        let parser = section_parser(element_in_section_parser::<()>());
+        let parser = section_parser(element_in_section_parser::<()>(OrgParserConfig::default()));
         assert_eq!(
             get_parser_output(parser, input),
             r##"Section@0..43
@@ -119,7 +120,7 @@ mod tests {
     fn test_section_07_with_newline_end() {
         let input = "SCHEDULED: <1999-03-31 Wed>
 "; // planning is not allowed to be in section
-        let parser = section_parser(element_in_section_parser::<()>());
+        let parser = section_parser(element_in_section_parser::<()>(OrgParserConfig::default()));
         assert_eq!(
             get_parser_output(parser, input),
             r##"Section@0..28

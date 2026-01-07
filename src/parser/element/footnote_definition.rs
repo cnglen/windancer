@@ -1,4 +1,5 @@
 //! Footnote definition parser
+use crate::parser::config::OrgParserConfig;
 use crate::parser::{MyExtra, NT, OSK};
 use crate::parser::{element, object};
 use chumsky::prelude::*;
@@ -42,9 +43,10 @@ pub(crate) fn footnote_definition_inner<'a, C: 'a>(
 }
 
 pub(crate) fn footnote_definition_parser<'a, C: 'a>(
+    config: OrgParserConfig,
     element_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    let affiliated_keywords_parser = element::keyword::affiliated_keyword_parser()
+    let affiliated_keywords_parser = element::keyword::affiliated_keyword_parser(config)
         .repeated()
         .collect::<Vec<_>>();
 
@@ -72,9 +74,10 @@ pub(crate) fn footnote_definition_parser<'a, C: 'a>(
 }
 
 // only used in lookahead
-pub(crate) fn simple_footnote_definition_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
-    let affiliated_keywords_parser = element::keyword::simple_affiliated_keyword_parser()
+pub(crate) fn simple_footnote_definition_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
+    let affiliated_keywords_parser = element::keyword::simple_affiliated_keyword_parser(config)
         .repeated()
         .collect::<Vec<_>>();
 
@@ -102,6 +105,7 @@ pub(crate) fn simple_footnote_definition_parser<'a, C: 'a>()
 mod tests {
     use super::*;
     use crate::parser::common::get_parser_output;
+    use crate::parser::config::OrgParserConfig;
     use crate::parser::element;
     use pretty_assertions::assert_eq;
 
@@ -110,7 +114,10 @@ mod tests {
         let input = "[fn:1] A short footnote.";
         assert_eq!(
             get_parser_output(
-                footnote_definition_parser(element::element_parser::<()>()),
+                footnote_definition_parser(
+                    OrgParserConfig::default(),
+                    element::element_parser::<()>(OrgParserConfig::default())
+                ),
                 input
             ),
             r##"FootnoteDefinition@0..24
@@ -147,7 +154,10 @@ mod tests {
 "##;
         assert_eq!(
             get_parser_output(
-                footnote_definition_parser(element::element_parser::<()>()),
+                footnote_definition_parser(
+                    OrgParserConfig::default(),
+                    element::element_parser::<()>(OrgParserConfig::default())
+                ),
                 input
             ),
             expected_output
@@ -161,7 +171,10 @@ mod tests {
 [fn:3] This is a longer footnote.
 ";
         get_parser_output(
-            footnote_definition_parser(element::element_parser::<()>()),
+            footnote_definition_parser(
+                OrgParserConfig::default(),
+                element::element_parser::<()>(OrgParserConfig::default()),
+            ),
             input,
         );
     }
@@ -192,7 +205,10 @@ mod tests {
 "##;
         assert_eq!(
             get_parser_output(
-                footnote_definition_parser(element::element_parser::<()>()),
+                footnote_definition_parser(
+                    OrgParserConfig::default(),
+                    element::element_parser::<()>(OrgParserConfig::default())
+                ),
                 input
             ),
             expected_output

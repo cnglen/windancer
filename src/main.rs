@@ -10,7 +10,7 @@ mod renderer;
 
 use crate::ast::builder::AstBuilder;
 use crate::parser::syntax::SyntaxToken;
-use crate::parser::{OrgConfig, OrgParser};
+use crate::parser::{OrgParser, config::OrgParserConfig};
 use crate::renderer::Render;
 use crate::renderer::html::{HtmlRenderer, RenderConfig};
 use orgize::{Org, rowan::ast::AstNode};
@@ -40,9 +40,10 @@ fn main() {
     let f_org = args.f_org.clone();
     let input = &fs::read_to_string(&f_org).expect(&format!("can't read from {}", args.f_org));
 
-    let org_config = OrgConfig::default();
+    let org_config = OrgParserConfig::default();
     let mut parser = OrgParser::new(org_config);
     let parser_output = parser.parse(input);
+    let green_tree = parser_output.green();
     let syntax_tree = parser_output.syntax();
     let ast_builder = AstBuilder::new();
     let ast = ast_builder.build(&syntax_tree).unwrap();
@@ -63,10 +64,13 @@ fn main() {
             println!("  - AST: {f_ast}");
         }
         _ => {
+            let f_green_tree = f_org.replace(".org", "_green_tree.json");
             let f_syntax_tree = f_org.replace(".org", "_syntax_tree.json");
             let f_ast = f_org.replace(".org", "_ast.json");
+            fs::write(&f_green_tree, format!("{:#?}", green_tree));
             fs::write(&f_syntax_tree, format!("{:#?}", syntax_tree));
             fs::write(&f_ast, format!("{:#?}", ast));
+            println!("  - Green tree: {f_green_tree}");
             println!("  - Syntax tree: {f_syntax_tree}");
             println!("  - AST: {f_ast}");
         }

@@ -64,6 +64,7 @@ pub(crate) fn entity_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra
 mod tests {
     use super::*;
     use crate::parser::common::{get_parser_output, get_parsers_output};
+    use crate::parser::config::OrgParserConfig;
     use crate::parser::object;
     use pretty_assertions::assert_eq;
 
@@ -79,7 +80,10 @@ mod tests {
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser::<()>(), r"\alpha foo \beta"),
+            get_parsers_output(
+                object::objects_parser::<()>(OrgParserConfig::default()),
+                r"\alpha foo \beta"
+            ),
             format!(
                 r###"Root@0..16
   Entity@0..6
@@ -95,7 +99,7 @@ mod tests {
 
         assert_eq!(
             get_parsers_output(
-                object::objects_parser::<()>(),
+                object::objects_parser::<()>(OrgParserConfig::default()),
                 r"\alpha
 "
             ),
@@ -110,7 +114,10 @@ mod tests {
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser::<()>(), r"\alphafoo"),
+            get_parsers_output(
+                object::objects_parser::<()>(OrgParserConfig::default()),
+                r"\alphafoo"
+            ),
             format!(
                 r###"Root@0..9
   LatexFragment@0..9
@@ -134,7 +141,10 @@ mod tests {
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser::<()>(), r"\pi{}d"),
+            get_parsers_output(
+                object::objects_parser::<()>(OrgParserConfig::default()),
+                r"\pi{}d"
+            ),
             r###"Root@0..6
   Entity@0..5
     BackSlash@0..1 "\\"
@@ -146,7 +156,10 @@ mod tests {
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser::<()>(), r"\pid"),
+            get_parsers_output(
+                object::objects_parser::<()>(OrgParserConfig::default()),
+                r"\pid"
+            ),
             r###"Root@0..4
   LatexFragment@0..4
     Text@0..4 "\\pid"
@@ -175,7 +188,10 @@ mod tests {
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser::<()>(), r"\_          \n"),
+            get_parsers_output(
+                object::objects_parser::<()>(OrgParserConfig::default()),
+                r"\_          \n"
+            ),
             r###"Root@0..14
   Entity@0..12
     BackSlash@0..1 "\\"
@@ -190,7 +206,10 @@ mod tests {
     #[test]
     fn test_04_bad_entity() {
         assert_eq!(
-            get_parsers_output(object::objects_parser::<()>(), r"\alphA \deltab "),
+            get_parsers_output(
+                object::objects_parser::<()>(OrgParserConfig::default()),
+                r"\alphA \deltab "
+            ),
             r###"Root@0..15
   LatexFragment@0..6
     Text@0..6 "\\alphA"

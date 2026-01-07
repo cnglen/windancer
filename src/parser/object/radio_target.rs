@@ -80,13 +80,17 @@ pub(crate) fn simple_radio_target_parser<'a, C: 'a>()
 
 #[cfg(test)]
 mod tests {
+    use crate::parser::config::OrgParserConfig;
     use crate::parser::{common::get_parsers_output, object};
     use pretty_assertions::assert_eq;
 
     #[test]
     fn test_radio_target_01() {
         assert_eq!(
-            get_parsers_output(object::objects_parser::<()>(), "<<<target>>>"),
+            get_parsers_output(
+                object::objects_parser::<()>(OrgParserConfig::default()),
+                "<<<target>>>"
+            ),
             r##"Root@0..12
   RadioTarget@0..12
     LeftAngleBracket3@0..3 "<<<"
@@ -99,7 +103,10 @@ mod tests {
     #[test]
     fn test_radio_target_02() {
         assert_eq!(
-            get_parsers_output(object::objects_parser::<()>(), "<<<tar\nget>>>"),
+            get_parsers_output(
+                object::objects_parser::<()>(OrgParserConfig::default()),
+                "<<<tar\nget>>>"
+            ),
             r##"Root@0..13
   Text@0..13 "<<<tar\nget>>>"
 "##
@@ -109,7 +116,10 @@ mod tests {
     #[test]
     fn test_radio_target_03() {
         assert_eq!(
-            get_parsers_output(object::objects_parser::<()>(), "<<< target>>>"),
+            get_parsers_output(
+                object::objects_parser::<()>(OrgParserConfig::default()),
+                "<<< target>>>"
+            ),
             r##"Root@0..13
   Text@0..13 "<<< target>>>"
 "##,
@@ -120,7 +130,10 @@ mod tests {
     #[test]
     fn test_radio_target_04() {
         assert_eq!(
-            get_parsers_output(object::objects_parser::<()>(), "<<<target >>>"),
+            get_parsers_output(
+                object::objects_parser::<()>(OrgParserConfig::default()),
+                "<<<target >>>"
+            ),
             r##"Root@0..13
   Text@0..13 "<<<target >>>"
 "##,
@@ -131,7 +144,10 @@ mod tests {
     #[test]
     fn test_radio_target_05() {
         assert_eq!(
-            get_parsers_output(object::objects_parser::<()>(), "<<<t>>>"),
+            get_parsers_output(
+                object::objects_parser::<()>(OrgParserConfig::default()),
+                "<<<t>>>"
+            ),
             r##"Root@0..7
   RadioTarget@0..7
     LeftAngleBracket3@0..3 "<<<"
@@ -145,7 +161,10 @@ mod tests {
     #[test]
     fn test_radio_target_06() {
         assert_eq!(
-            get_parsers_output(object::objects_parser::<()>(), r"<<<\alpha $a+b$ foo>>>"),
+            get_parsers_output(
+                object::objects_parser::<()>(OrgParserConfig::default()),
+                r"<<<\alpha $a+b$ foo>>>"
+            ),
             r##"Root@0..22
   RadioTarget@0..22
     LeftAngleBracket3@0..3 "<<<"

@@ -1,4 +1,5 @@
 //! latex environment parser
+use crate::parser::config::OrgParserConfig;
 use crate::parser::{MyExtra, NT, OSK};
 use crate::parser::{element, object};
 use chumsky::prelude::*;
@@ -162,18 +163,23 @@ fn latex_environment_parser_inner<'a, C: 'a>(
         .boxed()
 }
 
-pub(crate) fn latex_environment_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    let affiliated_keywords_parser = element::keyword::affiliated_keyword_parser()
+pub(crate) fn latex_environment_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    // let affiliated_keywords_parser = element::keyword::affiliated_keyword_parser()
+    //     .repeated()
+    //     .collect::<Vec<_>>();
+    let affiliated_keywords_parser = element::keyword::affiliated_keyword_parser(config)
         .repeated()
         .collect::<Vec<_>>();
 
     latex_environment_parser_inner(affiliated_keywords_parser)
 }
 
-pub(crate) fn simple_latex_environment_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
-    let affiliated_keywords_parser = element::keyword::simple_affiliated_keyword_parser()
+pub(crate) fn simple_latex_environment_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
+    let affiliated_keywords_parser = element::keyword::simple_affiliated_keyword_parser(config)
         .repeated()
         .collect::<Vec<_>>();
 
@@ -183,6 +189,7 @@ pub(crate) fn simple_latex_environment_parser<'a, C: 'a>()
 #[cfg(test)]
 mod tests {
     use crate::parser::common::get_parser_output;
+    use crate::parser::config::OrgParserConfig;
     use crate::parser::element;
     use pretty_assertions::assert_eq;
 
@@ -211,7 +218,8 @@ mod tests {
     Newline@64..65 "\n"
 "##;
 
-        let parser = element::latex_environment::latex_environment_parser::<()>();
+        let parser =
+            element::latex_environment::latex_environment_parser::<()>(OrgParserConfig::default());
         assert_eq!(get_parser_output(parser, input), expected_output);
     }
 
@@ -251,7 +259,8 @@ mod tests {
     Newline@117..118 "\n"
 "##;
 
-        let parser = element::latex_environment::latex_environment_parser::<()>();
+        let parser =
+            element::latex_environment::latex_environment_parser::<()>(OrgParserConfig::default());
         assert_eq!(get_parser_output(parser, input), expected_output);
     }
 }

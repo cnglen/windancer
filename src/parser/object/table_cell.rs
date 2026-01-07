@@ -41,13 +41,16 @@ pub(crate) fn table_cell_parser<'a, C: 'a>(
 mod tests {
     use super::*;
     use crate::parser::common::get_parser_output;
+    use crate::parser::config::OrgParserConfig;
     use pretty_assertions::assert_eq;
 
     #[test]
     fn test_table_cell_01() {
         assert_eq!(
             get_parser_output(
-                table_cell_parser(object::object_in_table_cell_parser::<()>()),
+                table_cell_parser(object::object_in_table_cell_parser::<()>(
+                    OrgParserConfig::default()
+                )),
                 " foo |"
             ),
             r##"TableCell@0..6
@@ -62,7 +65,9 @@ mod tests {
     fn test_table_cell_02() {
         assert_eq!(
             get_parser_output(
-                table_cell_parser(object::object_in_table_cell_parser::<()>()),
+                table_cell_parser(object::object_in_table_cell_parser::<()>(
+                    OrgParserConfig::default()
+                )),
                 " |"
             ),
             r##"TableCell@0..2
@@ -76,7 +81,9 @@ mod tests {
     fn test_table_cell_03() {
         assert_eq!(
             get_parser_output(
-                table_cell_parser(object::object_in_table_cell_parser::<()>()),
+                table_cell_parser(object::object_in_table_cell_parser::<()>(
+                    OrgParserConfig::default()
+                )),
                 "|"
             ),
             r##"TableCell@0..1
@@ -89,7 +96,9 @@ mod tests {
     fn test_table_cell_04() {
         assert_eq!(
             get_parser_output(
-                table_cell_parser(object::object_in_table_cell_parser::<()>()),
+                table_cell_parser(object::object_in_table_cell_parser::<()>(
+                    OrgParserConfig::default()
+                )),
                 "foo  |"
             ),
             r##"TableCell@0..6
@@ -104,7 +113,9 @@ mod tests {
     fn test_table_cell_05() {
         assert_eq!(
             get_parser_output(
-                table_cell_parser(object::object_in_table_cell_parser::<()>()),
+                table_cell_parser(object::object_in_table_cell_parser::<()>(
+                    OrgParserConfig::default()
+                )),
                 "  foo|"
             ),
             r##"TableCell@0..6
@@ -118,7 +129,9 @@ mod tests {
     fn test_table_cell_06() {
         assert_eq!(
             get_parser_output(
-                table_cell_parser(object::object_in_table_cell_parser::<()>()),
+                table_cell_parser(object::object_in_table_cell_parser::<()>(
+                    OrgParserConfig::default()
+                )),
                 "foo|"
             ),
             r##"TableCell@0..4
@@ -133,7 +146,9 @@ mod tests {
     fn test_table_cell_07() {
         assert_eq!(
             get_parser_output(
-                table_cell_parser(object::object_in_table_cell_parser::<()>()),
+                table_cell_parser(object::object_in_table_cell_parser::<()>(
+                    OrgParserConfig::default()
+                )),
                 "foo"
             ),
             r##"TableCell@0..6

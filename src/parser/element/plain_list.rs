@@ -1,4 +1,5 @@
 //! plain list parser
+use crate::parser::config::OrgParserConfig;
 use crate::parser::{MyExtra, NT, OSK};
 use crate::parser::{element, object};
 use chumsky::prelude::*;
@@ -289,18 +290,23 @@ fn plain_list_parser_inner<'a, C: 'a + std::default::Default>(
 }
 
 pub(crate) fn plain_list_parser<'a, C: 'a + std::default::Default>(
+    config: OrgParserConfig,
     element_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    let affiliated_keywords_parser = element::keyword::affiliated_keyword_parser()
+    let affiliated_keywords_parser = element::keyword::affiliated_keyword_parser(config)
         .repeated()
         .collect::<Vec<_>>();
 
     plain_list_parser_inner(affiliated_keywords_parser, element_parser, false)
 }
 
-pub(crate) fn simple_plain_list_parser<'a, C: 'a + std::default::Default>()
--> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
-    let affiliated_keywords_parser = element::keyword::simple_affiliated_keyword_parser()
+pub(crate) fn simple_plain_list_parser<'a, C: 'a + std::default::Default>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
+    // let affiliated_keywords_parser = element::keyword::simple_affiliated_keyword_parser()
+    //     .repeated()
+    //     .collect::<Vec<_>>();
+    let affiliated_keywords_parser = element::keyword::simple_affiliated_keyword_parser(config)
         .repeated()
         .collect::<Vec<_>>();
 
@@ -312,6 +318,7 @@ pub(crate) fn simple_plain_list_parser<'a, C: 'a + std::default::Default>()
 #[cfg(test)]
 mod tests {
     use crate::parser::common::get_parser_output;
+    use crate::parser::config::OrgParserConfig;
     use crate::parser::element;
     use pretty_assertions::assert_eq;
 
@@ -358,7 +365,10 @@ mod tests {
         Text@22..27 "four\n"
 "##;
 
-        let list_parser = element::plain_list::plain_list_parser(element::element_parser::<&str>());
+        let list_parser = element::plain_list::plain_list_parser(
+            OrgParserConfig::default(),
+            element::element_parser::<&str>(OrgParserConfig::default()),
+        );
         assert_eq!(
             get_parser_output::<&str>(list_parser, input),
             expected_output
@@ -410,7 +420,10 @@ mod tests {
       Paragraph@24..29
         Text@24..29 "four\n"
 "##;
-        let list_parser = element::plain_list::plain_list_parser(element::element_parser::<&str>());
+        let list_parser = element::plain_list::plain_list_parser(
+            OrgParserConfig::default(),
+            element::element_parser::<&str>(OrgParserConfig::default()),
+        );
         assert_eq!(
             get_parser_output::<&str>(list_parser, input),
             expected_output
@@ -427,7 +440,10 @@ mod tests {
 - One again
 - Two again
 "##;
-        let list_parser = element::plain_list::plain_list_parser(element::element_parser::<&str>());
+        let list_parser = element::plain_list::plain_list_parser(
+            OrgParserConfig::default(),
+            element::element_parser::<&str>(OrgParserConfig::default()),
+        );
         get_parser_output::<&str>(list_parser, input);
     }
 
@@ -466,7 +482,10 @@ mod tests {
   BlankLine@45..46 "\n"
   BlankLine@46..47 "\n"
 "##;
-        let list_parser = element::plain_list::plain_list_parser(element::element_parser::<&str>());
+        let list_parser = element::plain_list::plain_list_parser(
+            OrgParserConfig::default(),
+            element::element_parser::<&str>(OrgParserConfig::default()),
+        );
         assert_eq!(
             get_parser_output::<&str>(list_parser, input),
             expected_output
@@ -477,7 +496,10 @@ mod tests {
     fn test_list_05() {
         let input = r##"- one
      - two"##;
-        let list_parser = element::plain_list::plain_list_parser(element::element_parser::<&str>());
+        let list_parser = element::plain_list::plain_list_parser(
+            OrgParserConfig::default(),
+            element::element_parser::<&str>(OrgParserConfig::default()),
+        );
         assert_eq!(
             get_parser_output::<&str>(list_parser, input),
             r##"List@0..16
@@ -508,7 +530,10 @@ mod tests {
         let input = r##" - one
     - two
     "##;
-        let list_parser = element::plain_list::plain_list_parser(element::element_parser::<&str>());
+        let list_parser = element::plain_list::plain_list_parser(
+            OrgParserConfig::default(),
+            element::element_parser::<&str>(OrgParserConfig::default()),
+        );
         assert_eq!(
             get_parser_output::<&str>(list_parser, input),
             r#"List@0..21
@@ -543,7 +568,10 @@ mod tests {
 - one
 - two
     "##;
-        let list_parser = element::plain_list::plain_list_parser(element::element_parser::<&str>());
+        let list_parser = element::plain_list::plain_list_parser(
+            OrgParserConfig::default(),
+            element::element_parser::<&str>(OrgParserConfig::default()),
+        );
         assert_eq!(
             get_parser_output::<&str>(list_parser, input),
             r##"List@0..55

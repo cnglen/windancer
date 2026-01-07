@@ -1,4 +1,5 @@
 //! Heading parser, including HeadingRow, HeadingSubtree
+use crate::parser::config::OrgTodoKeywords;
 use crate::parser::element::{drawer, planning, section};
 use crate::parser::object;
 use crate::parser::{MyExtra, MyState, NT, OSK};
@@ -7,6 +8,7 @@ use chumsky::prelude::*;
 // todo: why usize in C
 // pub(crate) fn heading_subtree_parser<'a, C:'a + std::default::Default>(
 pub(crate) fn heading_subtree_parser<'a>(
+    config: OrgTodoKeywords,
     element_parser: impl Parser<
         'a,
         &'a str,
@@ -20,9 +22,13 @@ pub(crate) fn heading_subtree_parser<'a>(
 ) -> impl Parser<'a, &'a str, NT, extra::Full<Rich<'a, char>, MyState, ()>> + Clone {
     let mut heading_subtree = Recursive::declare();
 
-    let maybe_keyword_ws = choice((just("TODO"), just("DONE")))
-        .then(object::whitespaces_g1())
-        .or_not();
+    let maybe_keyword_ws = choice((
+        object::keyword_cs_parser_v2(config.requiring_action),
+        object::keyword_cs_parser_v2(config.no_further_action),
+    ))
+    // let maybe_keyword_ws = choice((just("TODO"), just("DONE")))
+    .then(object::whitespaces_g1())
+    .or_not();
     let maybe_priority = just("[#")
         .then(one_of(
             "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
@@ -252,13 +258,18 @@ pub(crate) fn simple_heading_row_parser<'a, C: 'a>()
 mod tests {
     use super::*;
     use crate::parser::common::{get_parser_output, get_parsers_output};
+    use crate::parser::config::OrgParserConfig;
     use crate::parser::element::element_parser;
     use pretty_assertions::assert_eq;
 
     #[test]
     fn test_heading_subtree_01() {
         let input = "* 标题1\n 测试\n** 标题1.1\n测试\n测试\ntest \n*** 1.1.1 title\nContent\n";
-        let parser = heading_subtree_parser(element_parser(), "");
+        let parser = heading_subtree_parser(
+            OrgParserConfig::default().org_todo_keywords,
+            element_parser(OrgParserConfig::default()),
+            "",
+        );
         assert_eq!(
             get_parser_output(parser, input),
             r##"HeadingSubtree@0..75
@@ -295,9 +306,13 @@ mod tests {
     #[test]
     fn test_heading_subtree_02() {
         let input = "* 标题1\n 测试\n** 标题1.1\n测试\n测试\ntest\n*** 1.1.1 title\nContent\n* Title\nI have a dream\n"; // overflow
-        let parser = heading_subtree_parser(element_parser(), "")
-            .repeated()
-            .collect::<Vec<_>>();
+        let parser = heading_subtree_parser(
+            OrgParserConfig::default().org_todo_keywords,
+            element_parser(OrgParserConfig::default()),
+            "",
+        )
+        .repeated()
+        .collect::<Vec<_>>();
         assert_eq!(
             get_parsers_output(parser, input),
             r##"Root@0..97

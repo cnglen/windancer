@@ -4,7 +4,7 @@ use orgize::{Org, rowan::ast::AstNode};
 use std::fs;
 use std::time::Instant;
 use windancer::ast::builder::AstBuilder;
-use windancer::parser::{OrgConfig, OrgParser};
+use windancer::parser::{OrgParser, config::OrgParserConfig};
 use windancer::renderer::html::{HtmlRenderer, RenderConfig};
 
 fn main() -> std::io::Result<()> {
@@ -28,7 +28,7 @@ fn main() -> std::io::Result<()> {
     // windancer
     // - parser
     let start = Instant::now();
-    let org_config = OrgConfig::default();
+    let org_config = OrgParserConfig::default();
     let mut parser = OrgParser::new(org_config);
     let parser_output = parser.parse(input);
     let syntax_tree = parser_output.syntax();

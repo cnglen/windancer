@@ -1,5 +1,5 @@
 //! Paragraph parser
-use crate::parser::element::keyword;
+use crate::parser::config::OrgParserConfig;
 use crate::parser::{MyExtra, NT, OSK};
 use crate::parser::{element, object};
 use chumsky::prelude::*;
@@ -7,8 +7,9 @@ use chumsky::prelude::*;
 // non_paragraph_parser: used for negative lookahead
 pub(crate) fn paragraph_parser<'a, C: 'a + std::default::Default>(
     non_paragraph_parser: impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone + 'a,
+    config: OrgParserConfig,
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    paragraph_parser_with_at_least_n_affiliated_keywords(non_paragraph_parser, 0)
+    paragraph_parser_with_at_least_n_affiliated_keywords(non_paragraph_parser, 0, config)
 }
 
 pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<
@@ -17,8 +18,9 @@ pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<
 >(
     non_paragraph_parser: impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone + 'a,
     n: usize,
+    config: OrgParserConfig,
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    let affiliated_keywords = keyword::affiliated_keyword_parser()
+    let affiliated_keywords = element::keyword::affiliated_keyword_parser(config.clone())
         .repeated()
         .at_least(n)
         .collect::<Vec<_>>();
@@ -30,8 +32,8 @@ pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<
             choice((
                 object::blank_line_parser().ignored(),
                 element::heading::simple_heading_row_parser().ignored(), // heading_tree is recursive, we use simple heading row for lookahead to avoid stackoverflow
-                element::table::simple_table_parser(),
-                element::footnote_definition::simple_footnote_definition_parser(),
+                element::table::simple_table_parser(config.clone()),
+                element::footnote_definition::simple_footnote_definition_parser(config.clone()),
                 just("#+")
                     .ignore_then(
                         one_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_[]")
@@ -41,18 +43,18 @@ pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<
                     .ignore_then(just(":"))
                     .ignored(),
                 // element::list::simple_plain_list_parser(element::item::simple_item_parser()),
-                element::plain_list::simple_plain_list_parser(),
-                element::drawer::simple_drawer_parser(),
-                element::block::simple_center_block_parser(),
-                element::block::simple_quote_block_parser(),
-                element::block::simple_special_block_parser(),
-                element::block::simple_verse_block_parser(),
-                element::latex_environment::simple_latex_environment_parser(),
-                element::block::simple_src_block_parser(),
-                element::block::simple_export_block_parser(),
-                element::block::simple_example_block_parser(),
-                element::block::simple_comment_block_parser(),
-                element::fixed_width::simple_fixed_width_parser(),
+                element::plain_list::simple_plain_list_parser(config.clone()),
+                element::drawer::simple_drawer_parser(config.clone()),
+                element::block::simple_center_block_parser(config.clone()),
+                element::block::simple_quote_block_parser(config.clone()),
+                element::block::simple_special_block_parser(config.clone()),
+                element::block::simple_verse_block_parser(config.clone()),
+                element::latex_environment::simple_latex_environment_parser(config.clone()),
+                element::block::simple_src_block_parser(config.clone()),
+                element::block::simple_export_block_parser(config.clone()),
+                element::block::simple_example_block_parser(config.clone()),
+                element::block::simple_comment_block_parser(config.clone()),
+                element::fixed_width::simple_fixed_width_parser(config.clone()),
                 element::horizontal_rule::horizontal_rule_parser().ignored(),
                 element::comment::comment_parser().ignored(),
                 non_paragraph_parser.ignored(), // other element, this is necessary to find the end of paragraph even thougn paragraph is the last element of choice
@@ -64,7 +66,7 @@ pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<
         .to_slice();
 
     affiliated_keywords
-        .then(object::standard_set_objects_parser().nested_in(inner))
+        .then(object::standard_set_objects_parser(config.clone()).nested_in(inner))
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
         .map_with(|((keywords, lines), blanklines), _e| {
             let mut children = Vec::with_capacity(keywords.len() + lines.len() + blanklines.len());
@@ -79,6 +81,7 @@ pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::parser::config::OrgParserConfig;
     use crate::parser::{common::get_parser_output, common::get_parsers_output, element};
     use pretty_assertions::assert_eq;
 
@@ -88,7 +91,10 @@ mod tests {
 foo
 bar
 "##;
-        let parser = paragraph_parser(element::element_in_paragraph_parser::<()>());
+        let parser = paragraph_parser(
+            element::element_in_paragraph_parser::<()>(OrgParserConfig::default()),
+            OrgParserConfig::default(),
+        );
         assert_eq!(
             get_parser_output(parser, input),
             r##"Paragraph@0..18
@@ -105,7 +111,10 @@ bar
 abc
 :end:
 "##;
-        let parser = paragraph_parser(element::element_in_paragraph_parser::<()>());
+        let parser = paragraph_parser(
+            element::element_in_paragraph_parser::<()>(OrgParserConfig::default()),
+            OrgParserConfig::default(),
+        );
         get_parser_output(parser, input);
     }
 
@@ -116,7 +125,10 @@ abc
 #+begin_src python
 #+end_src
 "##;
-        let parser = paragraph_parser(element::element_in_paragraph_parser::<()>());
+        let parser = paragraph_parser(
+            element::element_in_paragraph_parser::<()>(OrgParserConfig::default()),
+            OrgParserConfig::default(),
+        );
         get_parser_output(parser, input);
     }
 
@@ -127,7 +139,10 @@ abc
 - a
 - b
 "##;
-        let parser = paragraph_parser(element::element_in_paragraph_parser::<()>());
+        let parser = paragraph_parser(
+            element::element_in_paragraph_parser::<()>(OrgParserConfig::default()),
+            OrgParserConfig::default(),
+        );
         get_parser_output(parser, input);
     }
 
@@ -136,8 +151,10 @@ abc
         let input = r##"foo
 bar
 "##;
-        let parser = paragraph_parser(element::element_in_paragraph_parser::<()>());
-
+        let parser = paragraph_parser(
+            element::element_in_paragraph_parser::<()>(OrgParserConfig::default()),
+            OrgParserConfig::default(),
+        );
         assert_eq!(
             get_parser_output(parser, input),
             r##"Paragraph@0..8
@@ -149,7 +166,10 @@ bar
     #[test]
     fn test_paragraph_05() {
         let input = r##"paragraph"##;
-        let parser = paragraph_parser(element::element_in_paragraph_parser::<()>());
+        let parser = paragraph_parser(
+            element::element_in_paragraph_parser::<()>(OrgParserConfig::default()),
+            OrgParserConfig::default(),
+        );
         assert_eq!(
             get_parser_output(parser, input),
             r##"Paragraph@0..9
@@ -162,7 +182,10 @@ bar
     fn test_paragraph_06() {
         let input = r##"paragraph
 "##;
-        let parser = paragraph_parser(element::element_in_paragraph_parser::<()>());
+        let parser = paragraph_parser(
+            element::element_in_paragraph_parser::<()>(OrgParserConfig::default()),
+            OrgParserConfig::default(),
+        );
         assert_eq!(
             get_parser_output(parser, input),
             r##"Paragraph@0..10
@@ -187,7 +210,7 @@ center
 
         assert_eq!(
             get_parsers_output(
-                element::element_parser::<()>()
+                element::element_parser::<()>(OrgParserConfig::default())
                     .repeated()
                     .collect::<Vec<_>>(),
                 input
@@ -220,7 +243,7 @@ example
 "##;
         assert_eq!(
             get_parsers_output(
-                element::element_parser::<()>()
+                element::element_parser::<()>(OrgParserConfig::default())
                     .repeated()
                     .collect::<Vec<_>>(),
                 input
@@ -248,7 +271,10 @@ example
         let input = r##"#+caption: export block test
 a paragraph
 "##;
-        let parser = paragraph_parser(element::element_in_paragraph_parser::<()>());
+        let parser = paragraph_parser(
+            element::element_in_paragraph_parser::<()>(OrgParserConfig::default()),
+            OrgParserConfig::default(),
+        );
         assert_eq!(
             get_parser_output(parser, input),
             r##"Paragraph@0..41

@@ -1,19 +1,22 @@
 //! Keyword parser
-use crate::constants::keyword::ORG_ELEMENT_KEYWORDS_NONVALUE_STRING;
-use crate::constants::keyword::ORG_ELEMENT_KEYWORDS_OPTVALUE_PARSED;
-use crate::constants::keyword::ORG_ELEMENT_KEYWORDS_OPTVALUE_STRING;
+use crate::parser::config::OrgParserConfig;
 use crate::parser::object::blank_line_parser;
 use crate::parser::{MyExtra, NT, OSK};
 use crate::parser::{element, object};
 use chumsky::prelude::*;
+use std::collections::HashSet;
 use std::ops::Range;
 
 pub(crate) fn affiliated_keyword_parser_inner<'a, C: 'a>(
+    org_element_dual_keywords_parsed: HashSet<String>,
+    org_element_dual_keywords_string: HashSet<String>,
+    org_element_affiliated_keywords_nondual_string: HashSet<String>,
     value_parser: impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone + 'a,
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    let key_optvalue_parsed = object::keyword_ci_parser(&ORG_ELEMENT_KEYWORDS_OPTVALUE_PARSED); // 1
-    let key_optvalue_string = object::keyword_ci_parser(&ORG_ELEMENT_KEYWORDS_OPTVALUE_STRING); // 1
-    let key_nonvalue_string = object::keyword_ci_parser(&ORG_ELEMENT_KEYWORDS_NONVALUE_STRING); // 11
+    let key_optvalue_parsed = object::keyword_ci_parser_v2(org_element_dual_keywords_parsed); // 1
+    let key_optvalue_string = object::keyword_ci_parser_v2(org_element_dual_keywords_string); // 1
+    let key_nonvalue_string =
+        object::keyword_ci_parser_v2(org_element_affiliated_keywords_nondual_string); // 11
 
     let backend = any()
         .filter(|c: &char| matches!(c, '-' | '_') || c.is_alphanumeric())
@@ -172,27 +175,39 @@ pub(crate) fn affiliated_keyword_parser_inner<'a, C: 'a>(
 // #+KEY[OPTVAL]: VALUE(string)
 // #+KEY[OPTVAL]: VALUE(objects)
 // #+attr_BACKEND: VALUE
-pub(crate) fn affiliated_keyword_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+pub(crate) fn affiliated_keyword_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let string_without_nl = none_of(object::CRLF).repeated().at_least(1).to_slice();
-    let objects_parser = object::object_in_keyword_parser()
+    let objects_parser = object::object_in_keyword_parser(config.clone())
         .repeated()
         .at_least(1)
         .collect::<Vec<NT>>();
     let value_parser = objects_parser.nested_in(string_without_nl);
 
-    affiliated_keyword_parser_inner(value_parser)
+    affiliated_keyword_parser_inner(
+        config.org_element_dual_keywords_parsed(),
+        config.org_element_dual_keywords_string(),
+        config.org_element_affiliated_keywords_nondual_string(),
+        value_parser,
+    )
 }
 
 // only for lookahead, no object_parser is need
-pub(crate) fn simple_affiliated_keyword_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+pub(crate) fn simple_affiliated_keyword_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let string_without_nl = none_of(object::CRLF).repeated().at_least(1).to_slice();
     let value_parser = string_without_nl.map(|s| vec![crate::token!(OSK::Text, s)]);
 
-    affiliated_keyword_parser_inner(value_parser)
-        .ignored()
-        .to(crate::node!(OSK::AffiliatedKeyword, vec![]))
+    affiliated_keyword_parser_inner(
+        config.org_element_dual_keywords_parsed(),
+        config.org_element_dual_keywords_string(),
+        config.org_element_affiliated_keywords_nondual_string(),
+        value_parser,
+    )
+    .ignored()
+    .to(crate::node!(OSK::AffiliatedKeyword, vec![]))
 }
 
 // find last colon(:), all previous chars are `key`, such as "#+key:with:colon: value"
@@ -230,29 +245,31 @@ fn key_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, String, MyExtra<'a, C>> +
 }
 
 pub(crate) fn keyword_parser_inner<'a, C: 'a + std::default::Default>(
+    config: OrgParserConfig,
     value_parser: impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone + 'a,
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let element_parser_having_affiliated_keywords_for_lookahead = choice((
-        element::footnote_definition::simple_footnote_definition_parser(),
+        element::footnote_definition::simple_footnote_definition_parser(config.clone()),
         // element::list::simple_plain_list_parser(element::item::simple_item_parser()),
-        element::plain_list::simple_plain_list_parser(),
-        element::block::simple_center_block_parser(),
-        element::block::simple_quote_block_parser(),
-        element::block::simple_special_block_parser(),
-        element::block::simple_verse_block_parser(),
-        element::table::simple_table_parser(),
+        element::plain_list::simple_plain_list_parser(config.clone()),
+        element::block::simple_center_block_parser(config.clone()),
+        element::block::simple_quote_block_parser(config.clone()),
+        element::block::simple_special_block_parser(config.clone()),
+        element::block::simple_verse_block_parser(config.clone()),
+        element::table::simple_table_parser(config.clone()),
         element::horizontal_rule::horizontal_rule_parser().ignored(),
-        element::latex_environment::simple_latex_environment_parser(),
-        element::block::simple_src_block_parser(),
-        element::block::simple_export_block_parser(),
-        element::block::simple_example_block_parser(),
-        element::block::simple_comment_block_parser(),
-        element::fixed_width::simple_fixed_width_parser(),
+        element::latex_environment::simple_latex_environment_parser(config.clone()),
+        element::block::simple_src_block_parser(config.clone()),
+        element::block::simple_export_block_parser(config.clone()),
+        element::block::simple_example_block_parser(config.clone()),
+        element::block::simple_comment_block_parser(config.clone()),
+        element::fixed_width::simple_fixed_width_parser(config.clone()),
         element::paragraph::paragraph_parser_with_at_least_n_affiliated_keywords(
             choice((
                 element::horizontal_rule::horizontal_rule_parser().ignored(), // placeholder
             )),
             1,
+            config.clone(),
         )
         .ignored(),
     ));
@@ -260,7 +277,8 @@ pub(crate) fn keyword_parser_inner<'a, C: 'a + std::default::Default>(
     // PEG: !whitespace any()*
     // last if not :
     let string_without_nl = none_of(object::CRLF).repeated().at_least(1).to_slice();
-    let key_with_objects = object::keyword_ci_parser(&ORG_ELEMENT_KEYWORDS_OPTVALUE_PARSED); // 1
+    // let key_with_objects = object::keyword_ci_parser(&ORG_ELEMENT_KEYWORDS_OPTVALUE_PARSED); // 1
+    let key_with_objects = object::keyword_ci_parser_v2(config.org_element_dual_keywords_parsed()); // 1    
 
     // FIXME: better method? element vs blankline?
     // #+KEY: VALUE(string)
@@ -394,30 +412,33 @@ pub(crate) fn keyword_parser_inner<'a, C: 'a + std::default::Default>(
 }
 
 // element_parser: <element with affiliated word>
-pub(crate) fn keyword_parser<'a, C: 'a + std::default::Default>()
--> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+pub(crate) fn keyword_parser<'a, C: 'a + std::default::Default>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let string_without_nl = none_of(object::CRLF).repeated().at_least(1).to_slice();
-    let objects_parser = object::object_in_keyword_parser()
+    let objects_parser = object::object_in_keyword_parser(config.clone())
         .repeated()
         .at_least(1)
         .collect::<Vec<NT>>();
     let value_parser = objects_parser.clone().nested_in(string_without_nl);
 
-    keyword_parser_inner(value_parser)
+    keyword_parser_inner(config, value_parser)
 }
 
-pub(crate) fn simple_keyword_parser<'a, C: 'a + std::default::Default>()
--> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
+pub(crate) fn simple_keyword_parser<'a, C: 'a + std::default::Default>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
     let string_without_nl = none_of(object::CRLF).repeated().at_least(1).to_slice();
     let value_parser = string_without_nl.map(|s| vec![crate::token!(OSK::Text, s)]);
 
-    keyword_parser_inner(value_parser).ignored()
+    keyword_parser_inner(config, value_parser).ignored()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::parser::common::{get_parser_output, get_parsers_output};
+    use crate::parser::config::OrgParserConfig;
     use crate::parser::element;
     use pretty_assertions::assert_eq;
 
@@ -426,7 +447,7 @@ mod tests {
         assert_eq!(
             get_parser_output(
                 // keyword_parser(element::element_in_keyword_parser::<()>()),
-                keyword_parser::<()>(),
+                keyword_parser::<()>(OrgParserConfig::default()),
                 r"#+key: value    "
             ),
             r###"Keyword@0..16
@@ -445,8 +466,7 @@ mod tests {
     fn test_keyword_91() {
         assert_eq!(
             get_parser_output(
-                // keyword_parser(element::element_in_keyword_parser::<()>()),
-                keyword_parser::<()>(),
+                keyword_parser::<()>(OrgParserConfig::default()),
                 r"#+title: org test
 
 "
@@ -470,7 +490,8 @@ mod tests {
         assert_eq!(
             get_parser_output(
                 // keyword_parser(element::element_in_keyword_parser::<()>()),
-                keyword_parser::<()>(),
+                // keyword_parser::<()>(),
+                keyword_parser::<()>(OrgParserConfig::default()),
                 r"#+key:has:colons: value    "
             ),
             r###"Keyword@0..27
@@ -488,7 +509,10 @@ mod tests {
     #[test]
     fn test_affliated_keyword_01() {
         assert_eq!(
-            get_parser_output(affiliated_keyword_parser::<()>(), r"#+caption: value    "),
+            get_parser_output(
+                element::keyword::affiliated_keyword_parser::<()>(OrgParserConfig::default()),
+                r"#+caption: value    "
+            ),
             r###"AffiliatedKeyword@0..20
   HashPlus@0..2 "#+"
   KeywordKey@2..9
@@ -505,7 +529,7 @@ mod tests {
     fn test_affliated_keyword_02() {
         assert_eq!(
             get_parser_output(
-                affiliated_keyword_parser::<()>(),
+                affiliated_keyword_parser::<()>(OrgParserConfig::default()),
                 r"#+CAPTION[Short caption]: Longer caption."
             ),
             r###"AffiliatedKeyword@0..41
@@ -527,7 +551,10 @@ mod tests {
     #[test]
     fn test_affliated_keyword_03() {
         assert_eq!(
-            get_parser_output(affiliated_keyword_parser::<()>(), r"#+attr_html: value"),
+            get_parser_output(
+                affiliated_keyword_parser::<()>(OrgParserConfig::default()),
+                r"#+attr_html: value"
+            ),
             r###"AffiliatedKeyword@0..18
   HashPlus@0..2 "#+"
   KeywordKey@2..11
@@ -543,7 +570,7 @@ mod tests {
     fn test_affliated_keyword_04() {
         assert_eq!(
             get_parser_output(
-                affiliated_keyword_parser::<()>(),
+                affiliated_keyword_parser::<()>(OrgParserConfig::default()),
                 r"#+CAPTION[Short caption]: *Longer* caption."
             ),
             r###"AffiliatedKeyword@0..43
@@ -570,7 +597,7 @@ mod tests {
     fn test_affliated_keyword_05() {
         assert_eq!(
             get_parser_output(
-                affiliated_keyword_parser::<()>(),
+                affiliated_keyword_parser::<()>(OrgParserConfig::default()),
                 r"#+caption:value: value    "
             ),
             r###"AffiliatedKeyword@0..26
@@ -593,7 +620,10 @@ mod tests {
 "##;
 
         assert_eq!(
-            get_parsers_output(element::elements_parser::<()>(), input),
+            get_parsers_output(
+                element::elements_parser::<()>(OrgParserConfig::default()),
+                input
+            ),
             r###"Root@0..106
   ExportBlock@0..106
     AffiliatedKeyword@0..29
@@ -632,7 +662,10 @@ mod tests {
 "##;
 
         assert_eq!(
-            get_parsers_output(element::elements_parser::<()>(), input),
+            get_parsers_output(
+                element::elements_parser::<()>(OrgParserConfig::default()),
+                input
+            ),
             r###"Root@0..107
   Keyword@0..30
     HashPlus@0..2 "#+"
@@ -669,7 +702,10 @@ a paragraph
 "##;
 
         assert_eq!(
-            get_parsers_output(element::elements_parser::<()>(), input),
+            get_parsers_output(
+                element::elements_parser::<()>(OrgParserConfig::default()),
+                input
+            ),
             r###"Root@0..41
   Paragraph@0..41
     AffiliatedKeyword@0..29
@@ -695,7 +731,10 @@ a paragraph
 "##;
 
         assert_eq!(
-            get_parsers_output(element::elements_parser::<()>(), input),
+            get_parsers_output(
+                element::elements_parser::<()>(OrgParserConfig::default()),
+                input
+            ),
             r###"Root@0..54
   Keyword@0..29
     HashPlus@0..2 "#+"

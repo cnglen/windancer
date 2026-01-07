@@ -3,10 +3,13 @@ use crate::parser::{MyState, NT, OSK};
 use crate::parser::{element, object};
 use chumsky::prelude::*;
 
+use super::config::OrgParserConfig;
+
 /// document <- zeroth_section? heading_subtree*
 /// zeroth_sectoin <- blank_line* comment? property_drawer? section?
-pub(crate) fn document_parser<'a>()
--> impl Parser<'a, &'a str, NT, extra::Full<Rich<'a, char>, MyState, ()>> {
+pub(crate) fn document_parser<'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, NT, extra::Full<Rich<'a, char>, MyState, ()>> {
     let parser = object::blank_line_parser()
         .repeated()
         .at_least(1)
@@ -14,11 +17,18 @@ pub(crate) fn document_parser<'a>()
         .or_not()
         .then(element::comment::comment_parser().or_not())
         .then(element::drawer::property_drawer_parser().or_not())
-        .then(element::section::section_parser(element::element_in_section_parser()).or_not())
         .then(
-            element::heading::heading_subtree_parser(element::element_parser(), "")
-                .repeated()
-                .collect::<Vec<_>>(),
+            element::section::section_parser(element::element_in_section_parser(config.clone()))
+                .or_not(),
+        )
+        .then(
+            element::heading::heading_subtree_parser(
+                config.clone().org_todo_keywords,
+                element::element_parser(config.clone()),
+                "",
+            )
+            .repeated()
+            .collect::<Vec<_>>(),
         )
         .map(
             |(

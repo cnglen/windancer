@@ -77,6 +77,7 @@
 //         }
 // }
 
+use crate::parser::config::OrgParserConfig;
 use crate::parser::{MyExtra, NT, OSK};
 use crate::parser::{element, object};
 use chumsky::prelude::*;
@@ -124,8 +125,9 @@ fn special_name_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, &'a str, MyExtra
 }
 
 /// export block
-pub(crate) fn export_block_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+pub(crate) fn export_block_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let data = none_of("\n \t").repeated().at_least(1).to_slice();
     let begin_row = object::whitespaces()
         .then(object::just_case_insensitive("#+BEGIN_"))
@@ -142,9 +144,13 @@ pub(crate) fn export_block_parser<'a, C: 'a>()
     // No line may start with #+end_NAME.
     // Lines beginning with an asterisk must be quoted by a comma (,*) and lines beginning with #+ may be quoted by a comma when necessary (#+).
     let content = content_inner_parser(end_row.clone());
-    let affiliated_keywords = element::keyword::affiliated_keyword_parser()
+    let affiliated_keywords = element::keyword::affiliated_keyword_parser(config)
         .repeated()
         .collect::<Vec<_>>();
+
+    // let affiliated_keywords = element::keyword::affiliated_keyword_parser()
+    //     .repeated()
+    //     .collect::<Vec<_>>();
 
     affiliated_keywords
         .then(begin_row)
@@ -194,8 +200,9 @@ pub(crate) fn export_block_parser<'a, C: 'a>()
 }
 
 /// simple export block
-pub(crate) fn simple_export_block_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
+pub(crate) fn simple_export_block_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
     let data = none_of("\n \t").repeated().at_least(1).to_slice();
     let begin_row = object::whitespaces()
         .then(object::just_case_insensitive("#+BEGIN_"))
@@ -212,7 +219,7 @@ pub(crate) fn simple_export_block_parser<'a, C: 'a>()
     // No line may start with #+end_NAME.
     // Lines beginning with an asterisk must be quoted by a comma (,*) and lines beginning with #+ may be quoted by a comma when necessary (#+).
     let content = content_inner_parser(end_row.clone());
-    let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser().repeated();
+    let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser(config).repeated();
 
     affiliated_keywords
         .then(begin_row)
@@ -223,8 +230,9 @@ pub(crate) fn simple_export_block_parser<'a, C: 'a>()
         .boxed()
 }
 
-pub(crate) fn simple_src_block_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
+pub(crate) fn simple_src_block_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
     let language = none_of(" \t\n").repeated().at_least(1).to_slice();
     let switch_p1 = just("-l")
         .then(object::whitespaces_g1())
@@ -250,7 +258,7 @@ pub(crate) fn simple_src_block_parser<'a, C: 'a>()
     // Lines beginning with an asterisk must be quoted by a comma (,*) and lines beginning with #+ may be quoted by a comma when necessary (#+).
     let content = content_inner_parser(end_row.clone());
 
-    let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser()
+    let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser(config)
         .repeated()
         .collect::<Vec<_>>();
 
@@ -264,8 +272,9 @@ pub(crate) fn simple_src_block_parser<'a, C: 'a>()
 }
 
 /// src block
-pub(crate) fn src_block_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone
-{
+pub(crate) fn src_block_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let language = none_of(" \t\n").repeated().at_least(1).to_slice();
     let switch_p1 = just("-l")
         .then(object::whitespaces_g1())
@@ -310,10 +319,12 @@ pub(crate) fn src_block_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyEx
     // No line may start with #+end_NAME.
     // Lines beginning with an asterisk must be quoted by a comma (,*) and lines beginning with #+ may be quoted by a comma when necessary (#+).
     let content = content_inner_parser(end_row.clone());
-
-    let affiliated_keywords = element::keyword::affiliated_keyword_parser()
+    let affiliated_keywords = element::keyword::affiliated_keyword_parser(config)
         .repeated()
         .collect::<Vec<_>>();
+    // let affiliated_keywords = element::keyword::affiliated_keyword_parser()
+    //     .repeated()
+    //     .collect::<Vec<_>>();
 
     affiliated_keywords
         .then(begin_row)
@@ -381,6 +392,7 @@ pub(crate) fn src_block_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyEx
 }
 
 fn comment_or_example_block_parser<'a, C: 'a>(
+    config: OrgParserConfig,
     block_type: BlockType,
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let name = match block_type {
@@ -394,7 +406,10 @@ fn comment_or_example_block_parser<'a, C: 'a>(
     let begin_row = begin_row_parser(name);
     let end_row = end_row_parser(name);
     let content = content_inner_parser(end_row.clone());
-    let affiliated_keywords = element::keyword::affiliated_keyword_parser()
+    // let affiliated_keywords = element::keyword::affiliated_keyword_parser()
+    //     .repeated()
+    //     .collect::<Vec<_>>();
+    let affiliated_keywords = element::keyword::affiliated_keyword_parser(config)
         .repeated()
         .collect::<Vec<_>>();
 
@@ -439,18 +454,21 @@ fn comment_or_example_block_parser<'a, C: 'a>(
 }
 
 /// comment block
-pub(crate) fn comment_block_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    comment_or_example_block_parser(BlockType::Comment)
+pub(crate) fn comment_block_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    comment_or_example_block_parser(config, BlockType::Comment)
 }
 
 /// example block
-pub(crate) fn example_block_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    comment_or_example_block_parser(BlockType::Example)
+pub(crate) fn example_block_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    comment_or_example_block_parser(config, BlockType::Example)
 }
 
 fn simple_comment_or_example_block_parser<'a, C: 'a>(
+    config: OrgParserConfig,
     block_type: BlockType,
 ) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
     let name = match block_type {
@@ -464,7 +482,7 @@ fn simple_comment_or_example_block_parser<'a, C: 'a>(
     let begin_row = begin_row_parser(name);
     let end_row = end_row_parser(name);
     let content = content_inner_parser(end_row.clone());
-    let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser().repeated();
+    let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser(config).repeated();
 
     affiliated_keywords
         .then(begin_row)
@@ -476,24 +494,27 @@ fn simple_comment_or_example_block_parser<'a, C: 'a>(
 }
 
 /// simple comment block
-pub(crate) fn simple_comment_block_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
-    simple_comment_or_example_block_parser(BlockType::Comment)
+pub(crate) fn simple_comment_block_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
+    simple_comment_or_example_block_parser(config, BlockType::Comment)
 }
 
 /// simple example block
-pub(crate) fn simple_example_block_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
-    simple_comment_or_example_block_parser(BlockType::Example)
+pub(crate) fn simple_example_block_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
+    simple_comment_or_example_block_parser(config, BlockType::Example)
 }
 
 /// verse block
-pub(crate) fn verse_block_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone
-{
+pub(crate) fn verse_block_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let begin_row = begin_row_parser("verse");
     let end_row = end_row_parser("verse");
 
-    let fullset_objects_parser = object::object_parser()
+    let fullset_objects_parser = object::object_parser(config.clone())
         .clone()
         .repeated()
         .at_least(1)
@@ -508,7 +529,10 @@ pub(crate) fn verse_block_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, My
         .repeated();
     let content = fullset_objects_parser.nested_in(content_inner.to_slice());
 
-    let affiliated_keywords = element::keyword::affiliated_keyword_parser()
+    // let affiliated_keywords = element::keyword::affiliated_keyword_parser()
+    //     .repeated()
+    //     .collect::<Vec<_>>();
+    let affiliated_keywords = element::keyword::affiliated_keyword_parser(config)
         .repeated()
         .collect::<Vec<_>>();
 
@@ -537,8 +561,9 @@ pub(crate) fn verse_block_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, My
         .boxed()
 }
 
-pub(crate) fn simple_verse_block_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
+pub(crate) fn simple_verse_block_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
     let begin_row = begin_row_parser("verse");
     let end_row = end_row_parser("verse");
     let content_inner = object::line_parser_allow_blank()
@@ -549,7 +574,11 @@ pub(crate) fn simple_verse_block_parser<'a, C: 'a>()
                 .not(),
         )
         .repeated();
-    let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser().repeated();
+    // let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser().repeated();
+    let affiliated_keywords = element::keyword::affiliated_keyword_parser(config)
+        .repeated()
+        .collect::<Vec<_>>();
+
     affiliated_keywords
         .ignore_then(begin_row)
         .ignore_then(content_inner)
@@ -637,6 +666,7 @@ fn content_inner_parser<'a, C: 'a>(
 }
 
 fn center_or_quote_block_parser<'a, C: 'a>(
+    config: OrgParserConfig,
     element_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
     block_type: BlockType,
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
@@ -666,9 +696,13 @@ fn center_or_quote_block_parser<'a, C: 'a>(
         .nested_in(content_inner)
         .map(|s| crate::node!(OSK::BlockContent, s));
 
-    let affiliated_keywords = element::keyword::affiliated_keyword_parser()
+    let affiliated_keywords = element::keyword::affiliated_keyword_parser(config)
         .repeated()
         .collect::<Vec<_>>();
+
+    // let affiliated_keywords = element::keyword::affiliated_keyword_parser()
+    //     .repeated()
+    //     .collect::<Vec<_>>();
 
     affiliated_keywords
         .then(begin_row)
@@ -700,18 +734,21 @@ fn center_or_quote_block_parser<'a, C: 'a>(
 }
 
 pub(crate) fn center_block_parser<'a, C: 'a>(
+    config: OrgParserConfig,
     element_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    center_or_quote_block_parser(element_parser, BlockType::Center)
+    center_or_quote_block_parser(config, element_parser, BlockType::Center)
 }
 
 pub(crate) fn quote_block_parser<'a, C: 'a>(
+    config: OrgParserConfig,
     element_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    center_or_quote_block_parser(element_parser, BlockType::Quote)
+    center_or_quote_block_parser(config, element_parser, BlockType::Quote)
 }
 
 fn simple_center_or_quote_block_parser<'a, C: 'a>(
+    config: OrgParserConfig,
     block_type: BlockType,
 ) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
     let name = match block_type {
@@ -733,7 +770,8 @@ fn simple_center_or_quote_block_parser<'a, C: 'a>(
                 .not(),
         )
         .repeated();
-    let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser().repeated();
+    let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser(config).repeated();
+
     affiliated_keywords
         .ignore_then(begin_row)
         .ignore_then(content_inner)
@@ -743,20 +781,26 @@ fn simple_center_or_quote_block_parser<'a, C: 'a>(
         .boxed()
 }
 
-pub(crate) fn simple_center_block_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
-    simple_center_or_quote_block_parser(BlockType::Center)
+pub(crate) fn simple_center_block_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
+    simple_center_or_quote_block_parser(config, BlockType::Center)
 }
 
-pub(crate) fn simple_quote_block_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
-    simple_center_or_quote_block_parser(BlockType::Quote)
+pub(crate) fn simple_quote_block_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
+    simple_center_or_quote_block_parser(config, BlockType::Quote)
 }
 
 pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
+    config: OrgParserConfig,
     element_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    let affiliated_keywords = element::keyword::affiliated_keyword_parser()
+    // let affiliated_keywords = element::keyword::affiliated_keyword_parser()
+    //     .repeated()
+    //     .collect::<Vec<_>>();
+    let affiliated_keywords = element::keyword::affiliated_keyword_parser(config)
         .repeated()
         .collect::<Vec<_>>();
 
@@ -897,9 +941,10 @@ pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
         .boxed()
 }
 
-pub(crate) fn simple_special_block_parser<'a, C: 'a + std::default::Default>()
--> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
-    let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser().repeated();
+pub(crate) fn simple_special_block_parser<'a, C: 'a + std::default::Default>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
+    let affiliated_keywords = element::keyword::simple_affiliated_keyword_parser(config).repeated();
 
     let begin_row = object::whitespaces()
         .then(object::just_case_insensitive("#+begin_"))
@@ -950,6 +995,7 @@ pub(crate) fn simple_special_block_parser<'a, C: 'a + std::default::Default>()
 mod tests {
     use super::*;
     use crate::parser::common::{get_parser_output, get_parsers_output};
+    use crate::parser::config::OrgParserConfig;
     use crate::parser::element::element_parser;
     use pretty_assertions::assert_eq;
 
@@ -957,7 +1003,7 @@ mod tests {
     fn test_export_block_01() {
         assert_eq!(
             get_parser_output(
-                export_block_parser::<()>(),
+                export_block_parser::<()>(OrgParserConfig::default()),
                 r##"#+BEGIN_export html 
 #+END_export
 "##
@@ -982,7 +1028,7 @@ mod tests {
     #[should_panic]
     fn test_export_block_02() {
         get_parser_output(
-            export_block_parser::<()>(),
+            export_block_parser::<()>(OrgParserConfig::default()),
             r##"#+BEGIN_export 
 #+END_export
 "##,
@@ -993,7 +1039,7 @@ mod tests {
     #[should_panic]
     fn test_export_block_03() {
         get_parser_output(
-            export_block_parser::<()>(),
+            export_block_parser::<()>(OrgParserConfig::default()),
             r##"#+BEGIN_export html latex
 #+END_export
 "##,
@@ -1004,7 +1050,7 @@ mod tests {
     #[should_panic]
     fn test_export_block_04() {
         get_parser_output(
-            export_block_parser::<()>(),
+            export_block_parser::<()>(OrgParserConfig::default()),
             r##"#+BEGIN_export html
 * head
 #+END_export
@@ -1016,7 +1062,7 @@ mod tests {
     fn test_verse_block_01() {
         assert_eq!(
             get_parser_output(
-                verse_block_parser::<()>(),
+                verse_block_parser::<()>(OrgParserConfig::default()),
                 r##"#+BEGIN_verse
 
 example
@@ -1042,7 +1088,7 @@ example
     fn test_verse_block_02() {
         assert_eq!(
             get_parser_output(
-                verse_block_parser::<()>(),
+                verse_block_parser::<()>(OrgParserConfig::default()),
                 r##"  #+BEGIN_VERSE
      Great clouds   overhead
      Tiny black birds rise and fall
@@ -1078,7 +1124,7 @@ example
     fn test_src_block_01() {
         assert_eq!(
             get_parser_output(
-                src_block_parser::<()>(),
+                src_block_parser::<()>(OrgParserConfig::default()),
                 r##"#+BEGIN_src rust -l -n :var foo=bar  
 fn main() {
 }
@@ -1111,7 +1157,7 @@ fn main() {
     fn test_src_block_02() {
         let input = "#+BEGIN_SRC python
 #+END_DRC";
-        get_parser_output(src_block_parser::<()>(), input);
+        get_parser_output(src_block_parser::<()>(OrgParserConfig::default()), input);
     }
 
     #[test]
@@ -1119,7 +1165,7 @@ fn main() {
         let input = "#+BEGIN_sRC python
 #+END_SrC";
         assert_eq!(
-            get_parser_output(src_block_parser::<()>(), input),
+            get_parser_output(src_block_parser::<()>(OrgParserConfig::default()), input),
             r##"SrcBlock@0..28
   BlockBegin@0..19
     Text@0..8 "#+BEGIN_"
@@ -1141,7 +1187,7 @@ print("hi");
 print("py");
 #+END_SrC"###;
         assert_eq!(
-            get_parser_output(src_block_parser::<()>(), input),
+            get_parser_output(src_block_parser::<()>(OrgParserConfig::default()), input),
             r##"SrcBlock@0..54
   BlockBegin@0..19
     Text@0..8 "#+BEGIN_"
@@ -1163,7 +1209,10 @@ print("py");
         let input = "#+BEGIN_example
 #+END_examplE";
         assert_eq!(
-            get_parser_output(example_block_parser::<()>(), input),
+            get_parser_output(
+                example_block_parser::<()>(OrgParserConfig::default()),
+                input
+            ),
             r##"ExampleBlock@0..29
   BlockBegin@0..16
     Text@0..8 "#+BEGIN_"
@@ -1180,7 +1229,10 @@ print("py");
     fn test_center_block_01() {
         assert_eq!(
             get_parser_output(
-                center_block_parser(element_parser::<()>()),
+                center_block_parser(
+                    OrgParserConfig::default(),
+                    element_parser::<()>(OrgParserConfig::default())
+                ),
                 r##"#+BEGIN_center
 a *bold* test
 #+END_center
@@ -1211,7 +1263,10 @@ a *bold* test
     fn test_center_block_02() {
         assert_eq!(
             get_parser_output(
-                center_block_parser(element_parser::<()>()),
+                center_block_parser(
+                    OrgParserConfig::default(),
+                    element_parser::<()>(OrgParserConfig::default())
+                ),
                 r##"#+BEGIN_CENTER
      Everything should be made as simple as possible, \\
      but not any simpler
@@ -1242,7 +1297,10 @@ a *bold* test
     fn test_special_block_03() {
         assert_eq!(
             get_parser_output(
-                special_block_parser(element_parser::<()>()),
+                special_block_parser(
+                    OrgParserConfig::default(),
+                    element_parser::<()>(OrgParserConfig::default())
+                ),
                 r##"#+BEGIN_xx
 special block
 #+END_xx
@@ -1268,7 +1326,10 @@ special block
     fn test_special_block_04() {
         assert_eq!(
             get_parser_output(
-                special_block_parser(element_parser::<()>()),
+                special_block_parser(
+                    OrgParserConfig::default(),
+                    element_parser::<()>(OrgParserConfig::default())
+                ),
                 r##"#+BEGIN_xx
 xx
 #+begin_center
@@ -1324,7 +1385,10 @@ quote
     fn test_special_block_05() {
         assert_eq!(
             get_parser_output(
-                center_block_parser(element_parser::<()>()),
+                center_block_parser(
+                    OrgParserConfig::default(),
+                    element_parser::<()>(OrgParserConfig::default())
+                ),
                 r##"#+BEGIN_center
 #+begin_quote
 #+begin_xx
@@ -1375,7 +1439,9 @@ qq
         // cant nested the same block
         assert_eq!(
             get_parsers_output(
-                element_parser::<()>().repeated().collect::<Vec<_>>(),
+                element_parser::<()>(OrgParserConfig::default())
+                    .repeated()
+                    .collect::<Vec<_>>(),
                 r##"#+BEGIN_center
 #+begin_center
 cc
@@ -1415,7 +1481,9 @@ cc
         // cant nested the same block
         assert_eq!(
             get_parsers_output(
-                element_parser::<()>().repeated().collect::<Vec<_>>(),
+                element_parser::<()>(OrgParserConfig::default())
+                    .repeated()
+                    .collect::<Vec<_>>(),
                 r##"#+BEGIN_xx
 #+begin_yy
 #+begin_z

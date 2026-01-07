@@ -1,5 +1,6 @@
 //! Object paser
 // extern crate test;
+use std::collections::HashSet;
 pub mod entity;
 mod footnote_reference;
 mod latex_fragment;
@@ -8,7 +9,7 @@ mod link;
 mod r#macro;
 mod radio_link;
 mod radio_target;
-mod subscript_superscript;
+pub(crate) mod subscript_superscript;
 pub(crate) mod table_cell;
 mod target;
 mod text;
@@ -31,6 +32,10 @@ use crate::parser::object::timestamp::timestamp_parser;
 use crate::parser::{MyExtra, NT, OSK};
 
 use chumsky::prelude::*;
+
+use crate::parser::config::OrgParserConfig;
+
+use super::config::OrgUseSubSuperscripts;
 
 pub const LF: &str = "\n";
 pub const CRLF: &str = "\r\n";
@@ -171,10 +176,10 @@ pub(crate) fn prev_valid_parser<'a, C: 'a, F: Fn(Option<char>) -> bool + Clone>(
 // example:
 // - OK: keyword_ci_parser("def").parse("def")
 // - ERR: keyword_ci_parser("def").parse("define")
-pub(crate) fn keyword_ci_parser<'a, C: 'a>(
-    allowed_keywords: &phf::Set<&'static str>,
+pub(crate) fn keyword_ci_parser_v2<'a, C: 'a>(
+    allowed_keywords: HashSet<String>,
 ) -> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Clone {
-    custom(|inp| {
+    custom(move |inp| {
         let before = inp.cursor();
 
         loop {
@@ -204,6 +209,41 @@ pub(crate) fn keyword_ci_parser<'a, C: 'a>(
                 format!("invalid key: '{}'", name),
             ));
         }
+        Ok(name)
+    })
+}
+
+pub(crate) fn keyword_cs_parser_v2<'a, C: 'a>(
+    allowed_keywords: HashSet<String>,
+) -> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Clone {
+    custom(move |inp| {
+        let before = inp.cursor();
+        loop {
+            match inp.peek() {
+                Some(c) if matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9') => {
+                    inp.next();
+                }
+                _ => {
+                    break;
+                }
+            }
+        }
+        let name: &str = inp.slice_since(&before..);
+
+        if name.is_empty() {
+            return Err(Rich::custom(
+                inp.span_since(&before),
+                format!("no valid string found: empty found"),
+            ));
+        }
+
+        if !allowed_keywords.contains(&name.to_string()) {
+            return Err(Rich::custom(
+                inp.span_since(&before),
+                format!("invalid key: '{}'", name),
+            ));
+        }
+
         Ok(name)
     })
 }
@@ -337,14 +377,19 @@ pub(crate) fn blank_line_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyE
         .map(|s| crate::token!(OSK::BlankLine, s))
 }
 
-pub(crate) fn objects_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone {
-    object_parser().repeated().at_least(1).collect::<Vec<_>>()
+pub(crate) fn objects_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone {
+    object_parser(config)
+        .repeated()
+        .at_least(1)
+        .collect::<Vec<_>>()
 }
 
-pub(crate) fn standard_set_objects_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone {
-    standard_set_object_parser()
+pub(crate) fn standard_set_objects_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone {
+    standard_set_object_parser(config)
         .repeated()
         .at_least(1)
         .collect::<Vec<_>>()
@@ -364,40 +409,49 @@ pub(crate) fn standard_set_objects_parser<'a, C: 'a>()
 // TODO: select! use prev_char state? performance? first char
 
 // full set object
-pub(crate) fn object_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    get_object_parser().0
+pub(crate) fn object_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    get_object_parser(config).0
 }
 
-pub(crate) fn standard_set_object_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    get_object_parser().1
-}
-
-#[allow(unused)]
-pub(crate) fn minimal_set_object_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    get_object_parser().2
+pub(crate) fn standard_set_object_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    get_object_parser(config).1
 }
 
 #[allow(unused)]
-pub(crate) fn object_in_regular_link_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    get_object_parser().3
+pub(crate) fn minimal_set_object_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    get_object_parser(config).2
 }
 
-pub(crate) fn object_in_table_cell_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    get_object_parser().4
+#[allow(unused)]
+pub(crate) fn object_in_regular_link_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    get_object_parser(config).3
 }
 
-pub(crate) fn object_in_keyword_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    get_object_parser().5
+pub(crate) fn object_in_table_cell_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    get_object_parser(config).4
+}
+
+pub(crate) fn object_in_keyword_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    get_object_parser(config).5
 }
 
 // (full_set_object, standard_set_object, minimal_set_object, object_in_regular_link, object_in_table_cell)
 // - full_set_object DOES NOT include table_cell
-pub(crate) fn get_object_parser<'a, C: 'a>() -> (
+pub(crate) fn get_object_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> (
     impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone,
     impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone,
     impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone,
@@ -405,6 +459,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>() -> (
     impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone,
     impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone,
 ) {
+    let org_use_sub_superscripts = config.clone().org_use_sub_superscripts;
     let mut full_set_object = Recursive::declare();
     let mut minimal_set_object = Recursive::declare();
     let mut standard_set_object = Recursive::declare();
@@ -415,6 +470,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>() -> (
     // total 22 object parsers exlucidng plain_text
     let latex_fragment = latex_fragment_parser();
     let entity = entity_parser();
+
     let angle_link = angle_link_parser();
     let line_break = line_break_parser();
     let r#macro = macro_parser();
@@ -425,8 +481,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>() -> (
     // let export_snippet = export_snippet_parser();
     // let inline_src_block = inline_src_block_parser();
     let plain_link = plain_link_parser();
-    let subscript = subscript_parser(standard_set_object.clone());
-    let superscript = superscript_parser(standard_set_object.clone());
+
     let text_markup = text_markup_parser(standard_set_object.clone());
     let radio_link = radio_link_parser(minimal_set_object.clone());
     let regular_link = regular_link_parser(object_in_regular_link.clone());
@@ -452,211 +507,403 @@ pub(crate) fn get_object_parser<'a, C: 'a>() -> (
         plain_link.clone(), // 第12个
     )));
 
-    // minimal set object: 6
-    let non_plain_text_for_minimal = Parser::boxed(choice((
-        latex_fragment.clone(),
-        entity.clone(),
-        text_markup.clone(),
-        subscript.clone(),
-        superscript.clone(),
-    )));
-    let non_plain_text_for_minimal_lookahead = Parser::boxed(choice((
-        latex_fragment.clone(),
-        entity.clone(),
-        text_markup::simple_text_markup_parser(),
-        subscript_superscript::simple_subscript_parser(),
-        subscript_superscript::simple_superscript_parser(),
-    )));
+    match org_use_sub_superscripts {
+        OrgUseSubSuperscripts::Brace | OrgUseSubSuperscripts::True => {
+            let subscript = subscript_parser(
+                org_use_sub_superscripts.clone(),
+                standard_set_object.clone(),
+            );
+            let superscript = superscript_parser(
+                org_use_sub_superscripts.clone(),
+                standard_set_object.clone(),
+            );
 
-    let plain_text_for_minimal = plain_text_parser(non_plain_text_for_minimal_lookahead);
-    minimal_set_object.define(choice((non_plain_text_for_minimal, plain_text_for_minimal)));
+            // minimal set object: 6
+            let non_plain_text_for_minimal = Parser::boxed(choice((
+                latex_fragment.clone(),
+                entity.clone(),
+                text_markup.clone(),
+                subscript.clone(),
+                superscript.clone(),
+            )));
+            let non_plain_text_for_minimal_lookahead = Parser::boxed(choice((
+                latex_fragment.clone(),
+                entity.clone(),
+                text_markup::simple_text_markup_parser(),
+                subscript_superscript::simple_subscript_parser(org_use_sub_superscripts.clone()),
+                subscript_superscript::simple_superscript_parser(org_use_sub_superscripts.clone()),
+            )));
 
-    // object allowed in regular link: 13
-    let non_plain_text_parsers_for_regular_link = Parser::boxed(choice((
-        latex_fragment.clone(),
-        entity.clone(),
-        text_markup.clone(),
-        subscript.clone(),
-        superscript.clone(),
-        // export_snippet.clone(),
-        // inline_babel_call.clone(),
-        // inline_src_block.clone(),
-        r#macro.clone(),
-        // statistics_cookie.clone(),
-        angle_link.clone(),
-        plain_link.clone(),
-    )));
-    // object allowed in regular link: 13
-    let non_plain_text_parsers_for_regular_link_lookahead = Parser::boxed(choice((
-        latex_fragment.clone(),
-        entity.clone(),
-        text_markup::simple_text_markup_parser(),
-        subscript_superscript::simple_subscript_parser(),
-        subscript_superscript::simple_superscript_parser(),
-        // export_snippet.clone(),
-        // inline_babel_call.clone(),
-        // inline_src_block.clone(),
-        r#macro.clone(),
-        // statistics_cookie.clone(),
-        angle_link.clone(),
-        plain_link.clone(),
-    )));
+            let plain_text_for_minimal = plain_text_parser(non_plain_text_for_minimal_lookahead);
+            minimal_set_object.define(choice((non_plain_text_for_minimal, plain_text_for_minimal)));
 
-    let plain_text_parser_for_regular_link =
-        plain_text_parser(non_plain_text_parsers_for_regular_link_lookahead);
-    object_in_regular_link.define(choice((
-        non_plain_text_parsers_for_regular_link,
-        plain_text_parser_for_regular_link,
-    )));
+            // object allowed in regular link: 13
+            let non_plain_text_parsers_for_regular_link = Parser::boxed(choice((
+                latex_fragment.clone(),
+                entity.clone(),
+                text_markup.clone(),
+                subscript.clone(),
+                superscript.clone(),
+                // export_snippet.clone(),
+                // inline_babel_call.clone(),
+                // inline_src_block.clone(),
+                r#macro.clone(),
+                // statistics_cookie.clone(),
+                angle_link.clone(),
+                plain_link.clone(),
+            )));
+            // object allowed in regular link: 13
+            let non_plain_text_parsers_for_regular_link_lookahead = Parser::boxed(choice((
+                latex_fragment.clone(),
+                entity.clone(),
+                text_markup::simple_text_markup_parser(),
+                subscript_superscript::simple_subscript_parser(org_use_sub_superscripts.clone()),
+                subscript_superscript::simple_superscript_parser(org_use_sub_superscripts.clone()),
+                // export_snippet.clone(),
+                // inline_babel_call.clone(),
+                // inline_src_block.clone(),
+                r#macro.clone(),
+                // statistics_cookie.clone(),
+                angle_link.clone(),
+                plain_link.clone(),
+            )));
 
-    // object allowed in table cell: 17
-    let non_plain_text_parsers_for_table_cell = Parser::boxed(choice((
-        latex_fragment.clone(),
-        entity.clone(),
-        text_markup.clone(),
-        subscript.clone(),
-        superscript.clone(),
-        // citation.clone(),
-        // export_snippet.clone(),
-        footnote_reference.clone(),
-        angle_link.clone(),
-        plain_link.clone(),
-        regular_link.clone(),
-        radio_link.clone(),
-        r#macro.clone(),
-        radio_target.clone(),
-        target.clone(),
-        timestamp.clone(),
-    )));
-    let non_plain_text_parsers_for_table_cell_lookahead = Parser::boxed(choice((
-        latex_fragment.clone(),
-        entity.clone(),
-        text_markup::simple_text_markup_parser(),
-        subscript_superscript::simple_subscript_parser(),
-        subscript_superscript::simple_superscript_parser(),
-        // citation.clone(),
-        // export_snippet.clone(),
-        footnote_reference::simple_footnote_reference_parser(),
-        angle_link.clone(),
-        plain_link.clone(),
-        link::simple_regular_link_parser(),
-        radio_link::simple_radio_link_parser(),
-        r#macro.clone(),
-        radio_target::simple_radio_target_parser(),
-        target.clone(),
-        timestamp.clone(),
-    )));
+            let plain_text_parser_for_regular_link =
+                plain_text_parser(non_plain_text_parsers_for_regular_link_lookahead);
+            object_in_regular_link.define(choice((
+                non_plain_text_parsers_for_regular_link,
+                plain_text_parser_for_regular_link,
+            )));
 
-    let plain_text_parser_for_table_cell =
-        plain_text_parser(non_plain_text_parsers_for_table_cell_lookahead);
-    object_in_table_cell.define(choice((
-        non_plain_text_parsers_for_table_cell,
-        plain_text_parser_for_table_cell,
-    )));
+            // object allowed in table cell: 17
+            let non_plain_text_parsers_for_table_cell = Parser::boxed(choice((
+                latex_fragment.clone(),
+                entity.clone(),
+                text_markup.clone(),
+                subscript.clone(),
+                superscript.clone(),
+                // citation.clone(),
+                // export_snippet.clone(),
+                footnote_reference.clone(),
+                angle_link.clone(),
+                plain_link.clone(),
+                regular_link.clone(),
+                radio_link.clone(),
+                r#macro.clone(),
+                radio_target.clone(),
+                target.clone(),
+                timestamp.clone(),
+            )));
+            let non_plain_text_parsers_for_table_cell_lookahead = Parser::boxed(choice((
+                latex_fragment.clone(),
+                entity.clone(),
+                text_markup::simple_text_markup_parser(),
+                subscript_superscript::simple_subscript_parser(org_use_sub_superscripts.clone()),
+                subscript_superscript::simple_superscript_parser(org_use_sub_superscripts.clone()),
+                // citation.clone(),
+                // export_snippet.clone(),
+                footnote_reference::simple_footnote_reference_parser(),
+                angle_link.clone(),
+                plain_link.clone(),
+                link::simple_regular_link_parser(),
+                radio_link::simple_radio_link_parser(),
+                r#macro.clone(),
+                radio_target::simple_radio_target_parser(),
+                target.clone(),
+                timestamp.clone(),
+            )));
 
-    // standard set object: 21
-    let standard_set_without_plain_text = Parser::boxed(choice((
-        radio_link.clone(),         // 1个
-        regular_link.clone(),       // 1个
-        independent_object.clone(), // 12个
-        radio_target.clone(),       // 1个
-        text_markup.clone(),        // 1个
-        subscript.clone(),          // 1个
-        superscript.clone(),        // 1个
-        footnote_reference.clone(), // 1个
-                                    // citation.clone(),             // 1个
-    )));
-    let standard_set_without_plain_text_lookahead = Parser::boxed(choice((
-        radio_link::simple_radio_link_parser(),
-        link::simple_regular_link_parser(),
-        independent_object.clone(), // 12个
-        radio_target::simple_radio_target_parser(),
-        text_markup::simple_text_markup_parser(),
-        subscript_superscript::simple_subscript_parser(),
-        subscript_superscript::simple_superscript_parser(),
-        footnote_reference::simple_footnote_reference_parser(),
-        // citation.clone(),             // 1个
-    )));
+            let plain_text_parser_for_table_cell =
+                plain_text_parser(non_plain_text_parsers_for_table_cell_lookahead);
+            object_in_table_cell.define(choice((
+                non_plain_text_parsers_for_table_cell,
+                plain_text_parser_for_table_cell,
+            )));
 
-    let plain_text_for_standard = plain_text_parser(standard_set_without_plain_text_lookahead);
-    standard_set_object.define(choice((
-        standard_set_without_plain_text,
-        plain_text_for_standard,
-    )));
+            // standard set object: 21
+            let standard_set_without_plain_text = Parser::boxed(choice((
+                radio_link.clone(),         // 1个
+                regular_link.clone(),       // 1个
+                independent_object.clone(), // 12个
+                radio_target.clone(),       // 1个
+                text_markup.clone(),        // 1个
+                subscript.clone(),          // 1个
+                superscript.clone(),        // 1个
+                footnote_reference.clone(), // 1个
+                                            // citation.clone(),             // 1个
+            )));
+            let standard_set_without_plain_text_lookahead = Parser::boxed(choice((
+                radio_link::simple_radio_link_parser(),
+                link::simple_regular_link_parser(),
+                independent_object.clone(), // 12个
+                radio_target::simple_radio_target_parser(),
+                text_markup::simple_text_markup_parser(),
+                subscript_superscript::simple_subscript_parser(org_use_sub_superscripts.clone()),
+                subscript_superscript::simple_superscript_parser(org_use_sub_superscripts.clone()),
+                footnote_reference::simple_footnote_reference_parser(),
+                // citation.clone(),             // 1个
+            )));
 
-    // full set object: 23
-    let full_set_without_plain_text = Parser::boxed(choice((
-        radio_link.clone(),         // 1
-        regular_link.clone(),       // 1
-        independent_object.clone(), // 12
-        radio_target.clone(),       // 1
-        text_markup.clone(),        // 1
-        subscript.clone(),          // 1
-        superscript.clone(),        // 1
-        footnote_reference.clone(), // 1
-                                    // citation.clone(),             // 1
+            let plain_text_for_standard =
+                plain_text_parser(standard_set_without_plain_text_lookahead);
+            standard_set_object.define(choice((
+                standard_set_without_plain_text,
+                plain_text_for_standard,
+            )));
 
-                                    // table_cell,            // table cell only in table_row of table, DONOT INCLUDE THIS
-                                    // citation_reference,
-    )));
-    let full_set_without_plain_text_lookahead = Parser::boxed(choice((
-        radio_link::simple_radio_link_parser(),
-        link::simple_regular_link_parser(),
-        independent_object.clone(), // 12
-        radio_target::simple_radio_target_parser(),
-        text_markup::simple_text_markup_parser(),
-        subscript_superscript::simple_subscript_parser(),
-        subscript_superscript::simple_superscript_parser(),
-        footnote_reference::simple_footnote_reference_parser(),
-        // citation.clone(),             // 1
+            // full set object: 23
+            let full_set_without_plain_text = Parser::boxed(choice((
+                radio_link.clone(),         // 1
+                regular_link.clone(),       // 1
+                independent_object.clone(), // 12
+                radio_target.clone(),       // 1
+                text_markup.clone(),        // 1
+                subscript.clone(),          // 1
+                superscript.clone(),        // 1
+                footnote_reference.clone(), // 1
+                                            // citation.clone(),             // 1
 
-        // table_cell,            // table cell only in table_row of table, DONOT INCLUDE THIS
-        // citation_reference,
-    )));
-    let plain_text_for_full = plain_text_parser(full_set_without_plain_text_lookahead);
-    full_set_object.define(choice((full_set_without_plain_text, plain_text_for_full)));
+                                            // table_cell,            // table cell only in table_row of table, DONOT INCLUDE THIS
+                                            // citation_reference,
+            )));
+            let full_set_without_plain_text_lookahead = Parser::boxed(choice((
+                radio_link::simple_radio_link_parser(),
+                link::simple_regular_link_parser(),
+                independent_object.clone(), // 12
+                radio_target::simple_radio_target_parser(),
+                text_markup::simple_text_markup_parser(),
+                subscript_superscript::simple_subscript_parser(org_use_sub_superscripts.clone()),
+                subscript_superscript::simple_superscript_parser(org_use_sub_superscripts.clone()),
+                footnote_reference::simple_footnote_reference_parser(),
+                // citation.clone(),             // 1
 
-    let non_plain_text_parsers_for_keyword = Parser::boxed(choice((
-        radio_link.clone(),         // 1个
-        regular_link.clone(),       // 1个
-        independent_object.clone(), // 12个
-        radio_target.clone(),       // 1个
-        text_markup.clone(),        // 1个
-        subscript.clone(),          // 1个
-        superscript.clone(),        // 1个
-                                    // citation.clone(),             // 1个
-    )));
-    let non_plain_text_parsers_for_keyword_lookahead = Parser::boxed(choice((
-        radio_link::simple_radio_link_parser(),
-        link::simple_regular_link_parser(),
-        independent_object.clone(), // 12个
-        radio_target::simple_radio_target_parser(),
-        text_markup::simple_text_markup_parser(),
-        subscript_superscript::simple_subscript_parser(),
-        subscript_superscript::simple_superscript_parser(),
-        // citation.clone(),             // 1个
-    )));
-    let plain_text_parser_for_keyword =
-        plain_text_parser(non_plain_text_parsers_for_keyword_lookahead);
-    object_in_keyword.define(choice((
-        non_plain_text_parsers_for_keyword,
-        plain_text_parser_for_keyword,
-    )));
-    (
-        full_set_object.boxed(),
-        standard_set_object.boxed(),
-        minimal_set_object.boxed(),
-        object_in_regular_link.boxed(),
-        object_in_table_cell.boxed(),
-        object_in_keyword.boxed(),
-    )
+                // table_cell,            // table cell only in table_row of table, DONOT INCLUDE THIS
+                // citation_reference,
+            )));
+            let plain_text_for_full = plain_text_parser(full_set_without_plain_text_lookahead);
+            full_set_object.define(choice((full_set_without_plain_text, plain_text_for_full)));
+
+            let non_plain_text_parsers_for_keyword = Parser::boxed(choice((
+                radio_link.clone(),         // 1个
+                regular_link.clone(),       // 1个
+                independent_object.clone(), // 12个
+                radio_target.clone(),       // 1个
+                text_markup.clone(),        // 1个
+                subscript.clone(),          // 1个
+                superscript.clone(),        // 1个
+                                            // citation.clone(),             // 1个
+            )));
+            let non_plain_text_parsers_for_keyword_lookahead = Parser::boxed(choice((
+                radio_link::simple_radio_link_parser(),
+                link::simple_regular_link_parser(),
+                independent_object.clone(), // 12个
+                radio_target::simple_radio_target_parser(),
+                text_markup::simple_text_markup_parser(),
+                subscript_superscript::simple_subscript_parser(org_use_sub_superscripts.clone()),
+                subscript_superscript::simple_superscript_parser(org_use_sub_superscripts.clone()),
+                // citation.clone(),             // 1个
+            )));
+            let plain_text_parser_for_keyword =
+                plain_text_parser(non_plain_text_parsers_for_keyword_lookahead);
+            object_in_keyword.define(choice((
+                non_plain_text_parsers_for_keyword,
+                plain_text_parser_for_keyword,
+            )));
+            (
+                full_set_object.boxed(),
+                standard_set_object.boxed(),
+                minimal_set_object.boxed(),
+                object_in_regular_link.boxed(),
+                object_in_table_cell.boxed(),
+                object_in_keyword.boxed(),
+            )
+        }
+
+        OrgUseSubSuperscripts::Nil => {
+            // minimal set object: 6
+            let non_plain_text_for_minimal = Parser::boxed(choice((
+                latex_fragment.clone(),
+                entity.clone(),
+                text_markup.clone(),
+            )));
+            let non_plain_text_for_minimal_lookahead = Parser::boxed(choice((
+                latex_fragment.clone(),
+                entity.clone(),
+                text_markup::simple_text_markup_parser(),
+            )));
+
+            let plain_text_for_minimal = plain_text_parser(non_plain_text_for_minimal_lookahead);
+            minimal_set_object.define(choice((non_plain_text_for_minimal, plain_text_for_minimal)));
+
+            // object allowed in regular link: 13
+            let non_plain_text_parsers_for_regular_link = Parser::boxed(choice((
+                latex_fragment.clone(),
+                entity.clone(),
+                text_markup.clone(),
+                // export_snippet.clone(),
+                // inline_babel_call.clone(),
+                // inline_src_block.clone(),
+                r#macro.clone(),
+                // statistics_cookie.clone(),
+                angle_link.clone(),
+                plain_link.clone(),
+            )));
+            // object allowed in regular link: 13
+            let non_plain_text_parsers_for_regular_link_lookahead = Parser::boxed(choice((
+                latex_fragment.clone(),
+                entity.clone(),
+                text_markup::simple_text_markup_parser(),
+                // export_snippet.clone(),
+                // inline_babel_call.clone(),
+                // inline_src_block.clone(),
+                r#macro.clone(),
+                // statistics_cookie.clone(),
+                angle_link.clone(),
+                plain_link.clone(),
+            )));
+
+            let plain_text_parser_for_regular_link =
+                plain_text_parser(non_plain_text_parsers_for_regular_link_lookahead);
+            object_in_regular_link.define(choice((
+                non_plain_text_parsers_for_regular_link,
+                plain_text_parser_for_regular_link,
+            )));
+
+            // object allowed in table cell: 17
+            let non_plain_text_parsers_for_table_cell = Parser::boxed(choice((
+                latex_fragment.clone(),
+                entity.clone(),
+                text_markup.clone(),
+                // citation.clone(),
+                // export_snippet.clone(),
+                footnote_reference.clone(),
+                angle_link.clone(),
+                plain_link.clone(),
+                regular_link.clone(),
+                radio_link.clone(),
+                r#macro.clone(),
+                radio_target.clone(),
+                target.clone(),
+                timestamp.clone(),
+            )));
+            let non_plain_text_parsers_for_table_cell_lookahead = Parser::boxed(choice((
+                latex_fragment.clone(),
+                entity.clone(),
+                text_markup::simple_text_markup_parser(),
+                // citation.clone(),
+                // export_snippet.clone(),
+                footnote_reference::simple_footnote_reference_parser(),
+                angle_link.clone(),
+                plain_link.clone(),
+                link::simple_regular_link_parser(),
+                radio_link::simple_radio_link_parser(),
+                r#macro.clone(),
+                radio_target::simple_radio_target_parser(),
+                target.clone(),
+                timestamp.clone(),
+            )));
+
+            let plain_text_parser_for_table_cell =
+                plain_text_parser(non_plain_text_parsers_for_table_cell_lookahead);
+            object_in_table_cell.define(choice((
+                non_plain_text_parsers_for_table_cell,
+                plain_text_parser_for_table_cell,
+            )));
+
+            // standard set object: 21
+            let standard_set_without_plain_text = Parser::boxed(choice((
+                radio_link.clone(),         // 1个
+                regular_link.clone(),       // 1个
+                independent_object.clone(), // 12个
+                radio_target.clone(),       // 1个
+                text_markup.clone(),        // 1个
+                footnote_reference.clone(), // 1个
+                                            // citation.clone(),             // 1个
+            )));
+            let standard_set_without_plain_text_lookahead = Parser::boxed(choice((
+                radio_link::simple_radio_link_parser(),
+                link::simple_regular_link_parser(),
+                independent_object.clone(), // 12个
+                radio_target::simple_radio_target_parser(),
+                text_markup::simple_text_markup_parser(),
+                footnote_reference::simple_footnote_reference_parser(),
+                // citation.clone(),             // 1个
+            )));
+
+            let plain_text_for_standard =
+                plain_text_parser(standard_set_without_plain_text_lookahead);
+            standard_set_object.define(choice((
+                standard_set_without_plain_text,
+                plain_text_for_standard,
+            )));
+
+            // full set object: 23
+            let full_set_without_plain_text = Parser::boxed(choice((
+                radio_link.clone(),         // 1
+                regular_link.clone(),       // 1
+                independent_object.clone(), // 12
+                radio_target.clone(),       // 1
+                text_markup.clone(),        // 1
+                footnote_reference.clone(), // 1
+                                            // citation.clone(),             // 1
+
+                                            // table_cell,            // table cell only in table_row of table, DONOT INCLUDE THIS
+                                            // citation_reference,
+            )));
+            let full_set_without_plain_text_lookahead = Parser::boxed(choice((
+                radio_link::simple_radio_link_parser(),
+                link::simple_regular_link_parser(),
+                independent_object.clone(), // 12
+                radio_target::simple_radio_target_parser(),
+                text_markup::simple_text_markup_parser(),
+                footnote_reference::simple_footnote_reference_parser(),
+                // citation.clone(),             // 1
+
+                // table_cell,            // table cell only in table_row of table, DONOT INCLUDE THIS
+                // citation_reference,
+            )));
+            let plain_text_for_full = plain_text_parser(full_set_without_plain_text_lookahead);
+            full_set_object.define(choice((full_set_without_plain_text, plain_text_for_full)));
+
+            let non_plain_text_parsers_for_keyword = Parser::boxed(choice((
+                radio_link.clone(),         // 1个
+                regular_link.clone(),       // 1个
+                independent_object.clone(), // 12个
+                radio_target.clone(),       // 1个
+                text_markup.clone(),        // 1个
+                                            // citation.clone(),             // 1个
+            )));
+            let non_plain_text_parsers_for_keyword_lookahead = Parser::boxed(choice((
+                radio_link::simple_radio_link_parser(),
+                link::simple_regular_link_parser(),
+                independent_object.clone(), // 12个
+                radio_target::simple_radio_target_parser(),
+                text_markup::simple_text_markup_parser(),
+                // citation.clone(),             // 1个
+            )));
+            let plain_text_parser_for_keyword =
+                plain_text_parser(non_plain_text_parsers_for_keyword_lookahead);
+            object_in_keyword.define(choice((
+                non_plain_text_parsers_for_keyword,
+                plain_text_parser_for_keyword,
+            )));
+            (
+                full_set_object.boxed(),
+                standard_set_object.boxed(),
+                minimal_set_object.boxed(),
+                object_in_regular_link.boxed(),
+                object_in_table_cell.boxed(),
+                object_in_keyword.boxed(),
+            )
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::parser::common::get_parsers_output;
-    use crate::parser::{OrgConfig, OrgParser};
+    use crate::parser::{OrgParser, config::OrgParserConfig};
     use pretty_assertions::assert_eq;
 
     fn get_objects_string() -> String {
@@ -773,7 +1020,7 @@ other objects (2):
 
     #[test]
     fn test_minimal_set_object() {
-        let minimal_objects_parser = minimal_set_object_parser::<()>()
+        let minimal_objects_parser = minimal_set_object_parser::<()>(OrgParserConfig::default())
             .repeated()
             .at_least(1)
             .collect::<Vec<_>>();
@@ -837,7 +1084,7 @@ other objects (2):
 
     #[test]
     fn test_standard_set_object() {
-        let standard_objects_parser = standard_set_object_parser::<()>()
+        let standard_objects_parser = standard_set_object_parser::<()>(OrgParserConfig::default())
             .repeated()
             .at_least(1)
             .collect::<Vec<_>>();
@@ -978,7 +1225,7 @@ other objects (2):
 | 23 citation-reference | todo                   | n                       |
 "##;
 
-        let org_config = OrgConfig::default();
+        let org_config = OrgParserConfig::default();
         let mut parser = OrgParser::new(org_config);
         let parser_output = parser.parse(&table_string_with_objects);
         let _green_tree = parser_output.green();

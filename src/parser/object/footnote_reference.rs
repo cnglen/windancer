@@ -116,13 +116,17 @@ pub(crate) fn simple_footnote_reference_parser<'a, C: 'a>()
 #[cfg(test)]
 mod tests {
     use crate::parser::common::get_parsers_output;
+    use crate::parser::config::OrgParserConfig;
     use crate::parser::object;
     use pretty_assertions::assert_eq;
 
     #[test]
     fn test_01_fn_label() {
         assert_eq!(
-            get_parsers_output(object::objects_parser::<()>(), "this is a org [fn:1]."),
+            get_parsers_output(
+                object::objects_parser::<()>(OrgParserConfig::default()),
+                "this is a org [fn:1]."
+            ),
             r##"Root@0..21
   Text@0..14 "this is a org "
   FootnoteReference@14..20
@@ -140,7 +144,7 @@ mod tests {
     fn test_02_fn_label_defintion() {
         assert_eq!(
             get_parsers_output(
-                object::objects_parser::<()>(),
+                object::objects_parser::<()>(OrgParserConfig::default()),
                 "this is a org [fn:1:*bold*]."
             ),
             r##"Root@0..28
@@ -166,7 +170,7 @@ mod tests {
     fn test_03_fn_defintion() {
         assert_eq!(
             get_parsers_output(
-                object::objects_parser::<()>(),
+                object::objects_parser::<()>(OrgParserConfig::default()),
                 "this is a org [fn::*org* is a good format]."
             ),
             r##"Root@0..43

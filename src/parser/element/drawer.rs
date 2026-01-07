@@ -1,4 +1,5 @@
 //! Drawer parser
+use crate::parser::config::OrgParserConfig;
 use crate::parser::{MyExtra, NT, OSK};
 use crate::parser::{element, object};
 use chumsky::prelude::*;
@@ -233,9 +234,13 @@ fn drawer_parser_inner<'a, C: 'a>(
 }
 
 pub(crate) fn drawer_parser<'a, C: 'a>(
+    config: OrgParserConfig,
     element_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    let affiliated_keywords_parser = element::keyword::affiliated_keyword_parser()
+    // let affiliated_keywords_parser = element::keyword::affiliated_keyword_parser()
+    //     .repeated()
+    //     .collect::<Vec<_>>();
+    let affiliated_keywords_parser = element::keyword::affiliated_keyword_parser(config)
         .repeated()
         .collect::<Vec<_>>();
 
@@ -259,9 +264,10 @@ pub(crate) fn drawer_parser<'a, C: 'a>(
     drawer_parser_inner(affiliated_keywords_parser, content_parser)
 }
 
-pub(crate) fn simple_drawer_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
-    let affiliated_keywords_parser = element::keyword::simple_affiliated_keyword_parser()
+pub(crate) fn simple_drawer_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
+    let affiliated_keywords_parser = element::keyword::simple_affiliated_keyword_parser(config)
         .repeated()
         .collect::<Vec<_>>();
 
@@ -286,6 +292,7 @@ pub(crate) fn simple_drawer_parser<'a, C: 'a>()
 mod tests {
     use super::*;
     use crate::parser::common::get_parser_output;
+    use crate::parser::config::OrgParserConfig;
     use crate::parser::element;
     use pretty_assertions::assert_eq;
 
@@ -293,7 +300,10 @@ mod tests {
     fn test_drawer_01() {
         assert_eq!(
             get_parser_output(
-                drawer_parser(element::element_in_drawer_parser::<()>()),
+                drawer_parser(
+                    OrgParserConfig::default(),
+                    element::element_in_drawer_parser::<()>(OrgParserConfig::default())
+                ),
                 r##":a:
 contents :end:
 :end:
@@ -319,7 +329,10 @@ contents :end:
     #[should_panic]
     fn test_drawer_02() {
         get_parser_output(
-            drawer_parser(element::element_in_drawer_parser::<()>()),
+            drawer_parser(
+                OrgParserConfig::default(),
+                element::element_in_drawer_parser::<()>(OrgParserConfig::default()),
+            ),
             r##":a:
 :b:
 b
@@ -333,7 +346,10 @@ b
     fn test_drawer_03() {
         assert_eq!(
             get_parser_output(
-                drawer_parser(element::element_in_drawer_parser::<()>()),
+                drawer_parser(
+                    OrgParserConfig::default(),
+                    element::element_in_drawer_parser::<()>(OrgParserConfig::default())
+                ),
                 r##":a:
 #+BEGIN_SRC python
 print("hello");
@@ -372,7 +388,10 @@ print("hello");
     fn test_drawer_04() {
         assert_eq!(
             get_parser_output(
-                drawer_parser(element::element_in_drawer_parser::<()>()),
+                drawer_parser(
+                    OrgParserConfig::default(),
+                    element::element_in_drawer_parser::<()>(OrgParserConfig::default())
+                ),
                 r##"#+caption: affiliated keywords in drawer
 :a:
 foo
@@ -408,7 +427,10 @@ foo
     fn test_drawer_05() {
         assert_eq!(
             get_parser_output(
-                drawer_parser(element::element_in_drawer_parser::<()>()),
+                drawer_parser(
+                    OrgParserConfig::default(),
+                    element::element_in_drawer_parser::<()>(OrgParserConfig::default())
+                ),
                 r##":properties:
 :add: asd
 

@@ -19,8 +19,12 @@ pub(crate) mod table;
 use crate::parser::{MyExtra, NT};
 use chumsky::prelude::*;
 
+use super::config::OrgParserConfig;
+
 // heading should not be in here, since it's parsed by document!
-pub(crate) fn get_element_parser<'a, C: 'a + std::default::Default>() -> (
+pub(crate) fn get_element_parser<'a, C: 'a + std::default::Default>(
+    config: OrgParserConfig,
+) -> (
     impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone,
     impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone,
     impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone,
@@ -42,38 +46,46 @@ pub(crate) fn get_element_parser<'a, C: 'a + std::default::Default>() -> (
 
     // checked
     let horizontal_rule = horizontal_rule::horizontal_rule_parser();
-    let latex_environment = latex_environment::latex_environment_parser();
-    let src_block = block::src_block_parser();
-    let export_block = block::export_block_parser();
-    let verse_block = block::verse_block_parser();
-    let example_block = block::example_block_parser();
-    let comment_block = block::comment_block_parser();
+    let latex_environment = latex_environment::latex_environment_parser(config.clone());
+    let src_block = block::src_block_parser(config.clone());
+    let export_block = block::export_block_parser(config.clone());
+    let verse_block = block::verse_block_parser(config.clone());
+    let example_block = block::example_block_parser(config.clone());
+    let comment_block = block::comment_block_parser(config.clone());
     // let planning = planning::planning_parser();
     let comment = comment::comment_parser();
-    let table = table::table_parser();
-    let fixed_width = fixed_width::fixed_width_parser();
+    let table = table::table_parser(config.clone());
+    let fixed_width = fixed_width::fixed_width_parser(config.clone());
 
     // to check
-    let keyword = keyword::keyword_parser();
-    let footnote_definition =
-        footnote_definition::footnote_definition_parser(element_without_tablerow_and_item.clone());
-    let center_block = block::center_block_parser(element_without_tablerow_and_item.clone());
-    let quote_block = block::quote_block_parser(element_without_tablerow_and_item.clone());
-    let special_block = block::special_block_parser(element_without_tablerow_and_item.clone());
-    let drawer = drawer::drawer_parser(element_in_drawer.clone());
+    let keyword = keyword::keyword_parser(config.clone());
+    let footnote_definition = footnote_definition::footnote_definition_parser(
+        config.clone(),
+        element_without_tablerow_and_item.clone(),
+    );
+    let center_block =
+        block::center_block_parser(config.clone(), element_without_tablerow_and_item.clone());
+    let quote_block =
+        block::quote_block_parser(config.clone(), element_without_tablerow_and_item.clone());
+    let special_block =
+        block::special_block_parser(config.clone(), element_without_tablerow_and_item.clone());
+    let drawer = drawer::drawer_parser(config.clone(), element_in_drawer.clone());
     // let plain_list =
     //     list::plain_list_parser(item::item_parser(element_without_tablerow_and_item.clone()));
 
-    let plain_list = plain_list::plain_list_parser(element_without_tablerow_and_item.clone());
+    let plain_list =
+        plain_list::plain_list_parser(config.clone(), element_without_tablerow_and_item.clone());
 
     // ONLY used for lookhead
     // IN paragraph_parser(), simple_heading/simple_table/simple_footnote_definition is used for lookahead, no need here for performance:
     // - we don't include heading subtree to avoid stackoverflow
     // - we don't include table/drawer/center_block/quote_block/special_block/verse_block/fixed_width/latex_environment_parser
     let non_paragraph_element_parser_used_in_lookahead =
-        choice((keyword::simple_keyword_parser(),));
-    let paragraph_parser =
-        paragraph::paragraph_parser(non_paragraph_element_parser_used_in_lookahead.clone()); // non_paragraph_element_parser used to negative lookehead
+        choice((keyword::simple_keyword_parser(config.clone()),));
+    let paragraph_parser = paragraph::paragraph_parser(
+        non_paragraph_element_parser_used_in_lookahead.clone(),
+        config.clone(),
+    ); // non_paragraph_element_parser used to negative lookehead
 
     element_without_tablerow_and_item.define(choice((
         footnote_definition.clone(),
@@ -145,39 +157,45 @@ pub(crate) fn get_element_parser<'a, C: 'a + std::default::Default>() -> (
     )
 }
 
-pub(crate) fn element_parser<'a, C: 'a + std::default::Default>()
--> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    get_element_parser::<C>().0
+pub(crate) fn element_parser<'a, C: 'a + std::default::Default>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    get_element_parser::<C>(config).0
 }
 
 #[allow(unused)]
-pub(crate) fn elements_parser<'a, C: 'a + std::default::Default>()
--> impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone {
-    element_parser::<C>()
+pub(crate) fn elements_parser<'a, C: 'a + std::default::Default>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone {
+    element_parser::<C>(config)
         .repeated()
         .at_least(1)
         .collect::<Vec<_>>()
 }
 
 #[allow(unused)]
-pub(crate) fn element_in_paragraph_parser<'a, C: 'a + std::default::Default>()
--> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
-    get_element_parser::<C>().1
+pub(crate) fn element_in_paragraph_parser<'a, C: 'a + std::default::Default>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
+    get_element_parser::<C>(config).1
 }
 
-pub(crate) fn element_in_section_parser<'a, C: 'a + std::default::Default>()
--> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    get_element_parser::<C>().2
-}
-
-#[allow(unused)]
-pub(crate) fn element_in_item_parser<'a, C: 'a + std::default::Default>()
--> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    get_element_parser::<C>().2
+pub(crate) fn element_in_section_parser<'a, C: 'a + std::default::Default>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    get_element_parser::<C>(config).2
 }
 
 #[allow(unused)]
-pub(crate) fn element_in_drawer_parser<'a, C: 'a + std::default::Default>()
--> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    get_element_parser::<C>().3
+pub(crate) fn element_in_item_parser<'a, C: 'a + std::default::Default>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    get_element_parser::<C>(config).2
+}
+
+#[allow(unused)]
+pub(crate) fn element_in_drawer_parser<'a, C: 'a + std::default::Default>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    get_element_parser::<C>(config).3
 }

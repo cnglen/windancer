@@ -1,4 +1,5 @@
 //! Subscript and Superscript
+use crate::parser::config::OrgUseSubSuperscripts;
 use crate::parser::{MyExtra, NT, OSK, object};
 use chumsky::prelude::*;
 
@@ -50,9 +51,13 @@ enum ScriptType {
     Sub,
 }
 
+// t3/t1/t2
+// t2
+
 // inner function for public logic
 fn create_script_parser_inner<'a, C: 'a, E>(
     script_type: ScriptType,
+    mode: OrgUseSubSuperscripts,
     expression_parser: E,
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone
 where
@@ -76,44 +81,51 @@ where
     };
 
     let sign = one_of("+-").or_not();
+    // CHAR^ SIGN CHARS FINAL
+    let t3 = sign
+        .then(chars_final_parser())
+        .to_slice()
+        .map(|sign_content| vec![crate::token!(OSK::Text, sign_content)]);
+    // CHAR^* or CHAR_*
+    let t1 = just("*").map(|aes| vec![crate::token!(OSK::Text, aes)]);
+    // CHAR^{expression} / CHAR^(EXPRESSION)
+    let f_t2 = |s| {
+        one_of(s)
+            .then(expression_parser)
+            .then_with_ctx(
+                // ctx type -> expression has ctx type
+                just('a').configure(|cfg, ctx: &(char, _)| {
+                    let bracket_close = match (*ctx).0 {
+                        '(' => ')',
+                        '{' => '}',
+                        _ => unreachable!(),
+                    };
+                    cfg.seq(bracket_close)
+                }),
+            )
+            .map(move |((lb, expression), rb)| {
+                let mut children = Vec::with_capacity(expression.len() + 2);
+                children.push(crate::token!(
+                    match lb {
+                        '{' => OSK::LeftCurlyBracket,
+                        '(' => OSK::LeftRoundBracket,
+                        _ => unreachable!(),
+                    },
+                    lb_str(lb)
+                ));
+                children.extend(expression);
+                children.push(crate::token!(OSK::RightCurlyBracket, rb_str(rb)));
+                children
+            })
+    };
+
     let t3_t1_t2 = object::prev_valid_parser(|c| c.map_or(false, |c| !c.is_whitespace()))
         .ignore_then(just(c))
-        .then(choice((
-            // CHAR^ SIGN CHARS FINAL
-            sign.then(chars_final_parser())
-                .to_slice()
-                .map(|sign_content| vec![crate::token!(OSK::Text, sign_content)]),
-            // CHAR^* or CHAR_*
-            just("*").map(|aes| vec![crate::token!(OSK::Text, aes)]),
-            // CHAR^{expression} / CHAR^(EXPRESSION)
-            one_of("({")
-                .then(expression_parser)
-                .then_with_ctx(
-                    // ctx type -> expression has ctx type
-                    just('a').configure(|cfg, ctx: &(char, _)| {
-                        let bracket_close = match (*ctx).0 {
-                            '(' => ')',
-                            '{' => '}',
-                            _ => unreachable!(),
-                        };
-                        cfg.seq(bracket_close)
-                    }),
-                )
-                .map(move |((lb, expression), rb)| {
-                    let mut children = Vec::with_capacity(expression.len() + 2);
-                    children.push(crate::token!(
-                        match lb {
-                            '{' => OSK::LeftCurlyBracket,
-                            '(' => OSK::LeftRoundBracket,
-                            _ => unreachable!(),
-                        },
-                        lb_str(lb)
-                    ));
-                    children.extend(expression);
-                    children.push(crate::token!(OSK::RightCurlyBracket, rb_str(rb)));
-                    children
-                }),
-        )))
+        .then(match mode {
+            OrgUseSubSuperscripts::Brace => choice((f_t2("{"),)).boxed(),
+            OrgUseSubSuperscripts::True => choice((t3, t1, f_t2("({"))).boxed(),
+            _ => unreachable!(),
+        })
         .map(move |(sup, others)| {
             let mut children = vec![];
 
@@ -219,6 +231,7 @@ where
 
 fn create_simple_script_parser<'a, C: 'a>(
     script_type: ScriptType,
+    mode: OrgUseSubSuperscripts,
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let var = none_of("{}()\r\n").repeated().at_least(1).to_slice();
     let mut single_expression = Recursive::declare(); // foo / (foo) / (((foo)))
@@ -239,11 +252,12 @@ fn create_simple_script_parser<'a, C: 'a>(
         .to_slice()
         .map(|text: &str| vec![crate::token!(OSK::Text, text)]);
 
-    create_script_parser_inner(script_type, expression_parser)
+    create_script_parser_inner(script_type, mode, expression_parser)
 }
 
 fn create_script_parser<'a, C: 'a>(
     script_type: ScriptType,
+    mode: OrgUseSubSuperscripts,
     object_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let var = none_of("{}()\r\n").repeated().at_least(1).to_slice();
@@ -268,34 +282,39 @@ fn create_script_parser<'a, C: 'a>(
     let expression_parser =
         standard_objects_parser.nested_in(single_expression.clone().repeated().to_slice());
 
-    create_script_parser_inner(script_type, expression_parser)
+    create_script_parser_inner(script_type, mode, expression_parser)
 }
 
 pub(crate) fn subscript_parser<'a, C: 'a>(
+    mode: OrgUseSubSuperscripts,
     object_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    create_script_parser(ScriptType::Sub, object_parser)
+    create_script_parser(ScriptType::Sub, mode, object_parser)
 }
 
 pub(crate) fn superscript_parser<'a, C: 'a>(
+    mode: OrgUseSubSuperscripts,
     object_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    create_script_parser(ScriptType::Super, object_parser)
+    create_script_parser(ScriptType::Super, mode, object_parser)
 }
 
-pub(crate) fn simple_subscript_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    create_simple_script_parser(ScriptType::Sub)
+pub(crate) fn simple_subscript_parser<'a, C: 'a>(
+    mode: OrgUseSubSuperscripts,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    create_simple_script_parser(ScriptType::Sub, mode)
 }
 
-pub(crate) fn simple_superscript_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    create_simple_script_parser(ScriptType::Super)
+pub(crate) fn simple_superscript_parser<'a, C: 'a>(
+    mode: OrgUseSubSuperscripts,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    create_simple_script_parser(ScriptType::Super, mode)
 }
 
 #[cfg(test)]
 mod tests {
     use crate::parser::common::get_parsers_output;
+    use crate::parser::config::OrgParserConfig;
     use crate::parser::object;
     use pretty_assertions::assert_eq;
 
@@ -304,7 +323,10 @@ mod tests {
         // fox_bar
         // 否定前瞻过程中, markup解析，中间步骤解析standard_objects.nested(content)成功, 会更新prev_char, 后续marker_end解析失败，但状态不恢复，导致状态混乱
         assert_eq!(
-            get_parsers_output(object::objects_parser::<()>(), r"fox_bar"),
+            get_parsers_output(
+                object::objects_parser::<()>(OrgParserConfig::default()),
+                r"fox_bar"
+            ),
             r###"Root@0..7
   Text@0..3 "fox"
   Subscript@3..7
@@ -314,7 +336,10 @@ mod tests {
         );
 
         assert_eq!(
-            get_parsers_output(object::objects_parser::<()>(), r"fox_{bar}"),
+            get_parsers_output(
+                object::objects_parser::<()>(OrgParserConfig::default()),
+                r"fox_{bar}"
+            ),
             r###"Root@0..9
   Text@0..3 "fox"
   Subscript@3..9
@@ -329,7 +354,10 @@ mod tests {
     #[test]
     fn test_subscript_02_bad() {
         assert_eq!(
-            get_parsers_output(object::objects_parser::<()>(), r"fo _{bar}"),
+            get_parsers_output(
+                object::objects_parser::<()>(OrgParserConfig::default()),
+                r"fo _{bar}"
+            ),
             r###"Root@0..9
   Text@0..9 "fo _{bar}"
 "###
@@ -339,7 +367,10 @@ mod tests {
     #[test]
     fn test_subscript_03() {
         assert_eq!(
-            get_parsers_output(object::objects_parser::<()>(), r"a {*b_foo*}"),
+            get_parsers_output(
+                object::objects_parser::<()>(OrgParserConfig::default()),
+                r"a {*b_foo*}"
+            ),
             r###"Root@0..11
   Text@0..3 "a {"
   Bold@3..10
@@ -357,7 +388,10 @@ mod tests {
     #[test]
     fn test_subscript_04() {
         assert_eq!(
-            get_parsers_output(object::objects_parser::<()>(), r"a {*_foo*}"),
+            get_parsers_output(
+                object::objects_parser::<()>(OrgParserConfig::default()),
+                r"a {*_foo*}"
+            ),
             r###"Root@0..10
   Text@0..3 "a {"
   Bold@3..9
@@ -372,7 +406,10 @@ mod tests {
     #[test]
     fn test_superscript_01_bold() {
         assert_eq!(
-            get_parsers_output(object::objects_parser::<()>(), r"a^{*bold*}"),
+            get_parsers_output(
+                object::objects_parser::<()>(OrgParserConfig::default()),
+                r"a^{*bold*}"
+            ),
             r###"Root@0..10
   Text@0..1 "a"
   Superscript@1..10

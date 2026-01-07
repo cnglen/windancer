@@ -148,6 +148,7 @@ mod tests {
     // extern crate test;
     use crate::parser::common::get_parser_output;
     use crate::parser::common::get_parsers_output;
+    use crate::parser::config::OrgParserConfig;
     use crate::parser::object::standard_set_object_parser;
     use pretty_assertions::assert_eq;
     // use test::Bencher;
@@ -215,7 +216,7 @@ mod tests {
 
     #[test]
     fn test_latex_fragment_06() {
-        let standard_objects_parser = standard_set_object_parser::<()>()
+        let standard_objects_parser = standard_set_object_parser::<()>(OrgParserConfig::default())
             .repeated()
             .at_least(1)
             .collect::<Vec<_>>();

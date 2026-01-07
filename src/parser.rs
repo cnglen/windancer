@@ -11,11 +11,11 @@ mod element;
 pub(crate) mod object;
 pub(crate) mod syntax;
 static RADIO_TARGETS: OnceLock<HashSet<String>> = OnceLock::new();
+pub mod config;
 
 type NT = NodeOrToken<GreenNode, GreenToken>;
 type OSK = OrgSyntaxKind;
 type MyState = extra::SimpleState<ParserState>;
-// type MyState = chumsky::inspector::RollbackState<ParserState>;
 type MyExtra<'a, C> = extra::Full<Rich<'a, char>, MyState, C>;
 
 #[derive(Clone, Debug)]
@@ -27,21 +27,22 @@ impl Default for ParserState {
     }
 }
 
-// 表示解析结果的类型，直接包含 GreenNode 和文本信息
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct ParserResult {
-    // FIXME: use Arc<GreenNode>?
     green: NodeOrToken<GreenNode, GreenToken>,
 }
 
 impl ParserResult {
+    // green tree
     pub fn green(&self) -> &GreenNode {
         match &self.green {
             NodeOrToken::Node(e) => e,
             NodeOrToken::Token(_) => todo!(),
         }
     }
+
+    // red tree
     pub fn syntax(&self) -> SyntaxNode {
         match &self.green {
             NodeOrToken::Node(e) => SyntaxNode::new_root(e.clone()),
@@ -52,28 +53,30 @@ impl ParserResult {
 
 #[allow(dead_code)]
 pub struct OrgParser {
-    pub config: OrgConfig,
+    pub config: config::OrgParserConfig,
 }
 
 impl OrgParser {
-    pub fn new(config: OrgConfig) -> Self {
+    pub fn new(config: config::OrgParserConfig) -> Self {
         OrgParser { config }
     }
 
+    // update RADIO_TARGETS, maybe use SimpleState a better method. Note: performance.
     pub fn get_radio_targets(&self, input: &str) -> &'static HashSet<String> {
-        let radio_targets: Vec<NodeOrToken<GreenNode, GreenToken>> = object::objects_parser::<()>()
-            .parse(input)
-            .unwrap()
-            .into_iter()
-            .filter(|s| match s {
-                NodeOrToken::<GreenNode, GreenToken>::Node(n)
-                    if n.kind() == OrgSyntaxKind::RadioTarget.into() =>
-                {
-                    true
-                }
-                _ => false,
-            })
-            .collect();
+        let radio_targets: Vec<NodeOrToken<GreenNode, GreenToken>> =
+            object::objects_parser::<()>(self.config.clone())
+                .parse(input)
+                .unwrap()
+                .into_iter()
+                .filter(|s| match s {
+                    NodeOrToken::<GreenNode, GreenToken>::Node(n)
+                        if n.kind() == OrgSyntaxKind::RadioTarget.into() =>
+                    {
+                        true
+                    }
+                    _ => false,
+                })
+                .collect();
 
         let root = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
             OrgSyntaxKind::Root.into(),
@@ -119,7 +122,7 @@ impl OrgParser {
             self.get_radio_targets(radio_target_lines.as_str()); // only use radio target related lines to speed up get the radio targets
         }
 
-        let parse_result = document::document_parser()
+        let parse_result = document::document_parser(self.config.clone())
             .parse_with_state(input, &mut extra::SimpleState(ParserState::default()));
 
         if parse_result.has_errors() {
@@ -130,43 +133,6 @@ impl OrgParser {
 
         ParserResult {
             green: parse_result.into_output().expect("Parse failed"),
-        }
-    }
-}
-
-// FIXME: config for parser and render?
-#[allow(dead_code)]
-pub struct OrgConfig {
-    pub todo_keywords: Vec<String>,
-    // pub dual_keywords: Vec<String>,
-    // // org-element-parsed-keywords
-    // pub parsed_keywords: Vec<String>,
-
-    // // see org-element-affiliated-keywords
-    // pub affiliated_keywords: Vec<String>,
-}
-
-impl Default for OrgConfig {
-    fn default() -> Self {
-        OrgConfig {
-            // parsed_keywords: vec!["CAPTION".to_string()],
-            // dual_keywords: vec!["CAPTION".to_string(), "RESULTS".to_string()],
-            todo_keywords: vec!["TODO".to_string(), "DONE".to_string()],
-            // affiliated_keywords: vec![
-            //     "CAPTION".to_string(),
-            //     "DATA".to_string(),
-            //     "HEADER".to_string(),
-            //     "HEADERS".to_string(),
-            //     "LABEL".to_string(),
-            //     "NAME".to_string(),
-            //     "PLOT".to_string(),
-            //     "RESNAME".to_string(),
-            //     "RESULT".to_string(),
-            //     "RESULTS".to_string(),
-            //     "SOURCE".to_string(),
-            //     "SRCNAME".to_string(),
-            //     "TBLNAME".to_string(),
-            // ],
         }
     }
 }
@@ -199,7 +165,7 @@ mod tests {
         let input = "* 标题1\n 测试\n** 标题1.1\n测试\n测试\ntest\n*** 1.1.1 title\nContent\n* Title\nI have a dream\n"; // (signal: 11, SIGSEGV: invalid memory reference)
         // let input = "* 标题1\n 测试\n* 标";
         // let input = "* 标题1\n 测试\n* ba\n"; // (signal: 6, SIGABRT: process abort signal)
-        let mut parser = OrgParser::new(OrgConfig::default());
+        let mut parser = OrgParser::new(config::OrgParserConfig::default());
         let syntax_node = parser.parse(input).syntax();
         let answer = r###"Document@0..97
   HeadingSubtree@0..74
@@ -239,16 +205,13 @@ mod tests {
       Paragraph@82..97
         Text@82..97 "I have a dream\n"
 "###;
-        println!("output={}", format!("{syntax_node:#?}"));
-        println!("answer={}", answer);
-
         assert_eq!(format!("{syntax_node:#?}"), answer);
     }
 
     #[test]
     fn test_doc_02() {
         let input = "* 标题1\na";
-        let mut parser = OrgParser::new(OrgConfig::default());
+        let mut parser = OrgParser::new(config::OrgParserConfig::default());
         let syntax_node = parser.parse(input).syntax();
         assert_eq!(
             format!("{syntax_node:#?}"),

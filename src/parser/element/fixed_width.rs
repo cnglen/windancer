@@ -1,4 +1,5 @@
 //! Fixed width parser
+use crate::parser::config::OrgParserConfig;
 use crate::parser::object::whitespaces_g1;
 use crate::parser::{MyExtra, NT, OSK};
 use crate::parser::{element, object};
@@ -54,18 +55,24 @@ pub(crate) fn fixed_width_parser_inner<'a, C: 'a>(
         .boxed()
 }
 
-pub(crate) fn fixed_width_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone
-{
-    let affiliated_keywords_parser = element::keyword::affiliated_keyword_parser()
+pub(crate) fn fixed_width_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    // let affiliated_keywords_parser = element::keyword::affiliated_keyword_parser()
+    //     .repeated()
+    //     .collect::<Vec<_>>();
+
+    let affiliated_keywords_parser = element::keyword::affiliated_keyword_parser(config)
         .repeated()
         .collect::<Vec<_>>();
 
     fixed_width_parser_inner(affiliated_keywords_parser)
 }
 
-pub(crate) fn simple_fixed_width_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
-    let affiliated_keywords_parser = element::keyword::simple_affiliated_keyword_parser()
+pub(crate) fn simple_fixed_width_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
+    let affiliated_keywords_parser = element::keyword::simple_affiliated_keyword_parser(config)
         .repeated()
         .collect::<Vec<_>>();
 
@@ -76,6 +83,7 @@ pub(crate) fn simple_fixed_width_parser<'a, C: 'a>()
 mod tests {
     use super::*;
     use crate::parser::common::get_parser_output;
+    use crate::parser::config::OrgParserConfig;
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -83,7 +91,7 @@ mod tests {
         let input = r##": this is a
 : fixed width area
 "##;
-        let parser = fixed_width_parser::<()>();
+        let parser = fixed_width_parser::<()>(OrgParserConfig::default());
         assert_eq!(
             get_parser_output(parser, input),
             r##"FixedWidth@0..31
@@ -111,7 +119,7 @@ mod tests {
 
 
 "##;
-        let parser = fixed_width_parser::<()>();
+        let parser = fixed_width_parser::<()>(OrgParserConfig::default());
         assert_eq!(
             get_parser_output(parser, input),
             r##"FixedWidth@0..55
@@ -152,7 +160,7 @@ mod tests {
         let input = r##": this is a
 :bad
 "##;
-        let parser = fixed_width_parser::<()>();
+        let parser = fixed_width_parser::<()>(OrgParserConfig::default());
         get_parser_output(parser, input);
     }
 }

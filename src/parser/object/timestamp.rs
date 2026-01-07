@@ -107,6 +107,7 @@ pub(crate) fn timestamp_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyEx
 #[cfg(test)]
 mod tests {
     use crate::parser::common::get_parsers_output;
+    use crate::parser::config::OrgParserConfig;
     use crate::parser::object;
     use pretty_assertions::assert_eq;
 
@@ -114,7 +115,7 @@ mod tests {
     fn test_timestamp_01() {
         assert_eq!(
             get_parsers_output(
-                object::objects_parser::<()>(),
+                object::objects_parser::<()>(OrgParserConfig::default()),
                 r"[2004-08-24 Tue]--[2004-08-26 Thu]"
             ),
             r##"Root@0..34
@@ -127,7 +128,10 @@ mod tests {
     #[test]
     fn test_timestamp_02() {
         assert_eq!(
-            get_parsers_output(object::objects_parser::<()>(), r"<2030-10-05 Sat +1m -3d>"),
+            get_parsers_output(
+                object::objects_parser::<()>(OrgParserConfig::default()),
+                r"<2030-10-05 Sat +1m -3d>"
+            ),
             r##"Root@0..24
   Timestamp@0..24
     Text@0..24 "<2030-10-05 Sat +1m -3d>"
