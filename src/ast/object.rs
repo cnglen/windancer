@@ -70,6 +70,12 @@ pub enum Object {
         arguments: Vec<String>,
     },
 
+    InlineSourceBlock {
+        lang: String,
+        headers: Option<String>,
+        body: String,
+    },
+
     // other
     Whitespace(String),
 }

@@ -18,10 +18,10 @@
 | radio-target | ✓ | ✓ | ✓ |  |
 | timestamp | ✓ | ✓ | ✓ |  |
 | target | ✓ | ✓ | ✓ |  |
+| inline-src-block | ✓ | ✓ |  |  |
 | statistics-cookie |  |  |  | low |
 | inline-babel-call |  |  |  | low |
 | export-snippet |  |  |  | low |
-| inline-src-block |  |  |  | low |
 | citation |  |  |  | low |
 | citation-reference |  |  |  | low |
 

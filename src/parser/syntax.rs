@@ -89,6 +89,11 @@ pub enum OrgSyntaxKind {
     HeadingRowTags,         // optional: Node
     HeadingRowTag,          // Token
 
+    InlineSourceBlock,
+    InlineSourceBlockLang,
+    InlineSourceBlockHeaders,
+    InlineSourceBlockBody,
+
     TableCell, // Node
     HashPlus,
     DrawerBegin,

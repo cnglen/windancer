@@ -3,9 +3,9 @@ use std::collections::HashSet;
 
 #[derive(Clone, Debug)]
 pub enum OrgUseSubSuperscripts {
-    Nil,
-    Brace,
-    True,
+    Nil,   // disable subscript and superscript
+    Brace, // only _{} is recognized as subscript, only ^{} is recognized as superscript
+    True,  // see https://orgmode.org/worg/org-syntax.html
 }
 
 #[derive(Clone, Debug)]
@@ -36,7 +36,7 @@ impl OrgTodoKeywords {
 pub struct OrgParserConfig {
     pub org_todo_keywords: OrgTodoKeywords,
 
-    /// Note: different from org.el, this CHANGE the parsing. Copied from `orgize`
+    /// Different from org.el, this influences the parsing process.
     pub org_use_sub_superscripts: OrgUseSubSuperscripts,
 
     /// #+KEY[OPTVAL]: VALUE
@@ -79,6 +79,7 @@ impl Default for OrgParserConfig {
 }
 
 impl OrgParserConfig {
+    // dual keywords which contains objects
     pub(crate) fn org_element_dual_keywords_parsed(&self) -> HashSet<String> {
         self.org_element_dual_keywords
             .intersection(&self.org_element_parsed_keywords)
@@ -86,6 +87,7 @@ impl OrgParserConfig {
             .collect()
     }
 
+    // dual keywords which doesn't contain objects
     pub(crate) fn org_element_dual_keywords_string(&self) -> HashSet<String> {
         self.org_element_dual_keywords
             .difference(&self.org_element_parsed_keywords)
@@ -93,7 +95,7 @@ impl OrgParserConfig {
             .collect()
     }
 
-    // // commented since this is a empty set
+    // non-dual keywords which contains objects: commented since this is a empty set
     // pub(crate) fn org_element_affiliated_keywords_nondual_parsed(&self) -> HashSet<String> {
     //     self.org_element_affiliated_keywords.iter()
     //         .filter(|s| {
@@ -104,6 +106,7 @@ impl OrgParserConfig {
     //         .collect()
     // }
 
+    // non-dual keywords which doen's contain objects
     pub(crate) fn org_element_affiliated_keywords_nondual_string(&self) -> HashSet<String> {
         self.org_element_affiliated_keywords
             .iter()

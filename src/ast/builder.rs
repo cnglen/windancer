@@ -395,6 +395,10 @@ impl Converter {
                 Ok(self.convert_link(node_or_token.as_node().unwrap())?)
             }
 
+            OrgSyntaxKind::InlineSourceBlock => {
+                Ok(self.convert_inline_source_block(node_or_token.as_node().unwrap())?)
+            }
+
             OrgSyntaxKind::Asterisk => Ok(None),
             OrgSyntaxKind::BlankLine => Ok(None),
 
@@ -1024,6 +1028,39 @@ impl Converter {
         };
 
         Ok(Some(Object::Entity { name }))
+    }
+
+    // object.inline_source_block
+    fn convert_inline_source_block(&self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
+        let lang = node
+            .children_with_tokens()
+            .filter(|e| e.kind() == OrgSyntaxKind::InlineSourceBlockLang)
+            .map(|e| e.as_token().expect("todo").text().to_string())
+            .collect::<String>();
+
+        let body = node
+            .children_with_tokens()
+            .filter(|e| e.kind() == OrgSyntaxKind::InlineSourceBlockBody)
+            .map(|e| e.as_token().expect("todo").text().to_string())
+            .collect::<String>();
+
+        let headers = node
+            .children_with_tokens()
+            .filter(|e| e.kind() == OrgSyntaxKind::InlineSourceBlockHeaders)
+            .map(|e| e.as_token().expect("todo").text().to_string())
+            .collect::<String>();
+
+        let headers = if headers.is_empty() {
+            None
+        } else {
+            Some(headers)
+        };
+
+        Ok(Some(Object::InlineSourceBlock {
+            lang,
+            headers,
+            body,
+        }))
     }
 
     // object.latex_fragment
