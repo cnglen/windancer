@@ -137,7 +137,7 @@ impl Converter {
         let mut is_commented = false;
         let mut priority = None;
         let mut keyword = None;
-        let mut title = None;
+        let mut title = vec![];
         let mut tags = vec![];
         let mut planning = None;
         let mut property_drawer = None;
@@ -178,7 +178,19 @@ impl Converter {
                                 is_commented = true;
                             }
                             OrgSyntaxKind::HeadingRowTitle => {
-                                title = Some(c.as_token().unwrap().text().to_string())
+                                let ans = c
+                                    .as_node()
+                                    .unwrap()
+                                    .children_with_tokens()
+                                    .map(|e| self.convert_object(&e))
+                                    .filter(|e| e.is_ok())
+                                    .map(|e| e.unwrap())
+                                    .filter(|e| e.is_some())
+                                    .map(|e| e.unwrap())
+                                    .collect();
+
+                                title = ans;
+                                // title = Some(c.as_token().unwrap().text().to_string())
                             }
                             OrgSyntaxKind::HeadingRowTags => {
                                 let tc = c.as_node().unwrap();
@@ -397,6 +409,10 @@ impl Converter {
 
             OrgSyntaxKind::InlineSourceBlock => {
                 Ok(self.convert_inline_source_block(node_or_token.as_node().unwrap())?)
+            }
+
+            OrgSyntaxKind::StatisticsCookie => {
+                Ok(self.convert_statistics_cookie(node_or_token.as_node().unwrap())?)
             }
 
             OrgSyntaxKind::Asterisk => Ok(None),
@@ -1063,6 +1079,16 @@ impl Converter {
         }))
     }
 
+    // object.statistics_cookie
+    fn convert_statistics_cookie(&self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
+        let value = node
+            .children_with_tokens()
+            .filter(|e| e.kind() == OrgSyntaxKind::Text)
+            .map(|e| e.as_token().expect("todo").text().to_string())
+            .collect::<String>();
+
+        Ok(Some(Object::StatisticsCookie(value)))
+    }
     // object.latex_fragment
     fn convert_latex_fragment(&self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
         let tokens = node.children_with_tokens();

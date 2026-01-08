@@ -19,7 +19,7 @@
 | timestamp | ✓ | ✓ | ✓ |  |
 | target | ✓ | ✓ | ✓ |  |
 | inline-src-block | ✓ | ✓ |  |  |
-| statistics-cookie |  |  |  | low |
+| statistics-cookie | ✓ | ✓ | ✓ |  |
 | inline-babel-call |  |  |  | low |
 | export-snippet |  |  |  | low |
 | citation |  |  |  | low |

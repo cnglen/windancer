@@ -7,8 +7,9 @@ use chumsky::prelude::*;
 
 // todo: why usize in C
 // pub(crate) fn heading_subtree_parser<'a, C:'a + std::default::Default>(
-pub(crate) fn heading_subtree_parser<'a>(
+pub(crate) fn heading_subtree_parser<'a, C: 'a + std::default::Default>(
     config: OrgTodoKeywords,
+    object_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
     element_parser: impl Parser<
         'a,
         &'a str,
@@ -98,7 +99,7 @@ pub(crate) fn heading_subtree_parser<'a>(
                 .then(heading_subtree.clone().repeated().collect::<Vec<_>>()),
         )
         .map(
-            |(
+            move |(
                 stars,
                 (
                     (
@@ -186,8 +187,19 @@ pub(crate) fn heading_subtree_parser<'a>(
                 }
 
                 if let Some((title, whitespace)) = maybe_title {
-                    let title_token = crate::token!(OSK::HeadingRowTitle, title);
-                    children.push(title_token);
+                    // let title_token = crate::token!(OSK::HeadingRowTitle, title);
+                    // children.push(title_token);
+
+                    let title_node = object_parser
+                        .clone()
+                        .repeated()
+                        .at_least(1)
+                        .collect::<Vec<NT>>()
+                        .map(|s| crate::node!(OSK::HeadingRowTitle, s))
+                        .parse(title)
+                        .into_output()
+                        .unwrap();
+                    children.push(title_node);
 
                     if !whitespace.is_empty() {
                         let ws_token = crate::token!(OSK::Whitespace, whitespace);
@@ -260,6 +272,7 @@ mod tests {
     use crate::parser::common::{get_parser_output, get_parsers_output};
     use crate::parser::config::OrgParserConfig;
     use crate::parser::element::element_parser;
+    use crate::parser::object;
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -267,6 +280,7 @@ mod tests {
         let input = "* 标题1\n 测试\n** 标题1.1\n测试\n测试\ntest \n*** 1.1.1 title\nContent\n";
         let parser = heading_subtree_parser(
             OrgParserConfig::default().org_todo_keywords,
+            object::standard_set_object_parser::<()>(OrgParserConfig::default()),
             element_parser(OrgParserConfig::default()),
             "",
         );
@@ -276,7 +290,8 @@ mod tests {
   HeadingRow@0..10
     HeadingRowStars@0..1 "*"
     Whitespace@1..2 " "
-    HeadingRowTitle@2..9 "标题1"
+    HeadingRowTitle@2..9
+      Text@2..9 "标题1"
     Newline@9..10 "\n"
   Section@10..18
     Paragraph@10..18
@@ -285,7 +300,8 @@ mod tests {
     HeadingRow@18..31
       HeadingRowStars@18..20 "**"
       Whitespace@20..21 " "
-      HeadingRowTitle@21..30 "标题1.1"
+      HeadingRowTitle@21..30
+        Text@21..30 "标题1.1"
       Newline@30..31 "\n"
     Section@31..51
       Paragraph@31..51
@@ -294,7 +310,8 @@ mod tests {
       HeadingRow@51..67
         HeadingRowStars@51..54 "***"
         Whitespace@54..55 " "
-        HeadingRowTitle@55..66 "1.1.1 title"
+        HeadingRowTitle@55..66
+          Text@55..66 "1.1.1 title"
         Newline@66..67 "\n"
       Section@67..75
         Paragraph@67..75
@@ -308,6 +325,7 @@ mod tests {
         let input = "* 标题1\n 测试\n** 标题1.1\n测试\n测试\ntest\n*** 1.1.1 title\nContent\n* Title\nI have a dream\n"; // overflow
         let parser = heading_subtree_parser(
             OrgParserConfig::default().org_todo_keywords,
+            object::standard_set_object_parser::<()>(OrgParserConfig::default()),
             element_parser(OrgParserConfig::default()),
             "",
         )
@@ -320,7 +338,8 @@ mod tests {
     HeadingRow@0..10
       HeadingRowStars@0..1 "*"
       Whitespace@1..2 " "
-      HeadingRowTitle@2..9 "标题1"
+      HeadingRowTitle@2..9
+        Text@2..9 "标题1"
       Newline@9..10 "\n"
     Section@10..18
       Paragraph@10..18
@@ -329,7 +348,8 @@ mod tests {
       HeadingRow@18..31
         HeadingRowStars@18..20 "**"
         Whitespace@20..21 " "
-        HeadingRowTitle@21..30 "标题1.1"
+        HeadingRowTitle@21..30
+          Text@21..30 "标题1.1"
         Newline@30..31 "\n"
       Section@31..50
         Paragraph@31..50
@@ -338,7 +358,8 @@ mod tests {
         HeadingRow@50..66
           HeadingRowStars@50..53 "***"
           Whitespace@53..54 " "
-          HeadingRowTitle@54..65 "1.1.1 title"
+          HeadingRowTitle@54..65
+            Text@54..65 "1.1.1 title"
           Newline@65..66 "\n"
         Section@66..74
           Paragraph@66..74
@@ -347,7 +368,8 @@ mod tests {
     HeadingRow@74..82
       HeadingRowStars@74..75 "*"
       Whitespace@75..76 " "
-      HeadingRowTitle@76..81 "Title"
+      HeadingRowTitle@76..81
+        Text@76..81 "Title"
       Newline@81..82 "\n"
     Section@82..97
       Paragraph@82..97

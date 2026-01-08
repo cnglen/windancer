@@ -521,11 +521,7 @@ pub(crate) fn verse_block_parser<'a, C: 'a>(
         .collect::<Vec<NT>>();
     let content_inner = object::line_parser_allow_blank()
         .and_is(end_row.clone().ignored().not()) // No line may start with #+end_NAME.
-        .and_is(
-            element::heading::simple_heading_row_parser()
-                .ignored()
-                .not(),
-        )
+        .and_is(element::heading::simple_heading_row_parser().not())
         .repeated();
     let content = fullset_objects_parser.nested_in(content_inner.to_slice());
 

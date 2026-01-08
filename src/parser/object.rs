@@ -10,6 +10,7 @@ mod link;
 mod r#macro;
 mod radio_link;
 mod radio_target;
+mod statistics_cookie;
 pub(crate) mod subscript_superscript;
 pub(crate) mod table_cell;
 mod target;
@@ -25,6 +26,7 @@ use crate::parser::object::link::{angle_link_parser, plain_link_parser, regular_
 use crate::parser::object::r#macro::macro_parser;
 use crate::parser::object::radio_link::radio_link_parser;
 use crate::parser::object::radio_target::radio_target_parser;
+use crate::parser::object::statistics_cookie::statistics_cookie_parser;
 use crate::parser::object::subscript_superscript::subscript_parser;
 use crate::parser::object::subscript_superscript::superscript_parser;
 use crate::parser::object::target::target_parser;
@@ -479,7 +481,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
     let r#macro = macro_parser();
     let target = target_parser();
     let timestamp = timestamp_parser();
-    // let statistics_cookie = statistics_cookie_parser();
+    let statistics_cookie = statistics_cookie_parser();
     // let inline_babel_call = inline_babel_call_parser();
     // let export_snippet = export_snippet_parser();
     let inline_source_block = inline_source_block_parser();
@@ -503,7 +505,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
         r#macro.clone(),
         target.clone(),
         timestamp.clone(),
-        // statistics_cookie.clone(),
+        statistics_cookie.clone(),
         // inline_babel_call.clone(),
         // export_snippet.clone(),
         inline_source_block.clone(),
@@ -551,7 +553,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 // inline_babel_call.clone(),
                 inline_source_block.clone(),
                 r#macro.clone(),
-                // statistics_cookie.clone(),
+                statistics_cookie.clone(),
                 angle_link.clone(),
                 plain_link.clone(),
             )));
@@ -566,7 +568,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 // inline_babel_call.clone(),
                 inline_source_block.clone(),
                 r#macro.clone(),
-                // statistics_cookie.clone(),
+                statistics_cookie.clone(),
                 angle_link.clone(),
                 plain_link.clone(),
             )));
@@ -747,7 +749,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 // inline_babel_call.clone(),
                 inline_source_block.clone(),
                 r#macro.clone(),
-                // statistics_cookie.clone(),
+                statistics_cookie.clone(),
                 angle_link.clone(),
                 plain_link.clone(),
             )));
@@ -760,7 +762,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 // inline_babel_call.clone(),
                 inline_source_block.clone(),
                 r#macro.clone(),
-                // statistics_cookie.clone(),
+                statistics_cookie.clone(),
                 angle_link.clone(),
                 plain_link.clone(),
             )));
@@ -1241,7 +1243,8 @@ other objects (2):
     HeadingRow@0..8
       HeadingRowStars@0..1 "*"
       Whitespace@1..2 " "
-      HeadingRowTitle@2..7 "table"
+      HeadingRowTitle@2..7
+        Text@2..7 "table"
       Newline@7..8 "\n"
     Section@8..1933
       Table@8..1933

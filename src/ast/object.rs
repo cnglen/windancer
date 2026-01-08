@@ -76,6 +76,8 @@ pub enum Object {
         body: String,
     },
 
+    StatisticsCookie(String),
+
     // other
     Whitespace(String),
 }

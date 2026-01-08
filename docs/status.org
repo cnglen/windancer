@@ -23,8 +23,8 @@
 | timestamp          | ✓           | ✓         | ✓          |                                      |
 | target             | ✓           | ✓         | ✓          |                                      |
 | inline-src-block   | ✓           | ✓         |             |                                      |
+| statistics-cookie  | ✓           | ✓         | ✓          |                                      |
 |--------------------+--------------+------------+-------------+--------------------------------------|
-| statistics-cookie  |              |            |             | low                                  |
 | inline-babel-call  |              |            |             | low                                  |
 | export-snippet     |              |            |             | low                                  |
 | citation           |              |            |             | low                                  |

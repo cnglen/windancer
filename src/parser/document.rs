@@ -24,6 +24,7 @@ pub(crate) fn document_parser<'a>(
         .then(
             element::heading::heading_subtree_parser(
                 config.clone().org_todo_keywords,
+                object::standard_set_object_parser::<()>(config.clone()),
                 element::element_parser(config.clone()),
                 "",
             )

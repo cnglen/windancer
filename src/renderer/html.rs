@@ -194,6 +194,12 @@ impl HtmlRenderer {
     }
 
     fn render_heading_subtree(&mut self, heading: &HeadingSubtree) -> String {
+        let title = heading
+            .title
+            .iter()
+            .map(|e| self.render_object(e))
+            .collect::<String>();
+
         if heading.is_commented {
             return String::from("");
         }
@@ -226,18 +232,14 @@ impl HtmlRenderer {
         };
 
         let section_html = if let Some(section) = &heading.section {
-            if let Some(title) = &heading.title {
-                if title == "Footnotes" {
-                    let elements = self
-                        .footnote_defintions
-                        .iter()
-                        .map(|e| element::Element::FootnoteDefinition(e.clone()))
-                        .collect::<Vec<_>>();
-                    let section = Section { elements };
-                    self.render_section(&section)
-                } else {
-                    self.render_section(&section)
-                }
+            if title == "Footnotes" {
+                let elements = self
+                    .footnote_defintions
+                    .iter()
+                    .map(|e| element::Element::FootnoteDefinition(e.clone()))
+                    .collect::<Vec<_>>();
+                let section = Section { elements };
+                self.render_section(&section)
             } else {
                 self.render_section(&section)
             }
@@ -268,7 +270,7 @@ impl HtmlRenderer {
 </div>
  "##,
             level = heading.level + 1,
-            title = escape_html(&heading.title.clone().unwrap()),
+            title = escape_html(&title),
             todo = todo_html,
             tags = tags_html,
             section = section_html,
@@ -549,6 +551,10 @@ impl HtmlRenderer {
 
                 None => String::from(content),
             },
+
+            Object::StatisticsCookie(value) => {
+                format!("{}", value)
+            }
 
             _ => String::from(""), // AstInline::Link { url, text } => {
                                    //     format!(r#"<a href="{}">{}</a>"#, escape_html(url), escape_html(text))

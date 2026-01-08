@@ -61,7 +61,7 @@ pub struct HeadingSubtree {
     pub keyword: Option<String>,
     pub priority: Option<String>,
     pub is_commented: bool,
-    pub title: Option<String>,
+    pub title: Vec<Object>,
     pub tags: Vec<String>,
 
     pub planning: Option<Planning>,

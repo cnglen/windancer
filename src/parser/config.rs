@@ -32,6 +32,7 @@ impl OrgTodoKeywords {
     }
 }
 
+// Toggle inclusion of statistics cookies: (‘org-export-with-statistics-cookies’).
 #[derive(Clone, Debug)]
 pub struct OrgParserConfig {
     pub org_todo_keywords: OrgTodoKeywords,

@@ -205,6 +205,7 @@ fn plain_list_parser_inner<'a, C: 'a + std::default::Default>(
                     item_content_inner.clone().or_not(),
                     object::blank_line_parser().or_not(),
                 ))
+                .and_is(element::heading::simple_heading_row_parser().not())
                 .then(
                     // other items
                     group((
@@ -220,6 +221,7 @@ fn plain_list_parser_inner<'a, C: 'a + std::default::Default>(
                         item_content_inner.or_not(),
                         object::blank_line_parser().or_not(),
                     ))
+                    .and_is(element::heading::simple_heading_row_parser().not())
                     .repeated()
                     .collect::<Vec<_>>(),
                 ),

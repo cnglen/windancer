@@ -370,13 +370,13 @@ a ~=*/bold_italic/*=~ line
 | 14 angle link         | <mailto:foo@bar>       | y                       |
 | 15 radio link         | radio target 011       | y                       |
 | 16 regular link       | [[target 012]]             | y                       |
-| 17 statistics-cookie  | todo                   | n                       |
-| 18 inline-babel-call  | todo                   | n                       |
-| 19 inline-src-block   | todo                   | n                       |
+| 17 statistics-cookie  | NA                     | n                       |
+| 18 inline-babel-call  | NA                     | n                       |
+| 19 inline-src-block   | NA                     | n                       |
 | 20 citation           | todo                   | y                       |
 | 21 export-snippet     | todo                   | y                       |
 | 22 table-cell         | NA                     | n                       |
-| 23 citation-reference | todo                   | n                       |
+| 23 citation-reference | NA                     | n                       |
 
 
 #+CAPTION: table
@@ -509,7 +509,7 @@ B test:
 a. asdf
 b. df
 
-* object test
+* object test [2/2]
 
 minimal set objects(6)
 

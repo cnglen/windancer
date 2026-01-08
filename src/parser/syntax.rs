@@ -93,6 +93,7 @@ pub enum OrgSyntaxKind {
     InlineSourceBlockLang,
     InlineSourceBlockHeaders,
     InlineSourceBlockBody,
+    StatisticsCookie,
 
     TableCell, // Node
     HashPlus,

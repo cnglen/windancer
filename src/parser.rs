@@ -172,7 +172,8 @@ mod tests {
     HeadingRow@0..10
       HeadingRowStars@0..1 "*"
       Whitespace@1..2 " "
-      HeadingRowTitle@2..9 "标题1"
+      HeadingRowTitle@2..9
+        Text@2..9 "标题1"
       Newline@9..10 "\n"
     Section@10..18
       Paragraph@10..18
@@ -181,7 +182,8 @@ mod tests {
       HeadingRow@18..31
         HeadingRowStars@18..20 "**"
         Whitespace@20..21 " "
-        HeadingRowTitle@21..30 "标题1.1"
+        HeadingRowTitle@21..30
+          Text@21..30 "标题1.1"
         Newline@30..31 "\n"
       Section@31..50
         Paragraph@31..50
@@ -190,7 +192,8 @@ mod tests {
         HeadingRow@50..66
           HeadingRowStars@50..53 "***"
           Whitespace@53..54 " "
-          HeadingRowTitle@54..65 "1.1.1 title"
+          HeadingRowTitle@54..65
+            Text@54..65 "1.1.1 title"
           Newline@65..66 "\n"
         Section@66..74
           Paragraph@66..74
@@ -199,7 +202,8 @@ mod tests {
     HeadingRow@74..82
       HeadingRowStars@74..75 "*"
       Whitespace@75..76 " "
-      HeadingRowTitle@76..81 "Title"
+      HeadingRowTitle@76..81
+        Text@76..81 "Title"
       Newline@81..82 "\n"
     Section@82..97
       Paragraph@82..97
@@ -220,7 +224,8 @@ mod tests {
     HeadingRow@0..10
       HeadingRowStars@0..1 "*"
       Whitespace@1..2 " "
-      HeadingRowTitle@2..9 "标题1"
+      HeadingRowTitle@2..9
+        Text@2..9 "标题1"
       Newline@9..10 "\n"
     Section@10..11
       Paragraph@10..11
