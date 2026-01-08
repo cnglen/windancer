@@ -16,7 +16,7 @@ exclude = ["readme_cn.org"]
 
 [dependencies]
 phf = { version = "0.13.1", features = ["macros"]}
-chumsky = { version = "0.12.0", features = [] }
+chumsky = { version = "0.13.0", features = [] }
 
 colored = "3.0.0"
 orgize = "=0.10.0-alpha.10"
@@ -24,6 +24,9 @@ rowan = "0.16.1"
 thiserror = "2.0.17"
 clap = { version = "4.5.50", features = ["derive"] }
 chrono = { version = "0.4.42", features = ["serde"] }
+
+[patch.crates-io]
+chumsky = { git = 'https://github.com/cnglen/chumsky.git' }
 
 [dev-dependencies]
 criterion = "0.8.0"
