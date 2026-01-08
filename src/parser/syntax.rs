@@ -95,6 +95,12 @@ pub enum OrgSyntaxKind {
     InlineSourceBlockBody,
     StatisticsCookie,
 
+    InlineBabelCall,
+    InlineBabelCallName,
+    InlineBabelCallHeader1,
+    InlineBabelCallArguments,
+    InlineBabelCallHeader2,
+
     TableCell, // Node
     HashPlus,
     DrawerBegin,

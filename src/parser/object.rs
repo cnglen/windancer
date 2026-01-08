@@ -3,6 +3,7 @@
 use std::collections::HashSet;
 pub mod entity;
 mod footnote_reference;
+mod inline_babel_call;
 mod inline_source_block;
 mod latex_fragment;
 mod line_break;
@@ -19,6 +20,7 @@ mod text_markup;
 pub(crate) mod timestamp;
 use crate::parser::object::entity::entity_parser;
 use crate::parser::object::footnote_reference::footnote_reference_parser;
+use crate::parser::object::inline_babel_call::inline_babel_call_parser;
 use crate::parser::object::inline_source_block::inline_source_block_parser;
 use crate::parser::object::latex_fragment::latex_fragment_parser;
 use crate::parser::object::line_break::line_break_parser;
@@ -482,7 +484,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
     let target = target_parser();
     let timestamp = timestamp_parser();
     let statistics_cookie = statistics_cookie_parser();
-    // let inline_babel_call = inline_babel_call_parser();
+    let inline_babel_call = inline_babel_call_parser();
     // let export_snippet = export_snippet_parser();
     let inline_source_block = inline_source_block_parser();
     let plain_link = plain_link_parser();
@@ -506,7 +508,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
         target.clone(),
         timestamp.clone(),
         statistics_cookie.clone(),
-        // inline_babel_call.clone(),
+        inline_babel_call.clone(),
         // export_snippet.clone(),
         inline_source_block.clone(),
         plain_link.clone(), // 第12个
@@ -550,7 +552,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 subscript.clone(),
                 superscript.clone(),
                 // export_snippet.clone(),
-                // inline_babel_call.clone(),
+                inline_babel_call.clone(),
                 inline_source_block.clone(),
                 r#macro.clone(),
                 statistics_cookie.clone(),
@@ -565,7 +567,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 subscript_superscript::simple_subscript_parser(org_use_sub_superscripts.clone()),
                 subscript_superscript::simple_superscript_parser(org_use_sub_superscripts.clone()),
                 // export_snippet.clone(),
-                // inline_babel_call.clone(),
+                inline_babel_call.clone(),
                 inline_source_block.clone(),
                 r#macro.clone(),
                 statistics_cookie.clone(),
@@ -746,7 +748,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 entity.clone(),
                 text_markup.clone(),
                 // export_snippet.clone(),
-                // inline_babel_call.clone(),
+                inline_babel_call.clone(),
                 inline_source_block.clone(),
                 r#macro.clone(),
                 statistics_cookie.clone(),
@@ -759,7 +761,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 entity.clone(),
                 text_markup::simple_text_markup_parser(),
                 // export_snippet.clone(),
-                // inline_babel_call.clone(),
+                inline_babel_call.clone(),
                 inline_source_block.clone(),
                 r#macro.clone(),
                 statistics_cookie.clone(),
