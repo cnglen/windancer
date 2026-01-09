@@ -20,10 +20,10 @@
 | target | ✓ | ✓ | ✓ |  |
 | inline-src-block | ✓ | ✓ |  |  |
 | statistics-cookie | ✓ | ✓ | ✓ |  |
-| inline-babel-call |  |  |  | low |
-| export-snippet |  |  |  | low |
-| citation |  |  |  | low |
-| citation-reference |  |  |  | low |
+| inline-babel-call | ✓ | ✓ |  |  |
+| citation | ✓ | ✓ |  |  |
+| citation-reference | ✓ | ✓ |  |  |
+| export-snippet | ✓ | ✓ | ✓ |  |
 
 # element
 

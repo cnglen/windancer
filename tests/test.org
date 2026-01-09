@@ -352,31 +352,31 @@ a ~=*/bold_italic/*=~ line
 
 #+CAPTION[object in table]: table with objects
 #+attr_html: :border 2 :rules all :frame border
-| object kind           | object value           | supported in table cell |
-|-----------------------+------------------------+-------------------------|
-| 01 text markup        | *bold*                 | y                       |
-| 02 entity             | \alpha                 | y                       |
-| 03 latex fragment     | $\sum_{i=1}^{n} i$     | y                       |
-| 04 superscript        | a_1                    | y                       |
-| 05 subscript          | c^{2}                  | y                       |
-| 06 plain text         | just text              | y                       |
-| 07 footnote-reference | [fn:1]                 | y                       |
-| 08 line-break         | \\                     | n                       |
-| 09 timestamp          | <1234-07-31>           | y                       |
-| 10 macro              | {{{title}}}            | y                       |
-| 11 radio-target       | <<<radio target 011>>> | y                       |
-| 12 target             | <<target 012>>         | y                       |
-| 13 plain link         | https://foo.bar        | y                       |
-| 14 angle link         | <mailto:foo@bar>       | y                       |
-| 15 radio link         | radio target 011       | y                       |
-| 16 regular link       | [[target 012]]             | y                       |
-| 17 statistics-cookie  | NA                     | n                       |
-| 18 inline-babel-call  | NA                     | n                       |
-| 19 inline-src-block   | NA                     | n                       |
-| 20 citation           | todo                   | y                       |
-| 21 export-snippet     | todo                   | y                       |
-| 22 table-cell         | NA                     | n                       |
-| 23 citation-reference | NA                     | n                       |
+| object kind           | object value                     | supported in table cell |
+|-----------------------+----------------------------------+-------------------------|
+| 01 text markup        | *bold*                           | y                       |
+| 02 entity             | \alpha                           | y                       |
+| 03 latex fragment     | $\sum_{i=1}^{n} i$               | y                       |
+| 04 superscript        | a_1                              | y                       |
+| 05 subscript          | c^{2}                            | y                       |
+| 06 plain text         | just text                        | y                       |
+| 07 footnote-reference | [fn:1]                           | y                       |
+| 08 line-break         | \\                               | n                       |
+| 09 timestamp          | <1234-07-31>                     | y                       |
+| 10 macro              | {{{title}}}                      | y                       |
+| 11 radio-target       | <<<radio target 011>>>           | y                       |
+| 12 target             | <<target 012>>                   | y                       |
+| 13 plain link         | https://foo.bar                  | y                       |
+| 14 angle link         | <mailto:foo@bar>                 | y                       |
+| 15 radio link         | radio target 011                 | y                       |
+| 16 regular link       | [[target 012]]                       | y                       |
+| 17 statistics-cookie  | NA                               | n                       |
+| 18 inline-babel-call  | NA                               | n                       |
+| 19 inline-src-block   | NA                               | n                       |
+| 20 citation           | [cite:@key]                      | y                       |
+| 21 export-snippet     | @@html:<b>@@bold text@@html:</b> | y                       |
+| 22 table-cell         | NA                               | n                       |
+| 23 citation-reference | NA                               | n                       |
 
 
 #+CAPTION: table
@@ -509,7 +509,7 @@ B test:
 a. asdf
 b. df
 
-* object test [2/2]
+* object test [2/3]
 
 minimal set objects(6)
 
@@ -843,10 +843,14 @@ an expression enclosed in curly brackets: a_{2}, a_{b{3}}, a_{b_{c}_{d}_{e}} (or
 sign(optional) chars final: a_+34, a_-12,889,78.3\a, 10_24, 10_tau, 10_-12, 10_-tau, x_2-y_3, x_(2-i), x_{i_2}, a_2Kو b_(3+2),
 
 
-** inline source
+** TODO inline source
+:LOGBOOK:
+- State "TODO"       from              [2026-01-09 Fri 22:26]
+:END:
 
 src_python{print("hello")} {{{results(=None=)}}}
 
+src_cpp[:includes <iostream>]{std::cout<< "hi cpp" << std::endl;} {{{results(=hi cpp=)}}}
 
 ** target
 <<<y>>>
@@ -882,6 +886,14 @@ call_NAME(ARGUMENTS)
 [cite/a/f:c.f.;the very important @@atkey @ once;the crucial @baz vol. 3]
 
 [cite:@key]
+
+** export snippet
+
+​=@@html:@@bold text@@html:</b>@@=​: @@html:@@bold text@@html:</b>@@
+
+​=@@html:<b>@@bold text@@html:</b>@@=​: @@html:<b>@@bold text@@html:</b>@@
+
+​=@@beamer:some code@@ ignored in html backend=​: @@beamer:some code@@ ignored in html backend
 
 * Footnotes
 

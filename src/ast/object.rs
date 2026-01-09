@@ -94,6 +94,11 @@ pub enum Object {
         global_suffix: Vec<Object>,
     },
 
+    ExportSnippet {
+        backend: String,
+        value: String,
+    },
+
     // other
     Whitespace(String),
 }

@@ -556,6 +556,15 @@ impl HtmlRenderer {
                 format!("{}", value)
             }
 
+            Object::ExportSnippet { backend, value } => {
+                if backend == "html" {
+                    format!("{}", value)
+                } else {
+                    // ignore other backend
+                    format!("")
+                }
+            }
+
             _ => String::from(""), // AstInline::Link { url, text } => {
                                    //     format!(r#"<a href="{}">{}</a>"#, escape_html(url), escape_html(text))
                                    // }

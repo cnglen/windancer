@@ -421,6 +421,10 @@ impl Converter {
                 Ok(self.convert_statistics_cookie(node_or_token.as_node().unwrap())?)
             }
 
+            OrgSyntaxKind::ExportSnippet => {
+                Ok(self.convert_export_snippet(node_or_token.as_node().unwrap())?)
+            }
+
             OrgSyntaxKind::Asterisk => Ok(None),
             OrgSyntaxKind::BlankLine => Ok(None),
 
@@ -1083,6 +1087,23 @@ impl Converter {
             headers,
             body,
         }))
+    }
+
+    // object.export_snippet
+    fn convert_export_snippet(&self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
+        let backend = node
+            .children_with_tokens()
+            .filter(|e| e.kind() == OrgSyntaxKind::ExportSnippetBackend)
+            .map(|e| e.as_token().expect("todo").text().to_string())
+            .collect::<String>();
+
+        let value = node
+            .children_with_tokens()
+            .filter(|e| e.kind() == OrgSyntaxKind::ExportSnippetValue)
+            .map(|e| e.as_token().expect("todo").text().to_string())
+            .collect::<String>();
+
+        Ok(Some(Object::ExportSnippet { backend, value }))
     }
 
     // object.inline_babel_call

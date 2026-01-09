@@ -165,6 +165,10 @@ pub enum OrgSyntaxKind {
 
     LineBreak,
 
+    ExportSnippet,
+    ExportSnippetBackend,
+    ExportSnippetValue,
+
     // 令牌类型
     HeadingMarker, // *, **, *** 等
     TextContent,
@@ -183,7 +187,8 @@ pub enum OrgSyntaxKind {
     Dollar2,    // $$
     Pipe,       // Token |
     Dash,       // Token -
-    At,         // at
+    At,         // @
+    At2,        // @@
     BackSlash,  // \
     BackSlash2, // \\
     Semicolon,  // ;

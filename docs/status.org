@@ -27,8 +27,8 @@
 | inline-babel-call  | ✓           | ✓         |             |                                      |
 | citation           | ✓           | ✓         |             |                                      |
 | citation-reference | ✓           | ✓         |             |                                      |
-|--------------------+--------------+------------+-------------+--------------------------------------|
-| export-snippet     |              |            |             | low                                  |
+| export-snippet     | ✓           | ✓         | ✓          |                                      |
+
 
 * element
 
