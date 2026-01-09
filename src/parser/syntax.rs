@@ -101,6 +101,16 @@ pub enum OrgSyntaxKind {
     InlineBabelCallArguments,
     InlineBabelCallHeader2,
 
+    Citation,
+
+    CitationCitestyle,
+    CitationGlobalPrefix,
+    CitationReference,
+    CitationReferenceKeyPrefix,
+    CitationReferenceKey,
+    CitationReferenceKeySuffix,
+    CitationGlobalSuffix,
+
     TableCell, // Node
     HashPlus,
     DrawerBegin,
@@ -176,6 +186,7 @@ pub enum OrgSyntaxKind {
     At,         // at
     BackSlash,  // \
     BackSlash2, // \\
+    Semicolon,  // ;
 
     LinkStart,
     LinkEnd,

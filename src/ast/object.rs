@@ -76,7 +76,23 @@ pub enum Object {
         body: String,
     },
 
+    InlineBabelCall {
+        name: String,
+        header1: Option<String>,
+        arguments: String,
+        header2: Option<String>,
+    },
+
     StatisticsCookie(String),
+
+    CitationReference(CitationReference),
+
+    Citation {
+        global_prefix: Vec<Object>,
+        citestyle: Option<String>,
+        references: Vec<CitationReference>,
+        global_suffix: Vec<Object>,
+    },
 
     // other
     Whitespace(String),
@@ -95,4 +111,11 @@ pub struct TableCell {
 pub enum TableCellType {
     Header, // 表头行
     Data,   // 数据行
+}
+
+#[derive(Debug, Clone)]
+pub struct CitationReference {
+    pub key_prefix: Vec<Object>,
+    pub key: String,
+    pub key_suffix: Vec<Object>,
 }

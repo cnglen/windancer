@@ -1,6 +1,7 @@
 //! Object paser
 // extern crate test;
 use std::collections::HashSet;
+mod citation;
 pub mod entity;
 mod footnote_reference;
 mod inline_babel_call;
@@ -18,6 +19,7 @@ mod target;
 mod text;
 mod text_markup;
 pub(crate) mod timestamp;
+use crate::parser::object::citation::citation_parser;
 use crate::parser::object::entity::entity_parser;
 use crate::parser::object::footnote_reference::footnote_reference_parser;
 use crate::parser::object::inline_babel_call::inline_babel_call_parser;
@@ -494,9 +496,9 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
     let regular_link = regular_link_parser(object_in_regular_link.clone());
     let radio_target = radio_target_parser(minimal_set_object.clone());
     let footnote_reference = footnote_reference_parser(standard_set_object.clone());
-    // let citation_parser = citation_parser(standard_set_object.clone());
+    let citation = citation_parser(minimal_set_object.clone(), standard_set_object.clone());
     // let table_cell = table_cell_parser(object_in_table_cell.clone()); // table_cell_parser ONLY used in table.rs
-    // let citation_reference = citation_reference_parser(minimal_set_object.clone());
+    // let citation_reference = citation_reference_parser(minimal_set_object.clone()); // citation_reference_paser ONLY used in citation.rs
 
     // independent object (12)
     let independent_object = Parser::boxed(choice((
@@ -589,7 +591,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 text_markup.clone(),
                 subscript.clone(),
                 superscript.clone(),
-                // citation.clone(),
+                citation.clone(),
                 // export_snippet.clone(),
                 footnote_reference.clone(),
                 angle_link.clone(),
@@ -607,7 +609,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 text_markup::simple_text_markup_parser(),
                 subscript_superscript::simple_subscript_parser(org_use_sub_superscripts.clone()),
                 subscript_superscript::simple_superscript_parser(org_use_sub_superscripts.clone()),
-                // citation.clone(),
+                citation::simple_citation_parser(),
                 // export_snippet.clone(),
                 footnote_reference::simple_footnote_reference_parser(),
                 angle_link.clone(),
@@ -637,7 +639,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 subscript.clone(),          // 1个
                 superscript.clone(),        // 1个
                 footnote_reference.clone(), // 1个
-                                            // citation.clone(),             // 1个
+                citation.clone(),           // 1个
             )));
             let standard_set_without_plain_text_lookahead = Parser::boxed(choice((
                 radio_link::simple_radio_link_parser(),
@@ -648,7 +650,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 subscript_superscript::simple_subscript_parser(org_use_sub_superscripts.clone()),
                 subscript_superscript::simple_superscript_parser(org_use_sub_superscripts.clone()),
                 footnote_reference::simple_footnote_reference_parser(),
-                // citation.clone(),             // 1个
+                citation::simple_citation_parser(),
             )));
 
             let plain_text_for_standard =
@@ -668,10 +670,10 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 subscript.clone(),          // 1
                 superscript.clone(),        // 1
                 footnote_reference.clone(), // 1
-                                            // citation.clone(),             // 1
+                citation.clone(),           // 1
 
                                             // table_cell,            // table cell only in table_row of table, DONOT INCLUDE THIS
-                                            // citation_reference,
+                                            // citation_reference, // citation_reference only in citation, DONOT INCLUDE THIS
             )));
             let full_set_without_plain_text_lookahead = Parser::boxed(choice((
                 radio_link::simple_radio_link_parser(),
@@ -682,8 +684,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 subscript_superscript::simple_subscript_parser(org_use_sub_superscripts.clone()),
                 subscript_superscript::simple_superscript_parser(org_use_sub_superscripts.clone()),
                 footnote_reference::simple_footnote_reference_parser(),
-                // citation.clone(),             // 1
-
+                citation::simple_citation_parser(),
                 // table_cell,            // table cell only in table_row of table, DONOT INCLUDE THIS
                 // citation_reference,
             )));
@@ -698,7 +699,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 text_markup.clone(),        // 1个
                 subscript.clone(),          // 1个
                 superscript.clone(),        // 1个
-                                            // citation.clone(),             // 1个
+                citation.clone(),           // 1个
             )));
             let non_plain_text_parsers_for_keyword_lookahead = Parser::boxed(choice((
                 radio_link::simple_radio_link_parser(),
@@ -708,7 +709,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 text_markup::simple_text_markup_parser(),
                 subscript_superscript::simple_subscript_parser(org_use_sub_superscripts.clone()),
                 subscript_superscript::simple_superscript_parser(org_use_sub_superscripts.clone()),
-                // citation.clone(),             // 1个
+                citation::simple_citation_parser(),
             )));
             let plain_text_parser_for_keyword =
                 plain_text_parser(non_plain_text_parsers_for_keyword_lookahead);
@@ -781,7 +782,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 latex_fragment.clone(),
                 entity.clone(),
                 text_markup.clone(),
-                // citation.clone(),
+                citation.clone(),
                 // export_snippet.clone(),
                 footnote_reference.clone(),
                 angle_link.clone(),
@@ -797,7 +798,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 latex_fragment.clone(),
                 entity.clone(),
                 text_markup::simple_text_markup_parser(),
-                // citation.clone(),
+                citation::simple_citation_parser(),
                 // export_snippet.clone(),
                 footnote_reference::simple_footnote_reference_parser(),
                 angle_link.clone(),
@@ -825,7 +826,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 radio_target.clone(),       // 1个
                 text_markup.clone(),        // 1个
                 footnote_reference.clone(), // 1个
-                                            // citation.clone(),             // 1个
+                citation.clone(),           // 1个
             )));
             let standard_set_without_plain_text_lookahead = Parser::boxed(choice((
                 radio_link::simple_radio_link_parser(),
@@ -834,7 +835,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 radio_target::simple_radio_target_parser(),
                 text_markup::simple_text_markup_parser(),
                 footnote_reference::simple_footnote_reference_parser(),
-                // citation.clone(),             // 1个
+                citation::simple_citation_parser(),
             )));
 
             let plain_text_for_standard =
@@ -852,7 +853,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 radio_target.clone(),       // 1
                 text_markup.clone(),        // 1
                 footnote_reference.clone(), // 1
-                                            // citation.clone(),             // 1
+                citation.clone(),           // 1
 
                                             // table_cell,            // table cell only in table_row of table, DONOT INCLUDE THIS
                                             // citation_reference,
@@ -864,8 +865,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 radio_target::simple_radio_target_parser(),
                 text_markup::simple_text_markup_parser(),
                 footnote_reference::simple_footnote_reference_parser(),
-                // citation.clone(),             // 1
-
+                citation::simple_citation_parser(),
                 // table_cell,            // table cell only in table_row of table, DONOT INCLUDE THIS
                 // citation_reference,
             )));
@@ -878,7 +878,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 independent_object.clone(), // 12个
                 radio_target.clone(),       // 1个
                 text_markup.clone(),        // 1个
-                                            // citation.clone(),             // 1个
+                citation.clone(),           // 1个
             )));
             let non_plain_text_parsers_for_keyword_lookahead = Parser::boxed(choice((
                 radio_link::simple_radio_link_parser(),
@@ -886,7 +886,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 independent_object.clone(), // 12个
                 radio_target::simple_radio_target_parser(),
                 text_markup::simple_text_markup_parser(),
-                // citation.clone(),             // 1个
+                citation::simple_citation_parser(),
             )));
             let plain_text_parser_for_keyword =
                 plain_text_parser(non_plain_text_parsers_for_keyword_lookahead);

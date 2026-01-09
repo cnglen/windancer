@@ -870,6 +870,19 @@ Here we refer to item [[target][descript of target]]. (C-c C-o)
 
 
 
+** inline babel call
+
+call_NAME[HEADER1](ARGUMENTS)[HEADER2]
+call_NAME(ARGUMENTS)
+
+** citation
+
+[cite/style:common prefix ;prefix @key suffix; prefix @foo suffix ; common suffix]
+
+[cite/a/f:c.f.;the very important @@atkey @ once;the crucial @baz vol. 3]
+
+[cite:@key]
+
 * Footnotes
 
 [fn:祖冲之] pi

@@ -24,7 +24,7 @@ use crate::ast::element::{
     VerseBlock,
 };
 use crate::ast::error::AstError;
-use crate::ast::object::{Object, TableCell, TableCellType};
+use crate::ast::object::{CitationReference, Object, TableCell, TableCellType};
 use crate::parser::syntax::{OrgSyntaxKind, SyntaxElement, SyntaxNode, SyntaxToken};
 
 pub struct AstBuilder;
@@ -410,6 +410,12 @@ impl Converter {
             OrgSyntaxKind::InlineSourceBlock => {
                 Ok(self.convert_inline_source_block(node_or_token.as_node().unwrap())?)
             }
+
+            OrgSyntaxKind::InlineBabelCall => {
+                Ok(self.convert_inline_babel_call(node_or_token.as_node().unwrap())?)
+            }
+
+            OrgSyntaxKind::Citation => Ok(self.convert_citation(node_or_token.as_node().unwrap())?),
 
             OrgSyntaxKind::StatisticsCookie => {
                 Ok(self.convert_statistics_cookie(node_or_token.as_node().unwrap())?)
@@ -1076,6 +1082,157 @@ impl Converter {
             lang,
             headers,
             body,
+        }))
+    }
+
+    // object.inline_babel_call
+    fn convert_inline_babel_call(&self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
+        let name = node
+            .children_with_tokens()
+            .filter(|e| e.kind() == OrgSyntaxKind::InlineBabelCallName)
+            .map(|e| e.as_token().expect("todo").text().to_string())
+            .collect::<String>();
+
+        let arguments = node
+            .children_with_tokens()
+            .filter(|e| e.kind() == OrgSyntaxKind::InlineBabelCallArguments)
+            .map(|e| e.as_token().expect("todo").text().to_string())
+            .collect::<String>();
+
+        let header1 = node
+            .children_with_tokens()
+            .filter(|e| e.kind() == OrgSyntaxKind::InlineBabelCallHeader1)
+            .map(|e| e.as_token().expect("todo").text().to_string())
+            .collect::<String>();
+
+        let header2 = node
+            .children_with_tokens()
+            .filter(|e| e.kind() == OrgSyntaxKind::InlineBabelCallHeader2)
+            .map(|e| e.as_token().expect("todo").text().to_string())
+            .collect::<String>();
+
+        let header1 = if header1.is_empty() {
+            None
+        } else {
+            Some(header1)
+        };
+
+        let header2 = if header2.is_empty() {
+            None
+        } else {
+            Some(header2)
+        };
+
+        Ok(Some(Object::InlineBabelCall {
+            name,
+            header1,
+            arguments,
+            header2,
+        }))
+    }
+
+    // object.citation_reference
+    fn convert_citation_reference(
+        &mut self,
+        node: &SyntaxNode,
+    ) -> Result<Option<CitationReference>, AstError> {
+        let key = node
+            .children_with_tokens()
+            .filter(|e| e.kind() == OrgSyntaxKind::CitationReferenceKey)
+            .map(|e| e.as_token().expect("todo").text().to_string())
+            .collect::<String>();
+
+        let key_prefix_node =
+            node.first_child_by_kind(&|e| e == OrgSyntaxKind::CitationReferenceKeyPrefix);
+        let key_prefix = match key_prefix_node {
+            None => vec![],
+            Some(e) => e
+                .children_with_tokens()
+                .map(|e| self.convert_object(&e))
+                .filter(|e| e.is_ok())
+                .map(|e| e.unwrap())
+                .filter(|e| e.is_some())
+                .map(|e| e.unwrap())
+                .collect::<Vec<_>>(),
+        };
+
+        let key_suffix_node =
+            node.first_child_by_kind(&|e| e == OrgSyntaxKind::CitationReferenceKeySuffix);
+        let key_suffix = match key_suffix_node {
+            None => vec![],
+            Some(e) => e
+                .children_with_tokens()
+                .map(|e| self.convert_object(&e))
+                .filter(|e| e.is_ok())
+                .map(|e| e.unwrap())
+                .filter(|e| e.is_some())
+                .map(|e| e.unwrap())
+                .collect::<Vec<_>>(),
+        };
+
+        Ok(Some(CitationReference {
+            key_prefix,
+            key,
+            key_suffix,
+        }))
+    }
+
+    // object.citation
+    fn convert_citation(&mut self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
+        let citestyle = node
+            .children_with_tokens()
+            .filter(|e| e.kind() == OrgSyntaxKind::CitationCitestyle)
+            .map(|e| e.as_token().expect("todo").text().to_string())
+            .collect::<String>();
+        let citestyle = if citestyle.is_empty() {
+            None
+        } else {
+            Some(citestyle)
+        };
+
+        let references = node
+            .children()
+            .filter(|e| e.kind() == OrgSyntaxKind::CitationReference)
+            .map(|e| self.convert_citation_reference(&e))
+            .filter(|e| e.is_ok())
+            .map(|e| e.unwrap())
+            .filter(|e| e.is_some())
+            .map(|e| e.unwrap())
+            .collect::<Vec<_>>();
+
+        let global_prefix_node =
+            node.first_child_by_kind(&|e| e == OrgSyntaxKind::CitationGlobalPrefix);
+        let global_prefix = match global_prefix_node {
+            None => vec![],
+            Some(e) => e
+                .children_with_tokens()
+                .map(|e| self.convert_object(&e))
+                .filter(|e| e.is_ok())
+                .map(|e| e.unwrap())
+                .filter(|e| e.is_some())
+                .map(|e| e.unwrap())
+                .collect::<Vec<_>>(),
+        };
+
+        let global_suffix_node =
+            node.first_child_by_kind(&|e| e == OrgSyntaxKind::CitationGlobalSuffix);
+        let global_suffix = match global_suffix_node {
+            None => vec![],
+            Some(e) => e
+                .children_with_tokens()
+                .map(|e| self.convert_object(&e))
+                .filter(|e| e.is_ok())
+                .map(|e| e.unwrap())
+                .filter(|e| e.is_some())
+                .map(|e| e.unwrap())
+                .collect::<Vec<_>>(),
+        };
+
+        Ok(Some(Object::Citation {
+            global_prefix,
+            citestyle,
+            references,
+            global_suffix,
         }))
     }
 
