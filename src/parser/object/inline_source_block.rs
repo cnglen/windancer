@@ -2,7 +2,10 @@
 use crate::parser::{MyExtra, NT, OSK, object};
 use chumsky::prelude::*;
 
-// PEG: source_src_block <- "src_" LANG ("[" HEADERS "]")? "{" BODY "}"
+// src_LANG {}
+// src_LANG [HEADER] {}
+// src_LANG [] {}
+// PEG: source_src_block <- "src_" LANG ("[" HEADERS? "]")? "{" BODY "}"
 pub(crate) fn inline_source_block_parser<'a, C: 'a>()
 -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let mut headers_single_expression = Recursive::declare(); // foo / [foo] / [[[foo]]]
@@ -14,7 +17,7 @@ pub(crate) fn inline_source_block_parser<'a, C: 'a>()
             .delimited_by(just('['), just(']'))
             .to_slice(),
     )));
-    let headers = headers_single_expression.repeated().at_least(1).to_slice();
+    let headers = headers_single_expression.repeated().at_least(0).to_slice();
 
     let mut body_single_expression = Recursive::declare(); // foo / {foo} / {{{foo}}}
     body_single_expression.define(choice((
@@ -41,7 +44,9 @@ pub(crate) fn inline_source_block_parser<'a, C: 'a>()
 
             if let Some(headers) = maybe_headers {
                 children.push(crate::token!(OSK::LeftSquareBracket, "["));
-                children.push(crate::token!(OSK::InlineSourceBlockHeaders, headers));
+                if !headers.is_empty() {
+                    children.push(crate::token!(OSK::InlineSourceBlockHeaders, headers));
+                }
                 children.push(crate::token!(OSK::RightSquareBracket, "]"));
             }
             children.push(crate::token!(OSK::LeftCurlyBracket, "{"));
@@ -62,7 +67,7 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     #[test]
-    fn test_inline_source_block_01() {
+    fn test_inline_source_block_01_without_header() {
         let input = r##"src_python{print("hello");}"##;
         let expected_output = r##"InlineSourceBlock@0..27
   Text@0..4 "src_"
@@ -77,6 +82,24 @@ mod tests {
         );
     }
 
+    #[test]
+    fn test_inline_source_block_01_empty_header() {
+        let input = r##"src_python[]{print("hello");}"##;
+        let expected_output = r##"InlineSourceBlock@0..29
+  Text@0..4 "src_"
+  InlineSourceBlockLang@4..10 "python"
+  LeftSquareBracket@10..11 "["
+  RightSquareBracket@11..12 "]"
+  LeftCurlyBracket@12..13 "{"
+  InlineSourceBlockBody@13..28 "print(\"hello\");"
+  RightCurlyBracket@28..29 "}"
+"##;
+        assert_eq!(
+            get_parser_output(inline_source_block_parser::<()>(), input),
+            expected_output,
+        );
+    }
+    
     #[test]
     fn test_inline_source_block_02a() {
         let input = r##"

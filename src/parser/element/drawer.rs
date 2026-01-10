@@ -47,42 +47,41 @@ pub(crate) fn node_property_parser<'a, C: 'a>()
     let name = name_parser();
     let value = none_of(object::CRLF).repeated().to_slice();
     let blank_lines = object::blank_line_parser().repeated().collect::<Vec<_>>();
-    object::whitespaces()
-        .then(just(":"))
-        .then(name)
-        .then(just("+").or_not())
-        .then(just(":"))
-        .then(object::whitespaces())
-        .then(value)
-        .then(object::newline())
-        .then(blank_lines)
-        .map(
-            |(
-                (((((((ws0, colon1), name), maybe_plus), colon), ws1), value), newline),
-                blank_lines,
-            )| {
-                let mut children = Vec::with_capacity(8 + blank_lines.len());
-                if !ws0.is_empty() {
-                    children.push(crate::token!(OSK::Whitespace, ws0));
-                }
-                children.push(crate::token!(OSK::Colon, colon1));
-                children.push(crate::token!(OSK::Text, &name));
-                if let Some(plus) = maybe_plus {
-                    children.push(crate::token!(OSK::Plus, plus));
-                }
-                children.push(crate::token!(OSK::Colon, colon));
-                if !ws1.is_empty() {
-                    children.push(crate::token!(OSK::Whitespace, ws1));
-                }
+
+    group((
+        object::whitespaces(),
+        just(":"),
+        name,
+        just("+").or_not(),
+        just(":"),
+        object::whitespaces_g1().then(value).or_not(),
+        object::newline(),
+        blank_lines,
+    ))
+    .map(
+        |(ws1, colon1, name, maybe_plus, colon2, maybe_ws2_value, newline, blank_lines)| {
+            let mut children = Vec::with_capacity(8 + blank_lines.len());
+            if !ws1.is_empty() {
+                children.push(crate::token!(OSK::Whitespace, ws1));
+            }
+            children.push(crate::token!(OSK::Colon, colon1));
+            children.push(crate::token!(OSK::Text, &name));
+            if let Some(plus) = maybe_plus {
+                children.push(crate::token!(OSK::Plus, plus));
+            }
+            children.push(crate::token!(OSK::Colon, colon2));
+            if let Some((ws2, value)) = maybe_ws2_value {
+                children.push(crate::token!(OSK::Whitespace, ws2));
                 if !value.is_empty() {
                     children.push(crate::token!(OSK::Text, value));
                 }
-                children.push(crate::token!(OSK::Newline, newline));
-                children.extend(blank_lines);
+            }
+            children.push(crate::token!(OSK::Newline, newline));
+            children.extend(blank_lines);
 
-                crate::node!(OSK::NodeProperty, children)
-            },
-        )
+            crate::node!(OSK::NodeProperty, children)
+        },
+    )
 }
 
 pub(crate) fn property_drawer_parser<'a, C: 'a>()
@@ -553,6 +552,17 @@ foo
         );
     }
 
+    #[test]
+    #[should_panic]
+    fn test_node_property_06() {
+        // there is at least one whitespace between ":" and `value`
+        get_parser_output(
+            node_property_parser::<()>(),
+            r":name:a
+"
+        );
+    }
+    
     #[test]
     fn test_property_drawer_01() {
         assert_eq!(

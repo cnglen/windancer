@@ -61,7 +61,10 @@ impl OrgParser {
         OrgParser { config }
     }
 
-    // update RADIO_TARGETS, maybe use SimpleState a better method. Note: performance.
+    // Get radio target from RadioTarget defintion in pattern of <<<CONTENTS>>>
+    // todo: maybe use SimpleState is a better method. To bench performance!
+    // - GlobalVariable: RADIO_TARGETS
+    // - SimpleState
     pub fn get_radio_targets(&self, input: &str) -> &'static HashSet<String> {
         let radio_targets: Vec<NodeOrToken<GreenNode, GreenToken>> =
             object::objects_parser::<()>(self.config.clone())
@@ -114,6 +117,7 @@ impl OrgParser {
     }
 
     pub fn parse(&mut self, input: &str) -> ParserResult {
+        // radio_target <- "<<<" CONTENTS  ">>>", CONTENTS doest't contain \n, thus we can filter line by line
         let radio_target_lines = input
             .lines()
             .filter(|s| s.contains("<<<") && s.contains(">>>"))
@@ -121,6 +125,7 @@ impl OrgParser {
         if radio_target_lines.len() > 0 {
             self.get_radio_targets(radio_target_lines.as_str()); // only use radio target related lines to speed up get the radio targets
         }
+
 
         let parse_result = document::document_parser(self.config.clone())
             .parse_with_state(input, &mut extra::SimpleState(ParserState::default()));
