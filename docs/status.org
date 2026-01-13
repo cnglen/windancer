@@ -4,30 +4,30 @@
 
 * object
 
-|                    | parser-rowan | parser-ast | html-render | comment                              |
-|--------------------+--------------+------------+-------------+--------------------------------------|
-| entity             | ✓           | ✓         | ✓          |                                      |
-| latex-fragment     | ✓           | ✓         | ✓          |                                      |
-| subscript          | ✓           | ✓         | ✓          |                                      |
-| superscript        | ✓           | ✓         | ✓          |                                      |
-| footnote-reference | ✓           | ✓         | ✓          |                                      |
-| line-break         | ✓           | ✓         | ✓          |                                      |
-| macro              | ✓           | ✓         |             | collect macro defintion from keyword |
-| text-markup[fn:1]  | ✓           | ✓         | ✓          |                                      |
-| radio link         | ✓           | ✓         | ✓          |                                      |
-| angle link         | ✓           | ✓         | ✓          |                                      |
-| plain link         | ✓           | ✓         | ✓          |                                      |
-| regular link       | ✓           | ✓         | ✓          |                                      |
-| table-cell         | ✓           | ✓         | ✓          |                                      |
-| radio-target       | ✓           | ✓         | ✓          |                                      |
-| timestamp          | ✓           | ✓         | ✓          |                                      |
-| target             | ✓           | ✓         | ✓          |                                      |
-| inline-src-block   | ✓           | ✓         |             |                                      |
-| statistics-cookie  | ✓           | ✓         | ✓          |                                      |
-| inline-babel-call  | ✓           | ✓         |             |                                      |
-| citation           | ✓           | ✓         |             |                                      |
-| citation-reference | ✓           | ✓         |             |                                      |
-| export-snippet     | ✓           | ✓         | ✓          |                                      |
+|                    | parser-rowan | parser-ast | html-render |
+|--------------------+--------------+------------+-------------|
+| entity             | ✓           | ✓         | ✓          |
+| latex-fragment     | ✓           | ✓         | ✓          |
+| subscript          | ✓           | ✓         | ✓          |
+| superscript        | ✓           | ✓         | ✓          |
+| footnote-reference | ✓           | ✓         | ✓          |
+| line-break         | ✓           | ✓         | ✓          |
+| macro              | ✓           | ✓         | ✓[fn:2]    |
+| text-markup[fn:1]  | ✓           | ✓         | ✓          |
+| radio link         | ✓           | ✓         | ✓          |
+| angle link         | ✓           | ✓         | ✓          |
+| plain link         | ✓           | ✓         | ✓          |
+| regular link       | ✓           | ✓         | ✓          |
+| table-cell         | ✓           | ✓         | ✓          |
+| radio-target       | ✓           | ✓         | ✓          |
+| timestamp          | ✓           | ✓         | ✓          |
+| target             | ✓           | ✓         | ✓          |
+| inline-src-block   | ✓           | ✓         | ✓          |
+| statistics-cookie  | ✓           | ✓         | ✓          |
+| export-snippet     | ✓           | ✓         | ✓          |
+| inline-babel-call  | ✓           | ✓         |             |
+| citation           | ✓           | ✓         |             |
+| citation-reference | ✓           | ✓         |             |
 
 
 * element
@@ -71,6 +71,8 @@
 
 * Footnotes
 
+
 [fn:1] bold, italic, underline, strike-through, code, verbatim
 
 
+[fn:2] value of property ​={{{property(property_name)}}}=​ and number of macro (​={{{n}}}=​) expanded not supported yet.

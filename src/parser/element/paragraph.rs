@@ -221,14 +221,14 @@ center
   CenterBlock@5..40
     BlockBegin@5..20
       Text@5..13 "#+begin_"
-      Text@13..19 "CENTER"
+      Text@13..19 "center"
       Newline@19..20 "\n"
     BlockContent@20..27
       Paragraph@20..27
         Text@20..27 "center\n"
     BlockEnd@27..40
       Text@27..33 "#+end_"
-      Text@33..39 "CENTER"
+      Text@33..39 "center"
       Newline@39..40 "\n"
 "##
         );
@@ -254,13 +254,13 @@ example
   ExampleBlock@5..43
     BlockBegin@5..21
       Text@5..13 "#+begin_"
-      Text@13..20 "EXAMPLE"
+      Text@13..20 "example"
       Newline@20..21 "\n"
     BlockContent@21..29
       Text@21..29 "example\n"
     BlockEnd@29..43
       Text@29..35 "#+end_"
-      Text@35..42 "EXAMPLE"
+      Text@35..42 "example"
       Newline@42..43 "\n"
 "##
         );

@@ -1,29 +1,24 @@
 
-# this is a comment
 
+# this is a org file to test `windancer`, which is
+# a parser and render
 :properties:
 :author: foo
 :key: value
 :end:
-
-#+title: a org test
+#+title: test
 #+macro: color @@html:<span style="color:$1">$2</span>@@ @@latex:\textcolor{$1}{$2}@@
-#+date: 20250802[Sat] 18:43:14
-#+caption: a *bold* value
+#+date: [2025-08-02 Sat 18:43]
 #+OPTIONS: toc:nil
+#+project: windancer
+#+author: cnglen
+#+author: contributor
+#+email: cnglen@gmail.com
+#+caption: a *bold* text
 
-
-: This is a  
-:
-: fixed width area
-
-a */_bold-italic-underline_/*
-
-Zero-th Section
+Zero-th Section: this is a */_bold-italic-underline_/*
 
 * Heading without section, but with blank lines
-
-
 
 * heading test
 
@@ -89,8 +84,6 @@ a short line * faked_title
 
 
 * title :tagb:taga:
-
-
 
 * footnote test
 
@@ -302,53 +295,84 @@ verse content
 #+end_src
 
 
-* comment
+** drawer test
 
-# A “comment line” starts with a hash character (#) and either a whitespace character or the immediate end of the line.
-
-# Comments consist of one or more consecutive comment lines.
-
-  # Just a comment
-  #
-  # Over multiple lines
-
-#
-
-  
-#a
+:d1:
+ this is the contents of drawer
+ :end:
 
 
+drawer within blank lines
+:properties:
+
+:add: asd
+
+
+:dxx: asd
 
 
 
-* [#A] test of preprocess :ta:tb:tc:
-
-** test 1
-
-a /i/ line
-
-a ​*bold*​ line
+:end:
 
 
 
+** test
 
-b _*/underline-bold-italic/*_ line
-c /_*italic-underline-bold*_/ line
-d /*_italic-bold-underline_*/ line
-e ~=*_/inner-most/_*=~ line
+A test:
+- Item 1
 
-
-
-a *bold* line
-
-a ~=*/bold_italic/*=~ line
+- Item 2
+  :drawer:
+  inside item 2
+  :end:
 
 
-中文​*bold*​测试
+B test:
+- a
+
+- b
 
 
+- c
+  - c
+    #+begin_src python
+      print("xx")
+    #+end_src
 
-* table test
+** unodered list
+
+- a
+  + a1
+  + a2
+- b
+  * b1
+  * b2
+- c 
+  1. c1
+  2. c2
+     
+** descriptive list
+
+- a :: I'm A
+- b :: I'm B
+
+** ordered list
+
+1) 打开冰箱
+2) 放入冰箱
+3) 关闭冰箱
+
+
+1) 打开冰箱
+2) 放入冰箱
+3) 关闭冰箱
+   
+
+a. asdf
+b. df
+
+
+** table test
 
 #+CAPTION[object in table]: table with objects
 #+attr_html: :border 2 :rules all :frame border
@@ -433,83 +457,33 @@ table cell's CONTENT can contain:
 
 | *bold*      | entity: \alpha | latex fragment $a_b$ | a_b | [[https://www.foo.bar][link]] | my radio target | <2025-08-02> | [[target]] |   |
   
-* drawer test
-
-:d1:
- this is the contents of drawer
- :end:
 
 
-drawer within blank lines
-:properties:
+** fixed width
+: This is a  
+:
+: fixed width area
 
-:add: asd
+** comment
 
+# A “comment line” starts with a hash character (#) and either a whitespace character or the immediate end of the line.
 
-:dxx: asd
+# Comments consist of one or more consecutive comment lines.
 
+  # Just a comment
+  #
+  # Over multiple lines
 
+#
 
-:end:
-
-
-
-** test
-
-A test:
-- Item 1
-
-- Item 2
-  :drawer:
-  inside item 2
-  :end:
+  
+#a
 
 
-B test:
-- a
-
-- b
 
 
-- c
-  - c
-    #+begin_src python
-      print("xx")
-    #+end_src
 
-** unodered list
-
-- a
-  + a1
-  + a2
-- b
-  * b1
-  * b2
-- c 
-  1. c1
-  2. c2
-     
-** descriptive list
-
-- a :: I'm A
-- b :: I'm B
-
-** ordered list
-
-1) 打开冰箱
-2) 放入冰箱
-3) 关闭冰箱
-
-
-1) 打开冰箱
-2) 放入冰箱
-3) 关闭冰箱
-   
-
-a. asdf
-b. df
-
-* object test [2/3]
+* objects
 
 minimal set objects(6)
 
@@ -562,22 +536,24 @@ other objects (2):
 
 
 
-** DONE Entity test
+** DONE Entity
 CLOSED: [2025-10-22 Wed 11:37]
 :LOGBOOK:
 - State "DONE"       from "DOING"      [2025-10-22 Wed 11:37]
 :END:
 
-pattern1: This is a entity \alpha, and another entity \beta, and last \Delta
-pattern2: without spaces \pi{}d.
-pattern3:
+pattern1: ​=\NAME=​ This is a entity \alpha, and another entity \beta, and last \Delta
+
+pattern2: ​=\NAME{}=​ without spaces \pi{}d.
+
+pattern3: ​=\_SPACES=​
 
 \_   3spaces
 \_                    20spaces
 \_                     21spaces, split into 20 space entity + one space.
 
 
-** DONE latex fragment test
+** DONE Latex fragment
 CLOSED: [2025-10-22 Wed 11:38]
 :LOGBOOK:
 - State "DONE"       from              [2025-10-22 Wed 11:38]
@@ -587,7 +563,7 @@ CLOSED: [2025-10-22 Wed 11:38]
 - ​=\(CONTENTS\)=​: \(\pi=3.1415\)
 - ​=\[CONTENTS\]=​: \[\sum_{n=1}^{n}n = \frac{n(n+1)}{2}$$\]  
 - ​=PRE$BORDER1 BODY BORDER2$POST=​: $a+b$
-- ​=PRE$CHAR$POST=​: $a$, $pi$
+- ​=PRE$CHAR$POST=​: $a$, $\pi$
 - ​=$$CONTENTS$$=​: $$\sum_{n=1}^{n}n = \frac{n(n+1)}{2}$$
 
 let $a=2$, \(b=2\), $c$ is sum of $a$ and $b$, then
@@ -601,13 +577,31 @@ If $a^2=b$ and \( b=2 \), then the solution must be either $$ a=+\sqrt{2} $$ or 
 
 $$a$ bad fragment
 
-** line break
+
+** DONE Export snippet
+CLOSED: [2026-01-13 Tue 11:06]
+:LOGBOOK:
+- State "DONE"       from              [2026-01-13 Tue 11:06]
+:END:
+
+​=@@html:@@not bold text@@html:</b>@@=​: @@html:@@not bold text@@html:</b>@@
+
+​=@@html:<b>@@bold text@@html:</b>@@=​: @@html:<b>@@bold text@@html:</b>@@
+
+​=@@beamer:some code@@ ignored in html backend=​: @@beamer:some code@@ ignored in html backend
+
+
+** DONE Line break
+CLOSED: [2026-01-13 Tue 11:04]
+:LOGBOOK:
+- State "DONE"       from              [2026-01-13 Tue 11:04]
+:END:
 
 First line\\
 Second line
 
-a\\\
-b
+Not line break \\\
+since PRE is backslash.
 
 
 
@@ -637,24 +631,43 @@ b
 
 
 
-** macro
+** DONE Macro
+CLOSED: [2026-01-13 Tue 10:30]
+:PROPERTIES:
+:CUSTOM_ID: macro test
+:END:
+:LOGBOOK:
+- State "DONE"       from              [2026-01-13 Tue 10:30]
+:END:
 
-{{{color(red,text)}}}
+| macro name        | arguments     | raw reference                                  | rendered value                                   | kind                                                 | supported |
+|-------------------+---------------+------------------------------------------------+--------------------------------------------------+------------------------------------------------------+-----------|
+| title             |               | ={{{title}}}=                                  | {{{title}}}                                      | keyword(title)                                       |           |
+| author            |               | ={{{author}}}=                                 | {{{author}}}                                     | keyword(author)                                      |           |
+| author            |               | ={{{author()}}}=                               | {{{author}}}                                     | keyword(author)                                      |           |
+| email             |               | ={{{email}}}=                                  | {{{email}}}                                      | keyword(email)                                       |           |
+| keyword           | NAME          | ={{{keyword(project)}}}=                       | {{{keyword(project)}}}                           | keyword(NAME)                                        |           |
+| date              |               | ={{{date}}}=                                   | {{{date}}}                                       | keyword(date)                                        |           |
+| date              | FORMAT        | ={{{date(%Y-%m-%dT%H:%M:%S%z)}}}=              | {{{date(%Y-%m-%dT%H:%M:%S%z)}}}                  | format keyword(DATE) if it's a signle timestamp      |           |
+|-------------------+---------------+------------------------------------------------+--------------------------------------------------+------------------------------------------------------+-----------|
+| time              | FORMAT        | ={{{time(%Y-%m-%dT%H:%M:%S%z)}}}=              | {{{time(%Y-%m-%dT%H:%M:%S%z)}}}                  | export time                                          |           |
+| modification-time | FORMAT        | ={{{modification-time(%Y-%m-%dT%H:%M:%S%z)}}}= | {{{modification-time(%Y-%m-%dT%H:%M:%S%z)}}}     | modification time                                    |           |
+|-------------------+---------------+------------------------------------------------+--------------------------------------------------+------------------------------------------------------+-----------|
+| input-file        |               | ={{{input-file}}}=                             | {{{input-file}}}                                 | filename of the exported file                        |           |
+|-------------------+---------------+------------------------------------------------+--------------------------------------------------+------------------------------------------------------+-----------|
+| property          | PROPERTY_NAME | ={{{property(custom_id)}}}=                    | {{{property(custom_id)}}}                        | value of property PROPERTY_NAME in the current entry | No        |
+|-------------------+---------------+------------------------------------------------+--------------------------------------------------+------------------------------------------------------+-----------|
+| n                 |               | ={{{n}}}=                                      | {{{n}}}                                          | number of macro expanded: NOT supported              | No        |
+|-------------------+---------------+------------------------------------------------+--------------------------------------------------+------------------------------------------------------+-----------|
+| color             |               | ={{{color(red, red text)}}}=                   | {{{color(red, red text)}}}                       | by =#+macro:=                                        |           |
+|-------------------+---------------+------------------------------------------------+--------------------------------------------------+------------------------------------------------------+-----------|
+| results           | value         |                                                | src_python{print("hello")} {{{results(=None=)}}} | inline source block                                  |           |
 
-{{{title}}}
+{{{color(red, tow line
+of red)}}}
 
-{{{author()}}}
 
-{{{title(arg1, arg2)}}}
-
-{{{color(red, word)}}}
-
-{{{color(red\,1, word)}}}  
-
-{{{keyword(udf_keyword)}}}
-
-  
-** link test
+** Link
 
 regular link: with description [[https://www.baidu.com][baidu]]; without description [[https://foo.bar][foo_bar]]; description with objects [[http://foo.bar][\alpha *bold* $a+b$ foo]]; fuzzy internal [[target]]
 
@@ -672,38 +685,57 @@ radio link: my radio target, define three radio target <<<*bold* target>>> and <
 [[https://images.freeimages.com/image/previews/1b1/blossoming-swirls-of-elegance-5690563.jpg]]
 
 
-** timestamp
+** DONE timestamp
+CLOSED: [2026-01-13 Tue 11:10]
+:LOGBOOK:
+- State "DONE"       from              [2026-01-13 Tue 11:10]
+:END:
 
-# example
+*** example
 [2004-08-24 Tue]--[2004-08-26 Thu]
+
 <2012-02-08 Wed 20:00 ++1d>
+
 <2030-10-05 Sat +1m -3d>
 
-# p1
+*** p1
 <1997-11-03>
+
 <1997-11-03 Mon>
+
 <1997-11-03 Mon 19:15>
+
 <1997-11-03 Mon 19:15 +23d>
 
 
-# p2
+*** p2
 <1997-11-03 Mon 19:15 +23d>--<1997-12-13>
+
 <1997-11-03 Mon 19:15 +23d>--<1997-12-13 Mon>
+
 <1997-11-03 Mon 19:15 +23d>--<1997-12-13 Mon 19:15>
+
 <1997-11-03 Mon 19:15 +23d>--<1997-12-13 Mon 19:15 +23d>
 
 <1997-11-03 19:15 +23d>--<1997-12-13>
+
 <1997-11-03 +23d>--<1997-12-13 Mon>
+
 <1997-11-03>--<1997-12-13 Mon 19:15>
+
 <1997-11-03>--<1997-12-13 Mon 19:15 +23d>
+
 <1997-11-03 19:15>--<1997-12-13 Mon 19:15 +23d>
+
 <1997-11-03 Mon 19:15>--<1997-12-13 Mon 19:15 +23d>
+
 <1997-11-03 Mon 19:15 +23d>--<1997-12-13 Mon 19:15 +23d>
 
-# p3
+*** p3
 <1997-11-03 Mon 19:15-20:18 +23d>
   
-** text-markup test
+
+** text-markup
 
 *** basic test
 
@@ -777,10 +809,34 @@ _*/underline-bold-italic/*_
 
 
 
-
 ***  object in markup
 
 a *[[https://www.foo.org][foo]]* link
+
+*** todo
+
+a /i/ line
+
+a ​*bold*​ line
+
+
+
+
+b _*/underline-bold-italic/*_ line
+c /_*italic-underline-bold*_/ line
+d /*_italic-bold-underline_*/ line
+e ~=*_/inner-most/_*=~ line
+
+
+
+a *bold* line
+
+a ~=*/bold_italic/*=~ line
+
+
+中文​*bold*​测试
+
+
 
 
 ** superscript and subscript
@@ -852,6 +908,7 @@ src_python{print("hello")} {{{results(=None=)}}}
 
 src_cpp[:includes <iostream>]{std::cout<< "hi cpp" << std::endl;} {{{results(=hi cpp=)}}}
 
+
 ** target
 <<<y>>>
 
@@ -874,10 +931,16 @@ Here we refer to item [[target][descript of target]]. (C-c C-o)
 
 
 
+** radio target
+
+define a radio target: <<<*bold* target>>>, reference a target *bold* target
+
+
 ** inline babel call
 
-call_NAME[HEADER1](ARGUMENTS)[HEADER2]
-call_NAME(ARGUMENTS)
+# call_NAME[HEADER1](ARGUMENTS)[HEADER2]
+# call_NAME(ARGUMENTS)
+
 
 ** citation
 
@@ -887,13 +950,6 @@ call_NAME(ARGUMENTS)
 
 [cite:@key]
 
-** export snippet
-
-​=@@html:@@bold text@@html:</b>@@=​: @@html:@@bold text@@html:</b>@@
-
-​=@@html:<b>@@bold text@@html:</b>@@=​: @@html:<b>@@bold text@@html:</b>@@
-
-​=@@beamer:some code@@ ignored in html backend=​: @@beamer:some code@@ ignored in html backend
 
 * Footnotes
 

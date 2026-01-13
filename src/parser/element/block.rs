@@ -171,7 +171,7 @@ pub(crate) fn export_block_parser<'a, C: 'a>(
                         children.push(crate::token!(OSK::Whitespace, ws1));
                     }
                     children.push(crate::token!(OSK::Text, begin));
-                    children.push(crate::token!(OSK::Text, &block_type.to_uppercase()));
+                    children.push(crate::token!(OSK::Text, block_type));
                     if !ws2.is_empty() {
                         children.push(crate::token!(OSK::Whitespace, ws2));
                     }
@@ -353,7 +353,7 @@ pub(crate) fn src_block_parser<'a, C: 'a>(
 
                     children.push(crate::token!(OSK::Text, &begin));
 
-                    children.push(crate::token!(OSK::Text, &block_type.to_uppercase()));
+                    children.push(crate::token!(OSK::Text, block_type));
 
                     if !ws2.is_empty() {
                         children.push(crate::token!(OSK::Whitespace, &ws2));
@@ -602,7 +602,7 @@ fn begin_row_parser<'a, C: 'a>(
 
             children.push(crate::token!(OSK::Text, &begin));
 
-            children.push(crate::token!(OSK::Text, &block_type.to_uppercase()));
+            children.push(crate::token!(OSK::Text, block_type));
 
             if let Some((ws2, data)) = maybe_ws2_data {
                 if !ws2.is_empty() {
@@ -633,7 +633,7 @@ fn end_row_parser<'a, C: 'a>(
                 children.push(crate::token!(OSK::Whitespace, &ws1));
             }
             children.push(crate::token!(OSK::Text, &end));
-            children.push(crate::token!(OSK::Text, &name.to_uppercase()));
+            children.push(crate::token!(OSK::Text, name));
 
             if !ws2.is_empty() {
                 children.push(crate::token!(OSK::Whitespace, &ws2));
@@ -881,7 +881,7 @@ pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
                         children.push(crate::token!(OSK::Whitespace, begin_whitespaces1));
                     }
                     children.push(crate::token!(OSK::Text, begin));
-                    children.push(crate::token!(OSK::Text, &begin_name.to_uppercase()));
+                    children.push(crate::token!(OSK::Text, begin_name));
 
                     if let Some((ws, parameters)) = maybe_ws_parameters {
                         if !ws.is_empty() {
@@ -917,7 +917,7 @@ pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
 
                     children.push(crate::token!(OSK::Text, &end_));
 
-                    children.push(crate::token!(OSK::Text, &end_name.to_uppercase()));
+                    children.push(crate::token!(OSK::Text, end_name));
 
                     if !end_whitespaces2.is_empty() {
                         children.push(crate::token!(OSK::Whitespace, end_whitespaces2));
@@ -1007,14 +1007,14 @@ mod tests {
             r###"ExportBlock@0..34
   BlockBegin@0..21
     Text@0..8 "#+BEGIN_"
-    Text@8..14 "EXPORT"
+    Text@8..14 "export"
     Whitespace@14..15 " "
     Text@15..19 "html"
     Whitespace@19..20 " "
     Newline@20..21 "\n"
   BlockEnd@21..34
     Text@21..27 "#+END_"
-    Text@27..33 "EXPORT"
+    Text@27..33 "export"
     Newline@33..34 "\n"
 "###
         );
@@ -1068,13 +1068,13 @@ example
             r##"VerseBlock@0..35
   BlockBegin@0..14
     Text@0..8 "#+BEGIN_"
-    Text@8..13 "VERSE"
+    Text@8..13 "verse"
     Newline@13..14 "\n"
   BlockContent@14..23
     Text@14..23 "\nexample\n"
   BlockEnd@23..35
     Text@23..29 "#+END_"
-    Text@29..34 "VERSE"
+    Text@29..34 "verse"
     Newline@34..35 "\n"
 "##
         );
@@ -1130,7 +1130,7 @@ fn main() {
             r##"SrcBlock@0..62
   BlockBegin@0..38
     Text@0..8 "#+BEGIN_"
-    Text@8..11 "SRC"
+    Text@8..11 "src"
     Whitespace@11..12 " "
     SrcBlockLanguage@12..16 "rust"
     Whitespace@16..17 " "
@@ -1142,7 +1142,7 @@ fn main() {
     Text@38..52 "fn main() {\n}\n"
   BlockEnd@52..62
     Text@52..58 "#+END_"
-    Text@58..61 "SRC"
+    Text@58..61 "src"
     Newline@61..62 "\n"
 "##
         );
@@ -1165,13 +1165,13 @@ fn main() {
             r##"SrcBlock@0..28
   BlockBegin@0..19
     Text@0..8 "#+BEGIN_"
-    Text@8..11 "SRC"
+    Text@8..11 "sRC"
     Whitespace@11..12 " "
     SrcBlockLanguage@12..18 "python"
     Newline@18..19 "\n"
   BlockEnd@19..28
     Text@19..25 "#+END_"
-    Text@25..28 "SRC"
+    Text@25..28 "SrC"
 "##
         );
     }
@@ -1187,7 +1187,7 @@ print("py");
             r##"SrcBlock@0..54
   BlockBegin@0..19
     Text@0..8 "#+BEGIN_"
-    Text@8..11 "SRC"
+    Text@8..11 "sRC"
     Whitespace@11..12 " "
     SrcBlockLanguage@12..18 "python"
     Newline@18..19 "\n"
@@ -1195,7 +1195,7 @@ print("py");
     Text@19..45 "print(\"hi\");\nprint(\"p ..."
   BlockEnd@45..54
     Text@45..51 "#+END_"
-    Text@51..54 "SRC"
+    Text@51..54 "SrC"
 "##
         );
     }
@@ -1212,11 +1212,11 @@ print("py");
             r##"ExampleBlock@0..29
   BlockBegin@0..16
     Text@0..8 "#+BEGIN_"
-    Text@8..15 "EXAMPLE"
+    Text@8..15 "example"
     Newline@15..16 "\n"
   BlockEnd@16..29
     Text@16..22 "#+END_"
-    Text@22..29 "EXAMPLE"
+    Text@22..29 "examplE"
 "##
         );
     }
@@ -1237,7 +1237,7 @@ a *bold* test
             r##"CenterBlock@0..42
   BlockBegin@0..15
     Text@0..8 "#+BEGIN_"
-    Text@8..14 "CENTER"
+    Text@8..14 "center"
     Newline@14..15 "\n"
   BlockContent@15..29
     Paragraph@15..29
@@ -1249,7 +1249,7 @@ a *bold* test
       Text@23..29 " test\n"
   BlockEnd@29..42
     Text@29..35 "#+END_"
-    Text@35..41 "CENTER"
+    Text@35..41 "center"
     Newline@41..42 "\n"
 "##
         );
@@ -1305,14 +1305,14 @@ special block
             r##"SpecialBlock@0..34
   BlockBegin@0..11
     Text@0..8 "#+BEGIN_"
-    Text@8..10 "XX"
+    Text@8..10 "xx"
     Newline@10..11 "\n"
   BlockContent@11..25
     Paragraph@11..25
       Text@11..25 "special block\n"
   BlockEnd@25..34
     Text@25..31 "#+END_"
-    Text@31..33 "XX"
+    Text@31..33 "xx"
     Newline@33..34 "\n"
 "##
         );
@@ -1340,7 +1340,7 @@ quote
             r##"SpecialBlock@0..90
   BlockBegin@0..11
     Text@0..8 "#+BEGIN_"
-    Text@8..10 "XX"
+    Text@8..10 "xx"
     Newline@10..11 "\n"
   BlockContent@11..81
     Paragraph@11..14
@@ -1348,7 +1348,7 @@ quote
     CenterBlock@14..81
       BlockBegin@14..29
         Text@14..22 "#+begin_"
-        Text@22..28 "CENTER"
+        Text@22..28 "center"
         Newline@28..29 "\n"
       BlockContent@29..68
         Paragraph@29..36
@@ -1356,22 +1356,22 @@ quote
         QuoteBlock@36..68
           BlockBegin@36..50
             Text@36..44 "#+begin_"
-            Text@44..49 "QUOTE"
+            Text@44..49 "quote"
             Newline@49..50 "\n"
           BlockContent@50..56
             Paragraph@50..56
               Text@50..56 "quote\n"
           BlockEnd@56..68
             Text@56..62 "#+end_"
-            Text@62..67 "QUOTE"
+            Text@62..67 "quote"
             Newline@67..68 "\n"
       BlockEnd@68..81
         Text@68..74 "#+end_"
-        Text@74..80 "CENTER"
+        Text@74..80 "center"
         Newline@80..81 "\n"
   BlockEnd@81..90
     Text@81..87 "#+END_"
-    Text@87..89 "XX"
+    Text@87..89 "xx"
     Newline@89..90 "\n"
 "##
         );
@@ -1397,34 +1397,34 @@ qq
             r##"CenterBlock@0..77
   BlockBegin@0..15
     Text@0..8 "#+BEGIN_"
-    Text@8..14 "CENTER"
+    Text@8..14 "center"
     Newline@14..15 "\n"
   BlockContent@15..64
     QuoteBlock@15..64
       BlockBegin@15..29
         Text@15..23 "#+begin_"
-        Text@23..28 "QUOTE"
+        Text@23..28 "quote"
         Newline@28..29 "\n"
       BlockContent@29..52
         SpecialBlock@29..52
           BlockBegin@29..40
             Text@29..37 "#+begin_"
-            Text@37..39 "XX"
+            Text@37..39 "xx"
             Newline@39..40 "\n"
           BlockContent@40..43
             Paragraph@40..43
               Text@40..43 "qq\n"
           BlockEnd@43..52
             Text@43..49 "#+end_"
-            Text@49..51 "XX"
+            Text@49..51 "xx"
             Newline@51..52 "\n"
       BlockEnd@52..64
         Text@52..58 "#+end_"
-        Text@58..63 "QUOTE"
+        Text@58..63 "quote"
         Newline@63..64 "\n"
   BlockEnd@64..77
     Text@64..70 "#+end_"
-    Text@70..76 "CENTER"
+    Text@70..76 "center"
     Newline@76..77 "\n"
 "##
         );
@@ -1449,7 +1449,7 @@ cc
   CenterBlock@0..46
     BlockBegin@0..15
       Text@0..8 "#+BEGIN_"
-      Text@8..14 "CENTER"
+      Text@8..14 "center"
       Newline@14..15 "\n"
     BlockContent@15..33
       Paragraph@15..33
@@ -1460,7 +1460,7 @@ cc
         Text@29..33 "\ncc\n"
     BlockEnd@33..46
       Text@33..39 "#+end_"
-      Text@39..45 "CENTER"
+      Text@39..45 "center"
       Newline@45..46 "\n"
   Paragraph@46..59
     Text@46..51 "#+end"
@@ -1493,34 +1493,34 @@ xyz
   SpecialBlock@0..62
     BlockBegin@0..11
       Text@0..8 "#+BEGIN_"
-      Text@8..10 "XX"
+      Text@8..10 "xx"
       Newline@10..11 "\n"
     BlockContent@11..53
       SpecialBlock@11..53
         BlockBegin@11..22
           Text@11..19 "#+begin_"
-          Text@19..21 "YY"
+          Text@19..21 "yy"
           Newline@21..22 "\n"
         BlockContent@22..44
           SpecialBlock@22..44
             BlockBegin@22..32
               Text@22..30 "#+begin_"
-              Text@30..31 "Z"
+              Text@30..31 "z"
               Newline@31..32 "\n"
             BlockContent@32..36
               Paragraph@32..36
                 Text@32..36 "xyz\n"
             BlockEnd@36..44
               Text@36..42 "#+end_"
-              Text@42..43 "Z"
+              Text@42..43 "z"
               Newline@43..44 "\n"
         BlockEnd@44..53
           Text@44..50 "#+end_"
-          Text@50..52 "YY"
+          Text@50..52 "yy"
           Newline@52..53 "\n"
     BlockEnd@53..62
       Text@53..59 "#+end_"
-      Text@59..61 "XX"
+      Text@59..61 "xx"
       Newline@61..62 "\n"
 "##
         );

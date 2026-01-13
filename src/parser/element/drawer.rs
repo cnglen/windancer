@@ -559,10 +559,10 @@ foo
         get_parser_output(
             node_property_parser::<()>(),
             r":name:a
-"
+",
         );
     }
-    
+
     #[test]
     fn test_property_drawer_01() {
         assert_eq!(

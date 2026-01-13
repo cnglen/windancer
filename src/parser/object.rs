@@ -10,16 +10,18 @@ mod inline_source_block;
 mod latex_fragment;
 mod line_break;
 mod link;
-mod r#macro;
+pub(crate) mod r#macro;
 mod radio_link;
-mod radio_target;
+pub(crate) mod radio_target;
 mod statistics_cookie;
 pub(crate) mod subscript_superscript;
 pub(crate) mod table_cell;
 mod target;
-mod text;
+pub(crate) mod text;
 mod text_markup;
 pub(crate) mod timestamp;
+use super::config::OrgUseSubSuperscripts;
+use crate::parser::config::OrgParserConfig;
 use crate::parser::object::citation::citation_parser;
 use crate::parser::object::entity::entity_parser;
 use crate::parser::object::export_snippet::export_snippet_parser;
@@ -39,101 +41,11 @@ use crate::parser::object::target::target_parser;
 use crate::parser::object::text::plain_text_parser;
 use crate::parser::object::text_markup::text_markup_parser;
 use crate::parser::object::timestamp::timestamp_parser;
-
 use crate::parser::{MyExtra, NT, OSK};
-
 use chumsky::prelude::*;
-
-use crate::parser::config::OrgParserConfig;
-
-use super::config::OrgUseSubSuperscripts;
 
 pub const LF: &str = "\n";
 pub const CRLF: &str = "\r\n";
-
-// // Input which suppport get the previous Token
-// pub trait PrevInput<'src>: Input<'src> {
-//     unsafe fn prev(cache: &mut Self::Cache, cursor: &Self::Cursor) -> Option<Self::Token>;
-// }
-
-// impl<'src> PrevInput<'src> for &'src str {
-//     #[inline(always)]
-//     unsafe fn prev(this: &mut Self::Cache, cursor: &Self::Cursor) -> Option<Self::Token> {
-//         let idx_byte_current = *cursor;
-
-//         if idx_byte_current == 0 {
-//             return None;
-//         }
-
-//         let bytes = this.as_bytes();
-//         let start = idx_byte_current.saturating_sub(3);
-//         for idx in (start..idx_byte_current).rev() {
-//             let b = bytes[idx];
-//             // from is_utf8_char_boundary()
-//             // This is bit magic equivalent to: b < 128 || b >= 192
-//             if (b as i8) >= -0x40 {
-//                 return Some(unsafe {
-//                     this.get_unchecked(idx..).chars().next().unwrap_unchecked()
-//                 });
-//             }
-//         }
-
-//         if start > 0 && (bytes[start - 1] as i8) >= -0x40 {
-//             Some(unsafe {
-//                 this.get_unchecked(start - 1..)
-//                     .chars()
-//                     .next()
-//                     .unwrap_unchecked()
-//             })
-//         } else {
-//             None // this should be unreachable
-//         }
-//     }
-// }
-
-// // Add prev() API for InputRef
-// pub trait PrevInputRef<'src, I> {
-//     fn prev(&mut self) -> Option<I::Token>
-//     where
-//         I: PrevInput<'src>;
-// }
-
-// // fixme: InputRef input.rs cache: pub(crate) -> pub
-// impl<'src, 'parse, I: Input<'src>, E: extra::ParserExtra<'src, I>> PrevInputRef<'src, I>
-//     for chumsky::input::InputRef<'src, 'parse, I, E>
-// {
-//     #[inline(always)]
-//     fn prev(&mut self) -> Option<I::Token>
-//     where
-//         I: PrevInput<'src>,
-//     {
-
-//         // E0716
-//         let binding = self.cursor();
-//         let a = binding.inner();
-//         let token = unsafe { I::prev(self.cache, a) };
-
-//         token
-//     }
-// }
-
-// // // valid prev char using `f`
-// // pub(crate) fn prev_valid_parser<'a, C: 'a, F: Fn(Option<char>) -> bool + Clone>(
-// //     f: F,
-// // ) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
-// //     custom(move |inp| {
-// //         let before = inp.cursor();
-// //         let maybe_prev = inp.prev();
-// //         if f(maybe_prev) {
-// //             Ok(())
-// //         } else {
-// //             Err(Rich::custom(
-// //                 inp.span_since(&before),
-// //                 format!("invalid PRE: {maybe_prev:?}"),
-// //             ))
-// //         }
-// //     })
-// // }
 
 fn get_prev_char_index(s: &str, index: usize) -> Option<char> {
     if index == 0 {
@@ -896,6 +808,7 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 non_plain_text_parsers_for_keyword,
                 plain_text_parser_for_keyword,
             )));
+
             (
                 full_set_object.boxed(),
                 standard_set_object.boxed(),
@@ -911,7 +824,8 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::common::get_parsers_output;
+    use crate::parser::common::{get_parser_output, get_parsers_output};
+    use crate::parser::document::document_parser;
     use crate::parser::{OrgParser, config::OrgParserConfig};
     use pretty_assertions::assert_eq;
 
@@ -1206,7 +1120,7 @@ other objects (2):
 
     #[test]
     fn test_object_in_table_cell() {
-        let table_string_with_objects = r##"* table
+        let input = r##"* table
 | object kind           | object value           | supported in table cell |
 |-----------------------+------------------------+-------------------------|
 | 01 text markup        | *bold*                 | y                       |
@@ -1235,14 +1149,11 @@ other objects (2):
 "##;
 
         let org_config = OrgParserConfig::default();
-        let mut parser = OrgParser::new(org_config);
-        let parser_output = parser.parse(&table_string_with_objects);
-        let _green_tree = parser_output.green();
-        let syntax_tree = parser_output.syntax();
+        let parser = OrgParser::new(org_config);
+        parser.get_radio_targets(input);
+        let parser = document_parser(OrgParserConfig::default());
 
-        assert_eq!(
-            format!("{syntax_tree:#?}"),
-            r##"Document@0..1933
+        let expected_output = r##"Document@0..1933
   HeadingSubtree@0..1933
     HeadingRow@0..8
       HeadingRowStars@0..1 "*"
@@ -1675,7 +1586,7 @@ other objects (2):
             Whitespace@1908..1931 "                       "
             Pipe@1931..1932 "|"
           Newline@1932..1933 "\n"
-"##
-        );
+"##;
+        assert_eq!(get_parser_output(parser, input), expected_output);
     }
 }

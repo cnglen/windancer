@@ -16,11 +16,11 @@ fn bench_windancer_orgize(c: &mut Criterion) {
     group.throughput(Throughput::Bytes(doc_raw.len() as u64));
     group.bench_with_input(
         BenchmarkId::new("windancer::OrgParser::parse", "test.org"),
-        &doc_raw,
-        |b, &doc_raw| {
+        f_org,
+        |b, f_org| {
             b.iter(|| {
                 let mut parser = OrgParser::new(OrgParserConfig::default());
-                let parser_output = parser.parse(&doc_raw);
+                let parser_output = parser.parse(f_org);
                 let syntax_tree = parser_output.syntax();
                 let _ = fs::write(
                     "tests/windancer_red_tree.json",

@@ -20,8 +20,6 @@ pub enum Object {
         text: Option<String>,
     },
 
-    // RadioLink(String),
-    // RadioTarget(String),
     RadioLink(Vec<Object>),
     RadioTarget(Vec<Object>),
 

@@ -99,7 +99,7 @@ mod tests {
             expected_output,
         );
     }
-    
+
     #[test]
     fn test_inline_source_block_02a() {
         let input = r##"

@@ -1,13 +1,16 @@
 //! Parser of org-mode
 use crate::parser::syntax::OrgSyntaxKind;
 use crate::parser::syntax::SyntaxNode;
+use chrono::prelude::*;
 use chumsky::prelude::*;
-use rowan::{GreenNode, GreenToken, NodeOrToken, WalkEvent};
-use std::collections::HashSet;
+use rowan::{GreenNode, GreenNodeBuilder, GreenToken, NodeOrToken, WalkEvent};
+use std::collections::{HashMap, HashSet};
+use std::fs;
 use std::sync::OnceLock;
 mod common;
 mod document;
 mod element;
+use tracing;
 pub(crate) mod object;
 pub(crate) mod syntax;
 static RADIO_TARGETS: OnceLock<HashSet<String>> = OnceLock::new();
@@ -61,11 +64,316 @@ impl OrgParser {
         OrgParser { config }
     }
 
+    // get text from syntax node `e`
+    fn get_text(&self, e: &SyntaxNode) -> String {
+        let mut text = String::new();
+        let mut preorder = e.preorder_with_tokens();
+        while let Some(event) = preorder.next() {
+            match event {
+                WalkEvent::Enter(element) => {
+                    if let Some(token) = element.as_token() {
+                        text.push_str(token.text());
+                    }
+                }
+                _ => {}
+            }
+        }
+        text
+    }
+
+    // get keyword and macro_tempalte(name -> template)
+    fn get_keyword_and_macro_template(
+        &self,
+        syntax_tree: &SyntaxNode,
+    ) -> (HashMap<String, String>, HashMap<String, String>) {
+        let mut keyword = std::collections::HashMap::<String, String>::new();
+        let mut macro_template = std::collections::HashMap::<String, String>::new();
+
+        let mut preorder = syntax_tree.preorder();
+        while let Some(event) = preorder.next() {
+            match event {
+                WalkEvent::Enter(element) => {
+                    if element.kind() == OSK::Keyword {
+                        let key = element
+                            .first_child_by_kind(&|e| e == OSK::KeywordKey)
+                            .expect("must have KeywordKey")
+                            .children_with_tokens()
+                            .map(|e| e.as_token().expect("todo").text().to_string())
+                            .collect::<String>()
+                            .to_ascii_uppercase();
+
+                        let value = element
+                            .first_child_by_kind(&|e| e == OSK::KeywordValue)
+                            .expect("must have KeywordValue")
+                            .children_with_tokens()
+                            .map(|e| {
+                                if let Some(node) = e.as_node() {
+                                    self.get_text(&node)
+                                } else {
+                                    e.as_token().expect("todo").text().to_string()
+                                }
+                            })
+                            .collect::<String>()
+                            .trim()
+                            .to_string();
+
+                        if key == "MACRO" {
+                            if let Some((name, template)) =
+                                value.split_once(|c: char| c.is_whitespace())
+                            {
+                                macro_template.insert(
+                                    name.to_ascii_uppercase().to_string(),
+                                    template.trim().to_string(),
+                                ); // overwrite here
+                            }
+                        } else {
+                            if keyword.contains_key(&key) {
+                                keyword
+                                    .get_mut(&key)
+                                    .expect("has value")
+                                    .push_str(&format!(" {value}"))
+                            } else {
+                                keyword.insert(key, value);
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        tracing::debug!("keyword collected: {:#?}", keyword);
+        tracing::debug!("macro collected: {:#?}", macro_template);
+        (keyword, macro_template)
+    }
+
+    fn expand_macro_template(template: &String, args: Vec<String>) -> String {
+        match args.len() {
+            0 => template.clone(),
+            1 => template.replace("$1", &args[0]),
+            2 => template.replace("$1", &args[0]).replace("$2", &args[1]),
+            3 => template
+                .replace("$1", &args[0])
+                .replace("$2", &args[1])
+                .replace("$3", &args[2]),
+            4 => template
+                .replace("$1", &args[0])
+                .replace("$2", &args[1])
+                .replace("$3", &args[2])
+                .replace("$4", &args[3]),
+            5 => template
+                .replace("$1", &args[0])
+                .replace("$2", &args[1])
+                .replace("$3", &args[2])
+                .replace("$4", &args[3])
+                .replace("$5", &args[4]),
+            6 => template
+                .replace("$1", &args[0])
+                .replace("$2", &args[1])
+                .replace("$3", &args[2])
+                .replace("$4", &args[3])
+                .replace("$5", &args[4])
+                .replace("$6", &args[5]),
+            7 => template
+                .replace("$1", &args[0])
+                .replace("$2", &args[1])
+                .replace("$3", &args[2])
+                .replace("$4", &args[3])
+                .replace("$5", &args[4])
+                .replace("$6", &args[5])
+                .replace("$7", &args[6]),
+
+            8 => template
+                .replace("$1", &args[0])
+                .replace("$2", &args[1])
+                .replace("$3", &args[2])
+                .replace("$4", &args[3])
+                .replace("$5", &args[4])
+                .replace("$6", &args[5])
+                .replace("$7", &args[6])
+                .replace("$8", &args[7]),
+
+            9 => template
+                .replace("$1", &args[0])
+                .replace("$2", &args[1])
+                .replace("$3", &args[2])
+                .replace("$4", &args[3])
+                .replace("$5", &args[4])
+                .replace("$6", &args[5])
+                .replace("$7", &args[6])
+                .replace("$8", &args[7])
+                .replace("$9", &args[8]),
+            _ => {
+                panic!("only <= 9 arguments are supported in #+macro definition")
+            }
+        }
+    }
+
+    // rebuild syntax(red) tree using macro updates
+    fn rebuild_with_macro_updates(
+        builder: &mut GreenNodeBuilder,
+        node: &SyntaxNode,
+        k2v: &HashMap<String, String>,
+        macro_template: &HashMap<String, String>,
+        input_file: &str,
+    ) {
+        let path = std::path::Path::new(input_file);
+        let metadata = fs::metadata(path).expect("todo");
+        let modified_time = metadata.modified().expect("todo");
+        let modified_time: DateTime<Local> = modified_time.clone().into();
+        let input_file_name = path.file_name().expect("file name");
+
+        builder.start_node(node.kind().into());
+
+        if node.kind() == OSK::Macro {
+            let name = node
+                .first_child_or_token_by_kind(&|s| s == OSK::MacroName)
+                .expect("must have one MacroName")
+                .as_token()
+                .unwrap()
+                .text()
+                .to_ascii_uppercase()
+                .to_string();
+            let args = match node.first_child_or_token_by_kind(&|s| s == OSK::MacroArgs) {
+                Some(e) => e
+                    .as_token()
+                    .expect("todo")
+                    .text()
+                    .split(",")
+                    .map(|e| e.to_string())
+                    .collect::<Vec<_>>(),
+                None => vec![],
+            };
+            match name.as_str() {
+                "TITLE" | "AUTHOR" | "EMAIL" => {
+                    if let Some(keyword_value_expanded) = k2v.get(&name) {
+                        builder.start_node(OSK::Macro.into());
+                        builder.token(OSK::Text.into(), keyword_value_expanded);
+                        builder.finish_node();
+                    }
+                }
+                "DATE" => {
+                    if let Some(keyword_value_expanded) = k2v.get(&name) {
+                        builder.start_node(OSK::Macro.into());
+
+                        if args.len() > 0 {
+                            let args = args.join("");
+                            let ts_parser = object::timestamp::FlexibleDateTimeParser::new();
+                            let ts = ts_parser.parse(
+                                &keyword_value_expanded
+                                    [1..keyword_value_expanded.chars().count() - 1],
+                            );
+                            if ts.is_ok() {
+                                let z = ts.unwrap();
+                                let z = z.format(&args).to_string();
+                                builder.token(OSK::Text.into(), &z);
+                            }
+                        } else {
+                            builder.token(OSK::Text.into(), keyword_value_expanded);
+                        }
+                        builder.finish_node();
+                    }
+                }
+                "KEYWORD" => {
+                    let args = args.join("").to_ascii_uppercase();
+                    if let Some(args_keyword_value_expanded) = k2v.get(&args) {
+                        builder.start_node(OSK::Macro.into());
+                        builder.token(OSK::Text.into(), args_keyword_value_expanded);
+                        builder.finish_node();
+                    }
+                }
+
+                "MODIFICATION-TIME" => {
+                    let args = args.join("");
+                    builder.start_node(OSK::Macro.into());
+                    let modified_ts = modified_time.format(&args).to_string();
+                    builder.token(OSK::Text.into(), &modified_ts);
+                    builder.finish_node();
+                }
+
+                "INPUT-FILE" => {
+                    builder.start_node(OSK::Macro.into());
+                    builder.token(
+                        OSK::Text.into(),
+                        input_file_name.to_str().expect("filename"),
+                    );
+                    builder.finish_node();
+                }
+
+                "RESULTS" => {
+                    let args = args.join("");
+                    builder.start_node(OSK::Macro.into());
+                    builder.token(OSK::Text.into(), &args);
+                    builder.finish_node();
+                }
+
+                "TIME" => {
+                    let args = args.join("");
+                    let now: DateTime<Local> = Local::now();
+                    let export_ts = now.format(&args).to_string();
+                    builder.start_node(OSK::Macro.into());
+                    builder.token(OSK::Text.into(), &export_ts);
+                    builder.finish_node();
+                }
+
+                macro_name if macro_template.contains_key(macro_name) => {
+                    let template = macro_template.get(macro_name).expect("get template");
+                    builder.start_node(OSK::Macro.into());
+                    builder.token(
+                        OSK::Text.into(),
+                        &Self::expand_macro_template(&template, args),
+                    );
+                    builder.finish_node();
+                }
+
+                _ => {}
+            }
+        } else {
+            for child in node.children_with_tokens() {
+                match child {
+                    NodeOrToken::Node(child_node) => {
+                        Self::rebuild_with_macro_updates(
+                            builder,
+                            &child_node,
+                            k2v,
+                            macro_template,
+                            input_file,
+                        );
+                    }
+                    NodeOrToken::Token(token) => {
+                        builder.token(token.kind().into(), token.text());
+                    }
+                }
+            }
+        }
+        builder.finish_node();
+    }
+
+    fn expand_macro(
+        &self,
+        syntax_tree: &SyntaxNode,
+        k2v: &HashMap<String, String>,
+        macro_template: &HashMap<String, String>,
+        input_file: &str,
+    ) -> String {
+        let mut builder = GreenNodeBuilder::new();
+        Self::rebuild_with_macro_updates(
+            &mut builder,
+            syntax_tree,
+            k2v,
+            macro_template,
+            input_file,
+        );
+        let syntax_tree_with_macro_expanded = SyntaxNode::new_root(builder.finish());
+        let preprocessed_text = self.get_text(&syntax_tree_with_macro_expanded);
+        preprocessed_text
+    }
+
     // Get radio target from RadioTarget defintion in pattern of <<<CONTENTS>>>
     // todo: maybe use SimpleState is a better method. To bench performance!
     // - GlobalVariable: RADIO_TARGETS
     // - SimpleState
-    pub fn get_radio_targets(&self, input: &str) -> &'static HashSet<String> {
+    fn get_radio_targets(&self, input: &str) -> &'static HashSet<String> {
         let radio_targets: Vec<NodeOrToken<GreenNode, GreenToken>> =
             object::objects_parser::<()>(self.config.clone())
                 .parse(input)
@@ -107,6 +415,8 @@ impl OrgParser {
             }
             radio_targets_text.push(text);
         }
+        tracing::info!("radio tagets collected: '{}'", radio_targets_text.join("|"));
+
         RADIO_TARGETS.get_or_init(|| {
             let mut targets = HashSet::new();
             for e in radio_targets_text {
@@ -116,7 +426,12 @@ impl OrgParser {
         })
     }
 
-    pub fn parse(&mut self, input: &str) -> ParserResult {
+    pub fn parse(&mut self, input_file: &str) -> ParserResult {
+        let path = std::path::Path::new(input_file);
+        fs::exists(path).expect(format!("Can't parse {input_file}, which doesn't exist").as_str());
+
+        let input = &fs::read_to_string(input_file).unwrap_or(String::new());
+
         // radio_target <- "<<<" CONTENTS  ">>>", CONTENTS doest't contain \n, thus we can filter line by line
         let radio_target_lines = input
             .lines()
@@ -126,13 +441,43 @@ impl OrgParser {
             self.get_radio_targets(radio_target_lines.as_str()); // only use radio target related lines to speed up get the radio targets
         }
 
+        let n_macro_reference = input
+            .lines()
+            .filter(|s| s.contains("{{{") && s.contains("}}}"))
+            .count();
+        let input_preprocessed = if n_macro_reference > 0 {
+            tracing::info!(n_macro_reference, "preprocess needed");
+            let parse_result_first_round = document::document_parser(self.config.clone())
+                .parse_with_state(input, &mut extra::SimpleState(ParserState::default()));
+            let parse_result_first_round = ParserResult {
+                green: parse_result_first_round
+                    .into_output()
+                    .expect("Parse failed"),
+            };
+            let mut syntax_tree_first_round = parse_result_first_round.syntax();
+            let (k2v, macro_template) =
+                self.get_keyword_and_macro_template(&syntax_tree_first_round);
+            &self.expand_macro(
+                &mut syntax_tree_first_round,
+                &k2v,
+                &macro_template,
+                input_file,
+            )
+        } else {
+            tracing::info!("preprocess ignored");
+            input
+        };
+        tracing::info!("preprocess done");
 
-        let parse_result = document::document_parser(self.config.clone())
-            .parse_with_state(input, &mut extra::SimpleState(ParserState::default()));
+        let parse_result = document::document_parser(self.config.clone()).parse_with_state(
+            input_preprocessed,
+            &mut extra::SimpleState(ParserState::default()),
+        );
+        tracing::info!("parse done");
 
         if parse_result.has_errors() {
             for e in parse_result.errors() {
-                eprintln!("error: {:?}", e);
+                tracing::error!("{:?}", e);
             }
         }
 
@@ -159,85 +504,3 @@ macro_rules! node {
         )
     };
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use pretty_assertions::assert_eq;
-
-    #[test]
-    fn test_doc_01() {
-        let input = "* 标题1\n 测试\n** 标题1.1\n测试\n测试\ntest\n*** 1.1.1 title\nContent\n* Title\nI have a dream\n"; // (signal: 11, SIGSEGV: invalid memory reference)
-        // let input = "* 标题1\n 测试\n* 标";
-        // let input = "* 标题1\n 测试\n* ba\n"; // (signal: 6, SIGABRT: process abort signal)
-        let mut parser = OrgParser::new(config::OrgParserConfig::default());
-        let syntax_node = parser.parse(input).syntax();
-        let answer = r###"Document@0..97
-  HeadingSubtree@0..74
-    HeadingRow@0..10
-      HeadingRowStars@0..1 "*"
-      Whitespace@1..2 " "
-      HeadingRowTitle@2..9
-        Text@2..9 "标题1"
-      Newline@9..10 "\n"
-    Section@10..18
-      Paragraph@10..18
-        Text@10..18 " 测试\n"
-    HeadingSubtree@18..74
-      HeadingRow@18..31
-        HeadingRowStars@18..20 "**"
-        Whitespace@20..21 " "
-        HeadingRowTitle@21..30
-          Text@21..30 "标题1.1"
-        Newline@30..31 "\n"
-      Section@31..50
-        Paragraph@31..50
-          Text@31..50 "测试\n测试\ntest\n"
-      HeadingSubtree@50..74
-        HeadingRow@50..66
-          HeadingRowStars@50..53 "***"
-          Whitespace@53..54 " "
-          HeadingRowTitle@54..65
-            Text@54..65 "1.1.1 title"
-          Newline@65..66 "\n"
-        Section@66..74
-          Paragraph@66..74
-            Text@66..74 "Content\n"
-  HeadingSubtree@74..97
-    HeadingRow@74..82
-      HeadingRowStars@74..75 "*"
-      Whitespace@75..76 " "
-      HeadingRowTitle@76..81
-        Text@76..81 "Title"
-      Newline@81..82 "\n"
-    Section@82..97
-      Paragraph@82..97
-        Text@82..97 "I have a dream\n"
-"###;
-        assert_eq!(format!("{syntax_node:#?}"), answer);
-    }
-
-    #[test]
-    fn test_doc_02() {
-        let input = "* 标题1\na";
-        let mut parser = OrgParser::new(config::OrgParserConfig::default());
-        let syntax_node = parser.parse(input).syntax();
-        assert_eq!(
-            format!("{syntax_node:#?}"),
-            r##"Document@0..11
-  HeadingSubtree@0..11
-    HeadingRow@0..10
-      HeadingRowStars@0..1 "*"
-      Whitespace@1..2 " "
-      HeadingRowTitle@2..9
-        Text@2..9 "标题1"
-      Newline@9..10 "\n"
-    Section@10..11
-      Paragraph@10..11
-        Text@10..11 "a"
-"##
-        );
-    }
-}
-
-// todo: test of radio link

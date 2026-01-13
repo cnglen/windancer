@@ -637,7 +637,7 @@ mod tests {
       Newline@28..29 "\n"
     BlockBegin@29..49
       Text@29..37 "#+begin_"
-      Text@37..43 "EXPORT"
+      Text@37..43 "export"
       Whitespace@43..44 " "
       Text@44..48 "html"
       Newline@48..49 "\n"
@@ -645,7 +645,7 @@ mod tests {
       Text@49..93 "<span style=\"color:gr ..."
     BlockEnd@93..106
       Text@93..99 "#+end_"
-      Text@99..105 "EXPORT"
+      Text@99..105 "export"
       Newline@105..106 "\n"
 "###,
             "<affiliated keyword> is immediately preceding a <export block>"
@@ -680,7 +680,7 @@ mod tests {
   ExportBlock@30..107
     BlockBegin@30..50
       Text@30..38 "#+begin_"
-      Text@38..44 "EXPORT"
+      Text@38..44 "export"
       Whitespace@44..45 " "
       Text@45..49 "html"
       Newline@49..50 "\n"
@@ -688,7 +688,7 @@ mod tests {
       Text@50..94 "<span style=\"color:gr ..."
     BlockEnd@94..107
       Text@94..100 "#+end_"
-      Text@100..106 "EXPORT"
+      Text@100..106 "export"
       Newline@106..107 "\n"
 "###,
             "<affiliated keyword> should be immediately preceding a valid element, or it will be parsed as <keyword>"

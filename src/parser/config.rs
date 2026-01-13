@@ -80,6 +80,14 @@ impl Default for OrgParserConfig {
 }
 
 impl OrgParserConfig {
+    pub fn with_use_sub_superscripts(mut self, v: OrgUseSubSuperscripts) -> Self {
+        self.org_use_sub_superscripts = v;
+
+        self
+    }
+}
+
+impl OrgParserConfig {
     // dual keywords which contains objects
     pub(crate) fn org_element_dual_keywords_parsed(&self) -> HashSet<String> {
         self.org_element_dual_keywords

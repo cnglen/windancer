@@ -1,6 +1,31 @@
 //! timestamp parser
 use crate::parser::{MyExtra, NT, OSK};
+use chrono::DateTime;
+use chrono::TimeZone;
+use chrono::{Local, NaiveDateTime};
 use chumsky::prelude::*;
+
+pub struct FlexibleDateTimeParser {
+    formats: Vec<&'static str>,
+}
+
+impl FlexibleDateTimeParser {
+    pub fn new() -> Self {
+        Self {
+            formats: vec!["%Y-%m-%d %a %H:%M", "%Y-%m-%d %H:%M", "%Y-%m-%d"],
+        }
+    }
+
+    pub fn parse(&self, s: &str) -> Result<DateTime<Local>, &str> {
+        for &format in &self.formats {
+            if let Ok(dt) = NaiveDateTime::parse_from_str(s, format) {
+                return Ok(Local.from_local_datetime(&dt).unwrap());
+            }
+        }
+
+        Err("error")
+    }
+}
 
 use super::whitespaces_g1;
 
