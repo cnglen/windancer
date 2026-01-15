@@ -26,47 +26,60 @@ pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<
         .collect::<Vec<_>>();
 
     // Empty lines and other elements end paragraphs
-    let inner = object::line_parser()
-        .and_is(
-            // use simple parsers for lookahead to reduce rewind() and speed up
-            choice((
-                object::blank_line_parser().ignored(),
-                element::heading::simple_heading_row_parser().ignored(), // heading_tree is recursive, we use simple heading row for lookahead to avoid stackoverflow
-                element::table::simple_table_parser(config.clone()),
-                element::footnote_definition::simple_footnote_definition_parser(config.clone()),
-                just("#+")
-                    .ignore_then(
-                        one_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_[]")
-                            .repeated()
-                            .at_least(1),
-                    )
-                    .ignore_then(just(":"))
-                    .ignored(),
-                // element::list::simple_plain_list_parser(element::item::simple_item_parser()),
-                element::plain_list::simple_plain_list_parser(config.clone()),
-                element::drawer::simple_drawer_parser(config.clone()),
-                element::block::simple_center_block_parser(config.clone()),
-                element::block::simple_quote_block_parser(config.clone()),
-                element::block::simple_special_block_parser(config.clone()),
-                element::block::simple_verse_block_parser(config.clone()),
-                element::latex_environment::simple_latex_environment_parser(config.clone()),
-                element::block::simple_src_block_parser(config.clone()),
-                element::block::simple_export_block_parser(config.clone()),
-                element::block::simple_example_block_parser(config.clone()),
-                element::block::simple_comment_block_parser(config.clone()),
-                element::fixed_width::simple_fixed_width_parser(config.clone()),
-                element::horizontal_rule::horizontal_rule_parser().ignored(),
-                element::comment::comment_parser().ignored(),
-                non_paragraph_parser.ignored(), // other element, this is necessary to find the end of paragraph even thougn paragraph is the last element of choice
-            ))
-            .not(),
+    // allow blank_line in begging for cases such as begin_quote, which starts with blank lines
+    let inner = object::blank_line_parser().repeated()
+        .then(
+            object::line_parser()
+                .and_is(
+                    // use simple parsers for lookahead to reduce rewind() and speed up
+                    choice((
+                        object::blank_line_parser().ignored(),
+                        element::heading::simple_heading_row_parser().ignored(), // heading_tree is recursive, we use simple heading row for lookahead to avoid stackoverflow
+                        element::table::simple_table_parser(config.clone()),
+                        element::footnote_definition::simple_footnote_definition_parser(config.clone()),
+                        just("#+")
+                            .ignore_then(
+                                one_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_[]")
+                                    .repeated()
+                                    .at_least(1),
+                            )
+                            .ignore_then(just(":"))
+                            .ignored(),
+                        // element::list::simple_plain_list_parser(element::item::simple_item_parser()),
+                        element::plain_list::simple_plain_list_parser(config.clone()),
+                        element::drawer::simple_drawer_parser(config.clone()),
+                        element::block::simple_center_block_parser(config.clone()),
+                        element::block::simple_quote_block_parser(config.clone()),
+                        element::block::simple_special_block_parser(config.clone()),
+                        element::block::simple_verse_block_parser(config.clone()),
+                        element::latex_environment::simple_latex_environment_parser(config.clone()),
+                        element::block::simple_src_block_parser(config.clone()),
+                        element::block::simple_export_block_parser(config.clone()),
+                        element::block::simple_example_block_parser(config.clone()),
+                        element::block::simple_comment_block_parser(config.clone()),
+                        element::fixed_width::simple_fixed_width_parser(config.clone()),
+                        element::horizontal_rule::horizontal_rule_parser().ignored(),
+                        element::comment::comment_parser().ignored(),
+                        non_paragraph_parser, // other element, this is necessary to find the end of paragraph even thougn paragraph is the last element of choice
+                    ))
+                        .not(),
+                )
+                .repeated()
+                .at_least(1)
         )
+        .to_slice()
+        .or(
+            object::blank_line_parser().repeated().at_least(1).to_slice()
+        )
+        ;
+
+    let standard_set_objects_parser = object::standard_set_object_parser(config.clone())
         .repeated()
-        .at_least(1)
-        .to_slice();
+        .at_least(0)
+        .collect::<Vec<_>>();
 
     affiliated_keywords
-        .then(object::standard_set_objects_parser(config.clone()).nested_in(inner))
+        .then(standard_set_objects_parser.nested_in(inner))
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
         .map_with(|((keywords, lines), blanklines), _e| {
             let mut children = Vec::with_capacity(keywords.len() + lines.len() + blanklines.len());
@@ -289,6 +302,42 @@ a paragraph
     Newline@28..29 "\n"
   Text@29..41 "a paragraph\n"
 "##
+        );
+    }
+
+    #[test]
+    fn test_paragraph_10() {
+        let input = r##"
+a paragraph
+"##;
+        let parser = paragraph_parser(
+            element::element_in_paragraph_parser::<()>(OrgParserConfig::default()),
+            OrgParserConfig::default(),
+        );
+        assert_eq!(
+            get_parser_output(parser, input),
+            r##"Paragraph@0..13
+  Text@0..13 "\na paragraph\n"
+"##,
+            "allow blanklines at the begnning"
+        );
+    }
+
+    #[test]
+    fn test_paragraph_11() {
+        let input = r##"
+
+"##;
+        let parser = paragraph_parser(
+            element::element_in_paragraph_parser::<()>(OrgParserConfig::default()),
+            OrgParserConfig::default(),
+        );
+        assert_eq!(
+            get_parser_output(parser, input),
+            r##"Paragraph@0..2
+  Text@0..2 "\n\n"
+"##,
+            "allow blanklines at the begnning"
         );
     }
 }

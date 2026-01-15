@@ -76,32 +76,39 @@ fn item_checkbox_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a,
 }
 
 // tag <- !(whitespaces "::" whitespaces) [^CRLF]+ whitespaces+ "::" whitespaces+
-fn item_tag_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> {
+fn item_tag_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> {
+    let standard_set_objects_parser = object::standard_set_object_parser(config.clone())
+        .repeated()
+        .at_least(1)
+        .collect::<Vec<_>>();
+
+    let tag_inner = none_of(object::CRLF)
+        .and_is(
+            object::whitespaces_g1()
+                .then(just("::"))
+                .then(object::whitespaces_g1())
+                .not(),
+        )
+        .repeated()
+        .at_least(1)
+        .to_slice();
+
     group((
-        none_of(object::CRLF)
-            .and_is(
-                object::whitespaces_g1()
-                    .then(just("::"))
-                    .then(object::whitespaces_g1())
-                    .not(),
-            )
-            .repeated()
-            .at_least(1)
-            .to_slice(),
+        standard_set_objects_parser.nested_in(tag_inner),
         object::whitespaces_g1(),
         just("::"),
         object::whitespaces_g1(),
     ))
     .map(|(tag, whitespaces1, double_colon, whitespaces2)| {
-        crate::node!(
-            OSK::ListItemTag,
-            vec![
-                crate::token!(OSK::Text, tag),
-                crate::token!(OSK::Whitespace, whitespaces1),
-                crate::token!(OSK::Colon2, double_colon),
-                crate::token!(OSK::Whitespace, whitespaces2),
-            ]
-        )
+        let mut children = Vec::with_capacity(3 + tag.len());
+        children.extend(tag);
+        children.push(crate::token!(OSK::Whitespace, whitespaces1));
+        children.push(crate::token!(OSK::Colon2, double_colon));
+        children.push(crate::token!(OSK::Whitespace, whitespaces2));
+
+        crate::node!(OSK::ListItemTag, children)
     })
 }
 
@@ -157,7 +164,7 @@ fn create_item_node<'a, C: 'a + std::default::Default>(
                 .map(|s| crate::node!(OSK::ListItemContent, s))
                 .parse(content)
                 .into_output()
-                .unwrap()
+                .unwrap() // fixme
         };
         children.push(content_node);
     }
@@ -175,6 +182,7 @@ fn plain_list_parser_inner<'a, C: 'a + std::default::Default>(
     affiliated_keywords_parser: impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone + 'a,
     element_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
     lookahead_only: bool,
+    config: OrgParserConfig,
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let item_content_inner = object::line_parser() // no need to test indent since this is the first row of item
         .then(
@@ -201,7 +209,7 @@ fn plain_list_parser_inner<'a, C: 'a + std::default::Default>(
                     item_bullet_parser(),
                     item_counter_set_parser().or_not(),
                     item_checkbox_parser().or_not(),
-                    item_tag_parser().or_not(),
+                    item_tag_parser(config.clone()).or_not(),
                     item_content_inner.clone().or_not(),
                     object::blank_line_parser().or_not(),
                 ))
@@ -217,7 +225,7 @@ fn plain_list_parser_inner<'a, C: 'a + std::default::Default>(
                         item_bullet_parser(),
                         item_counter_set_parser().or_not(),
                         item_checkbox_parser().or_not(),
-                        item_tag_parser().or_not(),
+                        item_tag_parser(config.clone()).or_not(),
                         item_content_inner.or_not(),
                         object::blank_line_parser().or_not(),
                     ))
@@ -295,11 +303,11 @@ pub(crate) fn plain_list_parser<'a, C: 'a + std::default::Default>(
     config: OrgParserConfig,
     element_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    let affiliated_keywords_parser = element::keyword::affiliated_keyword_parser(config)
+    let affiliated_keywords_parser = element::keyword::affiliated_keyword_parser(config.clone())
         .repeated()
         .collect::<Vec<_>>();
 
-    plain_list_parser_inner(affiliated_keywords_parser, element_parser, false)
+    plain_list_parser_inner(affiliated_keywords_parser, element_parser, false, config)
 }
 
 pub(crate) fn simple_plain_list_parser<'a, C: 'a + std::default::Default>(
@@ -308,13 +316,14 @@ pub(crate) fn simple_plain_list_parser<'a, C: 'a + std::default::Default>(
     // let affiliated_keywords_parser = element::keyword::simple_affiliated_keyword_parser()
     //     .repeated()
     //     .collect::<Vec<_>>();
-    let affiliated_keywords_parser = element::keyword::simple_affiliated_keyword_parser(config)
-        .repeated()
-        .collect::<Vec<_>>();
+    let affiliated_keywords_parser =
+        element::keyword::simple_affiliated_keyword_parser(config.clone())
+            .repeated()
+            .collect::<Vec<_>>();
 
     let faded_parser = empty().to(crate::token!(OSK::Text, ""));
 
-    plain_list_parser_inner(affiliated_keywords_parser, faded_parser, true).ignored()
+    plain_list_parser_inner(affiliated_keywords_parser, faded_parser, true, config).ignored()
 }
 
 #[cfg(test)]

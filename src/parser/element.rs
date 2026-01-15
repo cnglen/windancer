@@ -76,6 +76,7 @@ pub(crate) fn get_element_parser<'a, C: 'a + std::default::Default>(
     let plain_list =
         plain_list::plain_list_parser(config.clone(), element_without_tablerow_and_item.clone());
 
+    // todo: simple_keyword need? or in paragraph.rs?
     // ONLY used for lookhead
     // IN paragraph_parser(), simple_heading/simple_table/simple_footnote_definition is used for lookahead, no need here for performance:
     // - we don't include heading subtree to avoid stackoverflow

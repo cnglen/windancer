@@ -259,7 +259,7 @@ pub(crate) fn whitespaces_g1<'a, C: 'a>()
     one_of(" \t").repeated().at_least(1).to_slice()
 }
 
-/// 解析一行:
+/// 解析一行: 至少有一个字符
 /// Line <- (!EOL .)+
 /// EOL <- CR? LF
 pub(crate) fn line_parser<'a, C: 'a>()
@@ -273,7 +273,7 @@ pub(crate) fn line_parser<'a, C: 'a>()
         .to_slice()
 }
 
-/// 解析一行: 允许空行
+/// 解析一行: alow empty line
 pub(crate) fn line_parser_allow_blank<'a, C: 'a>()
 -> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Clone {
     let end_of_line = choice((just(LF).to(()), just(CRLF).to(()), end()));
@@ -309,14 +309,14 @@ pub(crate) fn objects_parser<'a, C: 'a>(
         .collect::<Vec<_>>()
 }
 
-pub(crate) fn standard_set_objects_parser<'a, C: 'a>(
-    config: OrgParserConfig,
-) -> impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone {
-    standard_set_object_parser(config)
-        .repeated()
-        .at_least(1)
-        .collect::<Vec<_>>()
-}
+// pub(crate) fn standard_set_objects_parser<'a, C: 'a>(
+//     config: OrgParserConfig,
+// ) -> impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone {
+//     standard_set_object_parser(config)
+//         .repeated()
+//         .at_least(1)
+//         .collect::<Vec<_>>()
+// }
 
 /// objects_parser
 // object defintion:

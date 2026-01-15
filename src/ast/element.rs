@@ -268,7 +268,7 @@ pub struct Item {
     pub bullet: String,
     pub counter_set: Option<String>,
     pub checkbox: Option<String>,
-    pub tag: Option<String>,
+    pub tag: Vec<Object>,
     pub contents: Vec<Element>,
 }
 

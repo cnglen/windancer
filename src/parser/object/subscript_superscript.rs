@@ -276,7 +276,7 @@ fn create_script_parser<'a, C: 'a>(
     let standard_objects_parser = object_parser
         .clone()
         .repeated()
-        .at_least(1)
+        .at_least(0) // use 0 to allow empty script, such as "a^{}"
         .collect::<Vec<NT>>();
 
     let expression_parser =
@@ -399,6 +399,23 @@ mod tests {
     Text@4..8 "_foo"
     Asterisk@8..9 "*"
   Text@9..10 "}"
+"###
+        );
+    }
+
+    #[test]
+    fn test_subscript_05() {
+        assert_eq!(
+            get_parsers_output(
+                object::objects_parser::<()>(OrgParserConfig::default()),
+                r"a_{}"
+            ),
+            r###"Root@0..4
+  Text@0..1 "a"
+  Subscript@1..4
+    Underscore@1..2 "_"
+    LeftCurlyBracket@2..3 "{"
+    RightCurlyBracket@3..4 "}"
 "###
         );
     }

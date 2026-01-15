@@ -26,7 +26,9 @@ see [[file:docs/status.org][status]] for status.
 
 * change log
 
+- 2026-01-15 13:42:49: Support parse/render from input directory to output directory
 - 2026-01-05 20:12:45: Remove Rollback state, using ctx and *inp.full_slice()* to visit PRE(previous char), parse speed is 2x (for test file: 50ms -> 26ms). Note since chumsky full_slice() API is not public, so only local version chumsky worked. See [[https://github.com/zesterer/chumsky/issues/943][chumsky issue 946]]
+
 
 
 * Planning

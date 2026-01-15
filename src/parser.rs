@@ -449,10 +449,17 @@ impl OrgParser {
             tracing::info!(n_macro_reference, "preprocess needed");
             let parse_result_first_round = document::document_parser(self.config.clone())
                 .parse_with_state(input, &mut extra::SimpleState(ParserState::default()));
+
+            if parse_result_first_round.has_errors() {
+                for e in parse_result_first_round.errors() {
+                    tracing::error!("{:?}", e);
+                }
+            }
+
             let parse_result_first_round = ParserResult {
                 green: parse_result_first_round
                     .into_output()
-                    .expect("Parse failed"),
+                    .expect("Parse failed in first round"),
             };
             let mut syntax_tree_first_round = parse_result_first_round.syntax();
             let (k2v, macro_template) =
@@ -480,9 +487,12 @@ impl OrgParser {
                 tracing::error!("{:?}", e);
             }
         }
+        tracing::trace!("{:#?}", parse_result);
 
         ParserResult {
-            green: parse_result.into_output().expect("Parse failed"),
+            green: parse_result
+                .into_output()
+                .expect("Parse failed in into_output()"),
         }
     }
 }

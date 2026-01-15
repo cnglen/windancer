@@ -23,22 +23,26 @@ pub(crate) fn footnote_definition_inner<'a, C: 'a>(
         .then(just("]"))
         .then(object::whitespaces_g1())
         .then(content_parser)
-        .map(|(((((keywords, _lfnc), label), rbracket), ws1), content)| {
-            let mut children = Vec::with_capacity(8 + content.len());
-            children.extend(keywords);
+        .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
+        .map(
+            |((((((keywords, _lfnc), label), rbracket), ws1), content), blank_lines)| {
+                let mut children = Vec::with_capacity(8 + content.len());
+                children.extend(keywords);
 
-            children.push(crate::token!(OSK::LeftSquareBracket, "["));
-            children.push(crate::token!(OSK::Text, "fn"));
-            children.push(crate::token!(OSK::Colon, ":"));
-            children.push(crate::token!(OSK::Text, label));
-            children.push(crate::token!(OSK::RightSquareBracket, rbracket));
+                children.push(crate::token!(OSK::LeftSquareBracket, "["));
+                children.push(crate::token!(OSK::Text, "fn"));
+                children.push(crate::token!(OSK::Colon, ":"));
+                children.push(crate::token!(OSK::Text, label));
+                children.push(crate::token!(OSK::RightSquareBracket, rbracket));
 
-            children.push(crate::token!(OSK::Whitespace, &ws1));
+                children.push(crate::token!(OSK::Whitespace, &ws1));
 
-            children.extend(content);
+                children.extend(content);
+                children.extend(blank_lines);
 
-            crate::node!(OSK::FootnoteDefinition, children)
-        })
+                crate::node!(OSK::FootnoteDefinition, children)
+            },
+        )
         .boxed()
 }
 
@@ -54,13 +58,7 @@ pub(crate) fn footnote_definition_parser<'a, C: 'a>(
     let content_inner = object::line_parser()
         .or(object::blank_line_str_parser())
         .and_is(just("*").ignored().not()) // ends at the next heading
-        .and_is(
-            object::blank_line_parser()
-                .repeated()
-                .at_least(2)
-                .ignored()
-                .not(),
-        ) // two consecutive blank lines
+        .and_is(object::blank_line_parser().repeated().at_least(2).not()) // two consecutive blank lines
         .and_is(content_begin.ignored().not()) // ends at the next footnote definition
         .repeated()
         .to_slice();

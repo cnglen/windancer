@@ -900,22 +900,34 @@ impl HtmlRenderer {
                 .collect::<String>()
         };
 
-        match &item.tag {
-            None => format!(
-                r##"  <li>
-{} {}  </li>
-"##,
-                checkbox_html, contents_html
-            ),
+        let tag_html = item
+            .tag
+            .iter()
+            .map(|e| self.render_object(e))
+            .collect::<String>();
 
-            Some(tag) => {
-                format!(
-                    r##"  <dt>{} {}</dt> <dd>{}</dd>
+        format!(
+            r##"  <dt>{} {}</dt> <dd>{}</dd>
 "##,
-                    checkbox_html, tag, contents_html,
-                )
-            }
-        }
+            checkbox_html, tag_html, contents_html,
+        )
+
+        //         match &item.tag {
+        //             None => format!(
+        //                 r##"  <li>
+        // {} {}  </li>
+        // "##,
+        //                 checkbox_html, contents_html
+        //             ),
+
+        //             Some(tag) => {
+        //                 format!(
+        //                     r##"  <dt>{} {}</dt> <dd>{}</dd>
+        // "##,
+        //                     checkbox_html, tag, contents_html,
+        //                 )
+        //             }
+        //         }
     }
 
     fn render_horizontal_rule(&self) -> String {

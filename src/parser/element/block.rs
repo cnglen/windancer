@@ -678,7 +678,7 @@ fn center_or_quote_block_parser<'a, C: 'a>(
     let end_row = end_row_parser(name);
     let content_inner = object::line_parser()
         .or(object::blank_line_str_parser())
-        .and_is(end_row.clone().ignored().not())
+        .and_is(end_row.clone().not())
         .and_is(
             element::heading::simple_heading_row_parser()
                 .ignored()
@@ -695,10 +695,6 @@ fn center_or_quote_block_parser<'a, C: 'a>(
     let affiliated_keywords = element::keyword::affiliated_keyword_parser(config)
         .repeated()
         .collect::<Vec<_>>();
-
-    // let affiliated_keywords = element::keyword::affiliated_keyword_parser()
-    //     .repeated()
-    //     .collect::<Vec<_>>();
 
     affiliated_keywords
         .then(begin_row)

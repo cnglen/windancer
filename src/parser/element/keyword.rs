@@ -23,7 +23,7 @@ pub(crate) fn affiliated_keyword_parser_inner<'a, C: 'a>(
         .repeated()
         .at_least(1)
         .to_slice();
-    let string_without_nl = none_of(object::CRLF).repeated().at_least(1).to_slice();
+    let string_without_nl = none_of(object::CRLF).repeated().at_least(0).to_slice(); // `#+RESULTS:` will report error!! to check
 
     let mut single_expression = Recursive::declare(); // foo / [foo] / [[[foo]]]
     single_expression.define(
@@ -276,7 +276,7 @@ pub(crate) fn keyword_parser_inner<'a, C: 'a + std::default::Default>(
 
     // PEG: !whitespace any()*
     // last if not :
-    let string_without_nl = none_of(object::CRLF).repeated().at_least(1).to_slice();
+    let string_without_nl = none_of(object::CRLF).repeated().at_least(0).to_slice();
     // let key_with_objects = object::keyword_ci_parser(&ORG_ELEMENT_KEYWORDS_OPTVALUE_PARSED); // 1
     let key_with_objects = object::keyword_ci_parser_v2(config.org_element_dual_keywords_parsed()); // 1    
 
@@ -415,10 +415,10 @@ pub(crate) fn keyword_parser_inner<'a, C: 'a + std::default::Default>(
 pub(crate) fn keyword_parser<'a, C: 'a + std::default::Default>(
     config: OrgParserConfig,
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
-    let string_without_nl = none_of(object::CRLF).repeated().at_least(1).to_slice();
+    let string_without_nl = none_of(object::CRLF).repeated().at_least(0).to_slice();
     let objects_parser = object::object_in_keyword_parser(config.clone())
         .repeated()
-        .at_least(1)
+        .at_least(0)
         .collect::<Vec<NT>>();
     let value_parser = objects_parser.clone().nested_in(string_without_nl);
 
@@ -428,7 +428,7 @@ pub(crate) fn keyword_parser<'a, C: 'a + std::default::Default>(
 pub(crate) fn simple_keyword_parser<'a, C: 'a + std::default::Default>(
     config: OrgParserConfig,
 ) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
-    let string_without_nl = none_of(object::CRLF).repeated().at_least(1).to_slice();
+    let string_without_nl = none_of(object::CRLF).repeated().at_least(0).to_slice();
     let value_parser = string_without_nl.map(|s| vec![crate::token!(OSK::Text, s)]);
 
     keyword_parser_inner(config, value_parser).ignored()

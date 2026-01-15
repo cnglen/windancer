@@ -952,8 +952,6 @@ impl Converter {
             (Some(label), None)
         };
 
-        // println!("{:?}:{:?}", raw_label, raw_definition);
-
         let label = match raw_label {
             Some(e) => {
                 let _label = e.as_token().expect("todo").text().to_string();
@@ -1513,13 +1511,13 @@ impl Converter {
                     .to_string()
                     .to_lowercase();
 
-                for e in node
-                    .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockContent)
-                    .unwrap()
-                    .children_with_tokens()
-                {
-                    if let Ok(Some(object)) = self.convert_object(&e) {
-                        contents.push(object);
+                let maybe_block_content =
+                    node.first_child_by_kind(&|c| c == OrgSyntaxKind::BlockContent);
+                if let Some(block_content) = maybe_block_content {
+                    for e in block_content.children_with_tokens() {
+                        if let Ok(Some(object)) = self.convert_object(&e) {
+                            contents.push(object);
+                        }
                     }
                 }
             }
@@ -1568,7 +1566,7 @@ impl Converter {
         let mut bullet = String::new();
         let counter_set = None;
         let mut checkbox = None;
-        let mut tag = None;
+        let mut tag = vec![];
         let mut contents = vec![];
         for child in node.children_with_tokens() {
             // println!("{:#?}", child);
@@ -1602,17 +1600,28 @@ impl Converter {
                 }
 
                 OrgSyntaxKind::ListItemTag => {
-                    tag = Some(
-                        child
-                            .as_node()
-                            .unwrap()
-                            .first_child_or_token_by_kind(&|e| e == OrgSyntaxKind::Text)
-                            .unwrap()
-                            .as_token()
-                            .unwrap()
-                            .text()
-                            .to_string(),
-                    );
+                    tag = child
+                        .as_node()
+                        .unwrap()
+                        .children_with_tokens()
+                        .map(|e| self.convert_object(&e))
+                        .filter(|e| e.is_ok())
+                        .map(|e| e.unwrap())
+                        .filter(|e| e.is_some())
+                        .map(|e| e.unwrap())
+                        .collect::<Vec<_>>();
+
+                    // tag = Some(
+                    //     child
+                    //         .as_node()
+                    //         .unwrap()
+                    //         .first_child_or_token_by_kind(&|e| e == OrgSyntaxKind::Text)
+                    //         .unwrap()
+                    //         .as_token()
+                    //         .unwrap()
+                    //         .text()
+                    //         .to_string(),
+                    // );
                 }
 
                 // FIXME: ListItemparser
