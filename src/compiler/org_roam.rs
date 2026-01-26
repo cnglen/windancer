@@ -1,0 +1,80 @@
+
+// 构建RoamNode的Graph
+// id -> page
+// id -> page#link
+// 每个node可视化, 存储html? 从page中获取html
+
+// compile增加roamnode的解析: ast + roam_graph
+// file node <-> page map: page_id, anchor
+// RoamNode和Document的关系?
+// - File: 通过FileInfo
+// - Headline: SubTree with ID
+
+use std::collections::HashMap;
+use crate::compiler::content::FileInfo;
+
+#[derive(Debug)]
+pub enum NodeType {
+    File,
+    Headline,
+}
+
+// 结构关系
+//   *父子： 文件节点 → 其下的标题节点。
+// 显式链接关系
+//   *ID引用关系： 通过 [[id:xxx][描述]] 语法主动创建的链接。这是最核心、最富语义的关系。(遍历Node)
+//     A -> a_son  -> a_grandson -> link to b
+//   文件链接关系: 通过 [[file:...][描述]] 链接到另一个文件（或锚点）。
+// 隐式/派生关系
+//   标签共现关系	两个节点共享了相同的标签（#+FILETAGS: 或 #+ROAM_TAGS:）。
+//   提及/文本关系	在正文中提及了另一个节点的标题或别名，但未用 [[id:...]] 显式链接。
+// 顺序关系
+//   同级顺序关系	在同一父节点下，兄弟节点（如多个标题、多个文件）之间的前后顺序。
+// 元数据关系           别名指向关系	节点A的别名 (ROAM_ALIAS) 恰好是节点B的标题。这可以视为一种弱引用。
+// node -- [id:] -> node1
+// node -- links with oram_refs -> node2 ()
+// node -- has children  -->
+#[derive(Debug)]
+pub struct RoamNode {
+    pub id: String,
+    pub title: String,
+    pub node_type: NodeType,
+    pub file_info: FileInfo,    // file info where current node is born
+
+    /// ROAM_ALIASES property
+    pub aliases: Vec<String>,
+    
+    /// 引用键列表 (ROAM_REFS: citation keys, URLs, DOIs)
+    pub refs: Vec<String>,
+
+    /// 属性映射 (Org PROPERTIES)
+    pub properties: HashMap<String, String>,
+
+    /// filetags for doc; head tags for heading
+    pub tags: Vec<String>,
+    
+    // note_type: literature, concept
+    // has refs -> literature
+    
+    /// 0 for NodeType::File, headline level for NodeType::HeadLine
+    pub level: usize,
+    
+    // /// 节点原始内容 (Org-mode 格式)
+    // pub raw_ast: ast,           // OrgFile Or HeadingSubtree
+    
+    // /// 节点渲染后内容 (HTML/Markdown)?
+    // pub rendered_content: String,
+    
+    // /// 创建时间戳
+    // pub created: DateTime<Utc>,
+    
+    // /// 最后修改时间戳
+    // pub modified: DateTime<Utc>,
+    
+    // /// 元数据哈希 (用于增量更新检测)
+    // pub content_hash: String,
+
+    // pub page: Page,
+    // pub anchor: Option<String>, // page.link + #xxxxx; page.link
+    // pub link: String,           // url link
+}

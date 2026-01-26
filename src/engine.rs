@@ -1,8 +1,9 @@
+// remove this file: compiler.compile() -> Vec<AST> -> Exporter -> Target
 use std::fs;
 
-use crate::ast::builder::AstBuilder;
-use crate::parser::{OrgParser, config::OrgParserConfig, config::OrgUseSubSuperscripts};
-use crate::renderer::html::{HtmlRenderer, RenderConfig};
+use crate::compiler::ast_builder::AstBuilder;
+use crate::compiler::parser::{OrgParser, config::OrgParserConfig, config::OrgUseSubSuperscripts};
+use crate::export::ssg::html::{HtmlRenderer, RenderConfig};
 use walkdir::WalkDir;
 
 pub struct Engine {
@@ -31,13 +32,11 @@ impl Engine {
         f_html: &str,
         debug: u8,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let syntax_tree = {
-            let parser_output = self.parser.parse(f_org);
-            parser_output.syntax()
-        };
+        let syntax_tree = self.parser.parse(f_org);
         tracing::trace!("syntax_tree:{:#?}", syntax_tree);
+
         let ast = self.ast_builder.build(&syntax_tree).expect("build");
-        let html = self.renderer.render_document(&ast);
+        let html = self.renderer.render_org_file(&ast);
 
         fs::write(f_html, html)?;
         tracing::info!("{} -> {} done", f_org, f_html);

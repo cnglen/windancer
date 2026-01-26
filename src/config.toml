@@ -1,0 +1,7 @@
+input_directory = "content"
+
+[compiler]
+
+
+[ssg]
+output_directory = "public"

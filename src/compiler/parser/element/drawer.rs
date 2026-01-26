@@ -1,0 +1,638 @@
+//! Drawer parser
+use crate::compiler::parser::config::OrgParserConfig;
+use crate::compiler::parser::{MyExtra, NT, OSK};
+use crate::compiler::parser::{element, object};
+use chumsky::prelude::*;
+use std::ops::Range;
+
+use crate::compiler::parser::object::just_case_insensitive;
+
+fn name_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, String, MyExtra<'a, C>> + Clone {
+    custom::<_, &str, _, MyExtra<'a, C>>(|inp| {
+        let remaining = inp.slice_from(std::ops::RangeFrom {
+            start: &inp.cursor(),
+        });
+
+        let content: String = remaining
+            .chars()
+            .take_while(|c| !matches!(c, ' ' | '\t' | '\r' | '\n'))
+            .collect();
+
+        let maybe_final = content
+            .char_indices()
+            .rev()
+            .find(|(_, c)| !matches!(c, '+' | ':'));
+
+        let (idx, _) = maybe_final.ok_or_else(|| {
+            let n_char = content.chars().count();
+            Rich::custom(
+                SimpleSpan::from(Range {
+                    start: *inp.cursor().inner(),
+                    end: (inp.cursor().inner() + n_char),
+                }),
+                format!("node_property: name_parser error: '{}'", content),
+            )
+        })?;
+
+        let name = content.chars().take(idx + 1).collect::<String>();
+        for _ in 0..idx + 1 {
+            inp.next();
+        }
+        Ok(name)
+    })
+}
+
+pub(crate) fn node_property_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    let name = name_parser();
+    let value = none_of(object::CRLF).repeated().to_slice();
+    let blank_lines = object::blank_line_parser().repeated().collect::<Vec<_>>();
+
+    group((
+        object::whitespaces(),
+        just(":"),
+        name,
+        just("+").or_not(),
+        just(":"),
+        object::whitespaces_g1().then(value).or_not(),
+        object::newline(),
+        blank_lines,
+    ))
+    .map(
+        |(ws1, colon1, name, maybe_plus, colon2, maybe_ws2_value, newline, blank_lines)| {
+            let mut children = Vec::with_capacity(8 + blank_lines.len());
+            if !ws1.is_empty() {
+                children.push(crate::token!(OSK::Whitespace, ws1));
+            }
+            children.push(crate::token!(OSK::Colon, colon1));
+            children.push(crate::token!(OSK::Text, &name));
+            if let Some(plus) = maybe_plus {
+                children.push(crate::token!(OSK::Plus, plus));
+            }
+            children.push(crate::token!(OSK::Colon, colon2));
+            if let Some((ws2, value)) = maybe_ws2_value {
+                children.push(crate::token!(OSK::Whitespace, ws2));
+                if !value.is_empty() {
+                    children.push(crate::token!(OSK::Text, value));
+                }
+            }
+            children.push(crate::token!(OSK::Newline, newline));
+            children.extend(blank_lines);
+
+            crate::node!(OSK::NodeProperty, children)
+        },
+    )
+}
+
+pub(crate) fn property_drawer_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    let begin_row = object::whitespaces()
+        .then(just_case_insensitive(":properties:"))
+        .then(object::whitespaces())
+        .then(object::newline());
+
+    let end_row = object::whitespaces()
+        .then(just_case_insensitive(":end:"))
+        .then(object::whitespaces())
+        .then(object::newline());
+
+    let blank_lines = object::blank_line_parser().repeated().collect::<Vec<_>>();
+
+    begin_row
+        .then(blank_lines.clone())
+        .then(
+            node_property_parser()
+                .and_is(end_row.clone().ignored().not())
+                .repeated()
+                .collect::<Vec<_>>(),
+        )
+        .then(end_row)
+        .then(blank_lines)
+        .map(
+            |(
+                (
+                    (((((ws1, properties), ws2), nl1), start_blank_lines), contents),
+                    (((ws3, end), ws4), nl2),
+                ),
+                blank_lines,
+            )| {
+                let mut children = Vec::with_capacity(
+                    6 + start_blank_lines.len() + contents.len() + blank_lines.len(),
+                );
+                if !ws1.is_empty() {
+                    children.push(crate::token!(OSK::Whitespace, ws1));
+                }
+                children.push(crate::token!(OSK::Text, properties));
+                if !ws2.is_empty() {
+                    children.push(crate::token!(OSK::Whitespace, ws2));
+                }
+                children.push(crate::token!(OSK::Newline, nl1));
+                children.extend(start_blank_lines);
+                children.extend(contents);
+                if !ws3.is_empty() {
+                    children.push(crate::token!(OSK::Whitespace, ws3));
+                }
+                children.push(crate::token!(OSK::Text, end));
+                if !ws4.is_empty() {
+                    children.push(crate::token!(OSK::Whitespace, ws4));
+                }
+                children.push(crate::token!(OSK::Newline, nl2));
+                children.extend(blank_lines);
+
+                crate::node!(OSK::PropertyDrawer, children)
+            },
+        )
+        .boxed()
+}
+
+pub(crate) fn drawer_end_row_parser<'a, C: 'a>()
+-> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    object::whitespaces()
+        .then(object::just_case_insensitive(":end:"))
+        .then(object::whitespaces())
+        .then(object::newline_or_ending())
+        .map(|(((ws1, end), ws2), nl)| {
+            let mut tokens = Vec::with_capacity(4);
+            if !ws1.is_empty() {
+                tokens.push(crate::token!(OSK::Whitespace, ws1));
+            }
+            tokens.push(crate::token!(OSK::Text, end));
+            if !ws2.is_empty() {
+                tokens.push(crate::token!(OSK::Whitespace, ws2));
+            }
+            if let Some(_nl) = nl {
+                tokens.push(crate::token!(OSK::Newline, _nl));
+            }
+
+            crate::node!(OSK::DrawerEnd, tokens)
+        })
+        .boxed()
+}
+
+fn drawer_parser_inner<'a, C: 'a>(
+    affiliated_keywords_parser: impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone + 'a,
+    content_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    let drawer_name_row = object::whitespaces()
+        .then(just(":"))
+        .then(
+            any()
+                .filter(|c: &char| c.is_alphanumeric() || matches!(c, '_' | '-'))
+                .repeated()
+                .at_least(1)
+                .to_slice(),
+        )
+        .then(just(":"))
+        .then(object::whitespaces())
+        .then(object::newline())
+        .map(|(((((ws1, c1), name), c2), ws2), nl)| {
+            // println!(
+            //     "drawer begin row: ws1={}, c1={}, name={}, c2={}, ws2={}, nl={}",
+            //     ws1, c1, name, c2, ws2, nl
+            // );
+            let mut tokens = Vec::with_capacity(6);
+            if !ws1.is_empty() {
+                tokens.push(crate::token!(OSK::Whitespace, ws1));
+            }
+            tokens.push(crate::token!(OSK::Colon, c1));
+            tokens.push(crate::token!(OSK::Text, name));
+            tokens.push(crate::token!(OSK::Colon, c2));
+            if !ws2.is_empty() {
+                tokens.push(crate::token!(OSK::Whitespace, ws2));
+            }
+            tokens.push(crate::token!(OSK::Newline, nl));
+
+            crate::node!(OSK::DrawerBegin, tokens)
+        });
+
+    let blank_lines = object::blank_line_parser().repeated().collect::<Vec<_>>();
+
+    affiliated_keywords_parser
+        .then(drawer_name_row)
+        .then(blank_lines.clone())
+        .then(content_parser)
+        .then(drawer_end_row_parser())
+        .then(blank_lines)
+        .map(
+            |(((((keywords, begin), start_blank_lines), content), end), blank_lines)| {
+                let mut children = Vec::with_capacity(
+                    3 + keywords.len() + start_blank_lines.len() + blank_lines.len(),
+                );
+
+                children.extend(keywords);
+                children.push(begin);
+                children.extend(start_blank_lines);
+                children.push(content);
+                children.push(end);
+                children.extend(blank_lines);
+
+                crate::node!(OSK::Drawer, children)
+            },
+        )
+        .boxed()
+}
+
+pub(crate) fn drawer_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+    element_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
+) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
+    // let affiliated_keywords_parser = element::keyword::affiliated_keyword_parser()
+    //     .repeated()
+    //     .collect::<Vec<_>>();
+    let affiliated_keywords_parser = element::keyword::affiliated_keyword_parser(config)
+        .repeated()
+        .collect::<Vec<_>>();
+
+    let drawer_content_inner = object::line_parser()
+        .or(object::blank_line_str_parser())
+        .and_is(drawer_end_row_parser().not())
+        .and_is(
+            element::heading::simple_heading_row_parser()
+                .ignored()
+                .not(),
+        )
+        .repeated()
+        .to_slice();
+
+    let content_parser = element_parser
+        .repeated()
+        .collect::<Vec<_>>()
+        .nested_in(drawer_content_inner)
+        .map(|children| crate::node!(OSK::DrawerContent, children));
+
+    drawer_parser_inner(affiliated_keywords_parser, content_parser)
+}
+
+pub(crate) fn simple_drawer_parser<'a, C: 'a>(
+    config: OrgParserConfig,
+) -> impl Parser<'a, &'a str, (), MyExtra<'a, C>> + Clone {
+    let affiliated_keywords_parser = element::keyword::simple_affiliated_keyword_parser(config)
+        .repeated()
+        .collect::<Vec<_>>();
+
+    let drawer_content_inner = object::line_parser()
+        .or(object::blank_line_str_parser())
+        .and_is(drawer_end_row_parser().not())
+        .and_is(
+            element::heading::simple_heading_row_parser()
+                .ignored()
+                .not(),
+        )
+        .repeated()
+        .to_slice();
+
+    let content_parser = drawer_content_inner
+        .map(|s| crate::node!(OSK::DrawerContent, vec![crate::token!(OSK::Text, s)]));
+
+    drawer_parser_inner(affiliated_keywords_parser, content_parser).ignored()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::compiler::parser::common::get_parser_output;
+    use crate::compiler::parser::config::OrgParserConfig;
+    use crate::compiler::parser::element;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_drawer_01() {
+        assert_eq!(
+            get_parser_output(
+                drawer_parser(
+                    OrgParserConfig::default(),
+                    element::element_in_drawer_parser::<()>(OrgParserConfig::default())
+                ),
+                r##":a:
+contents :end:
+:end:
+"##
+            ),
+            r###"Drawer@0..25
+  DrawerBegin@0..4
+    Colon@0..1 ":"
+    Text@1..2 "a"
+    Colon@2..3 ":"
+    Newline@3..4 "\n"
+  DrawerContent@4..19
+    Paragraph@4..19
+      Text@4..19 "contents :end:\n"
+  DrawerEnd@19..25
+    Text@19..24 ":end:"
+    Newline@24..25 "\n"
+"###
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_drawer_02() {
+        get_parser_output(
+            drawer_parser(
+                OrgParserConfig::default(),
+                element::element_in_drawer_parser::<()>(OrgParserConfig::default()),
+            ),
+            r##":a:
+:b:
+b
+:end:
+:end:
+"##,
+        );
+    }
+
+    #[test]
+    fn test_drawer_03() {
+        assert_eq!(
+            get_parser_output(
+                drawer_parser(
+                    OrgParserConfig::default(),
+                    element::element_in_drawer_parser::<()>(OrgParserConfig::default())
+                ),
+                r##":a:
+#+BEGIN_SRC python
+print("hello");
+#+END_SRC
+:end:
+"##
+            ),
+            r###"Drawer@0..55
+  DrawerBegin@0..4
+    Colon@0..1 ":"
+    Text@1..2 "a"
+    Colon@2..3 ":"
+    Newline@3..4 "\n"
+  DrawerContent@4..49
+    SrcBlock@4..49
+      BlockBegin@4..23
+        Text@4..12 "#+BEGIN_"
+        Text@12..15 "SRC"
+        Whitespace@15..16 " "
+        SrcBlockLanguage@16..22 "python"
+        Newline@22..23 "\n"
+      BlockContent@23..39
+        Text@23..39 "print(\"hello\");\n"
+      BlockEnd@39..49
+        Text@39..45 "#+END_"
+        Text@45..48 "SRC"
+        Newline@48..49 "\n"
+  DrawerEnd@49..55
+    Text@49..54 ":end:"
+    Newline@54..55 "\n"
+"###
+        );
+    }
+
+    #[test]
+    fn test_drawer_04() {
+        assert_eq!(
+            get_parser_output(
+                drawer_parser(
+                    OrgParserConfig::default(),
+                    element::element_in_drawer_parser::<()>(OrgParserConfig::default())
+                ),
+                r##"#+caption: affiliated keywords in drawer
+:a:
+foo
+:end:
+"##
+            ),
+            r###"Drawer@0..55
+  AffiliatedKeyword@0..41
+    HashPlus@0..2 "#+"
+    KeywordKey@2..9
+      Text@2..9 "caption"
+    Colon@9..10 ":"
+    Whitespace@10..11 " "
+    KeywordValue@11..40
+      Text@11..40 "affiliated keywords i ..."
+    Newline@40..41 "\n"
+  DrawerBegin@41..45
+    Colon@41..42 ":"
+    Text@42..43 "a"
+    Colon@43..44 ":"
+    Newline@44..45 "\n"
+  DrawerContent@45..49
+    Paragraph@45..49
+      Text@45..49 "foo\n"
+  DrawerEnd@49..55
+    Text@49..54 ":end:"
+    Newline@54..55 "\n"
+"###
+        );
+    }
+
+    #[test]
+    fn test_drawer_05() {
+        assert_eq!(
+            get_parser_output(
+                drawer_parser(
+                    OrgParserConfig::default(),
+                    element::element_in_drawer_parser::<()>(OrgParserConfig::default())
+                ),
+                r##":properties:
+:add: asd
+
+:dxx: asd
+:end:
+"##
+            ),
+            r###"Drawer@0..40
+  DrawerBegin@0..13
+    Colon@0..1 ":"
+    Text@1..11 "properties"
+    Colon@11..12 ":"
+    Newline@12..13 "\n"
+  DrawerContent@13..34
+    Paragraph@13..24
+      Text@13..23 ":add: asd\n"
+      BlankLine@23..24 "\n"
+    Paragraph@24..34
+      Text@24..34 ":dxx: asd\n"
+  DrawerEnd@34..40
+    Text@34..39 ":end:"
+    Newline@39..40 "\n"
+"###
+        );
+    }
+
+    #[test]
+    fn test_node_property_01() {
+        assert_eq!(
+            get_parser_output(
+                node_property_parser::<()>(),
+                r":header-args:R:          :session *R*
+"
+            ),
+            r###"NodeProperty@0..38
+  Colon@0..1 ":"
+  Text@1..14 "header-args:R"
+  Colon@14..15 ":"
+  Whitespace@15..25 "          "
+  Text@25..37 ":session *R*"
+  Newline@37..38 "\n"
+"###
+        );
+    }
+
+    #[test]
+    fn test_node_property_02() {
+        assert_eq!(
+            get_parser_output(
+                node_property_parser::<()>(),
+                r"    :header-args:R:          :session *R*
+"
+            ),
+            r###"NodeProperty@0..42
+  Whitespace@0..4 "    "
+  Colon@4..5 ":"
+  Text@5..18 "header-args:R"
+  Colon@18..19 ":"
+  Whitespace@19..29 "          "
+  Text@29..41 ":session *R*"
+  Newline@41..42 "\n"
+"###
+        );
+    }
+
+    #[test]
+    fn test_node_property_03() {
+        assert_eq!(
+            get_parser_output(
+                node_property_parser::<()>(),
+                r"    :header-args+:R+:          :session *R*
+"
+            ),
+            r###"NodeProperty@0..44
+  Whitespace@0..4 "    "
+  Colon@4..5 ":"
+  Text@5..19 "header-args+:R"
+  Plus@19..20 "+"
+  Colon@20..21 ":"
+  Whitespace@21..31 "          "
+  Text@31..43 ":session *R*"
+  Newline@43..44 "\n"
+"###
+        );
+    }
+
+    #[test]
+    fn test_node_property_04() {
+        assert_eq!(
+            get_parser_output(
+                node_property_parser::<()>(),
+                r"    :header-args:R: 
+"
+            ),
+            r###"NodeProperty@0..21
+  Whitespace@0..4 "    "
+  Colon@4..5 ":"
+  Text@5..18 "header-args:R"
+  Colon@18..19 ":"
+  Whitespace@19..20 " "
+  Newline@20..21 "\n"
+"###
+        );
+    }
+
+    #[test]
+    fn test_node_property_05() {
+        assert_eq!(
+            get_parser_output(
+                node_property_parser::<()>(),
+                r":name:
+"
+            ),
+            r###"NodeProperty@0..7
+  Colon@0..1 ":"
+  Text@1..5 "name"
+  Colon@5..6 ":"
+  Newline@6..7 "\n"
+"###
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_node_property_06() {
+        // there is at least one whitespace between ":" and `value`
+        get_parser_output(
+            node_property_parser::<()>(),
+            r":name:a
+",
+        );
+    }
+
+    #[test]
+    fn test_property_drawer_01() {
+        assert_eq!(
+            get_parser_output(
+                property_drawer_parser::<()>(),
+                r"         :PROPERTIES:
+         :Title:     Goldberg Variations
+         :Composer:  J.S. Bach
+         :Artist:    Glenn Gould
+         :Publisher: Deutsche Grammophon
+
+
+         :NDisks:    1
+
+         :END:
+
+"
+            ),
+            r###"PropertyDrawer@0..210
+  Whitespace@0..9 "         "
+  Text@9..21 ":PROPERTIES:"
+  Newline@21..22 "\n"
+  NodeProperty@22..63
+    Whitespace@22..31 "         "
+    Colon@31..32 ":"
+    Text@32..37 "Title"
+    Colon@37..38 ":"
+    Whitespace@38..43 "     "
+    Text@43..62 "Goldberg Variations"
+    Newline@62..63 "\n"
+  NodeProperty@63..94
+    Whitespace@63..72 "         "
+    Colon@72..73 ":"
+    Text@73..81 "Composer"
+    Colon@81..82 ":"
+    Whitespace@82..84 "  "
+    Text@84..93 "J.S. Bach"
+    Newline@93..94 "\n"
+  NodeProperty@94..127
+    Whitespace@94..103 "         "
+    Colon@103..104 ":"
+    Text@104..110 "Artist"
+    Colon@110..111 ":"
+    Whitespace@111..115 "    "
+    Text@115..126 "Glenn Gould"
+    Newline@126..127 "\n"
+  NodeProperty@127..170
+    Whitespace@127..136 "         "
+    Colon@136..137 ":"
+    Text@137..146 "Publisher"
+    Colon@146..147 ":"
+    Whitespace@147..148 " "
+    Text@148..167 "Deutsche Grammophon"
+    Newline@167..168 "\n"
+    BlankLine@168..169 "\n"
+    BlankLine@169..170 "\n"
+  NodeProperty@170..194
+    Whitespace@170..179 "         "
+    Colon@179..180 ":"
+    Text@180..186 "NDisks"
+    Colon@186..187 ":"
+    Whitespace@187..191 "    "
+    Text@191..192 "1"
+    Newline@192..193 "\n"
+    BlankLine@193..194 "\n"
+  Whitespace@194..203 "         "
+  Text@203..208 ":END:"
+  Newline@208..209 "\n"
+  BlankLine@209..210 "\n"
+"###
+        );
+    }
+}

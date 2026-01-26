@@ -15,6 +15,14 @@
 #+author: contributor
 #+email: cnglen@gmail.com
 #+caption: a *bold* text
+#+SETUPFILE: ~/.emacs.d/local/theme-readtheorg.setup
+#+SETUPFILE: ~/.emacs.d/local/org-latex-cn.setup
+#+macro: color @@html:<span style="color:$1">$2</span>@@@@latex:\textcolor{$1}{$2}@@
+#+macro: bgcolor @@html:<span style="background-color:$1;">$2</span>@@@@latex:$2@@
+#+latex_class: article
+#+OPTIONS: H:4
+#+HTML_HEAD: <style>pre.src{background:#282a36;color:#ffb86c;} </style>
+#+render: nil
 
 Zero-th Section: this is a */_bold-italic-underline_/*
 
@@ -667,7 +675,10 @@ CLOSED: [2026-01-13 Tue 10:30]
 of red)}}}
 
 
-** Link
+** Link Test
+:PROPERTIES:
+:ID:       e30bb0f4-a323-4dce-8f6b-2f3b060e6dd0
+:END:
 
 regular link: with description [[https://www.baidu.com][baidu]]; without description [[https://foo.bar][foo_bar]]; description with objects [[http://foo.bar][\alpha *bold* $a+b$ foo]]; fuzzy internal [[target]]
 
@@ -678,11 +689,27 @@ angle link: <mailto:xx@xx.com> <https://foo(bar).org>
 radio link: my radio target, define three radio target <<<*bold* target>>> and <<<my radio target>>>  and <<<\alpha>>> and <<<$\alpha$>>>, then we have *bold* target, my radio target, notmyradio target and $\alpha$ and \alpha.
 
 
+[[id:4f11c993-b0e7-4fbc-a325-4e2dff408e5e][音乐]]
+
 
 #+name: Blossoming Swirls of Elegance
 #+caption: This is a caption for the image linked below
 #+caption: Blossoming Swirls of Elegance Free Vector Download
 [[https://images.freeimages.com/image/previews/1b1/blossoming-swirls-of-elegance-5690563.jpg]]
+
+
+
+*** image test
+
+#+NAME: foo
+#+begin_src mermaid :file ./assets/test_demo_git.png :cache yes :exports results
+  flowchart RL
+    WD[WorkingDirectory] -- git add --> SA[StageArea] -- git commit --> Repo[.git]
+    Repo --> |git checkout| WD
+#+end_src
+
+#+RESULTS[442e341895730297fa3223727bed3168b836a95d]: foo
+[[file:./assets/test_demo_git.png]]
 
 
 ** DONE timestamp

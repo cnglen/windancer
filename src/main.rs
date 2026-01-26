@@ -5,20 +5,19 @@ use clap::Parser;
 use orgize::config;
 use tracing_subscriber::FmtSubscriber;
 
-mod ast;
+mod compiler;
 mod constants;
 mod engine;
-mod parser;
-mod renderer;
-use crate::ast::builder::AstBuilder;
+mod export;
+use crate::compiler::ast_builder::AstBuilder;
+use crate::compiler::parser::syntax::SyntaxToken;
+use crate::compiler::parser::{OrgParser, config::OrgParserConfig, config::OrgUseSubSuperscripts};
 use crate::engine::Engine;
-use crate::parser::syntax::SyntaxToken;
-use crate::parser::{OrgParser, config::OrgParserConfig, config::OrgUseSubSuperscripts};
-use crate::renderer::Render;
-use crate::renderer::html::{HtmlRenderer, RenderConfig};
+use crate::export::ssg::html::{HtmlRenderer};
 use orgize::{Org, rowan::ast::AstNode};
 use rowan::{GreenNode, GreenToken, NodeOrToken, WalkEvent};
 use std::fs;
+use windancer::export::ssg::renderer::{Renderer, RendererConfig};
 
 #[derive(Parser)]
 #[command(name = "winancer")]
@@ -50,8 +49,9 @@ fn main() {
     let subscriber = FmtSubscriber::builder().with_max_level(max_level).finish();
     tracing::subscriber::set_global_default(subscriber).expect("set global subscripber failed");
 
-    let mut engine = Engine::new();
-
+    
+    let mut renderer = Renderer::new(RendererConfig::default());
+    
     let input = std::path::Path::new(&args.input);
     if input.is_file() {
         tracing::debug!("single file mode");
@@ -60,7 +60,7 @@ fn main() {
             Some(ref file) => file,
             None => &args.input.replace(".org", ".html"),
         };
-        engine.org2html(f_org, f_html, args.debug);
+        renderer.build_file(f_org);
     } else if input.is_dir() {
         tracing::debug!("batch mode in directory");
 
@@ -78,46 +78,6 @@ fn main() {
 
         tracing::debug!("d_org={}, d_html={}", d_org, d_html);
 
-        engine.dir2html(d_org, d_html, args.debug);
+        renderer.build(d_org);
     }
-
-    // engine.dir2html(f_org, f_html, args.debug);
-
-    // let mut parser = OrgParser::new(
-    //     OrgParserConfig::default().with_use_sub_superscripts(OrgUseSubSuperscripts::Brace),
-    // );
-    // let parser_output = parser.parse(&f_org);
-    // let green_tree = parser_output.green();
-    // let syntax_tree = parser_output.syntax();
-
-    // let ast_builder = AstBuilder::new();
-    // let ast = ast_builder.build(&syntax_tree).unwrap();
-    // let renderer_config = RenderConfig::default();
-    // let mut html_renderer = HtmlRenderer::new(renderer_config);
-    // let html = html_renderer.render_document(&ast);
-    // let f_html = match args.f_html {
-    //     Some(ref file) => file,
-    //     None => &args.f_org.replace(".org", ".html"),
-    // };
-    // fs::write(f_html, format!("{}", html));
-    // tracing::info!("{:} -> {} done", f_org, f_html);
-    // match args.debug {
-    //     0 => {}
-    //     1 => {
-    //         let f_ast = f_org.replace(".org", "_ast.json");
-    //         fs::write(&f_ast, format!("{:#?}", ast));
-    //         tracing::info!("  - AST:         {f_ast}");
-    //     }
-    //     _ => {
-    //         let f_green_tree = f_org.replace(".org", "_green_tree.json");
-    //         let f_syntax_tree = f_org.replace(".org", "_syntax_tree.json");
-    //         let f_ast = f_org.replace(".org", "_ast.json");
-    //         fs::write(&f_green_tree, format!("{:#?}", green_tree));
-    //         fs::write(&f_syntax_tree, format!("{:#?}", syntax_tree));
-    //         fs::write(&f_ast, format!("{:#?}", ast));
-    //         tracing::info!("  - Green tree:  {f_green_tree}");
-    //         tracing::info!("  - Syntax tree: {f_syntax_tree}");
-    //         tracing::info!("  - AST:         {f_ast}");
-    //     }
-    // }
 }

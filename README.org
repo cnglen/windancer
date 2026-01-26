@@ -33,9 +33,21 @@ see [[file:docs/status.org][status]] for status.
 
 * Planning
 
+- keyword: multple parser, search k2v, keyword
 - support config of subscript
 - Error: Rich maybe slow
 - use group rather then nested then?
+- image width: max?
+- toc; section: which is index?
+  - next
+  - prev
+  - table of contents
+- link: roam node id?
+  
+
+** about index.html
+
+index.html is recogized if filename is the same to parent directory.
 
 
 ** PRE during parsing
