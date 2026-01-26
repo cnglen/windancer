@@ -323,6 +323,7 @@ impl Renderer {
         let f_ast = f_output_html.parent().unwrap().join(
             f_output_html.file_name().unwrap().to_string_lossy().to_string().replace(".html", "_ast.json")
         );
+        fs::write(&f_ast, format!("{:#?}", document.ast));
         let f_syntax = f_output_html.parent().unwrap().join(
             f_output_html.file_name().unwrap().to_string_lossy().to_string().replace(".html", "_syntax.json")
         );

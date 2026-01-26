@@ -19,6 +19,27 @@ pub enum NodeType {
     Headline,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum EdgeType {
+    Parent,                // a --> b: a is parent of b
+    ExplicitReference,     // [[id:...][]]: a refers b
+}
+
+use petgraph::graph::{DiGraph, NodeIndex};
+pub struct RoamGraph {
+    pub graph: DiGraph<RoamNode, EdgeType>,
+    pub id_to_index: HashMap<String, NodeIndex>
+}
+
+
+use crate::compiler::ast_builder::element;
+
+#[derive(Debug)]
+pub enum RawAst {
+    OrgFile(element::OrgFile),
+    HeadingSubtree(element::HeadingSubtree)
+}
+
 // 结构关系
 //   *父子： 文件节点 → 其下的标题节点。
 // 显式链接关系
@@ -39,7 +60,7 @@ pub struct RoamNode {
     pub id: String,
     pub title: String,
     pub node_type: NodeType,
-    pub file_info: FileInfo,    // file info where current node is born
+    // pub file_info: FileInfo,    // file info where current node is born
 
     /// ROAM_ALIASES property
     pub aliases: Vec<String>,
@@ -57,10 +78,10 @@ pub struct RoamNode {
     // has refs -> literature
     
     /// 0 for NodeType::File, headline level for NodeType::HeadLine
-    pub level: usize,
+    pub level: u8,
     
-    // /// 节点原始内容 (Org-mode 格式)
-    // pub raw_ast: ast,           // OrgFile Or HeadingSubtree
+    /// 节点原始内容 (Org-mode 格式)
+    pub raw_ast: RawAst,           // OrgFile Or HeadingSubtree
     
     // /// 节点渲染后内容 (HTML/Markdown)?
     // pub rendered_content: String,
@@ -78,3 +99,4 @@ pub struct RoamNode {
     // pub anchor: Option<String>, // page.link + #xxxxx; page.link
     // pub link: String,           // url link
 }
+

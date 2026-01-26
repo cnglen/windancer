@@ -122,12 +122,12 @@ impl Converter {
 
         self.footnote_definitions.sort_by(|a, b| a.nid.cmp(&b.nid));
 
-        Ok(OrgFile {
-            heading_subtrees: heading_subtrees,
-            zeroth_section: zeroth_section,
-            footnote_definitions: self.footnote_definitions.clone(),
-            k2v: self.k2v.clone(),
-        })
+        Ok(OrgFile::new(
+            zeroth_section,
+            heading_subtrees,
+            self.footnote_definitions.clone(),
+            self.k2v.clone(),
+        ))
     }
 
     fn convert_heading_subtree(&mut self, node: &SyntaxNode) -> Result<HeadingSubtree, AstError> {
@@ -235,18 +235,18 @@ impl Converter {
             }
         }
 
-        Ok(HeadingSubtree {
-            section: section,
-            level: level,
-            is_commented: is_commented,
-            keyword: keyword,
-            priority: priority,
-            tags: tags,
-            title: title,
+        Ok(HeadingSubtree::new(
+            level,
+            keyword,
+            priority,
+            is_commented,
+            title,
+            tags,
             planning,
             property_drawer,
-            sub_heading_subtrees: subtrees,
-        })
+            section,
+            subtrees,
+        ))
     }
 
     fn convert_section(&mut self, node: &SyntaxNode) -> Result<Section, AstError> {

@@ -9,6 +9,8 @@ pub struct OrgFile {
     pub heading_subtrees: Vec<HeadingSubtree>,
     pub footnote_definitions: Vec<FootnoteDefinition>,
     pub k2v: HashMap<String, Vec<Object>>,
+    // properties from zeroth section
+    pub properties: HashMap<String, String>,
 }
 
 impl fmt::Debug for OrgFile {
@@ -19,9 +21,14 @@ impl fmt::Debug for OrgFile {
 zeroth_secton: {:#?},
 heading_subtrees: {:#?},
 footnote_definitions: {:#?},
+properties: {:#?}
 k2v: {:#?},
 }}"##,
-            self.zeroth_section, self.heading_subtrees, self.footnote_definitions, self.k2v
+            self.zeroth_section,
+            self.heading_subtrees,
+            self.footnote_definitions,
+            self.properties,
+            self.k2v
         )
     }
 }
@@ -33,10 +40,28 @@ impl OrgFile {
         footnote_definitions: Vec<FootnoteDefinition>,
         k2v: HashMap<String, Vec<Object>>,
     ) -> Self {
+        let property_drawer = if let Some(ref section) = zeroth_section {
+            section
+                .elements
+                .iter()
+                .filter_map(|e| {
+                    if let Element::PropertyDrawer(drawer) = e {
+                        Some(drawer.clone())
+                    } else {
+                        None
+                    }
+                })
+                .next()
+        } else {
+            None
+        };
+        let properties = get_properties(&property_drawer);
+
         Self {
             zeroth_section,
             heading_subtrees,
             footnote_definitions,
+            properties,
             k2v,
         }
     }
@@ -68,8 +93,52 @@ pub struct HeadingSubtree {
     pub property_drawer: Option<PropertyDrawer>,
     pub section: Option<Section>,
     pub sub_heading_subtrees: Vec<HeadingSubtree>,
+    pub properties: HashMap<String, String>,
 }
 
+// todo: if key duplicated?
+pub(crate) fn get_properties(property_drawer: &Option<PropertyDrawer>) -> HashMap<String, String> {
+    let mut properties: HashMap<String, String> = HashMap::new();
+    if let Some(drawer) = property_drawer {
+        for property in drawer.contents.iter() {
+            if let Some(value) = property.value.clone() {
+                properties.insert(property.name.clone(), value);
+            }
+        }
+    }
+    properties
+}
+
+impl HeadingSubtree {
+    pub fn new(
+        level: u8,
+        keyword: Option<String>,
+        priority: Option<String>,
+        is_commented: bool,
+        title: Vec<Object>,
+        tags: Vec<String>,
+        planning: Option<Planning>,
+        property_drawer: Option<PropertyDrawer>,
+        section: Option<Section>,
+        sub_heading_subtrees: Vec<HeadingSubtree>,
+    ) -> Self {
+        let properties = get_properties(&property_drawer);
+
+        Self {
+            section,
+            level,
+            is_commented,
+            keyword,
+            priority,
+            tags,
+            title,
+            planning,
+            property_drawer,
+            sub_heading_subtrees,
+            properties,
+        }
+    }
+}
 impl fmt::Debug for HeadingSubtree {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
@@ -83,6 +152,7 @@ impl fmt::Debug for HeadingSubtree {
     tags: {:#?},
     planning: {:#?},
     property_drawer: {:#?},
+    properties: {:#?},
 
     section: {:#?},
     sub_heading_subtrees: {:#?}
@@ -95,6 +165,7 @@ impl fmt::Debug for HeadingSubtree {
             self.tags,
             self.planning,
             self.property_drawer,
+            self.properties,
             self.section,
             self.sub_heading_subtrees
         )
