@@ -33,7 +33,7 @@ use crate::compiler::ast_builder::element::{
     Paragraph, QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableRow, TableRowType,
     VerseBlock,
 };
-use crate::compiler::ast_builder::object::{Object, TableCellType};
+use crate::compiler::ast_builder::object::{GeneralLink, Object, TableCellType};
 use crate::constants::entity::ENTITYNAME_TO_HTML;
 
 use chrono::{DateTime, Local};
@@ -416,12 +416,12 @@ impl HtmlRenderer {
                 format!(r##"{}"##, content)
             }
 
-            Object::GeneralLink {
+            Object::GeneralLink(GeneralLink {
                 protocol,
                 description,
                 path,
                 is_image,
-            } => {
+            }) => {
                 let desc = if description.len() == 0 {
                     path
                 } else {
@@ -592,12 +592,12 @@ impl HtmlRenderer {
                 .objects
                 .iter()
                 .filter(|e| match e {
-                    Object::GeneralLink {
+                    Object::GeneralLink(GeneralLink {
                         protocol,
                         path,
                         description,
                         is_image,
-                    } if description.len() == 0 && *is_image => true,
+                    }) if description.len() == 0 && *is_image => true,
                     _ => false,
                 })
                 .count()
@@ -644,7 +644,7 @@ impl HtmlRenderer {
             self.figure_counter = self.figure_counter + 1;
 
             let path = match &paragraph.objects[0] {
-                Object::GeneralLink { path, .. } => path,
+                Object::GeneralLink(GeneralLink { path, .. }) => path,
                 _ => unreachable!(),
             };
 

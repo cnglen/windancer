@@ -7,12 +7,13 @@
 // Meta data of org file
 use chrono::{DateTime, Local};
 use orgize::ast::PropertyDrawer;
+use petgraph::graph::{DiGraph, NodeIndex};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::compiler::ast_builder::element::{self, OrgFile,HeadingSubtree};
-use crate::compiler::org_roam::{NodeType, RoamNode, RoamGraph, RawAst};
+use crate::compiler::ast_builder::element::{self, HeadingSubtree, OrgFile};
+use crate::compiler::org_roam::{NodeType, RawAst, RoamGraph, RoamNode};
 use crate::compiler::parser::syntax::{OrgSyntaxKind, SyntaxNode};
 use crate::export::ssg::renderer::Renderer; // remove to exporter?
 
@@ -43,21 +44,16 @@ impl std::fmt::Debug for Document {
     }
 }
 
-
-
-use petgraph::graph::{DiGraph, NodeIndex};
-
-
 impl Document {
-
-    fn get_roam_info(properties: &HashMap<String, String>) -> Option<(String, Vec<String>, Vec<String>, HashMap<String, String>)> {
+    fn get_roam_info(
+        properties: &HashMap<String, String>,
+    ) -> Option<(String, Vec<String>, Vec<String>, HashMap<String, String>)> {
         if let Some(id) = properties.get("ID") {
-            let (mut aliases, mut refs, mut _properties) = (vec![], vec![], HashMap::<String, String>::new());
+            let (mut aliases, mut refs, mut _properties) =
+                (vec![], vec![], HashMap::<String, String>::new());
             for (k, v) in properties.iter() {
                 match k.as_str() {
-                    "ID" => {
-                        ;
-                    }
+                    "ID" => {}
                     "ROAM_ALIASES" => {
                         aliases.extend(v.split_whitespace().map(str::to_string));
                     }
@@ -75,7 +71,7 @@ impl Document {
             None
         }
     }
-    
+
     fn extract_headline_roam_node(tree: &HeadingSubtree) -> Option<RoamNode> {
         if let Some((id, aliases, refs, properties)) = Self::get_roam_info(&tree.properties) {
             let title = "to rendefrom objects".to_string();
@@ -88,16 +84,18 @@ impl Document {
                 node_type: NodeType::Headline,
                 tags: tree.tags.clone(),
                 level: tree.level,
-                raw_ast: RawAst::HeadingSubtree(tree.clone())
+                raw_ast: RawAst::HeadingSubtree(tree.clone()),
             };
-            
+
             Some(node)
-        } else {None}
+        } else {
+            None
+        }
     }
 
     // extract RoamNode with NodeType::File from OrgFile
     fn extract_file_roam_node(&self) -> Option<RoamNode> {
-        if let Some((id, aliases, refs, properties)) = Self::get_roam_info(&self.ast.properties) { 
+        if let Some((id, aliases, refs, properties)) = Self::get_roam_info(&self.ast.properties) {
             let node = RoamNode {
                 id: id.to_string(),
                 aliases,
@@ -111,7 +109,7 @@ impl Document {
                 node_type: NodeType::File,
                 tags: self.metadata.filetags.clone(),
                 level: 0,
-                raw_ast: RawAst::OrgFile(self.ast.clone())
+                raw_ast: RawAst::OrgFile(self.ast.clone()),
             };
             Some(node)
         } else {
@@ -119,28 +117,36 @@ impl Document {
         }
     }
 
-    fn extract_id_link(node: &RoamNode) {
-        // match node.raw_ast {
-        //     RawAst::HeadingSubtree(tree) => {
+    // collect links
+    // - GeneralLink: 本身含protocol/path/description target信息
+    // - 增加source信息:
+    //   - fileinfo
+    //   - heading id / org_file id
+    //     - zeroth_section ~ org_file
+    //     - heading_tree ~ heading id
 
-        //         tree.section
+    // fn extract_id_link(node: &RoamNode) {
+    //     match node.raw_ast {
+    //         RawAst::HeadingSubtree(tree) => {
+    //             if let Some(seciton) = tree.section {
+    //                 for element in section.elements {
 
-        //     },
+    //                 }
+    //             }
 
-        //     RawAst::OrgFile(file) => {}
-            
-        // }
+    //         },
 
+    //         RawAst::OrgFile(file) => {}
 
-            
-    }
-    
-    // collect roam_node and all links
+    //     }
+    // }
+
+    // collect roam_node and all links: from ast? or in building process?
     // build graph
     pub fn extract(&self) -> () {
         // let nodes = vec![];
         let doc_node = self.extract_file_roam_node();
-        
+
         fn traverse(
             heading_subtree: &HeadingSubtree,
             parent_stack: &mut Vec<RoamNode>, // parent, level
@@ -157,66 +163,64 @@ impl Document {
                         parent_stack.pop(); // 同级或更高级，出栈
                     }
                 }
-                
+
                 // 3. 提取该节点内容中的所有 ID 引用
                 // first_section OK
                 // sub roam_node jump
                 // non roam_node -> into
                 // let refs = extract_id_refs_from_content(&roam_node.raw_content);
-                
+
                 //         // 4. 记录节点及其关系，稍后统一处理
                 //         collector.push((node, refs, parent_id));
-                
+
                 //         // 将当前节点压入栈，用于后续子节点的父子关系判断
                 //         // 注意：此时尚未分配 NodeIndex，先压入一个占位符
                 // parent_stack.push(roam_node);
             }
-            
-        //     // 递归处理子节点
-        //     for child in heading_subtree.sub_heading_subtrees() {
-        //         let child_level = child.level;
-        //         traverse(&child, parent_stack, collector, child_level);
-        //     }
-            
-        //     // 遍历完当前节点的子节点后，如果当前节点是RoamNode，则出栈
-        //     if is_roam_node(syntax) { // ??
-        //         parent_stack.pop();
-        //     }
-        // }
-        
-        // // 开始遍历，收集所有节点和关系
-        // let mut collector = Vec::new();
-        // traverse(syntax_root, &mut node_stack, &mut collector, 0);
-        
-        // // **第二阶段：构建图谱**
-        // // 1. 将所有节点加入图，建立 ID 到索引的映射
-        // for (node, _, _) in &collector {
-        //     let index = graph.add_node(node.clone());
-        //     id_to_index.insert(node.id.clone(), index);
-        // }
-        
-        // // 2. 处理父子关系和引用关系，添加边
-        // for (node, refs, parent_id) in collector {
-        //     let source_index = id_to_index[&node.id];
-            
-        //     // a. 处理父子关系（优先使用显式 :PARENT:）
-        //     if let Some(pid) = parent_id {
-        //         if let Some(&parent_index) = id_to_index.get(&pid) {
-        //             graph.add_edge(parent_index, source_index, EdgeType::Parent);
-        //         } // 如果父节点不在当前图内，可记录为“悬挂父节点”待后续处理
-        //     }
-            
-        //     // b. 处理ID引用关系
-        //     for ref_id in refs {
-        //         if let Some(&target_index) = id_to_index.get(&ref_id) {
-        //             graph.add_edge(source_index, target_index, EdgeType::ExplicitReference);
-        //         } // 同样，外部引用可记录
-        //     }
-        }
-        
-        // RoamGraph { graph, id_to_index }
-        
 
+            //     // 递归处理子节点
+            //     for child in heading_subtree.sub_heading_subtrees() {
+            //         let child_level = child.level;
+            //         traverse(&child, parent_stack, collector, child_level);
+            //     }
+
+            //     // 遍历完当前节点的子节点后，如果当前节点是RoamNode，则出栈
+            //     if is_roam_node(syntax) { // ??
+            //         parent_stack.pop();
+            //     }
+            // }
+
+            // // 开始遍历，收集所有节点和关系
+            // let mut collector = Vec::new();
+            // traverse(syntax_root, &mut node_stack, &mut collector, 0);
+
+            // // **第二阶段：构建图谱**
+            // // 1. 将所有节点加入图，建立 ID 到索引的映射
+            // for (node, _, _) in &collector {
+            //     let index = graph.add_node(node.clone());
+            //     id_to_index.insert(node.id.clone(), index);
+            // }
+
+            // // 2. 处理父子关系和引用关系，添加边
+            // for (node, refs, parent_id) in collector {
+            //     let source_index = id_to_index[&node.id];
+
+            //     // a. 处理父子关系（优先使用显式 :PARENT:）
+            //     if let Some(pid) = parent_id {
+            //         if let Some(&parent_index) = id_to_index.get(&pid) {
+            //             graph.add_edge(parent_index, source_index, EdgeType::Parent);
+            //         } // 如果父节点不在当前图内，可记录为“悬挂父节点”待后续处理
+            //     }
+
+            //     // b. 处理ID引用关系
+            //     for ref_id in refs {
+            //         if let Some(&target_index) = id_to_index.get(&ref_id) {
+            //             graph.add_edge(source_index, target_index, EdgeType::ExplicitReference);
+            //         } // 同样，外部引用可记录
+            //     }
+        }
+
+        // RoamGraph { graph, id_to_index }
 
         // // iter subtrees and link
         // self.ast.heading_subtrees
@@ -224,7 +228,7 @@ impl Document {
         // collect node: root/subtree
         // node -parent-> node: subtree
         // node -idref -> node: id link: in which tree, find link, get target id
-        
+
         tracing::debug!(doc_node=?doc_node);
         // RoamGraph
     }
@@ -253,7 +257,6 @@ impl Document {
             .to_string()
     }
 }
-
 
 /// File info for a file(directory is a speical case of file), for example
 /// - filename: bar.org

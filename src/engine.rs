@@ -35,7 +35,7 @@ impl Engine {
         let syntax_tree = self.parser.parse(f_org);
         tracing::trace!("syntax_tree:{:#?}", syntax_tree);
 
-        let ast = self.ast_builder.build(&syntax_tree).expect("build");
+        let ast = self.ast_builder.build(&syntax_tree, f_org).expect("build");
         let html = self.renderer.render_org_file(&ast);
 
         fs::write(f_html, html)?;

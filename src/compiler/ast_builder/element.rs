@@ -3,6 +3,8 @@ use crate::compiler::ast_builder::object::Object;
 use std::collections::HashMap;
 use std::fmt;
 
+use super::ExtractedLink;
+
 #[derive(Clone)]
 pub struct OrgFile {
     pub zeroth_section: Option<Section>,
@@ -11,6 +13,7 @@ pub struct OrgFile {
     pub k2v: HashMap<String, Vec<Object>>,
     // properties from zeroth section
     pub properties: HashMap<String, String>,
+    pub extracted_links: Vec<ExtractedLink>,
 }
 
 impl fmt::Debug for OrgFile {
@@ -23,12 +26,14 @@ heading_subtrees: {:#?},
 footnote_definitions: {:#?},
 properties: {:#?}
 k2v: {:#?},
+extracted_links: {:?}.
 }}"##,
             self.zeroth_section,
             self.heading_subtrees,
             self.footnote_definitions,
             self.properties,
-            self.k2v
+            self.k2v,
+            self.extracted_links
         )
     }
 }
@@ -39,6 +44,7 @@ impl OrgFile {
         heading_subtrees: Vec<HeadingSubtree>,
         footnote_definitions: Vec<FootnoteDefinition>,
         k2v: HashMap<String, Vec<Object>>,
+        extracted_links: Vec<ExtractedLink>,
     ) -> Self {
         let property_drawer = if let Some(ref section) = zeroth_section {
             section
@@ -63,6 +69,7 @@ impl OrgFile {
             footnote_definitions,
             properties,
             k2v,
+            extracted_links,
         }
     }
 

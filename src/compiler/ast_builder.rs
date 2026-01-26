@@ -26,10 +26,11 @@ use element::{
     ExportBlock, FixedWidth, FootnoteDefinition, HeadingSubtree, HorizontalRule, Item, Keyword,
     LatexEnvironment, List, ListType, NodeProperty, OrgFile, Paragraph, Planning, PropertyDrawer,
     QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableFormula, TableRow, TableRowType,
-    VerseBlock,
+    VerseBlock, get_properties,
 };
 use error::AstError;
-use object::{CitationReference, Object, TableCell, TableCellType};
+use object::{CitationReference, GeneralLink, Object, TableCell, TableCellType};
+use std::path::Path;
 
 pub struct AstBuilder;
 
@@ -38,8 +39,73 @@ impl AstBuilder {
         AstBuilder {}
     }
 
-    pub fn build(&self, root: &SyntaxNode) -> Result<OrgFile, AstError> {
-        Converter::new().convert(root)
+    pub fn build<P: AsRef<Path>>(&self, root: &SyntaxNode, f_org: P) -> Result<OrgFile, AstError> {
+        Converter::new(f_org).convert(root)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum SourcePathSegment {
+    File {
+        path: std::path::PathBuf,
+    },
+    ZerothSection,
+    Heading {
+        title: Vec<Object>,
+        id: Option<String>,
+        level: u8,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub struct ExtractedLink {
+    // full path from file root to link location
+    pub source_path: Vec<SourcePathSegment>,
+    pub link: GeneralLink,
+}
+
+pub struct BuilderContext {
+    current_path: Vec<SourcePathSegment>,
+    current_file_path: Option<std::path::PathBuf>,
+}
+
+impl BuilderContext {
+    fn new<P: AsRef<Path>>(file_path: P) -> Self {
+        let path = file_path.as_ref();
+        BuilderContext {
+            current_path: vec![SourcePathSegment::File {
+                path: path.to_path_buf(),
+            }],
+            current_file_path: Some(path.to_path_buf()),
+        }
+    }
+
+    fn enter_zeroth_section(&mut self) {
+        self.current_path.push(SourcePathSegment::ZerothSection);
+    }
+
+    fn leave_zeroth_section(&mut self) {
+        if let Some(SourcePathSegment::ZerothSection) = self.current_path.last() {
+            self.current_path.pop();
+        }
+    }
+
+    fn enter_heading(&mut self, title: Vec<Object>, id: Option<String>, level: u8) {
+        self.current_path.push(SourcePathSegment::Heading {
+            title: title.clone(),
+            id: id.clone(),
+            level,
+        });
+    }
+
+    fn leave_heading(&mut self) {
+        if let Some(SourcePathSegment::Heading { .. }) = self.current_path.last() {
+            self.current_path.pop();
+        }
+    }
+
+    fn current_path(&self) -> Vec<SourcePathSegment> {
+        self.current_path.clone()
     }
 }
 
@@ -52,10 +118,21 @@ struct Converter {
     footnote_definitions: Vec<FootnoteDefinition>,
     radio_targets: Vec<Object>,
     k2v: HashMap<String, Vec<Object>>,
+    context: BuilderContext,
+    extracted_links: Vec<ExtractedLink>,
+}
+
+impl Default for BuilderContext {
+    fn default() -> Self {
+        BuilderContext {
+            current_path: vec![],
+            current_file_path: None,
+        }
+    }
 }
 
 impl Converter {
-    fn new() -> Self {
+    fn new<P: AsRef<Path>>(f_org: P) -> Self {
         Self {
             footnote_label_to_rids: HashMap::new(),
             n_anonymous_label: 0,
@@ -63,7 +140,8 @@ impl Converter {
             footnote_definitions: vec![],
             radio_targets: vec![],
             k2v: HashMap::new(),
-            /* 初始化状态 */
+            context: BuilderContext::new(f_org),
+            extracted_links: vec![],
         }
     }
 
@@ -103,7 +181,9 @@ impl Converter {
 
         let mut zeroth_section = None;
         if !zeroth_nodes.is_empty() {
+            self.context.enter_zeroth_section();
             zeroth_section = Some(self.convert_section(&zeroth_nodes[0])?);
+            self.context.leave_zeroth_section();
         }
 
         let mut heading_subtrees = Vec::new();
@@ -127,6 +207,7 @@ impl Converter {
             heading_subtrees,
             self.footnote_definitions.clone(),
             self.k2v.clone(),
+            self.extracted_links.clone(),
         ))
     }
 
@@ -224,6 +305,9 @@ impl Converter {
                             _ => {}
                         }
                     }
+
+                    let id = get_properties(&property_drawer).get("ID").cloned();
+                    self.context.enter_heading(title.clone(), id, level);
                 }
                 OrgSyntaxKind::HeadingSubtree => match self.convert_heading_subtree(&child) {
                     Ok(cc) => {
@@ -234,7 +318,7 @@ impl Converter {
                 _ => {}
             }
         }
-
+        self.context.leave_heading();
         Ok(HeadingSubtree::new(
             level,
             keyword,
@@ -898,12 +982,19 @@ impl Converter {
                 .iter()
                 .any(|ext| path.to_lowercase().ends_with(ext));
 
-        Ok(Some(Object::GeneralLink {
+        let general_link = GeneralLink {
             protocol,
             path,
             description,
             is_image,
-        }))
+        };
+
+        self.extracted_links.push(ExtractedLink {
+            source_path: self.context.current_path(),
+            link: general_link.clone(),
+        });
+
+        Ok(Some(Object::GeneralLink(general_link)))
     }
 
     // object.footnote_reference

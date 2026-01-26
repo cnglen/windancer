@@ -1,4 +1,3 @@
-
 // 构建RoamNode的Graph
 // id -> page
 // id -> page#link
@@ -10,8 +9,8 @@
 // - File: 通过FileInfo
 // - Headline: SubTree with ID
 
-use std::collections::HashMap;
 use crate::compiler::content::FileInfo;
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub enum NodeType {
@@ -21,23 +20,22 @@ pub enum NodeType {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum EdgeType {
-    Parent,                // a --> b: a is parent of b
-    ExplicitReference,     // [[id:...][]]: a refers b
+    Parent,            // a --> b: a is parent of b
+    ExplicitReference, // [[id:...][]]: a refers b
 }
 
 use petgraph::graph::{DiGraph, NodeIndex};
 pub struct RoamGraph {
     pub graph: DiGraph<RoamNode, EdgeType>,
-    pub id_to_index: HashMap<String, NodeIndex>
+    pub id_to_index: HashMap<String, NodeIndex>,
 }
-
 
 use crate::compiler::ast_builder::element;
 
 #[derive(Debug)]
 pub enum RawAst {
     OrgFile(element::OrgFile),
-    HeadingSubtree(element::HeadingSubtree)
+    HeadingSubtree(element::HeadingSubtree),
 }
 
 // 结构关系
@@ -61,10 +59,9 @@ pub struct RoamNode {
     pub title: String,
     pub node_type: NodeType,
     // pub file_info: FileInfo,    // file info where current node is born
-
     /// ROAM_ALIASES property
     pub aliases: Vec<String>,
-    
+
     /// 引用键列表 (ROAM_REFS: citation keys, URLs, DOIs)
     pub refs: Vec<String>,
 
@@ -73,30 +70,28 @@ pub struct RoamNode {
 
     /// filetags for doc; head tags for heading
     pub tags: Vec<String>,
-    
+
     // note_type: literature, concept
     // has refs -> literature
-    
     /// 0 for NodeType::File, headline level for NodeType::HeadLine
     pub level: u8,
-    
+
     /// 节点原始内容 (Org-mode 格式)
-    pub raw_ast: RawAst,           // OrgFile Or HeadingSubtree
-    
-    // /// 节点渲染后内容 (HTML/Markdown)?
-    // pub rendered_content: String,
-    
-    // /// 创建时间戳
-    // pub created: DateTime<Utc>,
-    
-    // /// 最后修改时间戳
-    // pub modified: DateTime<Utc>,
-    
-    // /// 元数据哈希 (用于增量更新检测)
-    // pub content_hash: String,
+    pub raw_ast: RawAst, // OrgFile Or HeadingSubtree
 
-    // pub page: Page,
-    // pub anchor: Option<String>, // page.link + #xxxxx; page.link
-    // pub link: String,           // url link
+                         // /// 节点渲染后内容 (HTML/Markdown)?
+                         // pub rendered_content: String,
+
+                         // /// 创建时间戳
+                         // pub created: DateTime<Utc>,
+
+                         // /// 最后修改时间戳
+                         // pub modified: DateTime<Utc>,
+
+                         // /// 元数据哈希 (用于增量更新检测)
+                         // pub content_hash: String,
+
+                         // pub page: Page,
+                         // pub anchor: Option<String>, // page.link + #xxxxx; page.link
+                         // pub link: String,           // url link
 }
-

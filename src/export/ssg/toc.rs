@@ -1,24 +1,21 @@
-use crate::compiler::content::{Section, Document};
-use crate::compiler::ast_builder::element::{HeadingSubtree};
+use crate::compiler::ast_builder::element::HeadingSubtree;
+use crate::compiler::content::{Document, Section};
 use std::collections::{HashMap, HashSet};
 
-// Site: 
+// Site:
 // Page
 
-pub struct PageMetadata {
-}
+pub struct PageMetadata {}
 
-
-pub struct PageId(pub usize);   // or hash?
-
+pub struct PageId(pub usize); // or hash?
 
 pub struct Page {
     pub id: PageId,
-    
+
     pub title: String,
     pub url: String,
     pub metadata: PageMetadata,
-    
+
     // html
     pub content: String,
 
@@ -26,11 +23,10 @@ pub struct Page {
     // 层级导航，树形结构，生成侧边栏目录、面包屑
     pub parent_id: Option<PageId>,
     pub children_ids: Vec<PageId>,
-    
+
     // 兄弟导航，父节点下的线性链表，章节内“上一节/下一节”
     pub prev_id: Option<PageId>,
     pub next_id: Option<PageId>,
-
 
     pub tags: HashSet<String>,
     pub category: Option<String>,
@@ -38,7 +34,7 @@ pub struct Page {
     // flat global navigation
     // 全局扁平导航,全站深度优先序列,博客式“上一篇/下一篇”，跨章节连续阅读
     pub next_flattened_id: Option<PageId>,
-    pub prev_flattened_id: Option<PageId>,   
+    pub prev_flattened_id: Option<PageId>,
 }
 
 pub struct Site {
@@ -49,18 +45,15 @@ pub struct Site {
     // build_tag_index(), get_pages_by_tag，generate_tag_pages
     pub tag_index: HashMap<String, Vec<PageId>>,
     pub flattened_pages: Vec<PageId>,
-
-
     // // 🔥 核心图结构
     // // 使用 PageId 作为图的节点，边的类型可以自定义（如：引用、提及、相关）
     // pub graph: petgraph::graph::DiGraph<PageId, LinkType>;
-    
+
     // // 快速查找：从 org-roam id 到 page id 的映射
     // pub roam_id_to_page_id: HashMap<String, PageId>;
-    
+
     // // 🔥 为每个页面预计算的相关页面列表（用于渲染，避免实时遍历图）
     // pub related_pages: HashMap<PageId, Vec<RelatedPage>>,
-    
 }
 
 // impl Site {
@@ -70,16 +63,16 @@ pub struct Site {
 //         let root_page_id = site.process_section(root_section, None, config);
 //         site.root_page_id = Some(root_page_id);
 //         site.establish_sibling_links();
-        
+
 //         // 2. 然后，处理所有页面中的 org-roam 链接，构建图
 //         site.build_roam_graph();
-        
+
 //         // 3. 最后，基于图关系为每个页面预计算“相关页面”
 //         site.precompute_related_pages();
-        
+
 //         site
 //     }
-    
+
 //     fn build_roam_graph(&mut self) {
 //         // 第一遍：建立 roam_id 到 page_id 的映射
 //         for (page_id, page) in &self.pages {
@@ -87,7 +80,7 @@ pub struct Site {
 //                 self.roam_id_to_page_id.insert(roam_id.clone(), *page_id);
 //             }
 //         }
-        
+
 //         // 第二遍：解析链接，在图中添加边
 //         for (source_page_id, source_page) in &self.pages {
 //             for raw_link in &source_page.metadata.raw_links {
@@ -223,20 +216,17 @@ pub struct TocNode {
 
     // /// number of  in path.split("/"), note: path/to/index.html -> path/to
     // /// - / <- /index.html :: level=0
-    // /// - /blog <- /blog/index.html :: level=1    
+    // /// - /blog <- /blog/index.html :: level=1
     // /// - /blog/bar.html :: level=2
     // /// - /blog/note/rust.html :: level=3
     // pub level: usize,
-    
     /// children nodes, only path ends with index.html has non-empty children
     pub children: Vec<TocNode>,
-    
     // /// true if filename of path is "index.html"
     // pub is_index: bool,
 }
 
 impl TocNode {
-
     // // Toc node for page's content only
     // // todo: heading using id(property_id > hash): https://yoursite.com/foo/#d061c832dd9cdb14f32148b81a1ac02416ce76d1
     // fn from_document(document: &Document) -> Self {
@@ -248,10 +238,10 @@ impl TocNode {
     //         //     .iter()
     //         //     .map(|e| self.render_object(e))
     //         //     .collect::<String>();
-            
+
     //         // let path;           // get id, from html? or use same hash? or ast add id?maybe
     //         // s.sub_heading_subtrees
-            
+
     //         // TocNode {
     //         // }
     //     }
@@ -260,20 +250,24 @@ impl TocNode {
     //     for subtree in ast.heading_subtrees {
     //         children.push(from_subtree(subtree));
     //     }
-        
+
     //     TocNode{
     //         title: document.metadata.title.clone(),
     //         path: document.html_path(),
     //         children
     //     }
-        
+
     // }
-    
+
     // index.html as root_node
     pub fn from_section(section: &Section) -> Self {
         fn from_document(document: &Document) -> TocNode {
             let path = document.html_path();
-            let title = document.metadata.title.clone().unwrap_or("no title found".to_string());
+            let title = document
+                .metadata
+                .title
+                .clone()
+                .unwrap_or("no title found".to_string());
 
             TocNode {
                 title,
@@ -281,7 +275,7 @@ impl TocNode {
                 children: vec![],
             }
         }
-        
+
         let mut children = vec![];
         let mut maybe_root = None;
         for doc in &section.documents {
@@ -309,7 +303,7 @@ impl TocNode {
                 children: vec![],
             }
         };
-        
+
         root.children.extend(children);
         for subsection in &section.subsections {
             if subsection.documents.len() > 0 {
@@ -323,16 +317,14 @@ impl TocNode {
     fn level(&self) -> usize {
         let p = std::path::Path::new(&self.path);
 
-        let is_index = p.file_name().expect("must has file name")=="index.html";
+        let is_index = p.file_name().expect("must has file name") == "index.html";
 
         if is_index {
             p.components().count() - 1
         } else {
-            p.components().count() 
+            p.components().count()
         }
-
     }
-
 }
 
 #[derive(Debug, Clone)]
@@ -343,7 +335,7 @@ pub struct TableOfContents {
 
 impl TableOfContents {
     pub fn new(root_nodes: Vec<TocNode>) -> Self {
-        fn flatten(node: &TocNode) -> Vec<TocNode>{
+        fn flatten(node: &TocNode) -> Vec<TocNode> {
             let mut ans = vec![];
             ans.push(node.clone());
 
@@ -352,22 +344,21 @@ impl TableOfContents {
             }
             ans
         }
-        
+
         let mut flatten_nodes = vec![];
         for node in &root_nodes {
             flatten_nodes.extend(flatten(node));
         }
-        
+
         Self {
             root_nodes,
-            flatten_nodes
+            flatten_nodes,
         }
     }
 }
 
 impl TableOfContents {
     pub fn to_html_nav(&self, active_slug: Option<&str>) -> String {
-
         fn node_to_html(
             node: &TocNode,
             active_slug: Option<&str>,
@@ -401,7 +392,7 @@ impl TableOfContents {
             node_to_html(node, active_slug, &mut html, 5);
         }
         html.push_str("  </ul>\n</nav>\n");
-        
+
         html
     }
 }

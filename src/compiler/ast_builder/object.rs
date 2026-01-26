@@ -30,12 +30,7 @@ pub enum Object {
     //   my_tartet -> <<my_target>> / keyword #+NAME: my_target
     // including regular/plain/angle link, without radio link
     // radio link?
-    GeneralLink {
-        protocol: String, // protocol or type, http/file/#
-        path: String,     //
-        description: Vec<Object>,
-        is_image: bool,
-    },
+    GeneralLink(GeneralLink),
 
     Superscript(Vec<Object>),
     Subscript(Vec<Object>),
@@ -120,4 +115,12 @@ pub struct CitationReference {
     pub key_prefix: Vec<Object>,
     pub key: String,
     pub key_suffix: Vec<Object>,
+}
+
+#[derive(Debug, Clone)]
+pub struct GeneralLink {
+    pub protocol: String, // protocol or type, http/file/#
+    pub path: String,
+    pub description: Vec<Object>,
+    pub is_image: bool,
 }

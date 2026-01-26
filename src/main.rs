@@ -13,7 +13,7 @@ use crate::compiler::ast_builder::AstBuilder;
 use crate::compiler::parser::syntax::SyntaxToken;
 use crate::compiler::parser::{OrgParser, config::OrgParserConfig, config::OrgUseSubSuperscripts};
 use crate::engine::Engine;
-use crate::export::ssg::html::{HtmlRenderer};
+use crate::export::ssg::html::HtmlRenderer;
 use orgize::{Org, rowan::ast::AstNode};
 use rowan::{GreenNode, GreenToken, NodeOrToken, WalkEvent};
 use std::fs;
@@ -49,9 +49,8 @@ fn main() {
     let subscriber = FmtSubscriber::builder().with_max_level(max_level).finish();
     tracing::subscriber::set_global_default(subscriber).expect("set global subscripber failed");
 
-    
     let mut renderer = Renderer::new(RendererConfig::default());
-    
+
     let input = std::path::Path::new(&args.input);
     if input.is_file() {
         tracing::debug!("single file mode");

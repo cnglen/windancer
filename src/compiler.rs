@@ -2,13 +2,11 @@
 //! one org file --parser--> GreenNode --SyntaxNode::new_root()--> SyntaxNode --ast_builder--> AST
 pub mod ast_builder;
 pub mod content;
-pub mod parser;
 pub mod org_roam;
+pub mod parser;
 
 use crate::compiler::ast_builder::AstBuilder;
-use crate::compiler::content::{
-    Document, DocumentMetadata, FileInfo, Section, SectionMetadata,
-};
+use crate::compiler::content::{Document, DocumentMetadata, FileInfo, Section, SectionMetadata};
 use crate::compiler::parser::syntax::{OrgSyntaxKind, SyntaxNode};
 use crate::compiler::parser::{
     OrgParser, config::OrgParserConfig, config::OrgUseSubSuperscripts, get_text,
@@ -45,7 +43,7 @@ impl Compiler {
         let syntax_tree = self.parser.parse(f_org);
         // tracing::trace!("syntax_tree:{:#?}", syntax_tree);
 
-        let ast = self.ast_builder.build(&syntax_tree).expect("build");
+        let ast = self.ast_builder.build(&syntax_tree, f_org).expect("build");
         let file_info = FileInfo::from(f_org);
         let metadata = Self::get_metadata(&syntax_tree);
         let doc = Document {
@@ -56,7 +54,7 @@ impl Compiler {
         };
 
         doc.extract();
-        
+
         Ok(doc)
     }
 

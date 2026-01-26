@@ -42,7 +42,7 @@ use crate::compiler::ast_builder::element::{
     FootnoteDefinition, HeadingSubtree, Item, Keyword, LatexEnvironment, List, ListType, Paragraph,
     QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableRow, TableRowType, VerseBlock,
 };
-use crate::compiler::ast_builder::object::{Object, TableCellType};
+use crate::compiler::ast_builder::object::{GeneralLink, Object, TableCellType};
 use crate::compiler::content::{Document, Section as ContentSection};
 use crate::constants::entity::ENTITYNAME_TO_HTML;
 use crate::export::ssg::toc::{TableOfContents, TocNode};
@@ -142,7 +142,7 @@ impl Renderer {
 
         let toc_node = TocNode::from_section(&section);
         let toc = TableOfContents::new(toc_node.children);
-        
+
         tracing::debug!("toc={:?}", toc);
         tracing::debug!("toc_html={:}", toc.to_html_nav(Some("git.html")));
 
@@ -246,10 +246,7 @@ impl Renderer {
             None => String::from(""),
         };
 
-        let post_amble = format!(
-            r##"<div id="postamble" class="status"> </div>"##,
-        );
-        
+        let post_amble = format!(r##"<div id="postamble" class="status"> </div>"##,);
 
         let automatic_equation_numbering = true;
         let aen = if automatic_equation_numbering {
@@ -313,7 +310,9 @@ impl Renderer {
         );
 
         let f_output_html = Path::new(&self.config.output_directory).join(document.html_path());
-        let d_output_html = f_output_html.parent().expect("should have parent directory");
+        let d_output_html = f_output_html
+            .parent()
+            .expect("should have parent directory");
         if !d_output_html.is_dir() {
             fs::create_dir_all(&d_output_html)?;
         }
@@ -321,11 +320,21 @@ impl Renderer {
         fs::write(&f_output_html, &myhtml)?;
 
         let f_ast = f_output_html.parent().unwrap().join(
-            f_output_html.file_name().unwrap().to_string_lossy().to_string().replace(".html", "_ast.json")
+            f_output_html
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .to_string()
+                .replace(".html", "_ast.json"),
         );
         fs::write(&f_ast, format!("{:#?}", document.ast));
         let f_syntax = f_output_html.parent().unwrap().join(
-            f_output_html.file_name().unwrap().to_string_lossy().to_string().replace(".html", "_syntax.json")
+            f_output_html
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .to_string()
+                .replace(".html", "_syntax.json"),
         );
         fs::write(&f_syntax, format!("{:#?}", document.syntax_tree));
 
@@ -576,12 +585,12 @@ impl Renderer {
                 format!(r##"{}"##, content)
             }
 
-            Object::GeneralLink {
+            Object::GeneralLink(GeneralLink {
                 protocol,
                 description,
                 path,
                 is_image,
-            } => {
+            }) => {
                 let desc = if description.len() == 0 {
                     path
                 } else {
@@ -752,12 +761,12 @@ impl Renderer {
                 .objects
                 .iter()
                 .filter(|e| match e {
-                    Object::GeneralLink {
+                    Object::GeneralLink(GeneralLink {
                         protocol,
                         path,
                         description,
                         is_image,
-                    } if description.len() == 0 && *is_image => true,
+                    }) if description.len() == 0 && *is_image => true,
                     _ => false,
                 })
                 .count()
@@ -804,7 +813,7 @@ impl Renderer {
             self.figure_counter = self.figure_counter + 1;
 
             let path = match &paragraph.objects[0] {
-                Object::GeneralLink { path, .. } => path,
+                Object::GeneralLink(GeneralLink { path, .. }) => path,
                 _ => unreachable!(),
             };
 
@@ -1114,7 +1123,7 @@ fn escape_html(text: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{RendererConfig, Renderer};
+    use super::{Renderer, RendererConfig};
     use crate::compiler::Compiler;
     use tracing_subscriber::FmtSubscriber;
 
