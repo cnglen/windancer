@@ -24,10 +24,11 @@ use element::{
     ExportBlock, FixedWidth, FootnoteDefinition, HeadingSubtree, HorizontalRule, Item, Keyword,
     LatexEnvironment, List, ListType, NodeProperty, OrgFile, Paragraph, Planning, PropertyDrawer,
     QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableFormula, TableRow, TableRowType,
-    VerseBlock, get_properties,
+    VerseBlock, ZerothSectionPreamble, get_properties,
 };
 use error::AstError;
 use object::{CitationReference, GeneralLink, Object, TableCell, TableCellType};
+use petgraph::matrix_graph::Zero;
 use std::collections::HashMap;
 use std::env;
 use std::path::Path;
@@ -49,7 +50,9 @@ pub enum SourcePathSegment {
     File {
         path: std::path::PathBuf,
     },
-    ZerothSection,
+    ZerothSection {
+        id: Option<String>,
+    },
     Heading {
         title: Vec<Object>,
         id: Option<String>,
@@ -64,9 +67,44 @@ pub struct ExtractedLink {
     pub link: GeneralLink,
 }
 
+impl ExtractedLink {
+    pub fn source_roam_id(&self) -> Option<&String> {
+        for segment in self.source_path.iter().rev() {
+            match segment {
+                SourcePathSegment::Heading { id: Some(id), .. } => {
+                    return Some(id);
+                }
+                SourcePathSegment::ZerothSection { id: Some(id) } => {
+                    return Some(id);
+                }
+                _ => {}
+            }
+        }
+        None
+    }
+
+    pub fn direct_heading(&self) -> Option<&SourcePathSegment> {
+        self.source_path
+            .iter()
+            .rev()
+            .find(|seg| matches!(seg, SourcePathSegment::Heading { .. }))
+    }
+
+    pub fn is_under_heading_with_id(&self, target_id: &str) -> bool {
+        self.source_path.iter().any(|seg| {
+            if let SourcePathSegment::Heading { id: Some(id), .. } = seg {
+                id == target_id
+            } else {
+                false
+            }
+        })
+    }
+}
+
 pub struct BuilderContext {
     current_path: Vec<SourcePathSegment>,
     current_file_path: Option<std::path::PathBuf>,
+    current_roam_node_path: Vec<String>, // current roam node path to find parent roamd_id
 }
 
 impl BuilderContext {
@@ -77,15 +115,21 @@ impl BuilderContext {
                 path: path.to_path_buf(),
             }],
             current_file_path: Some(path.to_path_buf()),
+            current_roam_node_path: vec![],
         }
     }
 
-    fn enter_zeroth_section(&mut self) {
-        self.current_path.push(SourcePathSegment::ZerothSection);
+    fn enter_zeroth_section(&mut self, id: Option<String>) {
+        self.current_path
+            .push(SourcePathSegment::ZerothSection { id: id.clone() });
+
+        if let Some(id_) = id {
+            self.current_roam_node_path.push(id_);
+        }
     }
 
     fn leave_zeroth_section(&mut self) {
-        if let Some(SourcePathSegment::ZerothSection) = self.current_path.last() {
+        if let Some(SourcePathSegment::ZerothSection { .. }) = self.current_path.last() {
             self.current_path.pop();
         }
     }
@@ -96,11 +140,23 @@ impl BuilderContext {
             id: id.clone(),
             level,
         });
+
+        if let Some(id_) = id {
+            self.current_roam_node_path.push(id_);
+        }
     }
 
     fn leave_heading(&mut self) {
-        if let Some(SourcePathSegment::Heading { .. }) = self.current_path.last() {
-            self.current_path.pop();
+        if let Some(segment) = self.current_path.last() {
+            match segment {
+                SourcePathSegment::Heading { id, .. } => {
+                    if let Some(_) = id {
+                        self.current_roam_node_path.pop();
+                    }
+                    self.current_path.pop();
+                }
+                _ => {}
+            }
         }
     }
 
@@ -129,6 +185,7 @@ impl Default for BuilderContext {
         BuilderContext {
             current_path: vec![],
             current_file_path: None,
+            current_roam_node_path: vec![],
         }
     }
 }
@@ -212,21 +269,25 @@ impl Converter {
         let mut zeroth_section = None;
         let mut properties = HashMap::new();
         if !zeroth_nodes.is_empty() {
-            self.context.enter_zeroth_section();
             zeroth_section = Some(self.convert_section(&zeroth_nodes[0])?);
-
             let property_drawer = if let Some(ref section) = zeroth_section {
-                section
+                let maybe_preamble = section
                     .elements
                     .iter()
                     .filter_map(|e| {
-                        if let Element::PropertyDrawer(drawer) = e {
-                            Some(drawer.clone())
+                        if let Element::ZerothSectionPreamble(preamble) = e {
+                            Some(preamble.clone())
                         } else {
                             None
                         }
                     })
-                    .next()
+                    .next();
+
+                if let Some(preamble) = maybe_preamble {
+                    preamble.property_drawer
+                } else {
+                    None
+                }
             } else {
                 None
             };
@@ -273,6 +334,7 @@ impl Converter {
                 node_type: NodeType::File,
                 tags: tags,
                 level: 0,
+                parent_id: None,
             };
             self.roam_nodes.push(node);
         }
@@ -386,6 +448,21 @@ impl Converter {
 
                     properties = get_properties(&property_drawer);
                     let id = properties.get("ID").cloned();
+                    let parent_id = self.context.current_roam_node_path.last().cloned();
+                    if let Some((id, aliases, refs, properties)) = Self::get_roam_info(&properties)
+                    {
+                        self.roam_nodes.push(RoamNode {
+                            id: id.clone(),
+                            aliases,
+                            refs,
+                            properties,
+                            title: title.clone(),
+                            node_type: NodeType::Headline,
+                            tags: tags.clone(),
+                            level: level,
+                            parent_id,
+                        });
+                    }
                     self.context.enter_heading(title.clone(), id, level);
                 }
                 OrgSyntaxKind::HeadingSubtree => match self.convert_heading_subtree(&child) {
@@ -397,20 +474,8 @@ impl Converter {
                 _ => {}
             }
         }
-        self.context.leave_heading();
 
-        if let Some((id, aliases, refs, properties)) = Self::get_roam_info(&properties) {
-            self.roam_nodes.push(RoamNode {
-                id: id.clone(),
-                aliases,
-                refs,
-                properties,
-                title: title.clone(),
-                node_type: NodeType::Headline,
-                tags: tags.clone(),
-                level: level,
-            });
-        }
+        self.context.leave_heading();
 
         Ok(HeadingSubtree {
             level,
@@ -437,6 +502,38 @@ impl Converter {
         }
 
         Ok(Section { elements: elements })
+    }
+
+    fn convert_zeroth_section_preamble(
+        &mut self,
+        node: &SyntaxNode,
+    ) -> Result<ZerothSectionPreamble, AstError> {
+        let mut maybe_comment = None;
+        let mut maybe_property_drawer = None;
+        let mut properties = HashMap::new();
+        for child in node.children() {
+            match child.kind() {
+                OrgSyntaxKind::PropertyDrawer => {
+                    if let Ok(property_drawer) = self.convert_property_drawer(&child) {
+                        maybe_property_drawer = Some(property_drawer);
+                        properties = get_properties(&maybe_property_drawer);
+                    }
+                }
+                OrgSyntaxKind::Comment => {
+                    if let Ok(comment) = self.convert_comment(&child) {
+                        maybe_comment = Some(comment);
+                    }
+                }
+                _ => {}
+            }
+        }
+        let id = properties.get("ID").cloned();
+        self.context.enter_zeroth_section(id.clone());
+
+        Ok(ZerothSectionPreamble {
+            comment: maybe_comment,
+            property_drawer: maybe_property_drawer,
+        })
     }
 
     /// Conver SyntaxTree(RedTree) to ast::Element
@@ -500,8 +597,12 @@ impl Converter {
 
             OrgSyntaxKind::Planning => Ok(Element::Planning(self.convert_planning(&node)?)),
 
+            OrgSyntaxKind::ZerothSectionPreamble => Ok(Element::ZerothSectionPreamble(
+                self.convert_zeroth_section_preamble(&node)?,
+            )),
+
             _ => {
-                println!("node: {node:#?}");
+                tracing::error!("unknow node: {node:#?}");
 
                 Err(AstError::UnknownNodeType {
                     kind: node.kind(),

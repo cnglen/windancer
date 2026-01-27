@@ -34,8 +34,8 @@ heading_subtrees: {:#?},
 footnote_definitions: {:#?},
 properties: {:#?}
 keywords: {:#?},
-extracted_links: {:?},
-roam_nodes: {:?},
+extracted_links: {:#?},
+roam_nodes: {:#?},
 }}"##,
             self.zeroth_section,
             self.heading_subtrees,
@@ -46,56 +46,6 @@ roam_nodes: {:?},
             self.roam_nodes
         )
     }
-}
-
-impl OrgFile {
-    pub fn new(
-        zeroth_section: Option<Section>,
-        heading_subtrees: Vec<HeadingSubtree>,
-        footnote_definitions: Vec<FootnoteDefinition>,
-        keywords: HashMap<String, Vec<Object>>,
-        extracted_links: Vec<ExtractedLink>,
-        roam_nodes: Vec<RoamNode>,
-    ) -> Self {
-        let property_drawer = if let Some(ref section) = zeroth_section {
-            section
-                .elements
-                .iter()
-                .filter_map(|e| {
-                    if let Element::PropertyDrawer(drawer) = e {
-                        Some(drawer.clone())
-                    } else {
-                        None
-                    }
-                })
-                .next()
-        } else {
-            None
-        };
-        let properties = get_properties(&property_drawer);
-
-        Self {
-            zeroth_section,
-            heading_subtrees,
-            footnote_definitions,
-            properties,
-            keywords,
-            extracted_links,
-            roam_nodes,
-        }
-    }
-
-    // // 设置 zeroth_section
-    // pub fn with_zeroth_section(mut self, section: Section) -> Self {
-    //     self.zeroth_section = Some(section);
-    //     self
-    // }
-
-    // // 添加顶级标题
-    // pub fn add_heading_subtree(mut self, heading_subtree: HeadingSubtree) -> Self {
-    //     self.heading_subtrees.push(heading_subtree);
-    //     self
-    // }
 }
 
 #[derive(Clone)]
@@ -128,36 +78,6 @@ pub(crate) fn get_properties(property_drawer: &Option<PropertyDrawer>) -> HashMa
     properties
 }
 
-impl HeadingSubtree {
-    pub fn new(
-        level: u8,
-        keyword: Option<String>,
-        priority: Option<String>,
-        is_commented: bool,
-        title: Vec<Object>,
-        tags: Vec<String>,
-        planning: Option<Planning>,
-        property_drawer: Option<PropertyDrawer>,
-        section: Option<Section>,
-        sub_heading_subtrees: Vec<HeadingSubtree>,
-    ) -> Self {
-        let properties = get_properties(&property_drawer);
-
-        Self {
-            section,
-            level,
-            is_commented,
-            keyword,
-            priority,
-            tags,
-            title,
-            planning,
-            property_drawer,
-            sub_heading_subtrees,
-            properties,
-        }
-    }
-}
 impl fmt::Debug for HeadingSubtree {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
@@ -223,6 +143,8 @@ pub enum Element {
     Item(Item),
     FootnoteDefinition(FootnoteDefinition),
 
+    ZerothSectionPreamble(ZerothSectionPreamble), // todo
+
     // Lesser Element
     Paragraph(Paragraph),
     SrcBlock(SrcBlock),
@@ -241,6 +163,12 @@ pub enum Element {
     TableRow(TableRow),
     // BabelCall(BabelCall),
     Comment(Comment),
+}
+
+#[derive(Debug, Clone)]
+pub struct ZerothSectionPreamble {
+    pub comment: Option<Comment>,
+    pub property_drawer: Option<PropertyDrawer>,
 }
 
 #[derive(Debug, Clone)]

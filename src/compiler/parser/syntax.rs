@@ -125,6 +125,7 @@ pub enum OrgSyntaxKind {
     SrcBlockSwitches,
     SrcBlockHeaderArguments,
 
+    ZerothSectionPreamble, // only contains comment and property_drawer
     //
     SectionUnknown,
 

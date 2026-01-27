@@ -12,7 +12,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::compiler::ast_builder::element::{HeadingSubtree, OrgFile};
-use crate::compiler::org_roam::{NodeType, RawAst, RoamGraph, RoamNode};
+use crate::compiler::org_roam::{EdgeType, NodeType, RawAst, RoamGraph, RoamNode};
 use crate::compiler::parser::syntax::SyntaxNode;
 use crate::export::ssg::renderer::Renderer; // remove to exporter?
 
@@ -23,6 +23,54 @@ pub struct Section {
     pub documents: Vec<Document>,
     pub subsections: Vec<Section>,
     pub metadata: SectionMetadata,
+}
+
+impl Section {
+    pub fn build_graph(&self) -> RoamGraph {
+        let mut graph = DiGraph::<RoamNode, EdgeType>::new();
+        let mut id_to_index: HashMap<String, NodeIndex> = HashMap::new();
+        let mut refs_to_id: HashMap<String, String> = HashMap::new();
+
+        for document in self.documents.iter() {
+            for node in document.ast.roam_nodes.iter() {
+                let index = graph.add_node(node.clone());
+                id_to_index.insert(node.id.clone(), index);
+
+                for refs in node.refs.iter() {
+                    refs_to_id.insert(refs.clone(), node.id.clone());
+                }
+            }
+        }
+
+        for document in self.documents.iter() {
+            for extracted_link in document.ast.extracted_links.iter() {
+                if extracted_link.link.protocol == "id" {
+                    if let Some(source_id) = extracted_link.source_roam_id() {
+                        let target_id = extracted_link
+                            .link
+                            .path
+                            .strip_prefix("id:")
+                            .expect("must have ID in path")
+                            .to_string();
+
+                        if let Some(source_index) = id_to_index.get(source_id.as_str()) {
+                            if let Some(target_index) = id_to_index.get(&target_id) {
+                                graph.add_edge(
+                                    *source_index,
+                                    *target_index,
+                                    EdgeType::ExplicitReference {
+                                        source_path: vec![],
+                                    },
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        RoamGraph { id_to_index, graph }
+    }
 }
 
 /// A single org file is compiled to `Document` by compiler
@@ -70,75 +118,6 @@ impl Document {
             None
         }
     }
-
-    // fn extract_headline_roam_node(tree: &HeadingSubtree) -> Option<RoamNode> {
-    //     if let Some((id, aliases, refs, properties)) = Self::get_roam_info(&tree.properties) {
-    //         let title = "to rendefrom objects".to_string();
-    //         let node = RoamNode {
-    //             id: id.clone(),
-    //             aliases,
-    //             refs,
-    //             properties,
-    //             title,
-    //             node_type: NodeType::Headline,
-    //             tags: tree.tags.clone(),
-    //             level: tree.level,
-    //             // raw_ast: RawAst::HeadingSubtree(tree.clone()),
-    //         };
-
-    //         Some(node)
-    //     } else {
-    //         None
-    //     }
-    // }
-
-    // // extract RoamNode with NodeType::File from OrgFile
-    // fn extract_file_roam_node(&self) -> Option<RoamNode> {
-    //     if let Some((id, aliases, refs, properties)) = Self::get_roam_info(&self.ast.properties) {
-    //         let node = RoamNode {
-    //             id: id.to_string(),
-    //             aliases,
-    //             refs,
-    //             properties,
-    //             title: self
-    //                 .metadata
-    //                 .title
-    //                 .clone()
-    //                 .unwrap_or("empty title".to_string()),
-    //             node_type: NodeType::File,
-    //             tags: self.metadata.filetags.clone(),
-    //             level: 0,
-    //             // raw_ast: RawAst::OrgFile(self.ast.clone()),
-    //         };
-    //         Some(node)
-    //     } else {
-    //         None
-    //     }
-    // }
-
-    // collect links
-    // - GeneralLink: 本身含protocol/path/description target信息
-    // - 增加source信息:
-    //   - fileinfo
-    //   - heading id / org_file id
-    //     - zeroth_section ~ org_file
-    //     - heading_tree ~ heading id
-
-    // fn extract_id_link(node: &RoamNode) {
-    //     match node.raw_ast {
-    //         RawAst::HeadingSubtree(tree) => {
-    //             if let Some(seciton) = tree.section {
-    //                 for element in section.elements {
-
-    //                 }
-    //             }
-
-    //         },
-
-    //         RawAst::OrgFile(file) => {}
-
-    //     }
-    // }
 
     // collect roam_node and all links: from ast? or in building process?
     // build graph

@@ -41,16 +41,20 @@ pub(crate) fn org_file_parser<'a>(
                     children.extend(blank_lines);
                 }
 
-                let estimated = maybe_comment.as_ref().map(|_| 1).unwrap_or(0)
-                    + maybe_property_drawer.as_ref().map(|_| 1).unwrap_or(0)
-                    + maybe_section
-                        .as_ref()
-                        .map(|s| s.as_node().unwrap().children().count())
-                        .unwrap_or(0);
+                let estimated_0 = maybe_comment.as_ref().map(|_| 1).unwrap_or(0)
+                    + maybe_property_drawer.as_ref().map(|_| 1).unwrap_or(0);
+                let mut children_in_section_preamble = Vec::with_capacity(estimated_0);
+                children_in_section_preamble.extend(maybe_comment.into_iter());
+                children_in_section_preamble.extend(maybe_property_drawer.into_iter());
+                let zeroth_section_preamble =
+                    crate::node!(OSK::ZerothSectionPreamble, children_in_section_preamble);
 
-                let mut children_in_section = Vec::with_capacity(estimated);
-                children_in_section.extend(maybe_comment.into_iter());
-                children_in_section.extend(maybe_property_drawer.into_iter());
+                let estimated_1 = maybe_section
+                    .as_ref()
+                    .map(|s| s.as_node().unwrap().children().count())
+                    .unwrap_or(0);
+                let mut children_in_section = Vec::with_capacity(estimated_1 + 1);
+                children_in_section.push(zeroth_section_preamble);
                 if let Some(section) = maybe_section {
                     children_in_section
                         .extend(section.as_node().unwrap().children().map(|e| e.to_owned()));

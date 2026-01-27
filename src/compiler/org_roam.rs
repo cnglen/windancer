@@ -21,8 +21,8 @@ pub enum NodeType {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum EdgeType {
-    Parent,            // a --> b: a is parent of b
-    ExplicitReference, // [[id:...][]]: a refers b
+    Parent,                                         // a --> b: a is parent of b
+    ExplicitReference { source_path: Vec<String> }, // [[id:...][]]: a refers b
 }
 
 use petgraph::graph::{DiGraph, NodeIndex};
@@ -76,6 +76,8 @@ pub struct RoamNode {
     // has refs -> literature
     /// 0 for NodeType::File, headline level for NodeType::HeadLine
     pub level: u8,
+
+    pub parent_id: Option<String>,
     // /// 节点原始内容 (Org-mode 格式)
     // pub raw_ast: RawAst, // OrgFile Or HeadingSubtree
 

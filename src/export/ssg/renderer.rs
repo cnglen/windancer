@@ -140,6 +140,11 @@ impl Renderer {
             .compile_section(d_org)
             .expect("no Document compiled");
 
+        let g = section.build_graph();
+        let g_dot = Dot::new(&g);
+        tracing::debug!("Basic DOT format:\n{:?}\n", g_dot);
+        tracing::debug!("{:?}", g.graph);
+
         let toc_node = TocNode::from_section(&section);
         let toc = TableOfContents::new(toc_node.children);
 
