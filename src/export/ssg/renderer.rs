@@ -140,9 +140,10 @@ impl Renderer {
             .compile_section(d_org)
             .expect("no Document compiled");
 
+        tracing::debug!("docs={:?}", section.documents);
         let g = section.build_graph();
-        // let g_dot = Dot::new(&g);
-        // tracing::debug!("Basic DOT format:\n{:?}\n", g_dot);
+        let g_dot = Dot::new(&g.graph);
+        tracing::debug!("Basic DOT format:\n{:?}\n", g_dot);
         tracing::debug!("{:#?}", g.graph);
 
         let toc_node = TocNode::from_section(&section);
@@ -553,7 +554,7 @@ impl Renderer {
         String::from("")
     }
 
-    fn render_object(&self, object: &Object) -> String {
+    pub(crate) fn render_object(&self, object: &Object) -> String {
         // println!("object={:?}", object);
         match object {
             Object::Text(text) => escape_html(text),

@@ -32,6 +32,8 @@ use petgraph::matrix_graph::Zero;
 use std::collections::HashMap;
 use std::env;
 use std::path::Path;
+use crate::export::ssg::renderer::{Renderer, RendererConfig};
+
 
 pub struct AstBuilder;
 
@@ -45,7 +47,7 @@ impl AstBuilder {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum SourcePathSegment {
     File {
         path: std::path::PathBuf,
@@ -58,6 +60,32 @@ pub enum SourcePathSegment {
         id: Option<String>,
         level: u8,
     },
+}
+
+use std::fmt;
+impl fmt::Debug for SourcePathSegment {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            SourcePathSegment::File{path} => {
+                write!(
+                    f,
+                    r##"{}"##,
+                    path.file_name().expect("todo").to_string_lossy()
+                )
+            },
+            SourcePathSegment::Heading { title, id, level } => {
+                write!(
+                    f,
+                    r##"{}"##,
+                    title.iter().map(|o| Renderer::new(RendererConfig::default()).render_object(o)).collect::<Vec<_>>().join("")
+                )
+            },
+            _ => {
+                write!(f, "")
+            }
+               
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -2128,7 +2156,7 @@ impl Converter {
             .map(|e| e.unwrap())
             .collect::<Vec<_>>();
 
-        self.keywords.insert(key.clone(), value.clone()); // override! better method?
+        self.keywords.insert(key.to_uppercase().clone(), value.clone()); // override! better method?
         Ok(Keyword { key, value })
     }
 

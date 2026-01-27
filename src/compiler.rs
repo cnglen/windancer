@@ -53,8 +53,6 @@ impl Compiler {
             syntax_tree,
         };
 
-        doc.extract();
-
         Ok(doc)
     }
 

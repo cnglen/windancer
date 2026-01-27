@@ -9,9 +9,14 @@
 // - File: 通过FileInfo
 // - Headline: SubTree with ID
 
+use crate::{compiler::ast_builder::element};
 use crate::compiler::ast_builder::object::Object;
 use crate::compiler::content::FileInfo;
+use petgraph::graph::{DiGraph, NodeIndex};
 use std::collections::HashMap;
+
+use crate::compiler::ast_builder::SourcePathSegment;
+use crate::export::ssg::renderer::{Renderer, RendererConfig};
 
 #[derive(Debug, Clone)]
 pub enum NodeType {
@@ -19,24 +24,38 @@ pub enum NodeType {
     Headline,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone)]
 pub enum EdgeType {
-    Parent,                                         // a --> b: a is parent of b
-    ExplicitReference { source_path: Vec<String> }, // [[id:...][]]: a refers b
+    Parent,                                                    // a --> b: a is parent of b
+    ExplicitReference { source_path: Vec<SourcePathSegment> }, // [[id:...][]]: a refers b
 }
 
-use petgraph::graph::{DiGraph, NodeIndex};
+impl fmt::Debug for EdgeType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            EdgeType::Parent => {
+                write!(
+                    f,
+                    r##""##,
+                )
+            },
+
+            EdgeType::ExplicitReference { source_path } => {
+                write!(
+                    f,
+                    r##"{:?}"##,
+                    source_path,
+                )
+            }
+        }
+    }
+}
+
+
+
 pub struct RoamGraph {
     pub graph: DiGraph<RoamNode, EdgeType>,
     pub id_to_index: HashMap<String, NodeIndex>,
-}
-
-use crate::compiler::ast_builder::element;
-
-#[derive(Debug)]
-pub enum RawAst {
-    OrgFile(element::OrgFile),
-    HeadingSubtree(element::HeadingSubtree),
 }
 
 // 结构关系
@@ -54,7 +73,7 @@ pub enum RawAst {
 // node -- [id:] -> node1
 // node -- links with oram_refs -> node2 ()
 // node -- has children  -->
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct RoamNode {
     pub id: String,
     pub title: Vec<Object>,
@@ -97,3 +116,19 @@ pub struct RoamNode {
     // pub anchor: Option<String>, // page.link + #xxxxx; page.link
     // pub link: String,           // url link
 }
+
+use std::fmt;
+
+impl fmt::Debug for RoamNode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            r##"{:?}:{:?}"##,
+            self.node_type,
+            
+            self.title.iter().map(|o| Renderer::new(RendererConfig::default()).render_object(o)).collect::<Vec<_>>().join(""),
+        )
+    }
+}
+
+
