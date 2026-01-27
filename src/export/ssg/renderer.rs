@@ -35,7 +35,7 @@
 use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
-
+use petgraph::dot::Dot;
 use crate::compiler::Compiler;
 use crate::compiler::ast_builder::element::{
     self, CenterBlock, CommentBlock, Drawer, Element, ExampleBlock, ExportBlock, FixedWidth,
@@ -141,9 +141,9 @@ impl Renderer {
             .expect("no Document compiled");
 
         let g = section.build_graph();
-        let g_dot = Dot::new(&g);
-        tracing::debug!("Basic DOT format:\n{:?}\n", g_dot);
-        tracing::debug!("{:?}", g.graph);
+        // let g_dot = Dot::new(&g);
+        // tracing::debug!("Basic DOT format:\n{:?}\n", g_dot);
+        tracing::debug!("{:#?}", g.graph);
 
         let toc_node = TocNode::from_section(&section);
         let toc = TableOfContents::new(toc_node.children);
