@@ -238,7 +238,7 @@ impl Renderer {
             output.push_str(&self.render_heading_subtree(subtree));
         }
 
-        let title = match org_file.k2v.get("title") {
+        let title = match org_file.keywords.get("title") {
             Some(objects) => objects
                 .iter()
                 .map(|e| self.render_object(e))

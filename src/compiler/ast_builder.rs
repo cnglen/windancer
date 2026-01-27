@@ -17,10 +17,8 @@ pub mod element;
 mod error;
 pub mod object;
 
-use std::collections::HashMap;
-use std::env;
-
 use super::parser::syntax::{OrgSyntaxKind, SyntaxElement, SyntaxNode, SyntaxToken};
+use crate::compiler::org_roam::{NodeType, RoamNode};
 use element::{
     AffiliatedKeyword, CenterBlock, Comment, CommentBlock, Drawer, Element, ExampleBlock,
     ExportBlock, FixedWidth, FootnoteDefinition, HeadingSubtree, HorizontalRule, Item, Keyword,
@@ -30,6 +28,8 @@ use element::{
 };
 use error::AstError;
 use object::{CitationReference, GeneralLink, Object, TableCell, TableCellType};
+use std::collections::HashMap;
+use std::env;
 use std::path::Path;
 
 pub struct AstBuilder;
@@ -117,9 +117,11 @@ struct Converter {
     footnote_label_to_nid: HashMap<String, usize>,
     footnote_definitions: Vec<FootnoteDefinition>,
     radio_targets: Vec<Object>,
-    k2v: HashMap<String, Vec<Object>>,
     context: BuilderContext,
+
+    keywords: HashMap<String, Vec<Object>>,
     extracted_links: Vec<ExtractedLink>,
+    roam_nodes: Vec<RoamNode>,
 }
 
 impl Default for BuilderContext {
@@ -132,6 +134,33 @@ impl Default for BuilderContext {
 }
 
 impl Converter {
+    fn get_roam_info(
+        properties: &HashMap<String, String>,
+    ) -> Option<(String, Vec<String>, Vec<String>, HashMap<String, String>)> {
+        if let Some(id) = properties.get("ID") {
+            let (mut aliases, mut refs, mut _properties) =
+                (vec![], vec![], HashMap::<String, String>::new());
+            for (k, v) in properties.iter() {
+                match k.as_str() {
+                    "ID" => {}
+                    "ROAM_ALIASES" => {
+                        aliases.extend(v.split_whitespace().map(str::to_string));
+                    }
+                    "ROAM_REFS" => {
+                        refs.extend(v.split_whitespace().map(str::to_string));
+                    }
+                    other => {
+                        _properties.insert(other.to_string(), v.to_string());
+                    }
+                }
+            }
+
+            Some((id.to_string(), aliases, refs, _properties))
+        } else {
+            None
+        }
+    }
+
     fn new<P: AsRef<Path>>(f_org: P) -> Self {
         Self {
             footnote_label_to_rids: HashMap::new(),
@@ -139,9 +168,10 @@ impl Converter {
             footnote_label_to_nid: HashMap::new(),
             footnote_definitions: vec![],
             radio_targets: vec![],
-            k2v: HashMap::new(),
+            keywords: HashMap::new(),
             context: BuilderContext::new(f_org),
             extracted_links: vec![],
+            roam_nodes: vec![],
         }
     }
 
@@ -180,9 +210,27 @@ impl Converter {
         let (zeroth_nodes, remainig_nodes) = self.split_at_first_heading(children);
 
         let mut zeroth_section = None;
+        let mut properties = HashMap::new();
         if !zeroth_nodes.is_empty() {
             self.context.enter_zeroth_section();
             zeroth_section = Some(self.convert_section(&zeroth_nodes[0])?);
+
+            let property_drawer = if let Some(ref section) = zeroth_section {
+                section
+                    .elements
+                    .iter()
+                    .filter_map(|e| {
+                        if let Element::PropertyDrawer(drawer) = e {
+                            Some(drawer.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .next()
+            } else {
+                None
+            };
+            properties = get_properties(&property_drawer);
             self.context.leave_zeroth_section();
         }
 
@@ -202,13 +250,42 @@ impl Converter {
 
         self.footnote_definitions.sort_by(|a, b| a.nid.cmp(&b.nid));
 
-        Ok(OrgFile::new(
+        // at last we collect file node: keywords may not at zeroth section
+        if let Some((id, aliases, refs, properties)) = Self::get_roam_info(&properties) {
+            let filetags = self.keywords.get("FILETAGS").cloned().unwrap_or(vec![]);
+            let tags = filetags
+                .into_iter()
+                .filter_map(|e| {
+                    if let Object::Text(s) = e {
+                        Some(s.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>();
+
+            let node = RoamNode {
+                id: id.clone(),
+                aliases,
+                refs,
+                properties,
+                title: self.keywords.get("TITLE").cloned().unwrap_or(vec![]),
+                node_type: NodeType::File,
+                tags: tags,
+                level: 0,
+            };
+            self.roam_nodes.push(node);
+        }
+
+        Ok(OrgFile {
             zeroth_section,
             heading_subtrees,
-            self.footnote_definitions.clone(),
-            self.k2v.clone(),
-            self.extracted_links.clone(),
-        ))
+            footnote_definitions: self.footnote_definitions.clone(),
+            keywords: self.keywords.clone(),
+            extracted_links: self.extracted_links.clone(),
+            roam_nodes: self.roam_nodes.clone(),
+            properties: properties,
+        })
     }
 
     fn convert_heading_subtree(&mut self, node: &SyntaxNode) -> Result<HeadingSubtree, AstError> {
@@ -216,7 +293,7 @@ impl Converter {
         // let title = Self::extract_text_content(node)?;
         // let children = Self::convert_children(node)?;
 
-        let mut subtrees = vec![];
+        let mut sub_heading_subtrees = vec![];
         let mut level: u8 = 0;
         let mut section = None;
         let mut is_commented = false;
@@ -226,6 +303,7 @@ impl Converter {
         let mut tags = vec![];
         let mut planning = None;
         let mut property_drawer = None;
+        let mut properties = HashMap::new();
         for child in node.children() {
             match child.kind() {
                 OrgSyntaxKind::Section => match self.convert_section(&child) {
@@ -306,12 +384,13 @@ impl Converter {
                         }
                     }
 
-                    let id = get_properties(&property_drawer).get("ID").cloned();
+                    properties = get_properties(&property_drawer);
+                    let id = properties.get("ID").cloned();
                     self.context.enter_heading(title.clone(), id, level);
                 }
                 OrgSyntaxKind::HeadingSubtree => match self.convert_heading_subtree(&child) {
                     Ok(cc) => {
-                        subtrees.push(cc);
+                        sub_heading_subtrees.push(cc);
                     }
                     _ => {}
                 },
@@ -319,7 +398,21 @@ impl Converter {
             }
         }
         self.context.leave_heading();
-        Ok(HeadingSubtree::new(
+
+        if let Some((id, aliases, refs, properties)) = Self::get_roam_info(&properties) {
+            self.roam_nodes.push(RoamNode {
+                id: id.clone(),
+                aliases,
+                refs,
+                properties,
+                title: title.clone(),
+                node_type: NodeType::Headline,
+                tags: tags.clone(),
+                level: level,
+            });
+        }
+
+        Ok(HeadingSubtree {
             level,
             keyword,
             priority,
@@ -329,8 +422,9 @@ impl Converter {
             planning,
             property_drawer,
             section,
-            subtrees,
-        ))
+            sub_heading_subtrees,
+            properties,
+        })
     }
 
     fn convert_section(&mut self, node: &SyntaxNode) -> Result<Section, AstError> {
@@ -1933,7 +2027,7 @@ impl Converter {
             .map(|e| e.unwrap())
             .collect::<Vec<_>>();
 
-        self.k2v.insert(key.clone(), value.clone()); // override! better method?
+        self.keywords.insert(key.clone(), value.clone()); // override! better method?
         Ok(Keyword { key, value })
     }
 

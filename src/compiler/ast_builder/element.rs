@@ -1,19 +1,27 @@
 //! AST definition for element in org-mode
+use crate::compiler::ast_builder::ExtractedLink;
 use crate::compiler::ast_builder::object::Object;
+use crate::compiler::org_roam::RoamNode;
 use std::collections::HashMap;
 use std::fmt;
-
-use super::ExtractedLink;
 
 #[derive(Clone)]
 pub struct OrgFile {
     pub zeroth_section: Option<Section>,
     pub heading_subtrees: Vec<HeadingSubtree>,
+
+    // metadata collected durbing build AST
+
+    // render Footnotes HeadingSubtree
     pub footnote_definitions: Vec<FootnoteDefinition>,
-    pub k2v: HashMap<String, Vec<Object>>,
-    // properties from zeroth section
+    /// keywords from org file to extract title, etc.
+    pub keywords: HashMap<String, Vec<Object>>,
+    /// properties from zeroth section to extract ID, etc.
     pub properties: HashMap<String, String>,
+    /// Extracted links including full path for roam based knowledge graph
     pub extracted_links: Vec<ExtractedLink>,
+    /// Roam Nodes
+    pub roam_nodes: Vec<RoamNode>,
 }
 
 impl fmt::Debug for OrgFile {
@@ -25,15 +33,17 @@ zeroth_secton: {:#?},
 heading_subtrees: {:#?},
 footnote_definitions: {:#?},
 properties: {:#?}
-k2v: {:#?},
-extracted_links: {:?}.
+keywords: {:#?},
+extracted_links: {:?},
+roam_nodes: {:?},
 }}"##,
             self.zeroth_section,
             self.heading_subtrees,
             self.footnote_definitions,
             self.properties,
-            self.k2v,
-            self.extracted_links
+            self.keywords,
+            self.extracted_links,
+            self.roam_nodes
         )
     }
 }
@@ -43,8 +53,9 @@ impl OrgFile {
         zeroth_section: Option<Section>,
         heading_subtrees: Vec<HeadingSubtree>,
         footnote_definitions: Vec<FootnoteDefinition>,
-        k2v: HashMap<String, Vec<Object>>,
+        keywords: HashMap<String, Vec<Object>>,
         extracted_links: Vec<ExtractedLink>,
+        roam_nodes: Vec<RoamNode>,
     ) -> Self {
         let property_drawer = if let Some(ref section) = zeroth_section {
             section
@@ -68,8 +79,9 @@ impl OrgFile {
             heading_subtrees,
             footnote_definitions,
             properties,
-            k2v,
+            keywords,
             extracted_links,
+            roam_nodes,
         }
     }
 

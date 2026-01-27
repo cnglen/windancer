@@ -9,10 +9,11 @@
 // - File: 通过FileInfo
 // - Headline: SubTree with ID
 
+use crate::compiler::ast_builder::object::Object;
 use crate::compiler::content::FileInfo;
 use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum NodeType {
     File,
     Headline,
@@ -53,10 +54,10 @@ pub enum RawAst {
 // node -- [id:] -> node1
 // node -- links with oram_refs -> node2 ()
 // node -- has children  -->
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RoamNode {
     pub id: String,
-    pub title: String,
+    pub title: Vec<Object>,
     pub node_type: NodeType,
     // pub file_info: FileInfo,    // file info where current node is born
     /// ROAM_ALIASES property
@@ -75,23 +76,22 @@ pub struct RoamNode {
     // has refs -> literature
     /// 0 for NodeType::File, headline level for NodeType::HeadLine
     pub level: u8,
+    // /// 节点原始内容 (Org-mode 格式)
+    // pub raw_ast: RawAst, // OrgFile Or HeadingSubtree
 
-    /// 节点原始内容 (Org-mode 格式)
-    pub raw_ast: RawAst, // OrgFile Or HeadingSubtree
+    // /// 节点渲染后内容 (HTML/Markdown)?
+    // pub rendered_content: String,
 
-                         // /// 节点渲染后内容 (HTML/Markdown)?
-                         // pub rendered_content: String,
+    // /// 创建时间戳
+    // pub created: DateTime<Utc>,
 
-                         // /// 创建时间戳
-                         // pub created: DateTime<Utc>,
+    // /// 最后修改时间戳
+    // pub modified: DateTime<Utc>,
 
-                         // /// 最后修改时间戳
-                         // pub modified: DateTime<Utc>,
+    // /// 元数据哈希 (用于增量更新检测)
+    // pub content_hash: String,
 
-                         // /// 元数据哈希 (用于增量更新检测)
-                         // pub content_hash: String,
-
-                         // pub page: Page,
-                         // pub anchor: Option<String>, // page.link + #xxxxx; page.link
-                         // pub link: String,           // url link
+    // pub page: Page,
+    // pub anchor: Option<String>, // page.link + #xxxxx; page.link
+    // pub link: String,           // url link
 }

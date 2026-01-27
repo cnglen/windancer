@@ -84,7 +84,7 @@ impl HtmlRenderer {
             output.push_str(&self.render_heading_subtree(subtree));
         }
 
-        let title = match org_file.k2v.get("title") {
+        let title = match org_file.keywords.get("title") {
             Some(objects) => objects
                 .iter()
                 .map(|e| self.render_object(e))
@@ -93,7 +93,7 @@ impl HtmlRenderer {
         };
 
         // fixme: keyword date?
-        let date_html = if let Some(date) = org_file.k2v.get("date") {
+        let date_html = if let Some(date) = org_file.keywords.get("date") {
             format!(
                 r##"<p class="date">Date: {}</p>"##,
                 date.iter()
