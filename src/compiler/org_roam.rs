@@ -9,11 +9,11 @@
 // - File: 通过FileInfo
 // - Headline: SubTree with ID
 
-use crate::{compiler::ast_builder::element};
+use crate::compiler::ast_builder::element;
 use crate::compiler::ast_builder::object::Object;
 use crate::compiler::content::FileInfo;
 use petgraph::graph::{DiGraph, NodeIndex};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use crate::compiler::ast_builder::SourcePathSegment;
 use crate::export::ssg::renderer::{Renderer, RendererConfig};
@@ -34,24 +34,15 @@ impl fmt::Debug for EdgeType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             EdgeType::Parent => {
-                write!(
-                    f,
-                    r##""##,
-                )
-            },
+                write!(f, r##""##,)
+            }
 
             EdgeType::ExplicitReference { source_path } => {
-                write!(
-                    f,
-                    r##"{:?}"##,
-                    source_path,
-                )
+                write!(f, r##"{:?}"##, source_path,)
             }
         }
     }
 }
-
-
 
 pub struct RoamGraph {
     pub graph: DiGraph<RoamNode, EdgeType>,
@@ -86,7 +77,7 @@ pub struct RoamNode {
     pub refs: Vec<String>,
 
     /// 属性映射 (Org PROPERTIES)
-    pub properties: HashMap<String, String>,
+    pub properties: BTreeMap<String, String>,
 
     /// filetags for doc; head tags for heading
     pub tags: Vec<String>,
@@ -125,10 +116,11 @@ impl fmt::Debug for RoamNode {
             f,
             r##"{:?}:{:?}"##,
             self.node_type,
-            
-            self.title.iter().map(|o| Renderer::new(RendererConfig::default()).render_object(o)).collect::<Vec<_>>().join(""),
+            self.title
+                .iter()
+                .map(|o| Renderer::new(RendererConfig::default()).render_object(o))
+                .collect::<Vec<_>>()
+                .join(""),
         )
     }
 }
-
-

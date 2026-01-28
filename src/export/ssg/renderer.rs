@@ -32,10 +32,6 @@
 //! - title: property
 //! - footnote
 
-use std::ffi::OsStr;
-use std::fs;
-use std::path::Path;
-use petgraph::dot::Dot;
 use crate::compiler::Compiler;
 use crate::compiler::ast_builder::element::{
     self, CenterBlock, CommentBlock, Drawer, Element, ExampleBlock, ExportBlock, FixedWidth,
@@ -46,8 +42,12 @@ use crate::compiler::ast_builder::object::{GeneralLink, Object, TableCellType};
 use crate::compiler::content::{Document, Section as ContentSection};
 use crate::constants::entity::ENTITYNAME_TO_HTML;
 use crate::export::ssg::toc::{TableOfContents, TocNode};
+use petgraph::dot::Dot;
 use std::collections::HashMap;
+use std::ffi::OsStr;
+use std::fs;
 use std::ops::Not;
+use std::path::Path;
 
 use fs_extra::dir::{CopyOptions, copy, create_all};
 
@@ -152,12 +152,11 @@ impl Renderer {
         tracing::debug!("toc={:?}", toc);
         tracing::debug!("toc_html={:}", toc.to_html_nav(Some("git.html")));
 
-
         use crate::export::ssg::site::SiteBuilder;
         let mut site_builder = SiteBuilder::default();
-        let site = site_builder.build(& section).unwrap();
+        let site = site_builder.build(&section).unwrap();
         tracing::debug!("site: pages {:#?}", site.pages);
-        
+
         self.render_content_section(&section, Some(toc))?;
 
         let static_directory_from = section

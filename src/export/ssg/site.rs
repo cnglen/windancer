@@ -290,7 +290,12 @@ impl SiteBuilder {
     }
 
     fn process_document(&mut self, document: &Document) -> PageId {
-        tracing::info!("parent_stack={:?}, doc={:?}", self.parent_stack, document.metadata.title);
+        tracing::info!(
+            "parent_stack={:?}, doc title={:?} path={:?}",
+            self.parent_stack,
+            document.metadata.title,
+            document.html_path()
+        );
         let ast = document.ast.clone();
         let mut hasher = blake3::Hasher::new();
         hasher.update(format!("{:?}", ast).as_bytes());
@@ -370,11 +375,19 @@ impl SiteBuilder {
                 // let path = path.to_string_lossy().to_string();
 
                 // ?
-                tracing::warn!("{} index pages found in section {:?}", n_index_page, section.file_info.relative_path);
+                tracing::warn!(
+                    "{} index pages found in section {:?}",
+                    n_index_page,
+                    section.file_info.relative_path
+                );
             }
             1 => {}
             _ => {
-                tracing::warn!("{} index pages found in section {:?}", n_index_page, section.file_info.relative_path);
+                tracing::warn!(
+                    "{} index pages found in section {:?}",
+                    n_index_page,
+                    section.file_info.relative_path
+                );
             }
         }
 
@@ -391,7 +404,6 @@ impl SiteBuilder {
         for _ in 0..n_index_page {
             self.parent_stack.pop();
         }
-
     }
 
     pub fn build(&mut self, root_section: &Section) -> std::io::Result<Site> {

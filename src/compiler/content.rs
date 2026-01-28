@@ -90,9 +90,8 @@ impl Section {
             }
         }
 
-
         build_section(&self, &mut graph, &mut id_to_index, &mut refs_to_id);
-        
+
         RoamGraph { id_to_index, graph }
     }
 }
@@ -196,7 +195,7 @@ impl FileInfo {
         let n = relative_directories_vec.len();
         let maybe_index = if n > 0 && relative_directories_vec[n - 1] == name {
             true
-        } else if n==0 && name=="content" {
+        } else if n == 0 && name == "content" {
             true
         } else {
             false

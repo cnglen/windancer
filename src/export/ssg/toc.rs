@@ -5,7 +5,6 @@ use std::collections::{HashMap, HashSet};
 // Site:
 // Page
 
-
 /// Node of TableOfContents
 #[derive(Debug, Clone)]
 pub struct TocNode {

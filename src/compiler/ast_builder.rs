@@ -19,6 +19,7 @@ pub mod object;
 
 use super::parser::syntax::{OrgSyntaxKind, SyntaxElement, SyntaxNode, SyntaxToken};
 use crate::compiler::org_roam::{NodeType, RoamNode};
+use crate::export::ssg::renderer::{Renderer, RendererConfig};
 use element::{
     AffiliatedKeyword, CenterBlock, Comment, CommentBlock, Drawer, Element, ExampleBlock,
     ExportBlock, FixedWidth, FootnoteDefinition, HeadingSubtree, HorizontalRule, Item, Keyword,
@@ -29,11 +30,9 @@ use element::{
 use error::AstError;
 use object::{CitationReference, GeneralLink, Object, TableCell, TableCellType};
 use petgraph::matrix_graph::Zero;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::env;
 use std::path::Path;
-use crate::export::ssg::renderer::{Renderer, RendererConfig};
-
 
 pub struct AstBuilder;
 
@@ -66,24 +65,27 @@ use std::fmt;
 impl fmt::Debug for SourcePathSegment {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            SourcePathSegment::File{path} => {
+            SourcePathSegment::File { path } => {
                 write!(
                     f,
                     r##"{}"##,
                     path.file_name().expect("todo").to_string_lossy()
                 )
-            },
+            }
             SourcePathSegment::Heading { title, id, level } => {
                 write!(
                     f,
                     r##"{}"##,
-                    title.iter().map(|o| Renderer::new(RendererConfig::default()).render_object(o)).collect::<Vec<_>>().join("")
+                    title
+                        .iter()
+                        .map(|o| Renderer::new(RendererConfig::default()).render_object(o))
+                        .collect::<Vec<_>>()
+                        .join("")
                 )
-            },
+            }
             _ => {
                 write!(f, "")
             }
-               
         }
     }
 }
@@ -203,7 +205,7 @@ struct Converter {
     radio_targets: Vec<Object>,
     context: BuilderContext,
 
-    keywords: HashMap<String, Vec<Object>>,
+    keywords: BTreeMap<String, Vec<Object>>,
     extracted_links: Vec<ExtractedLink>,
     roam_nodes: Vec<RoamNode>,
 }
@@ -220,11 +222,11 @@ impl Default for BuilderContext {
 
 impl Converter {
     fn get_roam_info(
-        properties: &HashMap<String, String>,
-    ) -> Option<(String, Vec<String>, Vec<String>, HashMap<String, String>)> {
+        properties: &BTreeMap<String, String>,
+    ) -> Option<(String, Vec<String>, Vec<String>, BTreeMap<String, String>)> {
         if let Some(id) = properties.get("ID") {
             let (mut aliases, mut refs, mut _properties) =
-                (vec![], vec![], HashMap::<String, String>::new());
+                (vec![], vec![], BTreeMap::<String, String>::new());
             for (k, v) in properties.iter() {
                 match k.as_str() {
                     "ID" => {}
@@ -253,7 +255,7 @@ impl Converter {
             footnote_label_to_nid: HashMap::new(),
             footnote_definitions: vec![],
             radio_targets: vec![],
-            keywords: HashMap::new(),
+            keywords: BTreeMap::new(),
             context: BuilderContext::new(f_org),
             extracted_links: vec![],
             roam_nodes: vec![],
@@ -295,7 +297,7 @@ impl Converter {
         let (zeroth_nodes, remainig_nodes) = self.split_at_first_heading(children);
 
         let mut zeroth_section = None;
-        let mut properties = HashMap::new();
+        let mut properties = BTreeMap::new();
         if !zeroth_nodes.is_empty() {
             zeroth_section = Some(self.convert_section(&zeroth_nodes[0])?);
             let property_drawer = if let Some(ref section) = zeroth_section {
@@ -393,7 +395,7 @@ impl Converter {
         let mut tags = vec![];
         let mut planning = None;
         let mut property_drawer = None;
-        let mut properties = HashMap::new();
+        let mut properties = BTreeMap::new();
         for child in node.children() {
             match child.kind() {
                 OrgSyntaxKind::Section => match self.convert_section(&child) {
@@ -538,7 +540,7 @@ impl Converter {
     ) -> Result<ZerothSectionPreamble, AstError> {
         let mut maybe_comment = None;
         let mut maybe_property_drawer = None;
-        let mut properties = HashMap::new();
+        let mut properties = BTreeMap::new();
         for child in node.children() {
             match child.kind() {
                 OrgSyntaxKind::PropertyDrawer => {
@@ -2156,7 +2158,8 @@ impl Converter {
             .map(|e| e.unwrap())
             .collect::<Vec<_>>();
 
-        self.keywords.insert(key.to_uppercase().clone(), value.clone()); // override! better method?
+        self.keywords
+            .insert(key.to_uppercase().clone(), value.clone()); // override! better method?
         Ok(Keyword { key, value })
     }
 

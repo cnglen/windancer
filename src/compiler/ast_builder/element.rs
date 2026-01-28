@@ -2,7 +2,7 @@
 use crate::compiler::ast_builder::ExtractedLink;
 use crate::compiler::ast_builder::object::Object;
 use crate::compiler::org_roam::RoamNode;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::fmt;
 
 #[derive(Clone)]
@@ -15,9 +15,9 @@ pub struct OrgFile {
     // render Footnotes HeadingSubtree
     pub footnote_definitions: Vec<FootnoteDefinition>,
     /// keywords from org file to extract title, etc.
-    pub keywords: HashMap<String, Vec<Object>>,
+    pub keywords: BTreeMap<String, Vec<Object>>,
     /// properties from zeroth section to extract ID, etc.
-    pub properties: HashMap<String, String>,
+    pub properties: BTreeMap<String, String>,
     /// Extracted links including full path for roam based knowledge graph
     pub extracted_links: Vec<ExtractedLink>,
     /// Roam Nodes
@@ -62,12 +62,12 @@ pub struct HeadingSubtree {
     pub property_drawer: Option<PropertyDrawer>,
     pub section: Option<Section>,
     pub sub_heading_subtrees: Vec<HeadingSubtree>,
-    pub properties: HashMap<String, String>,
+    pub properties: BTreeMap<String, String>,
 }
 
 // todo: if key duplicated?
-pub(crate) fn get_properties(property_drawer: &Option<PropertyDrawer>) -> HashMap<String, String> {
-    let mut properties: HashMap<String, String> = HashMap::new();
+pub(crate) fn get_properties(property_drawer: &Option<PropertyDrawer>) -> BTreeMap<String, String> {
+    let mut properties: BTreeMap<String, String> = BTreeMap::new();
     if let Some(drawer) = property_drawer {
         for property in drawer.contents.iter() {
             if let Some(value) = property.value.clone() {
