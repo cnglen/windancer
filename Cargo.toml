@@ -20,6 +20,7 @@ harness = false
 name = "doc_parse"  # filename: benches/doc_parse.rs
 
 [dependencies]
+blake3 = "1.8.3"
 chrono = { version = "0.4.42", features = ["serde"] }
 chumsky = { version = "0.13.0", features = [] }
 clap = { version = "4.5.50", features = ["derive"] }

@@ -142,6 +142,20 @@ impl Compiler {
 
         let file_info = FileInfo::from(&d_org);
 
+        fn has_org_file<P: AsRef<Path>>(path:P) -> bool {
+            use walkdir::WalkDir;
+            for entry in WalkDir::new(path).into_iter().filter_map(|e|
+                                                                   e.ok()
+            ){
+                if entry.metadata().unwrap().is_file() {
+                    if entry.path().extension().unwrap()=="org" {
+                        return true;
+                    }
+                }
+            }
+            false
+        }
+        
         for entry in fs::read_dir(d_org)? {
             let entry = entry?;
             let path = entry.path();
@@ -149,8 +163,11 @@ impl Compiler {
             let filename = path.file_name().expect("xx").to_string_lossy().to_string();
 
             if path.is_dir() && (!filename.starts_with(&['.', '#'])) {
-                tracing::debug!("compile_section@dir: {}", path.display());
-                subsections.push(self.compile_section(path)?);
+                if has_org_file(&path) {
+                    tracing::debug!("compile_section@dir: {}", path.display());
+                    subsections.push(self.compile_section(path)?);
+                }
+
             } else if path.extension() == Some(OsStr::new("org"))
                 && (!filename.starts_with(&['.', '#']))
             {

@@ -116,7 +116,7 @@ impl Renderer {
         Ok("todo".to_string())
     }
 
-    // Site?
+    // Site
     pub fn build<P: AsRef<Path>>(&mut self, d_org: P) -> std::io::Result<String> {
         tracing::info!("build ...");
 
@@ -152,6 +152,12 @@ impl Renderer {
         tracing::debug!("toc={:?}", toc);
         tracing::debug!("toc_html={:}", toc.to_html_nav(Some("git.html")));
 
+
+        use crate::export::ssg::site::SiteBuilder;
+        let mut site_builder = SiteBuilder::default();
+        let site = site_builder.build(& section).unwrap();
+        tracing::debug!("site: pages {:#?}", site.pages);
+        
         self.render_content_section(&section, Some(toc))?;
 
         let static_directory_from = section

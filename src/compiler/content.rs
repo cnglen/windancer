@@ -196,6 +196,8 @@ impl FileInfo {
         let n = relative_directories_vec.len();
         let maybe_index = if n > 0 && relative_directories_vec[n - 1] == name {
             true
+        } else if n==0 && name=="content" {
+            true
         } else {
             false
         };
