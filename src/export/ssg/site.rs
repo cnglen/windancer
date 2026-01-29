@@ -37,7 +37,6 @@ pub struct Page {
     // 全局扁平导航,全站深度优先序列,博客式“上一篇/下一篇”，跨章节连续阅读
     pub next_flattened_id: Option<PageId>,
     pub prev_flattened_id: Option<PageId>,
-
     // is_index?
 }
 
@@ -262,6 +261,47 @@ impl fmt::Debug for Page {
     }
 }
 
+use crate::export::ssg::toc::TocNode;
+
+use super::toc::TableOfContents;
+
+impl Site {
+    fn get_toc_of_page(&self, page_id: &PageId) -> TocNode {
+        let page = self.pages.get(page_id).unwrap();
+        let mut children = vec![];
+        for child_page_id in page.children_ids.iter() {
+            children.push(self.get_toc_of_page(child_page_id));
+        }
+
+        TocNode {
+            title: page.title.clone(),
+            path: page.url.clone(),
+            children,
+        }
+    }
+
+    /// Get the toc
+    pub fn toc(&self) -> TableOfContents {
+        let root_nodes = if let Some(root) = self.root_page_id.clone() {
+            let root_toc = self.get_toc_of_page(&root);
+            root_toc.children
+        } else {
+            let mut children = vec![];
+            for id in self
+                .pages
+                .iter()
+                .filter(|(_, page)| page.parent_id.is_none())
+                .map(|(id, _)| id)
+            {
+                children.push(self.get_toc_of_page(&id));
+            }
+            children
+        };
+
+        TableOfContents { root_nodes }
+    }
+}
+
 impl Default for Site {
     fn default() -> Self {
         Self {
@@ -312,9 +352,10 @@ impl SiteBuilder {
 
         let url = document.html_path();
         let metadata = PageMetadata {};
-        
+
         let parent_id = self.parent_stack.last().cloned();
-        if let Some(ref parent_id_) = parent_id { // at the same time update children_ids for the parent page
+        if let Some(ref parent_id_) = parent_id {
+            // at the same time update children_ids for the parent page
             self.pages
                 .get_mut(parent_id_)
                 .unwrap()
@@ -322,10 +363,10 @@ impl SiteBuilder {
                 .push(id.clone());
         }
         let children_ids = vec![];
-        
+
         let prev_id = None;
         let next_id = None;
-        
+
         let tags = document
             .metadata
             .filetags
@@ -333,7 +374,7 @@ impl SiteBuilder {
             .into_iter()
             .collect::<HashSet<String>>();
         let category = document.metadata.category.clone();
-        
+
         let next_flattened_id = None;
         let prev_flattened_id = None;
 
@@ -359,7 +400,6 @@ impl SiteBuilder {
         id
     }
 
-    
     fn process_section(&mut self, section: &Section) -> Option<PageId> {
         // index page -> other pages
         // documents should be placed in above order!
@@ -375,7 +415,7 @@ impl SiteBuilder {
                 self.process_document(doc);
             }
         }
-        if n_index_page!=1 {
+        if n_index_page != 1 {
             tracing::warn!(
                 "{} index pages found in section {:?} (should be 1, maybe 0)",
                 n_index_page,
@@ -400,6 +440,7 @@ impl SiteBuilder {
         let root_page_id = self.process_section(root_section);
 
         let pages = self.pages.clone();
+
         let mut tag_index: HashMap<String, Vec<PageId>> = HashMap::new();
         for (page_id, page) in self.pages.iter() {
             for tag in page.tags.iter() {

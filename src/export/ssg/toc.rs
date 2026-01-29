@@ -105,7 +105,7 @@ impl TocNode {
 
         root.children.extend(children);
         for subsection in &section.subsections {
-            if subsection.documents.len() > 0 {
+            if subsection.documents.len() > 0 || subsection.subsections.len() > 0 {
                 let toc_node = Self::from_section(subsection);
                 root.children.push(toc_node);
             }
@@ -128,30 +128,30 @@ impl TocNode {
 
 #[derive(Debug, Clone)]
 pub struct TableOfContents {
-    pub flatten_nodes: Vec<TocNode>,
+    // pub flatten_nodes: Vec<TocNode>,
     pub root_nodes: Vec<TocNode>, // not flatten
 }
 
 impl TableOfContents {
     pub fn new(root_nodes: Vec<TocNode>) -> Self {
-        fn flatten(node: &TocNode) -> Vec<TocNode> {
-            let mut ans = vec![];
-            ans.push(node.clone());
+        // fn flatten(node: &TocNode) -> Vec<TocNode> {
+        //     let mut ans = vec![];
+        //     ans.push(node.clone());
 
-            for child in &node.children {
-                ans.extend(flatten(&child));
-            }
-            ans
-        }
+        //     for child in &node.children {
+        //         ans.extend(flatten(&child));
+        //     }
+        //     ans
+        // }
 
-        let mut flatten_nodes = vec![];
-        for node in &root_nodes {
-            flatten_nodes.extend(flatten(node));
-        }
+        // let mut flatten_nodes = vec![];
+        // for node in &root_nodes {
+        //     flatten_nodes.extend(flatten(node));
+        // }
 
         Self {
             root_nodes,
-            flatten_nodes,
+            // flatten_nodes,
         }
     }
 }
@@ -175,11 +175,11 @@ impl TableOfContents {
                 ));
 
                 if !node.children.is_empty() && node.level() < max_depth {
-                    html.push_str("\n<ul>\n");
+                    html.push_str("\n<ol>\n");
                     for child in &node.children {
                         node_to_html(child, active_slug, html, max_depth);
                     }
-                    html.push_str("</ul>\n");
+                    html.push_str("</ol>\n");
                 }
 
                 html.push_str("</li>\n");

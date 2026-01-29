@@ -41,8 +41,8 @@ use crate::compiler::ast_builder::element::{
 use crate::compiler::ast_builder::object::{GeneralLink, Object, TableCellType};
 use crate::compiler::content::{Document, Section as ContentSection};
 use crate::constants::entity::ENTITYNAME_TO_HTML;
+use crate::export::ssg::site::Site;
 use crate::export::ssg::toc::{TableOfContents, TocNode};
-use crate::export::ssg::site::{Site};
 use petgraph::dot::Dot;
 use std::collections::HashMap;
 use std::ffi::OsStr;
@@ -118,7 +118,6 @@ impl Renderer {
     }
 
     pub fn render_site(&mut self, site: &Site) {
-
         tracing::info!("build ...");
 
         // // prepare output directory
@@ -143,7 +142,7 @@ impl Renderer {
         //      let file_path = self.determine_page_path(page, output_dir);
         //      fs::write(&file_path, html)?;
         //      stats.pages_rendered += 1;
-        //  }        
+        //  }
 
         // site map?
 
@@ -162,9 +161,8 @@ impl Renderer {
         tracing::info!("renderer done");
 
         // Ok(self.config.output_directory.clone())
-        
     }
-    
+
     // Site
     pub fn build<P: AsRef<Path>>(&mut self, d_org: P) -> std::io::Result<String> {
         tracing::info!("build ...");
@@ -198,13 +196,15 @@ impl Renderer {
         let toc_node = TocNode::from_section(&section);
         let toc = TableOfContents::new(toc_node.children);
 
-        tracing::debug!("toc={:?}", toc);
-        tracing::debug!("toc_html={:}", toc.to_html_nav(Some("git.html")));
+        // tracing::debug!("toc={:?}", toc);
+        // tracing::debug!("toc_html={:}", toc.to_html_nav(Some("git.html")));
 
         use crate::export::ssg::site::SiteBuilder;
         let mut site_builder = SiteBuilder::default();
         let site = site_builder.build(&section).unwrap();
-        tracing::debug!("site: pages {:#?}", site.pages);
+        // tracing::debug!("site: pages {:#?}", site.pages);
+        // let toc = site.toc();
+        // tracing::debug!("toc2={:?}", toc);
 
         self.render_content_section(&section, Some(toc))?;
 

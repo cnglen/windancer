@@ -175,7 +175,7 @@ impl Compiler {
 
         // todo: other strategy of order
         // the index page should be placed at first place
-        documents.sort_by_key(|doc|  -(doc.file_info.maybe_index as i32));
+        documents.sort_by_key(|doc| -(doc.file_info.maybe_index as i32));
 
         Ok(Section {
             file_info,
