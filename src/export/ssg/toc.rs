@@ -1,64 +1,27 @@
 use crate::compiler::ast_builder::element::HeadingSubtree;
 use crate::compiler::content::{Document, Section};
+use serde;
 use std::collections::{HashMap, HashSet};
 
 // Site:
 // Page
 
 /// Node of TableOfContents
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct TocNode {
     /// title to display in Toc, i.e, <a href={path}>title</a>
     pub title: String,
     /// href in <a> html
     pub path: String,
 
-    // /// number of  in path.split("/"), note: path/to/index.html -> path/to
-    // /// - / <- /index.html :: level=0
-    // /// - /blog <- /blog/index.html :: level=1
-    // /// - /blog/bar.html :: level=2
-    // /// - /blog/note/rust.html :: level=3
-    // pub level: usize,
+    /// level in TOC
+    pub level: usize,
+
     /// children nodes, only path ends with index.html has non-empty children
     pub children: Vec<TocNode>,
-    // /// true if filename of path is "index.html"
-    // pub is_index: bool,
 }
 
 impl TocNode {
-    // // Toc node for page's content only
-    // // todo: heading using id(property_id > hash): https://yoursite.com/foo/#d061c832dd9cdb14f32148b81a1ac02416ce76d1
-    // fn from_document(document: &Document) -> Self {
-    //     let ast = &document.ast;
-
-    //     fn from_subtree(h: &HeadingSubtree) -> TocNode {
-    //         // let title = h
-    //         //     .title
-    //         //     .iter()
-    //         //     .map(|e| self.render_object(e))
-    //         //     .collect::<String>();
-
-    //         // let path;           // get id, from html? or use same hash? or ast add id?maybe
-    //         // s.sub_heading_subtrees
-
-    //         // TocNode {
-    //         // }
-    //     }
-
-    //     let mut children = vec![];
-    //     for subtree in ast.heading_subtrees {
-    //         children.push(from_subtree(subtree));
-    //     }
-
-    //     TocNode{
-    //         title: document.metadata.title.clone(),
-    //         path: document.html_path(),
-    //         children
-    //     }
-
-    // }
-
-    // index.html as root_node
     pub fn from_section(section: &Section) -> Self {
         fn from_document(document: &Document) -> TocNode {
             let path = document.html_path();
@@ -68,10 +31,17 @@ impl TocNode {
                 .clone()
                 .unwrap_or("no title found".to_string());
 
+            let level = if document.file_info.maybe_index {
+                std::path::Path::new(&path).components().count() - 1
+            } else {
+                std::path::Path::new(&path).components().count()
+            };
+
             TocNode {
                 title,
                 path,
                 children: vec![],
+                level,
             }
         }
 
@@ -95,11 +65,12 @@ impl TocNode {
                 std::path::Path::new("index.html").to_path_buf()
             };
             let path = path.to_string_lossy().to_string();
-
+            let level = path.split("/").count() - 1;
             TocNode {
                 title: String::from("faked index node"),
                 path: path,
                 children: vec![],
+                level,
             }
         };
 
@@ -114,15 +85,7 @@ impl TocNode {
     }
 
     fn level(&self) -> usize {
-        let p = std::path::Path::new(&self.path);
-
-        let is_index = p.file_name().expect("must has file name") == "index.html";
-
-        if is_index {
-            p.components().count() - 1
-        } else {
-            p.components().count()
-        }
+        self.level
     }
 }
 
@@ -156,42 +119,33 @@ impl TableOfContents {
     }
 }
 
+use tera::{Context, Tera};
+
 impl TableOfContents {
     pub fn to_html_nav(&self, active_slug: Option<&str>) -> String {
-        fn node_to_html(
-            node: &TocNode,
-            active_slug: Option<&str>,
-            html: &mut String,
-            max_depth: usize,
-        ) {
-            let is_active =
-                active_slug.map_or(false, |slug| slug == node.path.trim_start_matches('#'));
-            let active_class = if is_active { r#" class="active""# } else { "" };
-
-            if node.level() <= max_depth {
-                html.push_str(&format!(
-                    r#"<li{}><a href="/{}">{}</a>"#,
-                    active_class, node.path, node.title
-                ));
-
-                if !node.children.is_empty() && node.level() < max_depth {
-                    html.push_str("\n<ol>\n");
-                    for child in &node.children {
-                        node_to_html(child, active_slug, html, max_depth);
-                    }
-                    html.push_str("</ol>\n");
-                }
-
-                html.push_str("</li>\n");
+        let tera = match Tera::new("src/export/ssg/templates/**/*.html") {
+            Ok(t) => t,
+            Err(e) => {
+                tracing::error!("template error: {}", e);
+                ::std::process::exit(1);
             }
-        }
+        };
+        let mut context = Context::new();
+        context.insert("root_nodes", &self.root_nodes);
+        context.insert("active_slug", &active_slug);
+        context.insert("max_depth", &5);
+        let html = tera
+            .render("toc_nav.html", &context)
+            .unwrap_or_else(|err| format!("Template rendering failed: {}", err));
 
-        let mut html = String::from("<nav class=\"toc\">\n  <ul>\n");
-        for node in &self.root_nodes {
-            node_to_html(node, active_slug, &mut html, 5);
-        }
-        html.push_str("  </ul>\n</nav>\n");
+        // beatufity html
+        use tidier::{Doc, FormatOptions};
+        let opts = FormatOptions::new()
+            .wrap(80)
+            .tabs(false)
+            .strip_comments(false);
 
-        html
+        let doc = Doc::new(html, false).expect("todo"); // 第二个参数 `false` 表示输入非XHTML
+        doc.format(&opts).expect("todo")
     }
 }

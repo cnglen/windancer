@@ -193,8 +193,8 @@ impl Renderer {
         tracing::debug!("Basic DOT format:\n{:?}\n", g_dot);
         tracing::debug!("{:#?}", g.graph);
 
-        let toc_node = TocNode::from_section(&section);
-        let toc = TableOfContents::new(toc_node.children);
+        // let toc_node = TocNode::from_section(&section);
+        // let toc = TableOfContents::new(toc_node.children);
 
         // tracing::debug!("toc={:?}", toc);
         // tracing::debug!("toc_html={:}", toc.to_html_nav(Some("git.html")));
@@ -203,7 +203,7 @@ impl Renderer {
         let mut site_builder = SiteBuilder::default();
         let site = site_builder.build(&section).unwrap();
         // tracing::debug!("site: pages {:#?}", site.pages);
-        // let toc = site.toc();
+        let toc = site.toc();
         // tracing::debug!("toc2={:?}", toc);
 
         self.render_content_section(&section, Some(toc))?;

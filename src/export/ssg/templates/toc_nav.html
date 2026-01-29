@@ -1,0 +1,10 @@
+{% import "macros.html" as macros %}
+
+<nav class="toc">
+  <ul>
+    {%- for node in root_nodes -%}
+      {{ macros::render_toc_node(node=node, active_slug=active_slug, max_depth=max_depth) }}
+    {%- endfor %}
+  </ul>
+</nav>
+
