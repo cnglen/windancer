@@ -37,6 +37,8 @@ pub struct Page {
     // 全局扁平导航,全站深度优先序列,博客式“上一篇/下一篇”，跨章节连续阅读
     pub next_flattened_id: Option<PageId>,
     pub prev_flattened_id: Option<PageId>,
+
+    // is_index?
 }
 
 // impl Site {
@@ -196,7 +198,9 @@ pub struct SiteBuilder {
     // 可能还有插件系统、图关系构建器等
 
     // state during processing
+    // parent_stack during `build()` for get parent page
     parent_stack: Vec<PageId>,
+    // pages during `build()' for output and get parent page to set children_ids
     pages: HashMap<PageId, Page>,
 }
 
@@ -307,20 +311,21 @@ impl SiteBuilder {
             .unwrap_or("no title found".to_string());
 
         let url = document.html_path();
+        let metadata = PageMetadata {};
+        
         let parent_id = self.parent_stack.last().cloned();
-
-        if let Some(ref parent_id_) = parent_id {
+        if let Some(ref parent_id_) = parent_id { // at the same time update children_ids for the parent page
             self.pages
                 .get_mut(parent_id_)
                 .unwrap()
                 .children_ids
                 .push(id.clone());
         }
-
         let children_ids = vec![];
-
+        
         let prev_id = None;
         let next_id = None;
+        
         let tags = document
             .metadata
             .filetags
@@ -328,9 +333,9 @@ impl SiteBuilder {
             .into_iter()
             .collect::<HashSet<String>>();
         let category = document.metadata.category.clone();
+        
         let next_flattened_id = None;
         let prev_flattened_id = None;
-        let metadata = PageMetadata {};
 
         self.pages.insert(
             id.clone(),
@@ -354,47 +359,28 @@ impl SiteBuilder {
         id
     }
 
-    fn process_section(&mut self, section: &Section) {
-        // find the index page
+    
+    fn process_section(&mut self, section: &Section) -> Option<PageId> {
+        // index page -> other pages
+        // documents should be placed in above order!
+        let mut index_page_id = None;
         let mut n_index_page: usize = 0;
         for doc in section.documents.iter() {
             if doc.file_info.maybe_index {
                 let id = self.process_document(doc);
+                index_page_id = Some(id.clone());
                 n_index_page = n_index_page + 1;
                 self.parent_stack.push(id);
-            }
-        }
-
-        match n_index_page {
-            0 => {
-                // let path = if let Some(relative_path) = section.file_info.relative_path {
-                //     std::path::Path::new(&relative_path).join("index.html")
-                // } else {
-                //     std::path::Path::new("index.html").to_path_buf()
-                // };
-                // let path = path.to_string_lossy().to_string();
-
-                // ?
-                tracing::warn!(
-                    "{} index pages found in section {:?}",
-                    n_index_page,
-                    section.file_info.relative_path
-                );
-            }
-            1 => {}
-            _ => {
-                tracing::warn!(
-                    "{} index pages found in section {:?}",
-                    n_index_page,
-                    section.file_info.relative_path
-                );
-            }
-        }
-
-        for doc in section.documents.iter() {
-            if !doc.file_info.maybe_index {
+            } else {
                 self.process_document(doc);
             }
+        }
+        if n_index_page!=1 {
+            tracing::warn!(
+                "{} index pages found in section {:?} (should be 1, maybe 0)",
+                n_index_page,
+                section.file_info.relative_path
+            );
         }
 
         for subsection in section.subsections.iter() {
@@ -404,17 +390,37 @@ impl SiteBuilder {
         for _ in 0..n_index_page {
             self.parent_stack.pop();
         }
+
+        index_page_id
     }
 
     pub fn build(&mut self, root_section: &Section) -> std::io::Result<Site> {
-        let mut site = Site {
+        self.pages.clear();
+
+        let root_page_id = self.process_section(root_section);
+
+        let pages = self.pages.clone();
+        let mut tag_index: HashMap<String, Vec<PageId>> = HashMap::new();
+        for (page_id, page) in self.pages.iter() {
+            for tag in page.tags.iter() {
+                if tag_index.contains_key(tag) {
+                    tag_index.get_mut(tag).unwrap().push(page_id.to_string());
+                } else {
+                    tag_index.insert(tag.to_string(), vec![page_id.to_string()]);
+                }
+            }
+        }
+
+        // build a graph: root is index_page id or faked_root
+        // dfs to get flattened_pages? // toc?
+
+        let site = Site {
             config: self.config.clone(),
+            root_page_id,
+            pages,
             ..Site::default()
         };
 
-        self.pages.clear();
-        self.process_section(root_section);
-        site.pages = self.pages.clone();
         self.pages.clear();
 
         Ok(site)

@@ -42,6 +42,7 @@ use crate::compiler::ast_builder::object::{GeneralLink, Object, TableCellType};
 use crate::compiler::content::{Document, Section as ContentSection};
 use crate::constants::entity::ENTITYNAME_TO_HTML;
 use crate::export::ssg::toc::{TableOfContents, TocNode};
+use crate::export::ssg::site::{Site};
 use petgraph::dot::Dot;
 use std::collections::HashMap;
 use std::ffi::OsStr;
@@ -116,6 +117,54 @@ impl Renderer {
         Ok("todo".to_string())
     }
 
+    pub fn render_site(&mut self, site: &Site) {
+
+        tracing::info!("build ...");
+
+        // // prepare output directory
+        // let output_directory = Path::new(&self.config.output_directory);
+        // if output_directory.exists() {
+        //     let now_utc = chrono::Utc::now();
+        //     let created_ts = now_utc.format("%Y%m%dT%H%M%SZ").to_string();
+        //     let backup_directory = format!("{}.backup_{}", output_directory.display(), created_ts);
+        //     tracing::info!(
+        //         "backup {} -> {}",
+        //         output_directory.display(),
+        //         backup_directory
+        //     );
+        //     fs::rename(output_directory, backup_directory)?;
+        // }
+        // let _ = create_all(output_directory, true);
+
+        // render all pages
+        // let mut stats = RenderStats::new();
+        //  for page in site.pages.values() {
+        //      let html = self.render_page(page, site)?;
+        //      let file_path = self.determine_page_path(page, output_dir);
+        //      fs::write(&file_path, html)?;
+        //      stats.pages_rendered += 1;
+        //  }        
+
+        // site map?
+
+        // copy static?
+        // let static_directory_from = section
+        //     .file_info
+        //     .full_path
+        //     .parent()
+        //     .expect("must have parent directory")
+        //     .join("static");
+        // let static_directory_to = Path::new(&self.config.output_directory);
+        // if static_directory_from.is_dir() {
+        //     tracing::debug!(from=?static_directory_from.display(), to=?static_directory_to.display());
+        //     let _ = copy_directory(&static_directory_from, static_directory_to);
+        // }
+        tracing::info!("renderer done");
+
+        // Ok(self.config.output_directory.clone())
+        
+    }
+    
     // Site
     pub fn build<P: AsRef<Path>>(&mut self, d_org: P) -> std::io::Result<String> {
         tracing::info!("build ...");
@@ -1166,3 +1215,8 @@ mod tests {
         // renderer.render_content_section(&section);
     }
 }
+
+// worker:
+// - compiler -> AST Sectoin/Document
+// - site_builder -> Pages
+// - renderer -> HTML write_file (tera)
