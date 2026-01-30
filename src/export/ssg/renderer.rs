@@ -63,6 +63,12 @@ fn copy_directory(from: &Path, to: &Path) -> Result<String, fs_extra::error::Err
     Ok("todo".to_string())
 }
 
+// todo
+pub struct RendererContext{
+    pub table_counter: usize,
+    pub figure_counter: usize,
+}
+
 // context: prev / next
 pub struct Renderer {
     config: RendererConfig,
@@ -78,6 +84,204 @@ pub struct RendererConfig {
     pub css: String, // path of css file
                      // pub class_prefix: String,
                      // pub highlight_code_blocks: bool,
+}
+
+pub struct ObjectRenderer {
+
+}
+
+impl ObjectRenderer {
+    pub(crate) fn render_object(object: &Object) -> String {
+        match object {
+            Object::Text(text) => escape_html(text),
+
+            Object::Bold(objects) => {
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                format!("<b>{}</b>", inner)
+            }
+            Object::Italic(objects) => {
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                format!("<i>{}</i>", inner)
+            }
+
+            Object::Underline(objects) => {
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                format!(r##"<span class="underline">{}</span>"##, inner)
+            }
+            
+            Object::Strikethrough(objects) => {
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                format!(r##"<del>{}</del>"##, inner)
+            }
+
+            Object::Code(objects) => {
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                format!(r##"<code>{}</code>"##, inner)
+            }
+
+            Object::Verbatim(objects) => {
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                format!(r##"<code>{}</code>"##, inner)
+            }
+
+            Object::Whitespace(content) => {
+                format!(r##"{}"##, content)
+            }
+
+            Object::GeneralLink(GeneralLink {
+                protocol,
+                description,
+                path,
+                is_image,
+            }) => {
+                let desc = if description.len() == 0 {
+                    path
+                } else {
+                    &description
+                        .iter()
+                        .map(|e| Self::render_object(e))
+                        .collect::<String>()
+                };
+
+                if protocol == "fuzzy" {
+                    format!(r##"<a href="#{}">{}</a>"##, path, desc)
+                } else if description.len() == 0 && *is_image {
+                    let path_html = if path.starts_with("file:") {
+                        path.strip_prefix("file:").unwrap()
+                    } else {
+                        path
+                    };
+
+                    format!(
+                        r##"<img src="{}" alt="{}">"##,
+                        path_html,
+                        path.split("/").last().expect("todo")
+                    )
+                } else {
+                    format!(r##"<a href="{}">{}</a>"##, path, desc)
+                }
+            }
+
+            Object::TableCell(table_cell) => {
+                let contents = table_cell
+                    .contents
+                    .iter()
+                    .map(|e| Self::render_object(e))
+                    .collect::<String>();
+
+                match table_cell.cell_type {
+                    TableCellType::Header => format!(r##" <th>{}</th> "##, contents),
+                    TableCellType::Data => format!(r##" <td>{}</td> "##, contents),
+                }
+            }
+
+            Object::Target(text) => {
+                format!(r##"<a id="{text}"></a>"##)
+            }
+
+            Object::Timestamp(text) => {
+                format!(
+                    r##"<span class="timestamp-wrapper">
+  <span class="timestamp">{}
+  </span>
+</span>
+"##,
+                    text.replace("--", "-")
+                )
+            }
+
+            Object::FootnoteReference {
+                label,
+                nid: _,
+                label_rid,
+            } => {
+                // superscript:label
+                format!(
+                    r##"<sup>
+  <a id="fnr.{label}.{label_rid}" class="footref" href="#fn.{label}" role="doc-backlink">{label}</a>
+</sup>
+"##,
+                    label_rid = label_rid,
+                    label = label,
+                )
+            }
+
+            Object::Entity { name } => {
+                let v = match ENTITYNAME_TO_HTML.get(name) {
+                    Some(v) => v,
+                    None => "fixme!! error occured",
+                };
+
+                format!("{v}")
+            }
+
+            Object::LineBreak => {
+                format!("<br>\n")
+            }
+
+            Object::RadioTarget(objects) => {
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                format!(r##"<a id="{inner}">{inner}</a>"##)
+            }
+
+            Object::RadioLink(objects) => {
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                format!(r##"<a href="#{inner}">{inner}</a>"##)
+            }
+
+            Object::Subscript(objects) => {
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                format!(r##"<sub>{}</sub>"##, inner)
+            }
+
+            Object::Superscript(objects) => {
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                format!(r##"<sup>{}</sup>"##, inner)
+            }
+
+            Object::LatexFragment {
+                content,
+                display_mode,
+            } => match display_mode {
+                Some(true) => {
+                    format!(
+                        r##"\[
+{}\]
+"##,
+                        content
+                    )
+                }
+                Some(false) => {
+                    format!(r"\({}\)", content)
+                }
+
+                None => String::from(content),
+            },
+
+            Object::StatisticsCookie(value) => {
+                format!("{}", value)
+            }
+
+            Object::ExportSnippet { backend, value } => {
+                if backend == "html" {
+                    format!("{}", value)
+                } else {
+                    // ignore other backend
+                    format!("")
+                }
+            }
+
+            _ => String::from(""), // AstInline::Link { url, text } => {
+                                   //     format!(r#"<a href="{}">{}</a>"#, escape_html(url), escape_html(text))
+                                   // }
+                                   // AstInline::Code(code) => {
+                                   //     format!("<code>{}</code>", escape_html(code))
+                                   // }
+                                   // ... 其他内联元素渲染
+        }
+    }
+    
+
 }
 
 impl Default for RendererConfig {
