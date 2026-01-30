@@ -50,7 +50,7 @@ fn main() -> std::io::Result<()> {
     // // - ast builder
     let start = Instant::now();
     let ast_builder = AstBuilder::new();
-    let ast = ast_builder.build(&syntax_tree).unwrap();
+    let ast = ast_builder.build(&syntax_tree, f_org).unwrap();
     let _ = fs::write("tests/windancer_ast.json", format!("{:#?}", ast));
     let duration = start.elapsed();
     tracing::info!("windancer@AST builder: {:?}", duration);
