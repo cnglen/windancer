@@ -64,9 +64,29 @@ fn copy_directory(from: &Path, to: &Path) -> Result<String, fs_extra::error::Err
 }
 
 // todo
-pub struct RendererContext{
+use tera;
+pub struct RendererContext {
     pub table_counter: usize,
     pub figure_counter: usize,
+    pub tera: tera::Tera,
+}
+
+impl Default for RendererContext {
+    fn default() -> Self {
+        let tera = match tera::Tera::new("src/export/ssg/templates/**/*.html") {
+            Ok(t) => t,
+            Err(e) => {
+                tracing::error!("template error: {}", e);
+                ::std::process::exit(1);
+            }
+        };
+
+        Self {
+            tera,
+            table_counter: 0,
+            figure_counter: 0,
+        }
+    }
 }
 
 // context: prev / next
@@ -76,6 +96,7 @@ pub struct Renderer {
     figure_counter: usize,
     footnote_defintions: Vec<FootnoteDefinition>,
     compiler: Compiler,
+    context: RendererContext,
 }
 
 #[derive(Debug, Clone)]
@@ -86,14 +107,13 @@ pub struct RendererConfig {
                      // pub highlight_code_blocks: bool,
 }
 
-pub struct ObjectRenderer {
+pub struct ObjectRenderer {}
 
-}
-
+use html_escape;
 impl ObjectRenderer {
     pub(crate) fn render_object(object: &Object) -> String {
         match object {
-            Object::Text(text) => escape_html(text),
+            Object::Text(text) => html_escape::encode_text(text).to_string(),
 
             Object::Bold(objects) => {
                 let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
@@ -108,7 +128,7 @@ impl ObjectRenderer {
                 let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
                 format!(r##"<span class="underline">{}</span>"##, inner)
             }
-            
+
             Object::Strikethrough(objects) => {
                 let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
                 format!(r##"<del>{}</del>"##, inner)
@@ -280,8 +300,21 @@ impl ObjectRenderer {
                                    // ... 其他内联元素渲染
         }
     }
-    
 
+    pub(crate) fn render_table_row(table_row: &TableRow) -> String {
+        match table_row.row_type {
+            TableRowType::Data | TableRowType::Header => format!(
+                "  <tr>{}</tr>\n",
+                table_row
+                    .cells
+                    .iter()
+                    .map(|e| Self::render_object(&e))
+                    .collect::<String>()
+            ),
+
+            _ => String::new(),
+        }
+    }
 }
 
 impl Default for RendererConfig {
@@ -308,6 +341,7 @@ impl Renderer {
             figure_counter: 0,
             footnote_defintions: vec![],
             compiler: Compiler::new(),
+            context: RendererContext::default(),
         }
     }
 
@@ -735,54 +769,14 @@ impl Renderer {
     }
 
     fn render_table(&mut self, table: &Table) -> String {
-        let caption = if table.caption.len() > 0 {
-            self.table_counter = self.table_counter + 1;
-            format!(
-                r##"<caption class="t-above"> <span class="table-number">Table {}:</span> {} </caption>"##,
-                self.table_counter,
-                table
-                    .caption
-                    .iter()
-                    .map(|e| self.render_object(e))
-                    .collect::<String>()
-            )
-        } else {
-            String::from("")
-        };
-
-        let header = table
-            .header
-            .is_empty()
-            .not()
-            .then(|| {
-                format!(
-                    r##"<thead>
-{}
-</thead>"##,
-                    table
-                        .header
-                        .iter()
-                        .map(|r| self.render_table_row(r))
-                        .collect::<String>()
-                )
-            })
-            .unwrap_or_default();
-
-        format!(
-            r##"
- <table border="2">
- {}
- {}
- {}</table>
- "##,
-            caption,
-            header,
-            table
-                .rows
-                .iter()
-                .map(|r| self.render_table_row(r))
-                .collect::<String>()
-        )
+        use crate::export::ssg::view_model::TableViewModel;
+        let table_view_model = TableViewModel::from_ast(table, &mut self.context);
+        let ctx = tera::Context::from_serialize(&table_view_model)
+            .expect("render_table: from serialize failed");
+        self.context
+            .tera
+            .render("table.tera.html", &ctx)
+            .unwrap_or_else(|err| format!("Template rendering table failed: {}", err))
     }
 
     fn render_table_row(&self, table_row: &TableRow) -> String {
@@ -815,7 +809,8 @@ impl Renderer {
     pub(crate) fn render_object(&self, object: &Object) -> String {
         // println!("object={:?}", object);
         match object {
-            Object::Text(text) => escape_html(text),
+            // Object::Text(text) => escape_html(text),
+            Object::Text(text) => html_escape::encode_text(text).to_string(),
 
             Object::Bold(objects) => {
                 let inner: String = objects.iter().map(|o| self.render_object(o)).collect();

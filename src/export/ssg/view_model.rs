@@ -1,24 +1,26 @@
 use crate::compiler::ast_builder::element::Table;
 use crate::export::ssg::renderer::ObjectRenderer;
+use crate::export::ssg::renderer::RendererContext;
 
 #[derive(serde::Serialize)]
 pub struct TableViewModel {
-    pub number: Option<usize>,
-
+    pub table_number: Option<usize>,
     pub has_caption: bool,
     pub caption: String,
-
     pub has_header: bool,
     pub header_rows: Vec<String>,
-
     pub body_rows: Vec<String>,
 }
 
 impl TableViewModel {
-    pub fn from_ast(table: &Table,
-                    // ctx: &mut RenderContext
-    ) -> Self {
+    pub fn from_ast(table: &Table, context: &mut RendererContext) -> Self {
         let has_caption = !table.caption.is_empty();
+        let table_number = if has_caption {
+            context.table_counter += 1;
+            Some(context.table_counter)
+        } else {
+            None
+        };
         let caption = table
             .caption
             .iter()
@@ -34,11 +36,11 @@ impl TableViewModel {
         let body_rows = table
             .rows
             .iter()
-            .map(|e| ObjectRenderer::render_object(e))
+            .map(|e| ObjectRenderer::render_table_row(e))
             .collect();
 
         Self {
-            number: Some(0),    // fixme
+            table_number,
 
             has_caption,
             caption,

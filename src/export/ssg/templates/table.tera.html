@@ -1,0 +1,24 @@
+<table border="2">
+  {% if has_caption %}
+    <caption class="t-above">
+      {% if table_number is some %}
+        <span class="table-number"> Table {{table_number}}: </span>
+      {% endif %}
+      {{ caption | safe }}
+  </caption>
+  {% endif %}
+
+  {% if has_header %}
+    <thead>
+      {% for row in header_rows %}
+        {{ row | safe }}
+      {% endfor %}
+    </thead>
+  {% endif %}
+
+  <tbody> 
+    {% for row in body_rows %}  
+      {{ row | safe }} 
+    {% endfor %}  
+  </tbody>  
+</table>
