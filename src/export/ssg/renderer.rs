@@ -31,7 +31,7 @@
 //! - css: better apperance
 //! - title: property
 //! - footnote
-
+use html_escape;
 use crate::compiler::Compiler;
 use crate::compiler::ast_builder::element::{
     self, CenterBlock, CommentBlock, Drawer, Element, ExampleBlock, ExportBlock, FixedWidth,
@@ -47,7 +47,6 @@ use petgraph::dot::Dot;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
-use std::ops::Not;
 use std::path::Path;
 
 use fs_extra::dir::{CopyOptions, copy, create_all};
@@ -107,9 +106,9 @@ pub struct RendererConfig {
                      // pub highlight_code_blocks: bool,
 }
 
+// todo: simple render is here, without state, including render_object and some simple render_element
 pub struct ObjectRenderer {}
 
-use html_escape;
 impl ObjectRenderer {
     pub(crate) fn render_object(object: &Object) -> String {
         match object {
@@ -177,7 +176,12 @@ impl ObjectRenderer {
                         path_html,
                         path.split("/").last().expect("todo")
                     )
-                } else {
+                } else if protocol=="id" {
+                    // fixme: if roam id is in other file
+                    let href = format!("#{}", path.strip_prefix("id:").expect("id:"));
+                    format!(r##"<a href="{}">{}</a>"##, href, desc)                    
+                }
+                else {
                     format!(r##"<a href="{}">{}</a>"##, path, desc)
                 }
             }
@@ -201,11 +205,7 @@ impl ObjectRenderer {
 
             Object::Timestamp(text) => {
                 format!(
-                    r##"<span class="timestamp-wrapper">
-  <span class="timestamp">{}
-  </span>
-</span>
-"##,
+                    r##"<span class="timestamp-wrapper"><span class="timestamp">{}</span></span>"##,
                     text.replace("--", "-")
                 )
             }
@@ -217,10 +217,7 @@ impl ObjectRenderer {
             } => {
                 // superscript:label
                 format!(
-                    r##"<sup>
-  <a id="fnr.{label}.{label_rid}" class="footref" href="#fn.{label}" role="doc-backlink">{label}</a>
-</sup>
-"##,
+                    r##"<sup><a id="fnr.{label}.{label_rid}" class="footref" href="#fn.{label}" role="doc-backlink">{label}</a></sup>"##,
                     label_rid = label_rid,
                     label = label,
                 )
@@ -265,9 +262,7 @@ impl ObjectRenderer {
             } => match display_mode {
                 Some(true) => {
                     format!(
-                        r##"\[
-{}\]
-"##,
+                        r##"\[ {} \]"##,
                         content
                     )
                 }
@@ -304,7 +299,7 @@ impl ObjectRenderer {
     pub(crate) fn render_table_row(table_row: &TableRow) -> String {
         match table_row.row_type {
             TableRowType::Data | TableRowType::Header => format!(
-                "  <tr>{}</tr>\n",
+                "<tr>{}</tr>\n",
                 table_row
                     .cells
                     .iter()
@@ -659,6 +654,12 @@ impl Renderer {
             return String::from("");
         }
 
+        let id_html = if let Some(id) = heading.properties.get("ID") {
+            format!(r##"id="{}""##, id)
+        } else {
+            format!("")
+        };
+
         let todo_html = if let Some(todo) = &heading.keyword {
             let class_1 = match todo.as_str().to_uppercase().as_str() {
                 "DONE" => "done",
@@ -715,7 +716,7 @@ impl Renderer {
 
         format!(
             r##"<div class="outline-{level}">
-  <h{level}>
+  <h{level} {id_html}>
   {todo}
   {title}
   {tags}
@@ -729,7 +730,8 @@ impl Renderer {
             todo = todo_html,
             tags = tags_html,
             section = section_html,
-            content = content
+            content = content,
+            id_html = id_html,
         )
     }
 
@@ -873,6 +875,9 @@ impl Renderer {
                         path_html,
                         path.split("/").last().expect("todo")
                     )
+                } else if protocol=="id" {
+                    let href = format!("#{}", path.strip_prefix("id:").expect("id:"));
+                    format!(r##"<a href="{}">{}</a>"##, href, desc)                    
                 } else {
                     format!(r##"<a href="{}">{}</a>"##, path, desc)
                 }
@@ -1250,6 +1255,7 @@ impl Renderer {
         )
     }
 
+    // FIXME: roam id is missed here!!
     fn render_keyword(&self, keyword: &Keyword) -> String {
         match keyword.key.as_str() {
             "title" => format!(
