@@ -31,7 +31,7 @@
 //! - css: better apperance
 //! - title: property
 //! - footnote
-
+use html_escape;
 use crate::compiler::Compiler;
 use crate::compiler::ast_builder::element::{
     self, CenterBlock, CommentBlock, Drawer, Element, ExampleBlock, ExportBlock, FixedWidth,
@@ -47,7 +47,6 @@ use petgraph::dot::Dot;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
-use std::ops::Not;
 use std::path::Path;
 
 use fs_extra::dir::{CopyOptions, copy, create_all};
@@ -64,9 +63,29 @@ fn copy_directory(from: &Path, to: &Path) -> Result<String, fs_extra::error::Err
 }
 
 // todo
-pub struct RendererContext{
+use tera;
+pub struct RendererContext {
     pub table_counter: usize,
     pub figure_counter: usize,
+    pub tera: tera::Tera,
+}
+
+impl Default for RendererContext {
+    fn default() -> Self {
+        let tera = match tera::Tera::new("src/export/ssg/templates/**/*.html") {
+            Ok(t) => t,
+            Err(e) => {
+                tracing::error!("template error: {}", e);
+                ::std::process::exit(1);
+            }
+        };
+
+        Self {
+            tera,
+            table_counter: 0,
+            figure_counter: 0,
+        }
+    }
 }
 
 // context: prev / next
@@ -76,6 +95,7 @@ pub struct Renderer {
     figure_counter: usize,
     footnote_defintions: Vec<FootnoteDefinition>,
     compiler: Compiler,
+    context: RendererContext,
 }
 
 #[derive(Debug, Clone)]
@@ -86,14 +106,13 @@ pub struct RendererConfig {
                      // pub highlight_code_blocks: bool,
 }
 
-pub struct ObjectRenderer {
-
-}
+// todo: simple render is here, without state, including render_object and some simple render_element
+pub struct ObjectRenderer {}
 
 impl ObjectRenderer {
     pub(crate) fn render_object(object: &Object) -> String {
         match object {
-            Object::Text(text) => escape_html(text),
+            Object::Text(text) => html_escape::encode_text(text).to_string(),
 
             Object::Bold(objects) => {
                 let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
@@ -108,7 +127,7 @@ impl ObjectRenderer {
                 let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
                 format!(r##"<span class="underline">{}</span>"##, inner)
             }
-            
+
             Object::Strikethrough(objects) => {
                 let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
                 format!(r##"<del>{}</del>"##, inner)
@@ -157,7 +176,12 @@ impl ObjectRenderer {
                         path_html,
                         path.split("/").last().expect("todo")
                     )
-                } else {
+                } else if protocol=="id" {
+                    // fixme: if roam id is in other file
+                    let href = format!("#{}", path.strip_prefix("id:").expect("id:"));
+                    format!(r##"<a href="{}">{}</a>"##, href, desc)                    
+                }
+                else {
                     format!(r##"<a href="{}">{}</a>"##, path, desc)
                 }
             }
@@ -181,11 +205,7 @@ impl ObjectRenderer {
 
             Object::Timestamp(text) => {
                 format!(
-                    r##"<span class="timestamp-wrapper">
-  <span class="timestamp">{}
-  </span>
-</span>
-"##,
+                    r##"<span class="timestamp-wrapper"><span class="timestamp">{}</span></span>"##,
                     text.replace("--", "-")
                 )
             }
@@ -197,10 +217,7 @@ impl ObjectRenderer {
             } => {
                 // superscript:label
                 format!(
-                    r##"<sup>
-  <a id="fnr.{label}.{label_rid}" class="footref" href="#fn.{label}" role="doc-backlink">{label}</a>
-</sup>
-"##,
+                    r##"<sup><a id="fnr.{label}.{label_rid}" class="footref" href="#fn.{label}" role="doc-backlink">{label}</a></sup>"##,
                     label_rid = label_rid,
                     label = label,
                 )
@@ -245,9 +262,7 @@ impl ObjectRenderer {
             } => match display_mode {
                 Some(true) => {
                     format!(
-                        r##"\[
-{}\]
-"##,
+                        r##"\[ {} \]"##,
                         content
                     )
                 }
@@ -280,8 +295,21 @@ impl ObjectRenderer {
                                    // ... 其他内联元素渲染
         }
     }
-    
 
+    pub(crate) fn render_table_row(table_row: &TableRow) -> String {
+        match table_row.row_type {
+            TableRowType::Data | TableRowType::Header => format!(
+                "<tr>{}</tr>\n",
+                table_row
+                    .cells
+                    .iter()
+                    .map(|e| Self::render_object(&e))
+                    .collect::<String>()
+            ),
+
+            _ => String::new(),
+        }
+    }
 }
 
 impl Default for RendererConfig {
@@ -308,6 +336,7 @@ impl Renderer {
             figure_counter: 0,
             footnote_defintions: vec![],
             compiler: Compiler::new(),
+            context: RendererContext::default(),
         }
     }
 
@@ -625,6 +654,12 @@ impl Renderer {
             return String::from("");
         }
 
+        let id_html = if let Some(id) = heading.properties.get("ID") {
+            format!(r##"id="{}""##, id)
+        } else {
+            format!("")
+        };
+
         let todo_html = if let Some(todo) = &heading.keyword {
             let class_1 = match todo.as_str().to_uppercase().as_str() {
                 "DONE" => "done",
@@ -681,7 +716,7 @@ impl Renderer {
 
         format!(
             r##"<div class="outline-{level}">
-  <h{level}>
+  <h{level} {id_html}>
   {todo}
   {title}
   {tags}
@@ -695,7 +730,8 @@ impl Renderer {
             todo = todo_html,
             tags = tags_html,
             section = section_html,
-            content = content
+            content = content,
+            id_html = id_html,
         )
     }
 
@@ -735,54 +771,14 @@ impl Renderer {
     }
 
     fn render_table(&mut self, table: &Table) -> String {
-        let caption = if table.caption.len() > 0 {
-            self.table_counter = self.table_counter + 1;
-            format!(
-                r##"<caption class="t-above"> <span class="table-number">Table {}:</span> {} </caption>"##,
-                self.table_counter,
-                table
-                    .caption
-                    .iter()
-                    .map(|e| self.render_object(e))
-                    .collect::<String>()
-            )
-        } else {
-            String::from("")
-        };
-
-        let header = table
-            .header
-            .is_empty()
-            .not()
-            .then(|| {
-                format!(
-                    r##"<thead>
-{}
-</thead>"##,
-                    table
-                        .header
-                        .iter()
-                        .map(|r| self.render_table_row(r))
-                        .collect::<String>()
-                )
-            })
-            .unwrap_or_default();
-
-        format!(
-            r##"
- <table border="2">
- {}
- {}
- {}</table>
- "##,
-            caption,
-            header,
-            table
-                .rows
-                .iter()
-                .map(|r| self.render_table_row(r))
-                .collect::<String>()
-        )
+        use crate::export::ssg::view_model::TableViewModel;
+        let table_view_model = TableViewModel::from_ast(table, &mut self.context);
+        let ctx = tera::Context::from_serialize(&table_view_model)
+            .expect("render_table: from serialize failed");
+        self.context
+            .tera
+            .render("table.tera.html", &ctx)
+            .unwrap_or_else(|err| format!("Template rendering table failed: {}", err))
     }
 
     fn render_table_row(&self, table_row: &TableRow) -> String {
@@ -815,7 +811,8 @@ impl Renderer {
     pub(crate) fn render_object(&self, object: &Object) -> String {
         // println!("object={:?}", object);
         match object {
-            Object::Text(text) => escape_html(text),
+            // Object::Text(text) => escape_html(text),
+            Object::Text(text) => html_escape::encode_text(text).to_string(),
 
             Object::Bold(objects) => {
                 let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
@@ -878,6 +875,9 @@ impl Renderer {
                         path_html,
                         path.split("/").last().expect("todo")
                     )
+                } else if protocol=="id" {
+                    let href = format!("#{}", path.strip_prefix("id:").expect("id:"));
+                    format!(r##"<a href="{}">{}</a>"##, href, desc)                    
                 } else {
                     format!(r##"<a href="{}">{}</a>"##, path, desc)
                 }
@@ -1255,6 +1255,7 @@ impl Renderer {
         )
     }
 
+    // FIXME: roam id is missed here!!
     fn render_keyword(&self, keyword: &Keyword) -> String {
         match keyword.key.as_str() {
             "title" => format!(

@@ -274,12 +274,12 @@ impl Site {
         }
 
         let level = page.url.split("/").count();
-            
+
         TocNode {
             title: page.title.clone(),
             path: page.url.clone(),
             children,
-            level
+            level,
         }
     }
 
