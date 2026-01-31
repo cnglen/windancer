@@ -34,7 +34,7 @@ use petgraph::matrix_graph::Zero;
 
 use super::parser::syntax::{OrgSyntaxKind, SyntaxElement, SyntaxNode, SyntaxToken};
 use crate::compiler::org_roam::{NodeType, RoamNode};
-use crate::export::ssg::renderer_vold::{Renderer, RendererConfig};
+use crate::export::ssg::renderer::Renderer;
 
 pub struct AstBuilder;
 
@@ -80,7 +80,7 @@ impl fmt::Debug for SourcePathSegment {
                     r##"{}"##,
                     title
                         .iter()
-                        .map(|o| Renderer::new(RendererConfig::default()).render_object(o))
+                        .map(|o| Renderer::render_object(o))
                         .collect::<Vec<_>>()
                         .join("")
                 )

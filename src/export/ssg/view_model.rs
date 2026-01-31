@@ -1,6 +1,5 @@
 use crate::compiler::ast_builder::element::Table;
-use crate::export::ssg::renderer::{Renderer, RendererContext as RendererContextV2};
-use crate::export::ssg::renderer_vold::{ObjectRenderer, RendererContext};
+use crate::export::ssg::renderer::{Renderer, RendererContext};
 
 #[derive(serde::Serialize)]
 pub struct TableViewModel {
@@ -24,19 +23,19 @@ impl TableViewModel {
         let caption = table
             .caption
             .iter()
-            .map(|e| ObjectRenderer::render_object(e))
+            .map(|e| Renderer::render_object(e))
             .collect::<String>();
 
         let has_header = !table.header.is_empty();
         let header_rows = table
             .header
             .iter()
-            .map(|r| ObjectRenderer::render_table_row(r))
+            .map(|r| Renderer::render_table_row(r))
             .collect();
         let body_rows = table
             .rows
             .iter()
-            .map(|e| ObjectRenderer::render_table_row(e))
+            .map(|e| Renderer::render_table_row(e))
             .collect();
 
         Self {
@@ -52,7 +51,7 @@ impl TableViewModel {
         }
     }
 
-    pub fn from_ast_v2(table: &Table, context: &mut RendererContextV2) -> Self {
+    pub fn from_ast_v2(table: &Table, context: &mut RendererContext) -> Self {
         let has_caption = !table.caption.is_empty();
         let table_number = if has_caption {
             context.table_counter += 1;
@@ -75,7 +74,7 @@ impl TableViewModel {
         let body_rows = table
             .rows
             .iter()
-            .map(|e| ObjectRenderer::render_table_row(e))
+            .map(|e| Renderer::render_table_row(e))
             .collect();
 
         Self {

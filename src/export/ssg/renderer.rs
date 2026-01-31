@@ -109,7 +109,7 @@ pub struct RendererConfig {
 impl Default for RendererConfig {
     fn default() -> Self {
         Self {
-            css: include_str!("default.css").to_string(),
+            css: include_str!("static/default.css").to_string(),
             output_directory: "public".to_string(),
             automatic_equaiton_numbering: true,
         }
@@ -176,7 +176,26 @@ impl Renderer {
         if !d_html.is_dir() {
             fs::create_dir_all(d_html)?;
         }
-        fs::write(f_html, &html)?;
+        fs::write(&f_html, &html)?;
+
+        let f_ast = f_html.parent().unwrap().join(
+            f_html
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .to_string()
+                .replace(".html", "_ast.json"),
+        );
+        fs::write(&f_ast, format!("{:#?}", page.ast));
+        let f_syntax = f_html.parent().unwrap().join(
+            f_html
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .to_string()
+                .replace(".html", "_syntax.json"),
+        );
+        fs::write(&f_syntax, format!("{:#?}", page.syntax_tree));
 
         Ok(String::from(""))
     }

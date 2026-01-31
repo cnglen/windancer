@@ -218,7 +218,7 @@ mod tests {
     #[test]
     fn test_compile_directory() {
         let subscriber = FmtSubscriber::builder()
-            .with_max_level(tracing::Level::DEBUG)
+            .with_max_level(tracing::Level::INFO)
             .finish();
         tracing::subscriber::set_global_default(subscriber).expect("set global subscripber failed");
 

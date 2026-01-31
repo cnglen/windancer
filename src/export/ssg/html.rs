@@ -58,7 +58,7 @@ pub struct RenderConfig {
 impl Default for RenderConfig {
     fn default() -> Self {
         Self {
-            css: include_str!("default.css").to_string(),
+            css: include_str!("static/default.css").to_string(),
         }
     }
 }

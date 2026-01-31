@@ -16,7 +16,7 @@ use petgraph::graph::{DiGraph, NodeIndex};
 use crate::compiler::ast_builder::object::Object;
 use crate::compiler::ast_builder::{SourcePathSegment, element};
 use crate::compiler::content::FileInfo;
-use crate::export::ssg::renderer_vold::{Renderer, RendererConfig};
+use crate::export::ssg::renderer::Renderer;
 
 #[derive(Debug, Clone)]
 pub enum NodeType {
@@ -118,7 +118,7 @@ impl fmt::Debug for RoamNode {
             self.node_type,
             self.title
                 .iter()
-                .map(|o| Renderer::new(RendererConfig::default()).render_object(o))
+                .map(|o| Renderer::render_object(o))
                 .collect::<Vec<_>>()
                 .join(""),
         )

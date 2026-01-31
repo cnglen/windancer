@@ -10,6 +10,7 @@ use walkdir::WalkDir;
 
 use crate::compiler::ast_builder::element::OrgFile;
 use crate::compiler::content::{Document, Section};
+use crate::compiler::parser::syntax::{self, SyntaxNode};
 use crate::export::ssg::toc::{TableOfContents, TocNode};
 
 #[derive(Clone)]
@@ -20,6 +21,7 @@ pub struct Page {
     pub url: String,
     pub metadata: PageMetadata,
     pub ast: OrgFile,
+    pub syntax_tree: SyntaxNode,
 
     // tree: directory/section tree
     // 层级导航，树形结构，生成侧边栏目录、面包屑
@@ -192,6 +194,7 @@ impl SiteBuilder {
             document.html_path()
         );
         let ast = document.ast.clone();
+        let syntax_tree = document.syntax_tree.clone();
         let mut hasher = blake3::Hasher::new();
         hasher.update(format!("{:?}", ast).as_bytes());
         let id = format!("{}", hasher.finalize().to_hex());
@@ -237,6 +240,7 @@ impl SiteBuilder {
                 url,
                 metadata,
                 ast,
+                syntax_tree,
                 parent_id,
                 children_ids,
                 prev_id,
@@ -310,36 +314,60 @@ impl SiteBuilder {
             options.content_only = true;
 
             copy(&static_directory_from, &static_directory_to, &options).expect("copy failed");
+            static_assets.push((static_directory_from, static_directory_to.to_path_buf()));
         }
+        std::fs::copy(
+            "src/export/ssg/static/default.css",
+            static_directory_to.join("default.css"),
+        );
 
         // sass
 
         // non-org file in content
-        let d_output = if let Some(relative_path) = &root_section.file_info.relative_path {
-            Path::new(&self.config.output_directory).join(relative_path)
-        } else {
-            tracing::warn!(
-                "no 'content' found in {}, write to '{:?}' directly",
-                &root_section.file_info.full_path.display(),
-                self.config.output_directory
-            );
-            Path::new(&self.config.output_directory).to_path_buf()
-        };
-        if !d_output.is_dir() {
-            std::fs::create_dir_all(&d_output)?;
-        }
+        // let d_output = if let Some(relative_path) = &root_section.file_info.relative_path {
+        //     Path::new(&self.config.output_directory).join(relative_path)
+        // } else {
+        //     tracing::warn!(
+        //         "no 'content' found in {}, write to '{:?}' directly",
+        //         &root_section.file_info.full_path.display(),
+        //         self.config.output_directory
+        //     );
+        //     Path::new(&self.config.output_directory).to_path_buf()
+        // };
+        // if !d_output.is_dir() {
+        //     std::fs::create_dir_all(&d_output)?;
+        // }
         let directory = &root_section.file_info.full_path;
         for entry in WalkDir::new(directory).into_iter().filter_map(|e| e.ok()) {
             if entry.metadata().unwrap().is_file() {
                 let from = entry.path();
+
+                let mut is_in_content = false;
+                let mut relative_directories = vec![];
+                for section in from.parent().unwrap().components() {
+                    let component = section.as_os_str().to_string_lossy();
+                    if is_in_content {
+                        relative_directories.push(component.to_string());
+                    } else if component == "content" {
+                        is_in_content = true;
+                    }
+                }
+
                 let from_filename = from.file_name().expect("xx").to_string_lossy().to_string();
                 if from.is_file()
                     && from.extension() != Some(std::ffi::OsStr::new("org"))
                     && (!from_filename.starts_with(&['.', '#']))
                 {
-                    let to = d_output.join(from.file_name().unwrap());
+                    let to_directory = Path::new(&self.config.output_directory)
+                        .join(relative_directories.join("/"));
+                    if !to_directory.is_dir() {
+                        std::fs::create_dir_all(&to_directory)?;
+                    }
+
+                    let to = to_directory.join(from.file_name().unwrap());
                     tracing::trace!(from=?from, to=?to, "copy");
-                    std::fs::copy(from, to)?;
+                    std::fs::copy(from, &to)?;
+                    static_assets.push((from.to_path_buf(), to.to_path_buf()));
                 }
             }
         }
