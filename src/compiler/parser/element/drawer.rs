@@ -1,11 +1,11 @@
 //! Drawer parser
-use crate::compiler::parser::config::OrgParserConfig;
-use crate::compiler::parser::{MyExtra, NT, OSK};
-use crate::compiler::parser::{element, object};
-use chumsky::prelude::*;
 use std::ops::Range;
 
+use chumsky::prelude::*;
+
+use crate::compiler::parser::config::OrgParserConfig;
 use crate::compiler::parser::object::just_case_insensitive;
+use crate::compiler::parser::{MyExtra, NT, OSK, element, object};
 
 fn name_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, String, MyExtra<'a, C>> + Clone {
     custom::<_, &str, _, MyExtra<'a, C>>(|inp| {
@@ -289,11 +289,12 @@ pub(crate) fn simple_drawer_parser<'a, C: 'a>(
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
     use crate::compiler::parser::common::get_parser_output;
     use crate::compiler::parser::config::OrgParserConfig;
     use crate::compiler::parser::element;
-    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_drawer_01() {

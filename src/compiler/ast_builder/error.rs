@@ -1,6 +1,8 @@
-use crate::compiler::parser::syntax::OrgSyntaxKind;
 use std::fmt;
+
 use thiserror::Error;
+
+use crate::compiler::parser::syntax::OrgSyntaxKind;
 
 /// AST转换过程中可能出现的错误类型
 #[derive(Debug, Error)]

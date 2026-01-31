@@ -1,11 +1,12 @@
 //! Keyword parser
-use crate::compiler::parser::config::OrgParserConfig;
-use crate::compiler::parser::object::blank_line_parser;
-use crate::compiler::parser::{MyExtra, NT, OSK};
-use crate::compiler::parser::{element, object};
-use chumsky::prelude::*;
 use std::collections::HashSet;
 use std::ops::Range;
+
+use chumsky::prelude::*;
+
+use crate::compiler::parser::config::OrgParserConfig;
+use crate::compiler::parser::object::blank_line_parser;
+use crate::compiler::parser::{MyExtra, NT, OSK, element, object};
 
 pub(crate) fn affiliated_keyword_parser_inner<'a, C: 'a>(
     org_element_dual_keywords_parsed: HashSet<String>,
@@ -436,11 +437,12 @@ pub(crate) fn simple_keyword_parser<'a, C: 'a + std::default::Default>(
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
     use crate::compiler::parser::common::{get_parser_output, get_parsers_output};
     use crate::compiler::parser::config::OrgParserConfig;
     use crate::compiler::parser::element;
-    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_keyword_01() {

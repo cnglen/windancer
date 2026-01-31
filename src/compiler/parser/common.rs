@@ -1,9 +1,8 @@
-use super::syntax::OrgLanguage;
-use super::{MyExtra, NT, OSK};
-use super::{MyState, ParserState};
 use chumsky::prelude::*;
-use rowan::NodeOrToken;
-use rowan::SyntaxNode;
+use rowan::{NodeOrToken, SyntaxNode};
+
+use super::syntax::OrgLanguage;
+use super::{MyExtra, MyState, NT, OSK, ParserState};
 
 #[allow(dead_code)]
 pub(crate) fn get_parser_output<'a, C: 'a + std::default::Default>(

@@ -1,7 +1,7 @@
 //! Horizontal rule parser
-use crate::compiler::parser::object;
-use crate::compiler::parser::{MyExtra, NT, OSK};
 use chumsky::prelude::*;
+
+use crate::compiler::parser::{MyExtra, NT, OSK, object};
 
 pub(crate) fn horizontal_rule_parser<'a, C: 'a>()
 -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
@@ -38,10 +38,10 @@ pub(crate) fn horizontal_rule_parser<'a, C: 'a>()
 
 #[cfg(test)]
 mod tests {
-    use crate::compiler::parser::common::get_parser_output;
+    use pretty_assertions::assert_eq;
 
     use super::*;
-    use pretty_assertions::assert_eq;
+    use crate::compiler::parser::common::get_parser_output;
 
     #[test]
     fn test_horizontal_rule_01() {

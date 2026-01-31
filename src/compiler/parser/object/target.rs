@@ -1,6 +1,7 @@
 //! target parser
-use crate::compiler::parser::{MyExtra, NT, OSK};
 use chumsky::prelude::*;
+
+use crate::compiler::parser::{MyExtra, NT, OSK};
 
 /// target parser: <<TARGET>>
 pub(crate) fn target_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
@@ -41,10 +42,10 @@ pub(crate) fn target_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra
 
 #[cfg(test)]
 mod tests {
-    use crate::compiler::parser::common::get_parser_output;
     use pretty_assertions::assert_eq;
 
     use super::target_parser;
+    use crate::compiler::parser::common::get_parser_output;
 
     #[test]
     fn test_target_01() {

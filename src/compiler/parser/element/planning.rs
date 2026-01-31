@@ -1,7 +1,7 @@
 //! Planning parser
-use crate::compiler::parser::object;
-use crate::compiler::parser::{MyExtra, NT, OSK};
 use chumsky::prelude::*;
+
+use crate::compiler::parser::{MyExtra, NT, OSK, object};
 
 pub(crate) fn planning_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     object::whitespaces()
@@ -57,9 +57,10 @@ pub(crate) fn planning_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExt
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use crate::compiler::parser::common::get_parser_output;
     use crate::compiler::parser::element::planning::planning_parser;
-    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_planning_01() {

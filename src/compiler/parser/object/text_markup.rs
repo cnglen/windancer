@@ -1,6 +1,7 @@
 //! Text markup parser, including bold, italic, underline, strikethrough, verbatim and code.
-use crate::compiler::parser::{MyExtra, NT, OSK, object};
 use chumsky::prelude::*;
+
+use crate::compiler::parser::{MyExtra, NT, OSK, object};
 
 pub(crate) fn contents_parser<'a, C: 'a>(
     marker: char,
@@ -157,10 +158,11 @@ pub(crate) fn simple_text_markup_parser<'a, C: 'a>()
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use crate::compiler::parser::common::get_parsers_output;
     use crate::compiler::parser::config::OrgParserConfig;
-    use crate::compiler::parser::object;
-    use pretty_assertions::assert_eq; // 该包仅能用于测试
+    use crate::compiler::parser::object; // 该包仅能用于测试
 
     #[test]
     fn test_markup_01_basic_en() {

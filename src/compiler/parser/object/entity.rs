@@ -1,8 +1,8 @@
 //! Entity parser
-use crate::compiler::parser::object;
-use crate::compiler::parser::{MyExtra, NT, OSK};
-use crate::constants::entity::ENTITYNAME_SET;
 use chumsky::prelude::*;
+
+use crate::compiler::parser::{MyExtra, NT, OSK, object};
+use crate::constants::entity::ENTITYNAME_SET;
 
 /// Entity parser
 // PEG:
@@ -62,11 +62,12 @@ pub(crate) fn entity_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
     use crate::compiler::parser::common::{get_parser_output, get_parsers_output};
     use crate::compiler::parser::config::OrgParserConfig;
     use crate::compiler::parser::object;
-    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_01_name_post() {

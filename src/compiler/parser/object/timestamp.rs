@@ -1,9 +1,8 @@
 //! timestamp parser
-use crate::compiler::parser::{MyExtra, NT, OSK};
-use chrono::DateTime;
-use chrono::TimeZone;
-use chrono::{Local, NaiveDateTime};
+use chrono::{DateTime, Local, NaiveDateTime, TimeZone};
 use chumsky::prelude::*;
+
+use crate::compiler::parser::{MyExtra, NT, OSK};
 
 pub struct FlexibleDateTimeParser {
     formats: Vec<&'static str>,
@@ -131,10 +130,11 @@ pub(crate) fn timestamp_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyEx
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use crate::compiler::parser::common::get_parsers_output;
     use crate::compiler::parser::config::OrgParserConfig;
     use crate::compiler::parser::object;
-    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_timestamp_01() {

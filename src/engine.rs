@@ -1,10 +1,12 @@
 // remove this file: compiler.compile() -> Vec<AST> -> Exporter -> Target
 use std::fs;
 
-use crate::compiler::ast_builder::AstBuilder;
-use crate::compiler::parser::{OrgParser, config::OrgParserConfig, config::OrgUseSubSuperscripts};
-use crate::export::ssg::html::{HtmlRenderer, RenderConfig};
 use walkdir::WalkDir;
+
+use crate::compiler::ast_builder::AstBuilder;
+use crate::compiler::parser::OrgParser;
+use crate::compiler::parser::config::{OrgParserConfig, OrgUseSubSuperscripts};
+use crate::export::ssg::html::{HtmlRenderer, RenderConfig};
 
 pub struct Engine {
     parser: OrgParser,

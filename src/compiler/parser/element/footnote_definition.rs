@@ -1,8 +1,8 @@
 //! Footnote definition parser
-use crate::compiler::parser::config::OrgParserConfig;
-use crate::compiler::parser::{MyExtra, NT, OSK};
-use crate::compiler::parser::{element, object};
 use chumsky::prelude::*;
+
+use crate::compiler::parser::config::OrgParserConfig;
+use crate::compiler::parser::{MyExtra, NT, OSK, element, object};
 
 pub(crate) fn label_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Clone
 {
@@ -101,11 +101,12 @@ pub(crate) fn simple_footnote_definition_parser<'a, C: 'a>(
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
     use crate::compiler::parser::common::get_parser_output;
     use crate::compiler::parser::config::OrgParserConfig;
     use crate::compiler::parser::element;
-    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_footnote_defintion_01() {

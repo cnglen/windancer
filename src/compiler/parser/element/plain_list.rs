@@ -1,8 +1,8 @@
 //! plain list parser
-use crate::compiler::parser::config::OrgParserConfig;
-use crate::compiler::parser::{MyExtra, NT, OSK};
-use crate::compiler::parser::{element, object};
 use chumsky::prelude::*;
+
+use crate::compiler::parser::config::OrgParserConfig;
+use crate::compiler::parser::{MyExtra, NT, OSK, element, object};
 
 // counter <- ([0-9]+ / [a-z])
 fn item_counter_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Clone {
@@ -328,10 +328,11 @@ pub(crate) fn simple_plain_list_parser<'a, C: 'a + std::default::Default>(
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use crate::compiler::parser::common::get_parser_output;
     use crate::compiler::parser::config::OrgParserConfig;
     use crate::compiler::parser::element;
-    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_list_01() {

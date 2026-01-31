@@ -1,8 +1,8 @@
 //! Paragraph parser
-use crate::compiler::parser::config::OrgParserConfig;
-use crate::compiler::parser::{MyExtra, NT, OSK};
-use crate::compiler::parser::{element, object};
 use chumsky::prelude::*;
+
+use crate::compiler::parser::config::OrgParserConfig;
+use crate::compiler::parser::{MyExtra, NT, OSK, element, object};
 
 // non_paragraph_parser: used for negative lookahead
 pub(crate) fn paragraph_parser<'a, C: 'a + std::default::Default>(
@@ -93,10 +93,12 @@ pub(crate) fn paragraph_parser_with_at_least_n_affiliated_keywords<
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::compiler::parser::config::OrgParserConfig;
-    use crate::compiler::parser::{common::get_parser_output, common::get_parsers_output, element};
     use pretty_assertions::assert_eq;
+
+    use super::*;
+    use crate::compiler::parser::common::{get_parser_output, get_parsers_output};
+    use crate::compiler::parser::config::OrgParserConfig;
+    use crate::compiler::parser::element;
 
     #[test]
     fn test_paragraph_01() {

@@ -1,7 +1,11 @@
+use std::fs;
+use std::time::Duration;
+
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
-use orgize::{Org as OrgizeOrg, rowan::ast::AstNode};
-use std::{fs, time::Duration};
-use windancer::compiler::parser::{OrgParser, config::OrgParserConfig};
+use orgize::Org as OrgizeOrg;
+use orgize::rowan::ast::AstNode;
+use windancer::compiler::parser::OrgParser;
+use windancer::compiler::parser::config::OrgParserConfig;
 
 fn bench_windancer_orgize(c: &mut Criterion) {
     let f_org = "tests/test.org";

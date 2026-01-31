@@ -1,6 +1,6 @@
-use crate::compiler::parser::object;
-use crate::compiler::parser::{MyExtra, NT, OSK};
 use chumsky::prelude::*;
+
+use crate::compiler::parser::{MyExtra, NT, OSK, object};
 
 /// table cell parser
 pub(crate) fn table_cell_parser<'a, C: 'a>(
@@ -39,10 +39,11 @@ pub(crate) fn table_cell_parser<'a, C: 'a>(
 }
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
     use crate::compiler::parser::common::get_parser_output;
     use crate::compiler::parser::config::OrgParserConfig;
-    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_table_cell_01() {

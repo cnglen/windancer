@@ -5,14 +5,14 @@ pub(crate) mod object;
 mod org_file;
 pub(crate) mod syntax;
 
-use chrono::prelude::*;
-use chumsky::prelude::*;
-use rowan::{GreenNode, GreenNodeBuilder, GreenToken, NodeOrToken, WalkEvent};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
-use syntax::OrgSyntaxKind;
-use syntax::SyntaxNode;
+
+use chrono::prelude::*;
+use chumsky::prelude::*;
+use rowan::{GreenNode, GreenNodeBuilder, GreenToken, NodeOrToken, WalkEvent};
+use syntax::{OrgSyntaxKind, SyntaxNode};
 use tracing;
 
 pub mod config;

@@ -1,4 +1,5 @@
 //! Render document for SSG
+//! Site -> Output directory (Using Tera)
 
 // input: Section(doc:=meta+org)
 // output: HTML site
@@ -31,8 +32,13 @@
 //! - css: better apperance
 //! - title: property
 //! - footnote
+use std::collections::HashMap;
+use std::fs;
+use std::path::Path;
+
+use fs_extra::dir::{CopyOptions, copy, create_all};
 use html_escape;
-use crate::compiler::Compiler;
+
 use crate::compiler::ast_builder::element::{
     self, CenterBlock, CommentBlock, Drawer, Element, ExampleBlock, ExportBlock, FixedWidth,
     FootnoteDefinition, HeadingSubtree, Item, Keyword, LatexEnvironment, List, ListType, Paragraph,
@@ -41,15 +47,9 @@ use crate::compiler::ast_builder::element::{
 use crate::compiler::ast_builder::object::{GeneralLink, Object, TableCellType};
 use crate::compiler::content::{Document, Section as ContentSection};
 use crate::constants::entity::ENTITYNAME_TO_HTML;
-use crate::export::ssg::site::Site;
+use crate::export::ssg::site::{Site, SiteBuilder};
 use crate::export::ssg::toc::{TableOfContents, TocNode};
-use petgraph::dot::Dot;
-use std::collections::HashMap;
-use std::ffi::OsStr;
-use std::fs;
-use std::path::Path;
-
-use fs_extra::dir::{CopyOptions, copy, create_all};
+use crate::export::ssg::view_model::TableViewModel;
 
 fn copy_directory(from: &Path, to: &Path) -> Result<String, fs_extra::error::Error> {
     let mut options = CopyOptions::new();
@@ -62,8 +62,6 @@ fn copy_directory(from: &Path, to: &Path) -> Result<String, fs_extra::error::Err
     Ok("todo".to_string())
 }
 
-// todo
-use tera;
 pub struct RendererContext {
     pub table_counter: usize,
     pub figure_counter: usize,
@@ -91,10 +89,7 @@ impl Default for RendererContext {
 // context: prev / next
 pub struct Renderer {
     config: RendererConfig,
-    table_counter: usize,
-    figure_counter: usize,
     footnote_defintions: Vec<FootnoteDefinition>,
-    compiler: Compiler,
     context: RendererContext,
 }
 
@@ -106,217 +101,22 @@ pub struct RendererConfig {
                      // pub highlight_code_blocks: bool,
 }
 
-// todo: simple render is here, without state, including render_object and some simple render_element
-pub struct ObjectRenderer {}
-
-impl ObjectRenderer {
-    pub(crate) fn render_object(object: &Object) -> String {
-        match object {
-            Object::Text(text) => html_escape::encode_text(text).to_string(),
-
-            Object::Bold(objects) => {
-                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
-                format!("<b>{}</b>", inner)
-            }
-            Object::Italic(objects) => {
-                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
-                format!("<i>{}</i>", inner)
-            }
-
-            Object::Underline(objects) => {
-                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
-                format!(r##"<span class="underline">{}</span>"##, inner)
-            }
-
-            Object::Strikethrough(objects) => {
-                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
-                format!(r##"<del>{}</del>"##, inner)
-            }
-
-            Object::Code(objects) => {
-                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
-                format!(r##"<code>{}</code>"##, inner)
-            }
-
-            Object::Verbatim(objects) => {
-                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
-                format!(r##"<code>{}</code>"##, inner)
-            }
-
-            Object::Whitespace(content) => {
-                format!(r##"{}"##, content)
-            }
-
-            Object::GeneralLink(GeneralLink {
-                protocol,
-                description,
-                path,
-                is_image,
-            }) => {
-                let desc = if description.len() == 0 {
-                    path
-                } else {
-                    &description
-                        .iter()
-                        .map(|e| Self::render_object(e))
-                        .collect::<String>()
-                };
-
-                if protocol == "fuzzy" {
-                    format!(r##"<a href="#{}">{}</a>"##, path, desc)
-                } else if description.len() == 0 && *is_image {
-                    let path_html = if path.starts_with("file:") {
-                        path.strip_prefix("file:").unwrap()
-                    } else {
-                        path
-                    };
-
-                    format!(
-                        r##"<img src="{}" alt="{}">"##,
-                        path_html,
-                        path.split("/").last().expect("todo")
-                    )
-                } else if protocol=="id" {
-                    // fixme: if roam id is in other file
-                    let href = format!("#{}", path.strip_prefix("id:").expect("id:"));
-                    format!(r##"<a href="{}">{}</a>"##, href, desc)                    
-                }
-                else {
-                    format!(r##"<a href="{}">{}</a>"##, path, desc)
-                }
-            }
-
-            Object::TableCell(table_cell) => {
-                let contents = table_cell
-                    .contents
-                    .iter()
-                    .map(|e| Self::render_object(e))
-                    .collect::<String>();
-
-                match table_cell.cell_type {
-                    TableCellType::Header => format!(r##" <th>{}</th> "##, contents),
-                    TableCellType::Data => format!(r##" <td>{}</td> "##, contents),
-                }
-            }
-
-            Object::Target(text) => {
-                format!(r##"<a id="{text}"></a>"##)
-            }
-
-            Object::Timestamp(text) => {
-                format!(
-                    r##"<span class="timestamp-wrapper"><span class="timestamp">{}</span></span>"##,
-                    text.replace("--", "-")
-                )
-            }
-
-            Object::FootnoteReference {
-                label,
-                nid: _,
-                label_rid,
-            } => {
-                // superscript:label
-                format!(
-                    r##"<sup><a id="fnr.{label}.{label_rid}" class="footref" href="#fn.{label}" role="doc-backlink">{label}</a></sup>"##,
-                    label_rid = label_rid,
-                    label = label,
-                )
-            }
-
-            Object::Entity { name } => {
-                let v = match ENTITYNAME_TO_HTML.get(name) {
-                    Some(v) => v,
-                    None => "fixme!! error occured",
-                };
-
-                format!("{v}")
-            }
-
-            Object::LineBreak => {
-                format!("<br>\n")
-            }
-
-            Object::RadioTarget(objects) => {
-                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
-                format!(r##"<a id="{inner}">{inner}</a>"##)
-            }
-
-            Object::RadioLink(objects) => {
-                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
-                format!(r##"<a href="#{inner}">{inner}</a>"##)
-            }
-
-            Object::Subscript(objects) => {
-                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
-                format!(r##"<sub>{}</sub>"##, inner)
-            }
-
-            Object::Superscript(objects) => {
-                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
-                format!(r##"<sup>{}</sup>"##, inner)
-            }
-
-            Object::LatexFragment {
-                content,
-                display_mode,
-            } => match display_mode {
-                Some(true) => {
-                    format!(
-                        r##"\[ {} \]"##,
-                        content
-                    )
-                }
-                Some(false) => {
-                    format!(r"\({}\)", content)
-                }
-
-                None => String::from(content),
-            },
-
-            Object::StatisticsCookie(value) => {
-                format!("{}", value)
-            }
-
-            Object::ExportSnippet { backend, value } => {
-                if backend == "html" {
-                    format!("{}", value)
-                } else {
-                    // ignore other backend
-                    format!("")
-                }
-            }
-
-            _ => String::from(""), // AstInline::Link { url, text } => {
-                                   //     format!(r#"<a href="{}">{}</a>"#, escape_html(url), escape_html(text))
-                                   // }
-                                   // AstInline::Code(code) => {
-                                   //     format!("<code>{}</code>", escape_html(code))
-                                   // }
-                                   // ... 其他内联元素渲染
-        }
-    }
-
-    pub(crate) fn render_table_row(table_row: &TableRow) -> String {
-        match table_row.row_type {
-            TableRowType::Data | TableRowType::Header => format!(
-                "<tr>{}</tr>\n",
-                table_row
-                    .cells
-                    .iter()
-                    .map(|e| Self::render_object(&e))
-                    .collect::<String>()
-            ),
-
-            _ => String::new(),
-        }
-    }
-}
-
 impl Default for RendererConfig {
     fn default() -> Self {
         Self {
             css: include_str!("default.css").to_string(),
             output_directory: "public".to_string(),
+        }
+    }
+}
+
+impl Default for Renderer {
+
+    fn default() -> Self {
+        Self {
+            config: RendererConfig::default(),
+            context: RendererContext::default(),
+            footnote_defintions: vec![],
         }
     }
 }
@@ -332,307 +132,145 @@ impl Renderer {
     pub fn new(config: RendererConfig) -> Self {
         Self {
             config: config,
-            table_counter: 0,
-            figure_counter: 0,
             footnote_defintions: vec![],
-            compiler: Compiler::new(),
             context: RendererContext::default(),
         }
     }
 
-    pub fn build_file<P: AsRef<Path>>(&mut self, f_org: P) -> std::io::Result<String> {
-        let doc = self
-            .compiler
-            .compile_file(f_org)
-            .expect("no Document compiled");
-        self.render_document(&doc, None)?;
-
-        Ok("todo".to_string())
-    }
-
     pub fn render_site(&mut self, site: &Site) {
-        tracing::info!("build ...");
-
-        // // prepare output directory
-        // let output_directory = Path::new(&self.config.output_directory);
-        // if output_directory.exists() {
-        //     let now_utc = chrono::Utc::now();
-        //     let created_ts = now_utc.format("%Y%m%dT%H%M%SZ").to_string();
-        //     let backup_directory = format!("{}.backup_{}", output_directory.display(), created_ts);
-        //     tracing::info!(
-        //         "backup {} -> {}",
-        //         output_directory.display(),
-        //         backup_directory
-        //     );
-        //     fs::rename(output_directory, backup_directory)?;
-        // }
-        // let _ = create_all(output_directory, true);
-
-        // render all pages
-        // let mut stats = RenderStats::new();
-        //  for page in site.pages.values() {
-        //      let html = self.render_page(page, site)?;
-        //      let file_path = self.determine_page_path(page, output_dir);
-        //      fs::write(&file_path, html)?;
-        //      stats.pages_rendered += 1;
-        //  }
-
-        // site map?
-
-        // copy static?
-        // let static_directory_from = section
-        //     .file_info
-        //     .full_path
-        //     .parent()
-        //     .expect("must have parent directory")
-        //     .join("static");
-        // let static_directory_to = Path::new(&self.config.output_directory);
-        // if static_directory_from.is_dir() {
-        //     tracing::debug!(from=?static_directory_from.display(), to=?static_directory_to.display());
-        //     let _ = copy_directory(&static_directory_from, static_directory_to);
-        // }
-        tracing::info!("renderer done");
-
-        // Ok(self.config.output_directory.clone())
+        tracing::debug!("  render site todo");
+        for (id, page) in site.pages.iter() {
+            // self.render_page(page);
+        }
     }
 
-    // Site
-    pub fn build<P: AsRef<Path>>(&mut self, d_org: P) -> std::io::Result<String> {
-        tracing::info!("build ...");
+//     fn render_page(
+//         &mut self,
+//         page: &Page,
+//         toc: Option<TableOfContents>,
+//     ) -> std::io::Result<String> {
+//         tracing::trace!(full_path=?document.file_info.full_path, "render_document():");
 
-        let output_directory = Path::new(&self.config.output_directory);
-        if output_directory.exists() {
-            let now_utc = chrono::Utc::now();
-            let created_ts = now_utc.format("%Y%m%dT%H%M%SZ").to_string();
-            let backup_directory = format!("{}.backup_{}", output_directory.display(), created_ts);
-            tracing::info!(
-                "backup {} -> {}",
-                output_directory.display(),
-                backup_directory
-            );
-            fs::rename(output_directory, backup_directory)?;
-        }
-        let _ = create_all(output_directory, true);
+//         let toc = if let Some(toc) = toc {
+//             toc.to_html_nav(Some(document.html_path().as_str()))
+//         } else {
+//             "".to_string()
+//         };
 
-        let d_org = d_org.as_ref();
-        let section = self
-            .compiler
-            .compile_section(d_org)
-            .expect("no Document compiled");
+//         let org_file = &document.ast;
 
-        tracing::debug!("docs={:?}", section.documents);
-        let g = section.build_graph();
-        let g_dot = Dot::new(&g.graph);
-        tracing::debug!("Basic DOT format:\n{:?}\n", g_dot);
-        tracing::debug!("{:#?}", g.graph);
+//         self.footnote_defintions = org_file.footnote_definitions.clone();
+//         let mut output = String::new();
+//         if let Some(section) = &org_file.zeroth_section {
+//             output.push_str(&self.render_section(section));
+//         }
 
-        // let toc_node = TocNode::from_section(&section);
-        // let toc = TableOfContents::new(toc_node.children);
+//         for subtree in &org_file.heading_subtrees {
+//             output.push_str(&self.render_heading_subtree(subtree));
+//         }
 
-        // tracing::debug!("toc={:?}", toc);
-        // tracing::debug!("toc_html={:}", toc.to_html_nav(Some("git.html")));
+//         let title = match org_file.keywords.get("title") {
+//             Some(objects) => objects
+//                 .iter()
+//                 .map(|e| Self::render_object(e))
+//                 .collect::<String>(),
+//             None => String::from(""),
+//         };
 
-        use crate::export::ssg::site::SiteBuilder;
-        let mut site_builder = SiteBuilder::default();
-        let site = site_builder.build(&section).unwrap();
-        // tracing::debug!("site: pages {:#?}", site.pages);
-        let toc = site.toc();
-        // tracing::debug!("toc2={:?}", toc);
+//         let post_amble = format!(r##"<div id="postamble" class="status"> </div>"##,);
 
-        self.render_content_section(&section, Some(toc))?;
+//         let automatic_equation_numbering = true;
+//         let aen = if automatic_equation_numbering {
+//             r##"<script>
+//     window.MathJax = {
+//       tex: {
+//        tags: 'ams'
+//       }
+//     };
 
-        let static_directory_from = section
-            .file_info
-            .full_path
-            .parent()
-            .expect("must have parent directory")
-            .join("static");
-        let static_directory_to = Path::new(&self.config.output_directory);
-        if static_directory_from.is_dir() {
-            tracing::debug!(from=?static_directory_from.display(), to=?static_directory_to.display());
-            let _ = copy_directory(&static_directory_from, static_directory_to);
-        }
-        tracing::info!("build done");
+//     window.onload = function() {
+//       document.querySelectorAll('div.code pre.src code').forEach(el => {
+//         hljs.highlightElement(el);
+//       });
+//     };
+//     </script>"##
+//         } else {
+//             r##"<script>
+//     window.onload = function() {
+//       document.querySelectorAll('div.code pre.src code').forEach(el => {
+//         hljs.highlightElement(el);
+//       });
+//     };
+//     </script>"##
+//         };
 
-        Ok(self.config.output_directory.clone())
-    }
+//         let myhtml = format!(
+//             r##"<!DOCTYPE html>
+// <html>
+//   <head>
+//     <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+//     <meta name="viewport" content="width=device-width, initial-scale=1">
+//     <meta name="generator" content="Org Mode">
 
-    // image and other files
-    fn render_content_section(
-        &mut self,
-        section: &ContentSection,
-        toc: Option<TableOfContents>,
-    ) -> std::io::Result<String> {
-        for doc in &section.documents {
-            self.render_document(doc, toc.clone())?;
-        }
+//     <title>{}</title>
 
-        for subsection in &section.subsections {
-            self.render_content_section(subsection, toc.clone())?;
-        }
+//     <script defer src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
 
-        // copy other files
-        tracing::trace!("section_info={:?}", section.file_info);
-        let d_output = if let Some(relative_path) = &section.file_info.relative_path {
-            Path::new(&self.config.output_directory).join(relative_path)
-        } else {
-            tracing::warn!(
-                "no 'content' found in {}, write to '{}' directly",
-                &section.file_info.full_path.display(),
-                self.config.output_directory
-            );
-            Path::new(&self.config.output_directory).to_path_buf()
-        };
+//     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css">
+//     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
 
-        if !d_output.is_dir() {
-            fs::create_dir_all(&d_output)?;
-        }
+//     <style type="text/css">
+//     {}
+//     </style>
+//     {}
+//   </head>
+//   <body>
 
-        let directory = &section.file_info.full_path;
-        for entry in fs::read_dir(directory)? {
-            let from = entry?.path();
-            let from_filename = from.file_name().expect("xx").to_string_lossy().to_string();
+//   <div id="content" class="content">
+//     <div id="table-of-contents" role="doc-toc">
+//       <div id="text-table-of-contents" role="doc-toc">
+//       {}
+//       </div>
+//     </div>
+//   {}
+//   </div>
+//   {}
+//   </body>
+// </html>"##,
+//             title, self.config.css, aen, toc, output, post_amble
+//         );
 
-            if from.is_file()
-                && from.extension() != Some(OsStr::new("org"))
-                && (!from_filename.starts_with(&['.', '#']))
-            {
-                let to = d_output.join(from.file_name().unwrap());
-                tracing::trace!(from=?from, to=?to, "copy");
-                fs::copy(from, to)?;
-            }
-        }
+//         let f_output_html = Path::new(&self.config.output_directory).join(document.html_path());
+//         let d_output_html = f_output_html
+//             .parent()
+//             .expect("should have parent directory");
+//         if !d_output_html.is_dir() {
+//             fs::create_dir_all(&d_output_html)?;
+//         }
+//         tracing::trace!(f_output_html = ?f_output_html.display());
+//         fs::write(&f_output_html, &myhtml)?;
 
-        Ok(String::new())
-    }
+//         let f_ast = f_output_html.parent().unwrap().join(
+//             f_output_html
+//                 .file_name()
+//                 .unwrap()
+//                 .to_string_lossy()
+//                 .to_string()
+//                 .replace(".html", "_ast.json"),
+//         );
+//         fs::write(&f_ast, format!("{:#?}", document.ast));
+//         let f_syntax = f_output_html.parent().unwrap().join(
+//             f_output_html
+//                 .file_name()
+//                 .unwrap()
+//                 .to_string_lossy()
+//                 .to_string()
+//                 .replace(".html", "_syntax.json"),
+//         );
+//         fs::write(&f_syntax, format!("{:#?}", document.syntax_tree));
 
-    fn render_document(
-        &mut self,
-        document: &Document,
-        toc: Option<TableOfContents>,
-    ) -> std::io::Result<String> {
-        tracing::trace!(full_path=?document.file_info.full_path, "render_document():");
-
-        let toc = if let Some(toc) = toc {
-            toc.to_html_nav(Some(document.html_path().as_str()))
-        } else {
-            "".to_string()
-        };
-
-        let org_file = &document.ast;
-
-        self.footnote_defintions = org_file.footnote_definitions.clone();
-        let mut output = String::new();
-        if let Some(section) = &org_file.zeroth_section {
-            output.push_str(&self.render_section(section));
-        }
-
-        for subtree in &org_file.heading_subtrees {
-            output.push_str(&self.render_heading_subtree(subtree));
-        }
-
-        let title = match org_file.keywords.get("title") {
-            Some(objects) => objects
-                .iter()
-                .map(|e| self.render_object(e))
-                .collect::<String>(),
-            None => String::from(""),
-        };
-
-        let post_amble = format!(r##"<div id="postamble" class="status"> </div>"##,);
-
-        let automatic_equation_numbering = true;
-        let aen = if automatic_equation_numbering {
-            r##"<script>
-    window.MathJax = {
-      tex: {
-       tags: 'ams'
-      }
-    };
-
-    window.onload = function() {
-      document.querySelectorAll('div.code pre.src code').forEach(el => {
-        hljs.highlightElement(el);
-      });
-    };
-    </script>"##
-        } else {
-            r##"<script>
-    window.onload = function() {
-      document.querySelectorAll('div.code pre.src code').forEach(el => {
-        hljs.highlightElement(el);
-      });
-    };
-    </script>"##
-        };
-
-        let myhtml = format!(
-            r##"<!DOCTYPE html>
-<html>
-  <head>
-    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="generator" content="Org Mode">
-
-    <title>{}</title>
-
-    <script defer src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
-
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
-
-    <style type="text/css">
-    {}
-    </style>
-    {}
-  </head>
-  <body>
-
-  <div id="content" class="content">
-    <div id="table-of-contents" role="doc-toc">
-      <div id="text-table-of-contents" role="doc-toc">
-      {}
-      </div>
-    </div>
-  {}
-  </div>
-  {}
-  </body>
-</html>"##,
-            title, self.config.css, aen, toc, output, post_amble
-        );
-
-        let f_output_html = Path::new(&self.config.output_directory).join(document.html_path());
-        let d_output_html = f_output_html
-            .parent()
-            .expect("should have parent directory");
-        if !d_output_html.is_dir() {
-            fs::create_dir_all(&d_output_html)?;
-        }
-        tracing::trace!(f_output_html = ?f_output_html.display());
-        fs::write(&f_output_html, &myhtml)?;
-
-        let f_ast = f_output_html.parent().unwrap().join(
-            f_output_html
-                .file_name()
-                .unwrap()
-                .to_string_lossy()
-                .to_string()
-                .replace(".html", "_ast.json"),
-        );
-        fs::write(&f_ast, format!("{:#?}", document.ast));
-        let f_syntax = f_output_html.parent().unwrap().join(
-            f_output_html
-                .file_name()
-                .unwrap()
-                .to_string_lossy()
-                .to_string()
-                .replace(".html", "_syntax.json"),
-        );
-        fs::write(&f_syntax, format!("{:#?}", document.syntax_tree));
-
-        Ok(myhtml)
-    }
+//         Ok(myhtml)
+//     }
 
     fn render_section(&mut self, section: &Section) -> String {
         section
@@ -646,7 +284,7 @@ impl Renderer {
         let title = heading
             .title
             .iter()
-            .map(|e| self.render_object(e))
+            .map(|e| Self::render_object(e))
             .collect::<String>();
 
         if heading.is_commented {
@@ -743,24 +381,24 @@ impl Renderer {
             Element::CenterBlock(center_block) => self.render_center_block(center_block),
             Element::QuoteBlock(quote_block) => self.render_quote_block(quote_block),
             Element::SpecialBlock(special_block) => self.render_special_block(special_block),
-            Element::ExampleBlock(example_block) => self.render_example_block(example_block),
-            Element::ExportBlock(export_block) => self.render_export_block(export_block),
-            Element::CommentBlock(comment_block) => self.render_comment_block(comment_block),
-            Element::SrcBlock(src_block) => self.render_src_block(src_block),
-            Element::VerseBlock(verse_block) => self.render_verse_block(verse_block),
+            Element::ExampleBlock(example_block) => Self::render_example_block(example_block),
+            Element::ExportBlock(export_block) => Self::render_export_block(export_block),
+            Element::CommentBlock(_comment_block) => Self::render_comment_block(),
+            Element::SrcBlock(src_block) => Self::render_src_block(src_block),
+            Element::VerseBlock(verse_block) => Self::render_verse_block(verse_block),
 
             Element::List(list) => self.render_list(list),
-            Element::Comment(_) => self.render_comment(),
-            Element::FixedWidth(fixed_width) => self.render_fixed_width(fixed_width),
+            Element::Comment(_) => Self::render_comment(),
+            Element::FixedWidth(fixed_width) => Self::render_fixed_width(fixed_width),
 
             Element::Item(item) => self.render_item(item),
             Element::FootnoteDefinition(footnote_definition) => {
                 // String::from("")
                 self.render_footnote_definition(footnote_definition)
             }
-            Element::HorizontalRule(_) => self.render_horizontal_rule(),
+            Element::HorizontalRule(_) => Self::render_horizontal_rule(),
             Element::Keyword(keyword) => self.render_keyword(keyword),
-            Element::LatexEnvironment(env) => self.render_latex_environment(env),
+            Element::LatexEnvironment(env) => Self::render_latex_environment(env),
 
             _ => String::from(""),
             // AstElement::List(list) => self.render_list(list),
@@ -771,8 +409,7 @@ impl Renderer {
     }
 
     fn render_table(&mut self, table: &Table) -> String {
-        use crate::export::ssg::view_model::TableViewModel;
-        let table_view_model = TableViewModel::from_ast(table, &mut self.context);
+        let table_view_model = TableViewModel::from_ast_v2(table, &mut self.context);
         let ctx = tera::Context::from_serialize(&table_view_model)
             .expect("render_table: from serialize failed");
         self.context
@@ -781,14 +418,14 @@ impl Renderer {
             .unwrap_or_else(|err| format!("Template rendering table failed: {}", err))
     }
 
-    fn render_table_row(&self, table_row: &TableRow) -> String {
+    pub(crate) fn render_table_row(table_row: &TableRow) -> String {
         match table_row.row_type {
             TableRowType::Data | TableRowType::Header => format!(
-                "  <tr>{}</tr>\n",
+                "<tr>{}</tr>\n",
                 table_row
                     .cells
                     .iter()
-                    .map(|e| self.render_object(&e))
+                    .map(|e| Self::render_object(&e))
                     .collect::<String>()
             ),
 
@@ -796,49 +433,40 @@ impl Renderer {
         }
     }
 
-    fn render_drawer(&mut self, drawer: &Drawer) -> String {
-        drawer
-            .contents
-            .iter()
-            .map(|c| self.render_element(c))
-            .collect()
-    }
-
-    fn render_comment(&self) -> String {
+    fn render_comment() -> String {
         String::from("")
     }
 
-    pub(crate) fn render_object(&self, object: &Object) -> String {
-        // println!("object={:?}", object);
+    pub(crate) fn render_object(object: &Object) -> String {
         match object {
-            // Object::Text(text) => escape_html(text),
             Object::Text(text) => html_escape::encode_text(text).to_string(),
 
             Object::Bold(objects) => {
-                let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
                 format!("<b>{}</b>", inner)
             }
             Object::Italic(objects) => {
-                let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
                 format!("<i>{}</i>", inner)
             }
+
             Object::Underline(objects) => {
-                let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
                 format!(r##"<span class="underline">{}</span>"##, inner)
             }
 
             Object::Strikethrough(objects) => {
-                let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
                 format!(r##"<del>{}</del>"##, inner)
             }
 
             Object::Code(objects) => {
-                let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
                 format!(r##"<code>{}</code>"##, inner)
             }
 
             Object::Verbatim(objects) => {
-                let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
                 format!(r##"<code>{}</code>"##, inner)
             }
 
@@ -857,7 +485,7 @@ impl Renderer {
                 } else {
                     &description
                         .iter()
-                        .map(|e| self.render_object(e))
+                        .map(|e| Self::render_object(e))
                         .collect::<String>()
                 };
 
@@ -875,9 +503,10 @@ impl Renderer {
                         path_html,
                         path.split("/").last().expect("todo")
                     )
-                } else if protocol=="id" {
+                } else if protocol == "id" {
+                    // fixme: if roam id is in other file
                     let href = format!("#{}", path.strip_prefix("id:").expect("id:"));
-                    format!(r##"<a href="{}">{}</a>"##, href, desc)                    
+                    format!(r##"<a href="{}">{}</a>"##, href, desc)
                 } else {
                     format!(r##"<a href="{}">{}</a>"##, path, desc)
                 }
@@ -887,7 +516,7 @@ impl Renderer {
                 let contents = table_cell
                     .contents
                     .iter()
-                    .map(|e| self.render_object(e))
+                    .map(|e| Self::render_object(e))
                     .collect::<String>();
 
                 match table_cell.cell_type {
@@ -902,11 +531,7 @@ impl Renderer {
 
             Object::Timestamp(text) => {
                 format!(
-                    r##"<span class="timestamp-wrapper">
-  <span class="timestamp">{}
-  </span>
-</span>
-"##,
+                    r##"<span class="timestamp-wrapper"><span class="timestamp">{}</span></span>"##,
                     text.replace("--", "-")
                 )
             }
@@ -918,10 +543,7 @@ impl Renderer {
             } => {
                 // superscript:label
                 format!(
-                    r##"<sup>
-  <a id="fnr.{label}.{label_rid}" class="footref" href="#fn.{label}" role="doc-backlink">{label}</a>
-</sup>
-"##,
+                    r##"<sup><a id="fnr.{label}.{label_rid}" class="footref" href="#fn.{label}" role="doc-backlink">{label}</a></sup>"##,
                     label_rid = label_rid,
                     label = label,
                 )
@@ -941,22 +563,22 @@ impl Renderer {
             }
 
             Object::RadioTarget(objects) => {
-                let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
                 format!(r##"<a id="{inner}">{inner}</a>"##)
             }
 
             Object::RadioLink(objects) => {
-                let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
                 format!(r##"<a href="#{inner}">{inner}</a>"##)
             }
 
             Object::Subscript(objects) => {
-                let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
                 format!(r##"<sub>{}</sub>"##, inner)
             }
 
             Object::Superscript(objects) => {
-                let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
                 format!(r##"<sup>{}</sup>"##, inner)
             }
 
@@ -965,12 +587,7 @@ impl Renderer {
                 display_mode,
             } => match display_mode {
                 Some(true) => {
-                    format!(
-                        r##"\[
-{}\]
-"##,
-                        content
-                    )
+                    format!(r##"\[ {} \]"##, content)
                 }
                 Some(false) => {
                     format!(r"\({}\)", content)
@@ -1002,6 +619,80 @@ impl Renderer {
         }
     }
 
+    fn render_example_block(block: &ExampleBlock) -> String {
+        format!(
+            r##"<pre class="example">{}</pre>"##,
+            block
+                .contents
+                .iter()
+                .map(|e| Self::render_object(e))
+                .collect::<String>()
+        )
+    }
+
+    fn render_verse_block(block: &VerseBlock) -> String {
+        format!(
+            r##"<p class="verse">{}</p>"##,
+            block
+                .contents
+                .iter()
+                .map(|e| Self::render_object(e))
+                .collect::<String>()
+        )
+    }
+
+    fn render_src_block(block: &SrcBlock) -> String {
+        let s = block
+            .contents
+            .iter()
+            .map(|e| Self::render_object(e))
+            .collect::<String>();
+        format!(
+            r##"<div class="code org-src-container"><pre class="src src-{}"><code class="language-{}">{}</code></pre></div>"##,
+            block.language, block.language, s
+        )
+    }
+
+    // FIXME: only supoort html now
+    fn render_export_block(block: &ExportBlock) -> String {
+        format!(
+            r##"{}"##,
+            block
+                .contents
+                .iter()
+                .map(|e| Self::render_object(e))
+                .collect::<String>()
+        )
+    }
+
+    fn render_comment_block() -> String {
+        format!(r##""##)
+    }
+
+    fn render_fixed_width(block: &FixedWidth) -> String {
+        format!(
+            r##"<pre class="example">{}</pre>"##,
+            block.text.replace("\n", "<br>\n")
+        )
+    }
+
+    fn render_horizontal_rule() -> String {
+        format!(r##"<hr>"##)
+    }
+
+    fn render_latex_environment(latex_environment: &LatexEnvironment) -> String {
+        format!(r##"{}"##, latex_environment.text)
+    }
+    
+    fn render_drawer(&mut self, drawer: &Drawer) -> String {
+        drawer
+            .contents
+            .iter()
+            .map(|c| self.render_element(c))
+            .collect()
+    }
+
+
     // <p class=?>?
     // image
     // table
@@ -1013,7 +704,7 @@ impl Renderer {
             .map(|e| {
                 e.value
                     .iter()
-                    .map(|ee| self.render_object(ee))
+                    .map(|ee| Self::render_object(ee))
                     .collect::<Vec<String>>()
                     .join("")
             })
@@ -1043,7 +734,7 @@ impl Renderer {
         let contents: String = paragraph
             .objects
             .iter()
-            .map(|object| self.render_object(object))
+            .map(|object| Self::render_object(object))
             .collect();
 
         if is_figure_only_paragrah {
@@ -1054,7 +745,7 @@ impl Renderer {
                 .map(|e| {
                     e.value
                         .iter()
-                        .map(|ee| self.render_object(ee))
+                        .map(|ee| Self::render_object(ee))
                         .collect::<Vec<String>>()
                         .join("")
                 })
@@ -1074,7 +765,7 @@ impl Renderer {
                 .collect::<Vec<String>>()
                 .join(" ");
 
-            self.figure_counter = self.figure_counter + 1;
+            self.context.figure_counter = self.context.figure_counter + 1;
 
             let path = match &paragraph.objects[0] {
                 Object::GeneralLink(GeneralLink { path, .. }) => path,
@@ -1093,7 +784,7 @@ impl Renderer {
 <p> <span class="figure-number">Figure {}: </span> {}</p>
 </div>
 "##,
-                path_html, attr_html, self.figure_counter, caption,
+                path_html, attr_html, self.context.figure_counter, caption,
             )
         } else {
             format!(
@@ -1193,67 +884,6 @@ impl Renderer {
         )
     }
 
-    fn render_example_block(&self, block: &ExampleBlock) -> String {
-        format!(
-            r##"<pre class="example">
-{}</pre>
-"##,
-            block
-                .contents
-                .iter()
-                .map(|e| self.render_object(e))
-                .collect::<String>()
-        )
-    }
-
-    fn render_verse_block(&self, block: &VerseBlock) -> String {
-        format!(
-            r##"<p class="verse">
-{}</p>
-"##,
-            block
-                .contents
-                .iter()
-                .map(|e| self.render_object(e))
-                .collect::<String>()
-        )
-    }
-
-    fn render_src_block(&self, block: &SrcBlock) -> String {
-        let s = block
-            .contents
-            .iter()
-            .map(|e| self.render_object(e))
-            .collect::<String>();
-        format!(
-            r##"<div class="code org-src-container"><pre class="src src-{}"><code class="language-{}">{}</code></pre></div>"##,
-            block.language, block.language, s
-        )
-    }
-
-    // FIXME: only supoort html now
-    fn render_export_block(&self, block: &ExportBlock) -> String {
-        format!(
-            r##"{}"##,
-            block
-                .contents
-                .iter()
-                .map(|e| self.render_object(e))
-                .collect::<String>()
-        )
-    }
-
-    fn render_comment_block(&self, _block: &CommentBlock) -> String {
-        format!(r##""##)
-    }
-
-    fn render_fixed_width(&self, block: &FixedWidth) -> String {
-        format!(
-            r##"<pre class="example">{}</pre>
-"##,
-            block.text.replace("\n", "<br>\n")
-        )
-    }
 
     // FIXME: roam id is missed here!!
     fn render_keyword(&self, keyword: &Keyword) -> String {
@@ -1263,7 +893,7 @@ impl Renderer {
                 keyword
                     .value
                     .iter()
-                    .map(|e| self.render_object(e))
+                    .map(|e| Self::render_object(e))
                     .collect::<String>()
             ),
             _ => format!(r##""##),
@@ -1337,7 +967,7 @@ impl Renderer {
         let tag_html = item
             .tag
             .iter()
-            .map(|e| self.render_object(e))
+            .map(|e| Self::render_object(e))
             .collect::<String>();
 
         format!(
@@ -1364,20 +994,6 @@ impl Renderer {
         //         }
     }
 
-    fn render_horizontal_rule(&self) -> String {
-        format!(
-            r##"<hr>
-"##
-        )
-    }
-
-    fn render_latex_environment(&self, latex_environment: &LatexEnvironment) -> String {
-        format!(
-            r##"{}
-"##,
-            latex_environment.text
-        )
-    }
 }
 
 // HTML转义工具函数
@@ -1385,43 +1001,3 @@ fn escape_html(text: &str) -> String {
     // html_escape::encode_text(text).to_string()
     text.to_string()
 }
-
-#[cfg(test)]
-mod tests {
-    use super::{Renderer, RendererConfig};
-    use crate::compiler::Compiler;
-    use tracing_subscriber::FmtSubscriber;
-
-    #[test]
-    fn test_render_document() {
-        let subscriber = FmtSubscriber::builder()
-            .with_max_level(tracing::Level::DEBUG)
-            .finish();
-        tracing::subscriber::set_global_default(subscriber).expect("set global subscripber failed");
-
-        let f_org = "tests/test.org";
-        let mut renderer = Renderer::new(RendererConfig::default());
-        renderer.build_file(f_org);
-    }
-
-    #[test]
-    fn test_render_content_section() {
-        let subscriber = FmtSubscriber::builder()
-            .with_max_level(tracing::Level::TRACE)
-            .finish();
-        tracing::subscriber::set_global_default(subscriber).expect("set global subscripber failed");
-
-        let d_org = "tests";
-        // let d_org = "/tmp/content";
-        let d_org = "/home/touch/note/content";
-        let mut renderer = Renderer::new(RendererConfig::default());
-        renderer.build(d_org);
-        // let section = compiler.compile_section(d_org).expect("no Document compiled");
-        // renderer.render_content_section(&section);
-    }
-}
-
-// worker:
-// - compiler -> AST Sectoin/Document
-// - site_builder -> Pages
-// - renderer -> HTML write_file (tera)

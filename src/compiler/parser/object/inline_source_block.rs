@@ -1,6 +1,7 @@
 //! inline source block
-use crate::compiler::parser::{MyExtra, NT, OSK, object};
 use chumsky::prelude::*;
+
+use crate::compiler::parser::{MyExtra, NT, OSK, object};
 
 // src_LANG {}
 // src_LANG [HEADER] {}
@@ -59,12 +60,12 @@ pub(crate) fn inline_source_block_parser<'a, C: 'a>()
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
-    use crate::compiler::parser::common::get_parser_output;
-    use crate::compiler::parser::common::get_parsers_output;
+    use crate::compiler::parser::common::{get_parser_output, get_parsers_output};
     use crate::compiler::parser::config::OrgParserConfig;
     use crate::compiler::parser::object;
-    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_inline_source_block_01_without_header() {

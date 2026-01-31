@@ -1,5 +1,6 @@
-use crate::compiler::parser::{MyExtra, NT, OSK};
 use chumsky::prelude::*;
+
+use crate::compiler::parser::{MyExtra, NT, OSK};
 
 /// Macro parser
 pub(crate) fn macro_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {

@@ -1,9 +1,10 @@
 //! Subscript and Superscript
-use crate::compiler::parser::config::OrgUseSubSuperscripts;
-use crate::compiler::parser::{MyExtra, NT, OSK, object};
+use std::ops::Range;
+
 use chumsky::prelude::*;
 
-use std::ops::Range;
+use crate::compiler::parser::config::OrgUseSubSuperscripts;
+use crate::compiler::parser::{MyExtra, NT, OSK, object};
 
 // CHARS FINAL parser:
 // - find the longest string consisting of <alphanumeric characters, commas, backslashes, and dots>, whose length>=1
@@ -313,10 +314,11 @@ pub(crate) fn simple_superscript_parser<'a, C: 'a>(
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use crate::compiler::parser::common::get_parsers_output;
     use crate::compiler::parser::config::OrgParserConfig;
     use crate::compiler::parser::object;
-    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_subscript_01() {

@@ -1,6 +1,7 @@
+use std::path::PathBuf;
+
 use clap::{Parser, Subcommand};
 use clap_complete::Shell;
-use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(version, author, about)]

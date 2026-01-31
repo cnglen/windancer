@@ -1,9 +1,9 @@
 //! Fixed width parser
+use chumsky::prelude::*;
+
 use crate::compiler::parser::config::OrgParserConfig;
 use crate::compiler::parser::object::whitespaces_g1;
-use crate::compiler::parser::{MyExtra, NT, OSK};
-use crate::compiler::parser::{element, object};
-use chumsky::prelude::*;
+use crate::compiler::parser::{MyExtra, NT, OSK, element, object};
 
 pub(crate) fn fixed_width_parser_inner<'a, C: 'a>(
     affiliated_keywords_parser: impl Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone + 'a,
@@ -81,10 +81,11 @@ pub(crate) fn simple_fixed_width_parser<'a, C: 'a>(
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
     use crate::compiler::parser::common::get_parser_output;
     use crate::compiler::parser::config::OrgParserConfig;
-    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_fixed_width_01() {

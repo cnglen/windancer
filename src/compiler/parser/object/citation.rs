@@ -1,7 +1,8 @@
 //! citation
 // todo: check bibliographies
-use crate::compiler::parser::{MyExtra, NT, OSK};
 use chumsky::prelude::*;
+
+use crate::compiler::parser::{MyExtra, NT, OSK};
 
 fn citation_key_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Clone {
     any()
@@ -289,11 +290,12 @@ pub(crate) fn simple_citation_parser<'a, C: 'a>()
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
     use crate::compiler::parser::common::get_parser_output;
     use crate::compiler::parser::config::OrgParserConfig;
     use crate::compiler::parser::object;
-    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_citation_reference_01() {

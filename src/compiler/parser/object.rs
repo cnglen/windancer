@@ -20,8 +20,9 @@ mod target;
 pub(crate) mod text;
 mod text_markup;
 pub(crate) mod timestamp;
-use crate::compiler::parser::config::OrgParserConfig;
-use crate::compiler::parser::config::OrgUseSubSuperscripts;
+use chumsky::prelude::*;
+
+use crate::compiler::parser::config::{OrgParserConfig, OrgUseSubSuperscripts};
 use crate::compiler::parser::object::citation::citation_parser;
 use crate::compiler::parser::object::entity::entity_parser;
 use crate::compiler::parser::object::export_snippet::export_snippet_parser;
@@ -37,14 +38,14 @@ use crate::compiler::parser::object::r#macro::macro_parser;
 use crate::compiler::parser::object::radio_link::radio_link_parser;
 use crate::compiler::parser::object::radio_target::radio_target_parser;
 use crate::compiler::parser::object::statistics_cookie::statistics_cookie_parser;
-use crate::compiler::parser::object::subscript_superscript::subscript_parser;
-use crate::compiler::parser::object::subscript_superscript::superscript_parser;
+use crate::compiler::parser::object::subscript_superscript::{
+    subscript_parser, superscript_parser,
+};
 use crate::compiler::parser::object::target::target_parser;
 use crate::compiler::parser::object::text::plain_text_parser;
 use crate::compiler::parser::object::text_markup::text_markup_parser;
 use crate::compiler::parser::object::timestamp::timestamp_parser;
 use crate::compiler::parser::{MyExtra, NT, OSK};
-use chumsky::prelude::*;
 
 pub const LF: &str = "\n";
 pub const CRLF: &str = "\r\n";
@@ -825,11 +826,13 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
     use crate::compiler::parser::common::{get_parser_output_with_state, get_parsers_output};
+    use crate::compiler::parser::config::OrgParserConfig;
     use crate::compiler::parser::org_file::org_file_parser;
-    use crate::compiler::parser::{OrgParser, ParserState, config::OrgParserConfig};
-    use pretty_assertions::assert_eq;
+    use crate::compiler::parser::{OrgParser, ParserState};
 
     fn get_objects_string() -> String {
         r##"

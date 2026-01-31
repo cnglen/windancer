@@ -1,10 +1,11 @@
 //! link parser, including angle/plain/regular link
-use crate::compiler::parser::object;
-use crate::compiler::parser::{MyExtra, NT, OSK};
+use std::ops::Range;
+
 use chumsky::input::InputRef;
 use chumsky::prelude::*;
 use phf::phf_set;
-use std::ops::Range;
+
+use crate::compiler::parser::{MyExtra, NT, OSK, object};
 
 pub(crate) static LINK_PROTOCOLS: phf::Set<&'static str> = phf_set! {
     "treemacs", "eww", "rmail", "mhe", "irc", "info", "gnus", "docview",
@@ -380,10 +381,11 @@ pub(crate) fn simple_regular_link_parser<'a, C: 'a>()
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use crate::compiler::parser::common::get_parsers_output;
     use crate::compiler::parser::config::OrgParserConfig;
     use crate::compiler::parser::object;
-    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_plain_link_01_http() {

@@ -1,7 +1,7 @@
 //! Section parser
-use crate::compiler::parser::element;
-use crate::compiler::parser::{MyExtra, NT, OSK};
 use chumsky::prelude::*;
+
+use crate::compiler::parser::{MyExtra, NT, OSK, element};
 
 /// Section解析器，返回包含`GreenNode`的ParserResult
 ///
@@ -36,11 +36,12 @@ pub(crate) fn section_parser<'a, C: 'a>(
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
     use crate::compiler::parser::common::get_parser_output;
     use crate::compiler::parser::config::OrgParserConfig;
     use crate::compiler::parser::element::element_in_section_parser;
-    use pretty_assertions::assert_eq;
 
     #[test]
     #[should_panic]

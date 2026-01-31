@@ -1,3 +1,8 @@
+//! Render document for SSG
+
+// input: Section(doc:=meta+org)
+// output: HTML site
+
 //! HtmlRenderer renders AST to HTML string，including three levels:
 //! - OrgFile: `render_document()` renders the `OrgFile` node of AST into html, which calls
 //!   - `render_section()`
@@ -26,56 +31,493 @@
 //! - css: better apperance
 //! - title: property
 //! - footnote
-
 use std::collections::HashMap;
-use std::ops::Not;
+use std::ffi::OsStr;
+use std::fs;
+use std::path::Path;
 
-use chrono::{DateTime, Local};
+use fs_extra::dir::{CopyOptions, copy, create_all};
+use html_escape;
+use petgraph::dot::Dot;
 
+use crate::compiler::Compiler;
 use crate::compiler::ast_builder::element::{
     self, CenterBlock, CommentBlock, Drawer, Element, ExampleBlock, ExportBlock, FixedWidth,
-    FootnoteDefinition, HeadingSubtree, Item, Keyword, LatexEnvironment, List, ListType, OrgFile,
-    Paragraph, QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableRow, TableRowType,
-    VerseBlock,
+    FootnoteDefinition, HeadingSubtree, Item, Keyword, LatexEnvironment, List, ListType, Paragraph,
+    QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableRow, TableRowType, VerseBlock,
 };
 use crate::compiler::ast_builder::object::{GeneralLink, Object, TableCellType};
+use crate::compiler::content::{Document, Section as ContentSection};
 use crate::constants::entity::ENTITYNAME_TO_HTML;
+use crate::export::ssg::site::{Site, SiteBuilder};
+use crate::export::ssg::toc::{TableOfContents, TocNode};
 
-pub struct HtmlRenderer {
-    config: RenderConfig,
+fn copy_directory(from: &Path, to: &Path) -> Result<String, fs_extra::error::Error> {
+    let mut options = CopyOptions::new();
+    options.overwrite = false; // Overwrite existing files
+    options.copy_inside = false;
+    options.content_only = true;
+
+    copy(from, to, &options)?;
+
+    Ok("todo".to_string())
+}
+
+// todo
+use tera;
+pub struct RendererContext {
+    pub table_counter: usize,
+    pub figure_counter: usize,
+    pub tera: tera::Tera,
+}
+
+impl Default for RendererContext {
+    fn default() -> Self {
+        let tera = match tera::Tera::new("src/export/ssg/templates/**/*.html") {
+            Ok(t) => t,
+            Err(e) => {
+                tracing::error!("template error: {}", e);
+                ::std::process::exit(1);
+            }
+        };
+
+        Self {
+            tera,
+            table_counter: 0,
+            figure_counter: 0,
+        }
+    }
+}
+
+// context: prev / next
+pub struct Renderer {
+    config: RendererConfig,
     table_counter: usize,
     figure_counter: usize,
     footnote_defintions: Vec<FootnoteDefinition>,
+    compiler: Compiler,
+    context: RendererContext,
 }
 
 #[derive(Debug, Clone)]
-pub struct RenderConfig {
+pub struct RendererConfig {
+    pub output_directory: String,
     pub css: String, // path of css file
                      // pub class_prefix: String,
                      // pub highlight_code_blocks: bool,
 }
 
-impl Default for RenderConfig {
-    fn default() -> Self {
-        Self {
-            css: include_str!("default.css").to_string(),
+// todo: simple render is here, without state, including render_object and some simple render_element
+pub struct ObjectRenderer {}
+
+impl ObjectRenderer {
+    pub(crate) fn render_object(object: &Object) -> String {
+        match object {
+            Object::Text(text) => html_escape::encode_text(text).to_string(),
+
+            Object::Bold(objects) => {
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                format!("<b>{}</b>", inner)
+            }
+            Object::Italic(objects) => {
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                format!("<i>{}</i>", inner)
+            }
+
+            Object::Underline(objects) => {
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                format!(r##"<span class="underline">{}</span>"##, inner)
+            }
+
+            Object::Strikethrough(objects) => {
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                format!(r##"<del>{}</del>"##, inner)
+            }
+
+            Object::Code(objects) => {
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                format!(r##"<code>{}</code>"##, inner)
+            }
+
+            Object::Verbatim(objects) => {
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                format!(r##"<code>{}</code>"##, inner)
+            }
+
+            Object::Whitespace(content) => {
+                format!(r##"{}"##, content)
+            }
+
+            Object::GeneralLink(GeneralLink {
+                protocol,
+                description,
+                path,
+                is_image,
+            }) => {
+                let desc = if description.len() == 0 {
+                    path
+                } else {
+                    &description
+                        .iter()
+                        .map(|e| Self::render_object(e))
+                        .collect::<String>()
+                };
+
+                if protocol == "fuzzy" {
+                    format!(r##"<a href="#{}">{}</a>"##, path, desc)
+                } else if description.len() == 0 && *is_image {
+                    let path_html = if path.starts_with("file:") {
+                        path.strip_prefix("file:").unwrap()
+                    } else {
+                        path
+                    };
+
+                    format!(
+                        r##"<img src="{}" alt="{}">"##,
+                        path_html,
+                        path.split("/").last().expect("todo")
+                    )
+                } else if protocol == "id" {
+                    // fixme: if roam id is in other file
+                    let href = format!("#{}", path.strip_prefix("id:").expect("id:"));
+                    format!(r##"<a href="{}">{}</a>"##, href, desc)
+                } else {
+                    format!(r##"<a href="{}">{}</a>"##, path, desc)
+                }
+            }
+
+            Object::TableCell(table_cell) => {
+                let contents = table_cell
+                    .contents
+                    .iter()
+                    .map(|e| Self::render_object(e))
+                    .collect::<String>();
+
+                match table_cell.cell_type {
+                    TableCellType::Header => format!(r##" <th>{}</th> "##, contents),
+                    TableCellType::Data => format!(r##" <td>{}</td> "##, contents),
+                }
+            }
+
+            Object::Target(text) => {
+                format!(r##"<a id="{text}"></a>"##)
+            }
+
+            Object::Timestamp(text) => {
+                format!(
+                    r##"<span class="timestamp-wrapper"><span class="timestamp">{}</span></span>"##,
+                    text.replace("--", "-")
+                )
+            }
+
+            Object::FootnoteReference {
+                label,
+                nid: _,
+                label_rid,
+            } => {
+                // superscript:label
+                format!(
+                    r##"<sup><a id="fnr.{label}.{label_rid}" class="footref" href="#fn.{label}" role="doc-backlink">{label}</a></sup>"##,
+                    label_rid = label_rid,
+                    label = label,
+                )
+            }
+
+            Object::Entity { name } => {
+                let v = match ENTITYNAME_TO_HTML.get(name) {
+                    Some(v) => v,
+                    None => "fixme!! error occured",
+                };
+
+                format!("{v}")
+            }
+
+            Object::LineBreak => {
+                format!("<br>\n")
+            }
+
+            Object::RadioTarget(objects) => {
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                format!(r##"<a id="{inner}">{inner}</a>"##)
+            }
+
+            Object::RadioLink(objects) => {
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                format!(r##"<a href="#{inner}">{inner}</a>"##)
+            }
+
+            Object::Subscript(objects) => {
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                format!(r##"<sub>{}</sub>"##, inner)
+            }
+
+            Object::Superscript(objects) => {
+                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                format!(r##"<sup>{}</sup>"##, inner)
+            }
+
+            Object::LatexFragment {
+                content,
+                display_mode,
+            } => match display_mode {
+                Some(true) => {
+                    format!(r##"\[ {} \]"##, content)
+                }
+                Some(false) => {
+                    format!(r"\({}\)", content)
+                }
+
+                None => String::from(content),
+            },
+
+            Object::StatisticsCookie(value) => {
+                format!("{}", value)
+            }
+
+            Object::ExportSnippet { backend, value } => {
+                if backend == "html" {
+                    format!("{}", value)
+                } else {
+                    // ignore other backend
+                    format!("")
+                }
+            }
+
+            _ => String::from(""), // AstInline::Link { url, text } => {
+                                   //     format!(r#"<a href="{}">{}</a>"#, escape_html(url), escape_html(text))
+                                   // }
+                                   // AstInline::Code(code) => {
+                                   //     format!("<code>{}</code>", escape_html(code))
+                                   // }
+                                   // ... 其他内联元素渲染
+        }
+    }
+
+    pub(crate) fn render_table_row(table_row: &TableRow) -> String {
+        match table_row.row_type {
+            TableRowType::Data | TableRowType::Header => format!(
+                "<tr>{}</tr>\n",
+                table_row
+                    .cells
+                    .iter()
+                    .map(|e| Self::render_object(&e))
+                    .collect::<String>()
+            ),
+
+            _ => String::new(),
         }
     }
 }
 
-impl HtmlRenderer {
-    pub fn new(config: RenderConfig) -> Self {
+impl Default for RendererConfig {
+    fn default() -> Self {
+        Self {
+            css: include_str!("default.css").to_string(),
+            output_directory: "public".to_string(),
+        }
+    }
+}
+
+impl Renderer {
+    pub fn slugify(s: String) -> String {
+        s.to_ascii_lowercase()
+            .split(&['-', '_', ' '])
+            .collect::<Vec<_>>()
+            .join("-")
+    }
+
+    pub fn new(config: RendererConfig) -> Self {
         Self {
             config: config,
             table_counter: 0,
             figure_counter: 0,
             footnote_defintions: vec![],
+            compiler: Compiler::new(),
+            context: RendererContext::default(),
         }
     }
 
-    pub fn render_org_file(&mut self, org_file: &OrgFile) -> String {
-        self.footnote_defintions = org_file.footnote_definitions.clone();
+    pub fn build_file<P: AsRef<Path>>(&mut self, f_org: P) -> std::io::Result<String> {
+        let doc = self
+            .compiler
+            .compile_file(f_org)
+            .expect("no Document compiled");
+        self.render_document(&doc, None)?;
 
+        Ok("todo".to_string())
+    }
+
+    pub fn render_site(&mut self, site: &Site) {
+        tracing::info!("build ...");
+
+        // // prepare output directory
+        // let output_directory = Path::new(&self.config.output_directory);
+        // if output_directory.exists() {
+        //     let now_utc = chrono::Utc::now();
+        //     let created_ts = now_utc.format("%Y%m%dT%H%M%SZ").to_string();
+        //     let backup_directory = format!("{}.backup_{}", output_directory.display(), created_ts);
+        //     tracing::info!(
+        //         "backup {} -> {}",
+        //         output_directory.display(),
+        //         backup_directory
+        //     );
+        //     fs::rename(output_directory, backup_directory)?;
+        // }
+        // let _ = create_all(output_directory, true);
+
+        // render all pages
+        // let mut stats = RenderStats::new();
+        //  for page in site.pages.values() {
+        //      let html = self.render_page(page, site)?;
+        //      let file_path = self.determine_page_path(page, output_dir);
+        //      fs::write(&file_path, html)?;
+        //      stats.pages_rendered += 1;
+        //  }
+
+        // site map?
+
+        // copy static?
+        // let static_directory_from = section
+        //     .file_info
+        //     .full_path
+        //     .parent()
+        //     .expect("must have parent directory")
+        //     .join("static");
+        // let static_directory_to = Path::new(&self.config.output_directory);
+        // if static_directory_from.is_dir() {
+        //     tracing::debug!(from=?static_directory_from.display(), to=?static_directory_to.display());
+        //     let _ = copy_directory(&static_directory_from, static_directory_to);
+        // }
+        tracing::info!("renderer done");
+
+        // Ok(self.config.output_directory.clone())
+    }
+
+    // Site
+    pub fn build<P: AsRef<Path>>(&mut self, d_org: P) -> std::io::Result<String> {
+        tracing::info!("build ...");
+
+        let output_directory = Path::new(&self.config.output_directory);
+        if output_directory.exists() {
+            let now_utc = chrono::Utc::now();
+            let created_ts = now_utc.format("%Y%m%dT%H%M%SZ").to_string();
+            let backup_directory = format!("{}.backup_{}", output_directory.display(), created_ts);
+            tracing::info!(
+                "backup {} -> {}",
+                output_directory.display(),
+                backup_directory
+            );
+            fs::rename(output_directory, backup_directory)?;
+        }
+        let _ = create_all(output_directory, true);
+
+        let d_org = d_org.as_ref();
+        let section = self
+            .compiler
+            .compile_section(d_org)
+            .expect("no Document compiled");
+
+        tracing::debug!("docs={:?}", section.documents);
+        let g = section.build_graph();
+        let g_dot = Dot::new(&g.graph);
+        tracing::debug!("Basic DOT format:\n{:?}\n", g_dot);
+        tracing::debug!("{:#?}", g.graph);
+
+        // let toc_node = TocNode::from_section(&section);
+        // let toc = TableOfContents::new(toc_node.children);
+
+        // tracing::debug!("toc={:?}", toc);
+        // tracing::debug!("toc_html={:}", toc.to_html_nav(Some("git.html")));
+
+        let mut site_builder = SiteBuilder::default();
+        let site = site_builder.build(&section).unwrap();
+        // tracing::debug!("site: pages {:#?}", site.pages);
+        let toc = site.toc();
+        // tracing::debug!("toc2={:?}", toc);
+
+        self.render_content_section(&section, Some(toc))?;
+
+        let static_directory_from = section
+            .file_info
+            .full_path
+            .parent()
+            .expect("must have parent directory")
+            .join("static");
+        let static_directory_to = Path::new(&self.config.output_directory);
+        if static_directory_from.is_dir() {
+            tracing::debug!(from=?static_directory_from.display(), to=?static_directory_to.display());
+            let _ = copy_directory(&static_directory_from, static_directory_to);
+        }
+        tracing::info!("build done");
+
+        Ok(self.config.output_directory.clone())
+    }
+
+    // image and other files
+    fn render_content_section(
+        &mut self,
+        section: &ContentSection,
+        toc: Option<TableOfContents>,
+    ) -> std::io::Result<String> {
+        for doc in &section.documents {
+            self.render_document(doc, toc.clone())?;
+        }
+
+        for subsection in &section.subsections {
+            self.render_content_section(subsection, toc.clone())?;
+        }
+
+        // copy other files
+        tracing::trace!("section_info={:?}", section.file_info);
+        let d_output = if let Some(relative_path) = &section.file_info.relative_path {
+            Path::new(&self.config.output_directory).join(relative_path)
+        } else {
+            tracing::warn!(
+                "no 'content' found in {}, write to '{}' directly",
+                &section.file_info.full_path.display(),
+                self.config.output_directory
+            );
+            Path::new(&self.config.output_directory).to_path_buf()
+        };
+
+        if !d_output.is_dir() {
+            fs::create_dir_all(&d_output)?;
+        }
+
+        let directory = &section.file_info.full_path;
+        for entry in fs::read_dir(directory)? {
+            let from = entry?.path();
+            let from_filename = from.file_name().expect("xx").to_string_lossy().to_string();
+
+            if from.is_file()
+                && from.extension() != Some(OsStr::new("org"))
+                && (!from_filename.starts_with(&['.', '#']))
+            {
+                let to = d_output.join(from.file_name().unwrap());
+                tracing::trace!(from=?from, to=?to, "copy");
+                fs::copy(from, to)?;
+            }
+        }
+
+        Ok(String::new())
+    }
+
+    fn render_document(
+        &mut self,
+        document: &Document,
+        toc: Option<TableOfContents>,
+    ) -> std::io::Result<String> {
+        tracing::trace!(full_path=?document.file_info.full_path, "render_document():");
+
+        let toc = if let Some(toc) = toc {
+            toc.to_html_nav(Some(document.html_path().as_str()))
+        } else {
+            "".to_string()
+        };
+
+        let org_file = &document.ast;
+
+        self.footnote_defintions = org_file.footnote_definitions.clone();
         let mut output = String::new();
         if let Some(section) = &org_file.zeroth_section {
             output.push_str(&self.render_section(section));
@@ -93,29 +535,7 @@ impl HtmlRenderer {
             None => String::from(""),
         };
 
-        // fixme: keyword date?
-        let date_html = if let Some(date) = org_file.keywords.get("date") {
-            format!(
-                r##"<p class="date">Date: {}</p>"##,
-                date.iter()
-                    .map(|e| self.render_object(e))
-                    .collect::<String>()
-            )
-        } else {
-            String::from("")
-        };
-
-        let now: DateTime<Local> = Local::now();
-        let created_ts = now.format("%Y-%m-%d %H:%M:%S").to_string();
-        let post_amble = format!(
-            r##"<div id="postamble" class="status">
-    {}
-    <p class="date">Created: {}</p>
-    <p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
-  </div>
-"##,
-            date_html, created_ts
-        );
+        let post_amble = format!(r##"<div id="postamble" class="status"> </div>"##,);
 
         let automatic_equation_numbering = true;
         let aen = if automatic_equation_numbering {
@@ -142,7 +562,7 @@ impl HtmlRenderer {
     </script>"##
         };
 
-        format!(
+        let myhtml = format!(
             r##"<!DOCTYPE html>
 <html>
   <head>
@@ -163,14 +583,51 @@ impl HtmlRenderer {
     {}
   </head>
   <body>
+
   <div id="content" class="content">
+    <div id="table-of-contents" role="doc-toc">
+      <div id="text-table-of-contents" role="doc-toc">
+      {}
+      </div>
+    </div>
   {}
   </div>
   {}
   </body>
 </html>"##,
-            title, self.config.css, aen, output, post_amble
-        )
+            title, self.config.css, aen, toc, output, post_amble
+        );
+
+        let f_output_html = Path::new(&self.config.output_directory).join(document.html_path());
+        let d_output_html = f_output_html
+            .parent()
+            .expect("should have parent directory");
+        if !d_output_html.is_dir() {
+            fs::create_dir_all(&d_output_html)?;
+        }
+        tracing::trace!(f_output_html = ?f_output_html.display());
+        fs::write(&f_output_html, &myhtml)?;
+
+        let f_ast = f_output_html.parent().unwrap().join(
+            f_output_html
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .to_string()
+                .replace(".html", "_ast.json"),
+        );
+        fs::write(&f_ast, format!("{:#?}", document.ast));
+        let f_syntax = f_output_html.parent().unwrap().join(
+            f_output_html
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .to_string()
+                .replace(".html", "_syntax.json"),
+        );
+        fs::write(&f_syntax, format!("{:#?}", document.syntax_tree));
+
+        Ok(myhtml)
     }
 
     fn render_section(&mut self, section: &Section) -> String {
@@ -192,6 +649,12 @@ impl HtmlRenderer {
             // respect comment in heading
             return String::from("");
         }
+
+        let id_html = if let Some(id) = heading.properties.get("ID") {
+            format!(r##"id="{}""##, id)
+        } else {
+            format!("")
+        };
 
         let todo_html = if let Some(todo) = &heading.keyword {
             let class_1 = match todo.as_str().to_uppercase().as_str() {
@@ -249,7 +712,7 @@ impl HtmlRenderer {
 
         format!(
             r##"<div class="outline-{level}">
-  <h{level}>
+  <h{level} {id_html}>
   {todo}
   {title}
   {tags}
@@ -263,7 +726,8 @@ impl HtmlRenderer {
             todo = todo_html,
             tags = tags_html,
             section = section_html,
-            content = content
+            content = content,
+            id_html = id_html,
         )
     }
 
@@ -303,54 +767,14 @@ impl HtmlRenderer {
     }
 
     fn render_table(&mut self, table: &Table) -> String {
-        let caption = if table.caption.len() > 0 {
-            self.table_counter = self.table_counter + 1;
-            format!(
-                r##"<caption class="t-above"> <span class="table-number">Table {}:</span> {} </caption>"##,
-                self.table_counter,
-                table
-                    .caption
-                    .iter()
-                    .map(|e| self.render_object(e))
-                    .collect::<String>()
-            )
-        } else {
-            String::from("")
-        };
-
-        let header = table
-            .header
-            .is_empty()
-            .not()
-            .then(|| {
-                format!(
-                    r##"<thead>
-{}
-</thead>"##,
-                    table
-                        .header
-                        .iter()
-                        .map(|r| self.render_table_row(r))
-                        .collect::<String>()
-                )
-            })
-            .unwrap_or_default();
-
-        format!(
-            r##"
- <table border="2">
- {}
- {}
- {}</table>
- "##,
-            caption,
-            header,
-            table
-                .rows
-                .iter()
-                .map(|r| self.render_table_row(r))
-                .collect::<String>()
-        )
+        use crate::export::ssg::view_model::TableViewModel;
+        let table_view_model = TableViewModel::from_ast(table, &mut self.context);
+        let ctx = tera::Context::from_serialize(&table_view_model)
+            .expect("render_table: from serialize failed");
+        self.context
+            .tera
+            .render("table.tera.html", &ctx)
+            .unwrap_or_else(|err| format!("Template rendering table failed: {}", err))
     }
 
     fn render_table_row(&self, table_row: &TableRow) -> String {
@@ -380,10 +804,11 @@ impl HtmlRenderer {
         String::from("")
     }
 
-    fn render_object(&self, object: &Object) -> String {
+    pub(crate) fn render_object(&self, object: &Object) -> String {
         // println!("object={:?}", object);
         match object {
-            Object::Text(text) => escape_html(text),
+            // Object::Text(text) => escape_html(text),
+            Object::Text(text) => html_escape::encode_text(text).to_string(),
 
             Object::Bold(objects) => {
                 let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
@@ -446,6 +871,9 @@ impl HtmlRenderer {
                         path_html,
                         path.split("/").last().expect("todo")
                     )
+                } else if protocol == "id" {
+                    let href = format!("#{}", path.strip_prefix("id:").expect("id:"));
+                    format!(r##"<a href="{}">{}</a>"##, href, desc)
                 } else {
                     format!(r##"<a href="{}">{}</a>"##, path, desc)
                 }
@@ -823,6 +1251,7 @@ impl HtmlRenderer {
         )
     }
 
+    // FIXME: roam id is missed here!!
     fn render_keyword(&self, keyword: &Keyword) -> String {
         match keyword.key.as_str() {
             "title" => format!(
@@ -951,4 +1380,40 @@ impl HtmlRenderer {
 fn escape_html(text: &str) -> String {
     // html_escape::encode_text(text).to_string()
     text.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use tracing_subscriber::FmtSubscriber;
+
+    use super::{Renderer, RendererConfig};
+    use crate::compiler::Compiler;
+
+    #[test]
+    fn test_render_document() {
+        let subscriber = FmtSubscriber::builder()
+            .with_max_level(tracing::Level::DEBUG)
+            .finish();
+        tracing::subscriber::set_global_default(subscriber).expect("set global subscripber failed");
+
+        let f_org = "tests/test.org";
+        let mut renderer = Renderer::new(RendererConfig::default());
+        renderer.build_file(f_org);
+    }
+
+    #[test]
+    fn test_render_content_section() {
+        let subscriber = FmtSubscriber::builder()
+            .with_max_level(tracing::Level::TRACE)
+            .finish();
+        tracing::subscriber::set_global_default(subscriber).expect("set global subscripber failed");
+
+        let d_org = "tests";
+        // let d_org = "/tmp/content";
+        let d_org = "/home/touch/note/content";
+        let mut renderer = Renderer::new(RendererConfig::default());
+        renderer.build(d_org);
+        // let section = compiler.compile_section(d_org).expect("no Document compiled");
+        // renderer.render_content_section(&section);
+    }
 }

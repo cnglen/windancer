@@ -1,7 +1,8 @@
 //! text parser
+use chumsky::prelude::*;
+
 /// -> other_object parsers (lookahead)
 use crate::compiler::parser::{MyExtra, NT, OSK};
-use chumsky::prelude::*;
 
 // plain text Parser
 pub(crate) fn plain_text_parser<'a, C: 'a>(

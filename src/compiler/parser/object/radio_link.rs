@@ -1,8 +1,9 @@
 //! radio link parser
-use crate::compiler::parser::{MyExtra, NT, OSK, ParserState, object};
 use chumsky::container::Seq;
 use chumsky::input::InputRef;
 use chumsky::prelude::*;
+
+use crate::compiler::parser::{MyExtra, NT, OSK, ParserState, object};
 
 fn try_match_string<'a, C: 'a>(
     stream: &mut InputRef<'a, '_, &'a str, MyExtra<'a, C>>,

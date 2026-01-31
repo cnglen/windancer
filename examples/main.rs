@@ -1,13 +1,15 @@
 // #![allow(warnings)]
 //! `cargo run --example main -- --show-output`
-use orgize::{Org, rowan::ast::AstNode};
 use std::fs;
 use std::time::Instant;
+
+use orgize::Org;
+use orgize::rowan::ast::AstNode;
 use tracing;
 use tracing_subscriber::FmtSubscriber;
 use windancer::compiler::ast_builder::AstBuilder;
-use windancer::compiler::parser::config::OrgUseSubSuperscripts;
-use windancer::compiler::parser::{OrgParser, config::OrgParserConfig};
+use windancer::compiler::parser::OrgParser;
+use windancer::compiler::parser::config::{OrgParserConfig, OrgUseSubSuperscripts};
 use windancer::export::ssg::html::{HtmlRenderer, RenderConfig};
 
 fn main() -> std::io::Result<()> {

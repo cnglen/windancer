@@ -1,9 +1,9 @@
 //! Heading parser, including HeadingRow, HeadingSubtree
+use chumsky::prelude::*;
+
 use crate::compiler::parser::config::OrgTodoKeywords;
 use crate::compiler::parser::element::{drawer, planning, section};
-use crate::compiler::parser::object;
-use crate::compiler::parser::{MyExtra, MyState, NT, OSK};
-use chumsky::prelude::*;
+use crate::compiler::parser::{MyExtra, MyState, NT, OSK, object};
 
 // todo: why usize in C
 // pub(crate) fn heading_subtree_parser<'a, C:'a + std::default::Default>(
@@ -268,12 +268,13 @@ pub(crate) fn simple_heading_row_parser<'a, C: 'a>()
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
     use crate::compiler::parser::common::{get_parser_output, get_parsers_output};
     use crate::compiler::parser::config::OrgParserConfig;
     use crate::compiler::parser::element::element_parser;
     use crate::compiler::parser::object;
-    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_heading_subtree_01() {

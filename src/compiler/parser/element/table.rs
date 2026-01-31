@@ -1,12 +1,11 @@
 //! Table parser
-use crate::compiler::parser::config::OrgParserConfig;
-use crate::compiler::parser::object;
-use crate::compiler::parser::{MyExtra, NT, OSK};
 use chumsky::prelude::*;
 
+use crate::compiler::parser::config::OrgParserConfig;
 use crate::compiler::parser::element::keyword::{
     affiliated_keyword_parser, simple_affiliated_keyword_parser,
 };
+use crate::compiler::parser::{MyExtra, NT, OSK, object};
 
 // Any line with ‘|’ as the first non-whitespace character, then any number of table cells
 fn table_standard_row<'a, C: 'a>(

@@ -1,9 +1,10 @@
 //! AST definition for element in org-mode
+use std::collections::BTreeMap;
+use std::fmt;
+
 use crate::compiler::ast_builder::ExtractedLink;
 use crate::compiler::ast_builder::object::Object;
 use crate::compiler::org_roam::RoamNode;
-use std::collections::BTreeMap;
-use std::fmt;
 
 #[derive(Clone)]
 pub struct OrgFile {

@@ -1,5 +1,4 @@
-use phf::phf_map;
-use phf::phf_set;
+use phf::{phf_map, phf_set};
 
 pub(crate) static ENTITYNAME_TO_HTML: phf::Map<&'static str, &'static str> = phf_map! {
         // * letters

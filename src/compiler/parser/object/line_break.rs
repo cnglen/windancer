@@ -1,7 +1,7 @@
 //! Line break parser
-use crate::compiler::parser::object;
-use crate::compiler::parser::{MyExtra, NT, OSK};
 use chumsky::prelude::*;
+
+use crate::compiler::parser::{MyExtra, NT, OSK, object};
 
 pub(crate) fn line_break_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone
 {

@@ -1,6 +1,7 @@
 //! footnote reference parser
-use crate::compiler::parser::{MyExtra, NT, OSK};
 use chumsky::prelude::*;
+
+use crate::compiler::parser::{MyExtra, NT, OSK};
 
 // - [fn:LABEL]
 // - [fn:LABEL:DEFINITION]
@@ -115,10 +116,11 @@ pub(crate) fn simple_footnote_reference_parser<'a, C: 'a>()
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use crate::compiler::parser::common::get_parsers_output;
     use crate::compiler::parser::config::OrgParserConfig;
     use crate::compiler::parser::object;
-    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_01_fn_label() {

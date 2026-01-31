@@ -5,17 +5,18 @@ pub mod content;
 pub mod org_roam;
 pub mod parser;
 
-use crate::compiler::ast_builder::AstBuilder;
-use crate::compiler::content::{Document, DocumentMetadata, FileInfo, Section, SectionMetadata};
-use crate::compiler::parser::syntax::{OrgSyntaxKind, SyntaxNode};
-use crate::compiler::parser::{
-    OrgParser, config::OrgParserConfig, config::OrgUseSubSuperscripts, get_text,
-};
-use rowan::WalkEvent;
 use std::collections::HashSet;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
+
+use rowan::WalkEvent;
+
+use crate::compiler::ast_builder::AstBuilder;
+use crate::compiler::content::{Document, DocumentMetadata, FileInfo, Section, SectionMetadata};
+use crate::compiler::parser::config::{OrgParserConfig, OrgUseSubSuperscripts};
+use crate::compiler::parser::syntax::{OrgSyntaxKind, SyntaxNode};
+use crate::compiler::parser::{OrgParser, get_text};
 
 pub struct Compiler {
     parser: OrgParser,
@@ -186,10 +187,27 @@ impl Compiler {
     }
 }
 
+impl Default for Compiler {
+
+    fn default() -> Self {
+        let config =
+            OrgParserConfig::default().with_use_sub_superscripts(OrgUseSubSuperscripts::Brace);
+        let parser = OrgParser::new(config);
+        let ast_builder = AstBuilder::new();
+        Self {
+            parser,
+            ast_builder,
+        }
+    }
+
+    
+}
+
 #[cfg(test)]
 mod tests {
-    use super::Compiler;
     use tracing_subscriber::FmtSubscriber;
+
+    use super::Compiler;
 
     #[test]
     fn test_compile_file() {
@@ -208,7 +226,6 @@ mod tests {
         tracing::subscriber::set_global_default(subscriber).expect("set global subscripber failed");
 
         let d_org = "tests";
-        let d_org = "/tmp/content";
         let compiler = Compiler::new();
         let _sections = compiler
             .compile_section(d_org)

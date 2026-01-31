@@ -16,9 +16,10 @@ pub(crate) mod planning;
 pub(crate) mod section;
 pub(crate) mod table;
 
+use chumsky::prelude::*;
+
 use crate::compiler::parser::config::OrgParserConfig;
 use crate::compiler::parser::{MyExtra, NT};
-use chumsky::prelude::*;
 
 // heading should not be in here, since it's parsed by document!
 pub(crate) fn get_element_parser<'a, C: 'a + std::default::Default>(

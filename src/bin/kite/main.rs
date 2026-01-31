@@ -1,6 +1,7 @@
+use std::path::PathBuf;
+
 use clap::Parser;
 use cli::Cli;
-use std::path::PathBuf;
 
 mod cli;
 

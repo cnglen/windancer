@@ -77,11 +77,11 @@
 //         }
 // }
 
-use crate::compiler::parser::config::OrgParserConfig;
-use crate::compiler::parser::{MyExtra, NT, OSK};
-use crate::compiler::parser::{element, object};
 use chumsky::prelude::*;
 use phf::phf_set;
+
+use crate::compiler::parser::config::OrgParserConfig;
+use crate::compiler::parser::{MyExtra, NT, OSK, element, object};
 
 #[allow(unused)]
 #[derive(Clone, Debug)]
@@ -982,11 +982,12 @@ pub(crate) fn simple_special_block_parser<'a, C: 'a + std::default::Default>(
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
     use crate::compiler::parser::common::{get_parser_output, get_parsers_output};
     use crate::compiler::parser::config::OrgParserConfig;
     use crate::compiler::parser::element::element_parser;
-    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_export_block_01() {

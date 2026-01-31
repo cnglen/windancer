@@ -2,6 +2,7 @@
 // #![feature(test)]
 #![allow(warnings)]
 use clap::Parser;
+use export::ssg::StaticSiteGenerator;
 use orgize::config;
 use tracing_subscriber::FmtSubscriber;
 
@@ -9,15 +10,19 @@ mod compiler;
 mod constants;
 mod engine;
 mod export;
+use std::fs;
+
+use orgize::Org;
+use orgize::rowan::ast::AstNode;
+use rowan::{GreenNode, GreenToken, NodeOrToken, WalkEvent};
+use windancer::export::ssg::renderer_vold::{Renderer, RendererConfig};
+
 use crate::compiler::ast_builder::AstBuilder;
+use crate::compiler::parser::OrgParser;
+use crate::compiler::parser::config::{OrgParserConfig, OrgUseSubSuperscripts};
 use crate::compiler::parser::syntax::SyntaxToken;
-use crate::compiler::parser::{OrgParser, config::OrgParserConfig, config::OrgUseSubSuperscripts};
 use crate::engine::Engine;
 use crate::export::ssg::html::HtmlRenderer;
-use orgize::{Org, rowan::ast::AstNode};
-use rowan::{GreenNode, GreenToken, NodeOrToken, WalkEvent};
-use std::fs;
-use windancer::export::ssg::renderer::{Renderer, RendererConfig};
 
 #[derive(Parser)]
 #[command(name = "winancer")]
@@ -49,34 +54,46 @@ fn main() {
     let subscriber = FmtSubscriber::builder().with_max_level(max_level).finish();
     tracing::subscriber::set_global_default(subscriber).expect("set global subscripber failed");
 
-    let mut renderer = Renderer::new(RendererConfig::default());
+    // // v1
+    // let mut renderer = Renderer::new(RendererConfig::default());
 
-    let input = std::path::Path::new(&args.input);
-    if input.is_file() {
-        tracing::debug!("single file mode");
-        let f_org = &args.input.clone();
-        let f_html = match args.output {
-            Some(ref file) => file,
-            None => &args.input.replace(".org", ".html"),
-        };
-        renderer.build_file(f_org);
-    } else if input.is_dir() {
-        tracing::debug!("batch mode in directory");
+    // let input = std::path::Path::new(&args.input);
+    // if input.is_file() {
+    //     tracing::debug!("single file mode");
+    //     let f_org = &args.input.clone();
+    //     let f_html = match args.output {
+    //         Some(ref file) => file,
+    //         None => &args.input.replace(".org", ".html"),
+    //     };
+    //     renderer.build_file(f_org);
+    // } else if input.is_dir() {
+    //     tracing::debug!("batch mode in directory");
 
-        let d_org = if !args.input.clone().ends_with('/') {
-            &format!("{}/", args.input)
-        } else {
-            &args.input
-        };
+    //     let d_org = if !args.input.clone().ends_with('/') {
+    //         &format!("{}/", args.input)
+    //     } else {
+    //         &args.input
+    //     };
 
-        let d_html = match args.output {
-            Some(ref dir) if dir.ends_with('/') => dir,
-            Some(ref dir) => &format!("{}/", dir),
-            None => "./dist/",
-        };
+    //     let d_html = match args.output {
+    //         Some(ref dir) if dir.ends_with('/') => dir,
+    //         Some(ref dir) => &format!("{}/", dir),
+    //         None => "./dist/",
+    //     };
 
-        tracing::debug!("d_org={}, d_html={}", d_org, d_html);
+    //     tracing::debug!("d_org={}, d_html={}", d_org, d_html);
 
-        renderer.build(d_org);
-    }
+    //     renderer.build(d_org);
+    // }
+
+    // v2
+
+    use crate::compiler::Compiler;
+    use crate::export::ssg::Config;
+    use crate::export::ssg::site::SiteBuilder;
+    
+    let mut ssg = StaticSiteGenerator::default();
+    let d_org = args.input.clone();
+    ssg.generate(d_org);
+
 }

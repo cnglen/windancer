@@ -1,6 +1,7 @@
 //! inline babel call
-use crate::compiler::parser::{MyExtra, NT, OSK, object};
 use chumsky::prelude::*;
+
+use crate::compiler::parser::{MyExtra, NT, OSK, object};
 
 // PEG: inline_babel_call <- "call_" NAME ("[" HEADER1 "]")? "(" ARGUMENTS ")" ("[" HEADER2 "]")?
 pub(crate) fn inline_babel_call_parser<'a, C: 'a>()
@@ -66,12 +67,12 @@ pub(crate) fn inline_babel_call_parser<'a, C: 'a>()
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
-    use crate::compiler::parser::common::get_parser_output;
-    use crate::compiler::parser::common::get_parsers_output;
+    use crate::compiler::parser::common::{get_parser_output, get_parsers_output};
     use crate::compiler::parser::config::OrgParserConfig;
     use crate::compiler::parser::object;
-    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_inline_babel_call_01() {

@@ -1,7 +1,8 @@
 //! Latex fragment parser
+use chumsky::prelude::*;
+
 use crate::compiler::parser::{MyExtra, NT, OSK, object};
 use crate::constants::entity::ENTITYNAME_TO_HTML;
-use chumsky::prelude::*;
 
 /// Latex Frament parser
 pub(crate) fn latex_fragment_parser<'a, C: 'a>()
@@ -144,13 +145,14 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>()
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
     // extern crate test;
     use crate::compiler::parser::common::get_parser_output;
     use crate::compiler::parser::common::get_parsers_output;
     use crate::compiler::parser::config::OrgParserConfig;
     use crate::compiler::parser::object::standard_set_object_parser;
-    use pretty_assertions::assert_eq;
     // use test::Bencher;
 
     #[test]

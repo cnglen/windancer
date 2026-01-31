@@ -1,6 +1,7 @@
 //! statistics cookie
-use crate::compiler::parser::{MyExtra, NT, OSK};
 use chumsky::prelude::*;
+
+use crate::compiler::parser::{MyExtra, NT, OSK};
 
 // PEG: statistics_cookie <- "[" ((PERCENT? "%") / (NUM1? "/" NUM2?)) "]"
 pub(crate) fn statistics_cookie_parser<'a, C: 'a>()
@@ -29,9 +30,10 @@ pub(crate) fn statistics_cookie_parser<'a, C: 'a>()
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
     use crate::compiler::parser::common::get_parser_output;
-    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_statistics_cookies_01() {

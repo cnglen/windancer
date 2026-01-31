@@ -1,6 +1,7 @@
 //! radio target parser
-use crate::compiler::parser::{MyExtra, NT, OSK};
 use chumsky::prelude::*;
+
+use crate::compiler::parser::{MyExtra, NT, OSK};
 
 /// radio target parser: <<<TARGET>>>
 fn radio_target_parser_inner<'a, C: 'a>(
@@ -80,9 +81,11 @@ pub(crate) fn simple_radio_target_parser<'a, C: 'a>()
 
 #[cfg(test)]
 mod tests {
-    use crate::compiler::parser::config::OrgParserConfig;
-    use crate::compiler::parser::{common::get_parsers_output, object};
     use pretty_assertions::assert_eq;
+
+    use crate::compiler::parser::common::get_parsers_output;
+    use crate::compiler::parser::config::OrgParserConfig;
+    use crate::compiler::parser::object;
 
     #[test]
     fn test_radio_target_01() {
