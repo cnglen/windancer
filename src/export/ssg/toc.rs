@@ -30,6 +30,12 @@ impl TableOfContents {
     }
 }
 
+impl Default for TableOfContents {
+    fn default() -> Self {
+        Self { root_nodes: vec![] }
+    }
+}
+
 impl TableOfContents {
     pub fn to_html_nav(&self, active_slug: Option<&str>) -> String {
         let tera = match Tera::new("src/export/ssg/templates/**/*.html") {

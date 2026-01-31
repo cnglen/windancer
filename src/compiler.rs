@@ -188,7 +188,6 @@ impl Compiler {
 }
 
 impl Default for Compiler {
-
     fn default() -> Self {
         let config =
             OrgParserConfig::default().with_use_sub_superscripts(OrgUseSubSuperscripts::Brace);
@@ -199,8 +198,6 @@ impl Default for Compiler {
             ast_builder,
         }
     }
-
-    
 }
 
 #[cfg(test)]

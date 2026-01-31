@@ -12,10 +12,10 @@ use std::path::Path;
 use fs_extra::dir::{CopyOptions, copy, create_all};
 
 use crate::compiler::Compiler;
+use crate::export::ssg::renderer::Renderer;
 // ::renderer_vold::Renderer;
 // use crate::export::ssg::renderer::Renderer;
 use crate::export::ssg::site::{SiteBuilder, SiteConfig};
-use crate::export::ssg::renderer::Renderer;
 
 pub struct Config {
     site_config: SiteConfig,
@@ -24,11 +24,10 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            site_config: SiteConfig::default(),            
+            site_config: SiteConfig::default(),
         }
     }
 }
-
 
 pub struct StaticSiteGenerator {
     compiler: Compiler,
@@ -44,11 +43,9 @@ impl Default for StaticSiteGenerator {
             site_builder: SiteBuilder::default(),
             renderer: Renderer::default(),
             config: Config::default(),
-            
         }
     }
 }
-
 
 impl StaticSiteGenerator {
     pub fn generate<P: AsRef<Path>>(&mut self, d_org: P) -> std::io::Result<String> {

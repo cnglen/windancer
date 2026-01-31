@@ -3,7 +3,10 @@
 /// - Section -> SiteBuilder -> Site
 use std::collections::{HashMap, HashSet};
 use std::fmt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+use fs_extra::dir::{CopyOptions, copy, create_all};
+use walkdir::WalkDir;
 
 use crate::compiler::ast_builder::element::OrgFile;
 use crate::compiler::content::{Document, Section};
@@ -34,7 +37,11 @@ pub struct Page {
     pub next_flattened_id: Option<PageId>,
     pub prev_flattened_id: Option<PageId>,
     // is_index?
+
+    // return the html path relatie to root of site, such as "blog/foo/index.html"
+    pub html_path: String,
 }
+
 #[derive(Debug, Clone)]
 pub struct PageMetadata {}
 type PageId = String;
@@ -80,6 +87,9 @@ pub struct Site {
     // build_tag_index(), get_pages_by_tag，generate_tag_pages
     pub tag_index: HashMap<String, Vec<PageId>>,
     pub flattened_pages: Vec<PageId>,
+
+    // static assets: including css/image/fonts.
+    static_assets: Vec<(PathBuf, PathBuf)>,
     // pub knowledge_graph: RoamGraph? // 更好的可视化js?
     // // 🔥 核心图结构
     // // 使用 PageId 作为图的节点，边的类型可以自定义（如：引用、提及、相关）
@@ -139,6 +149,7 @@ impl Default for Site {
             root_page_id: None,
             tag_index: HashMap::new(),
             flattened_pages: vec![],
+            static_assets: vec![],
         }
     }
 }
@@ -234,6 +245,7 @@ impl SiteBuilder {
                 category,
                 next_flattened_id,
                 prev_flattened_id,
+                html_path: document.html_path(),
             },
         );
 
@@ -274,6 +286,67 @@ impl SiteBuilder {
         index_page_id
     }
 
+    // copy and process static assets
+    fn process_static_assets(
+        &mut self,
+        root_section: &Section,
+    ) -> std::io::Result<Vec<(PathBuf, PathBuf)>> {
+        let mut static_assets = vec![];
+
+        // static
+        let static_directory_from = root_section
+            .file_info
+            .full_path
+            .parent()
+            .expect("must have parent directory")
+            .join("static");
+        let static_directory_to = Path::new(&self.config.output_directory);
+        if static_directory_from.is_dir() {
+            tracing::debug!(from=?static_directory_from.display(), to=?static_directory_to.display());
+
+            let mut options = CopyOptions::new();
+            options.overwrite = false; // Overwrite existing files
+            options.copy_inside = false;
+            options.content_only = true;
+
+            copy(&static_directory_from, &static_directory_to, &options).expect("copy failed");
+        }
+
+        // sass
+
+        // non-org file in content
+        let d_output = if let Some(relative_path) = &root_section.file_info.relative_path {
+            Path::new(&self.config.output_directory).join(relative_path)
+        } else {
+            tracing::warn!(
+                "no 'content' found in {}, write to '{:?}' directly",
+                &root_section.file_info.full_path.display(),
+                self.config.output_directory
+            );
+            Path::new(&self.config.output_directory).to_path_buf()
+        };
+        if !d_output.is_dir() {
+            std::fs::create_dir_all(&d_output)?;
+        }
+        let directory = &root_section.file_info.full_path;
+        for entry in WalkDir::new(directory).into_iter().filter_map(|e| e.ok()) {
+            if entry.metadata().unwrap().is_file() {
+                let from = entry.path();
+                let from_filename = from.file_name().expect("xx").to_string_lossy().to_string();
+                if from.is_file()
+                    && from.extension() != Some(std::ffi::OsStr::new("org"))
+                    && (!from_filename.starts_with(&['.', '#']))
+                {
+                    let to = d_output.join(from.file_name().unwrap());
+                    tracing::trace!(from=?from, to=?to, "copy");
+                    std::fs::copy(from, to)?;
+                }
+            }
+        }
+
+        Ok(static_assets)
+    }
+
     /// Build Site from
     pub fn build(&mut self, root_section: &Section) -> std::io::Result<Site> {
         self.pages.clear();
@@ -297,6 +370,8 @@ impl SiteBuilder {
             }
         }
 
+        let static_assets = self.process_static_assets(root_section)?;
+
         // todo:
         // 处理所有页面中的 org-roam 链接，构建图
         // site.build_roam_graph();
@@ -313,6 +388,7 @@ impl SiteBuilder {
             config: self.config.clone(),
             root_page_id,
             pages,
+            static_assets,
             ..Site::default()
         };
 

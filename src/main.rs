@@ -91,9 +91,8 @@ fn main() {
     use crate::compiler::Compiler;
     use crate::export::ssg::Config;
     use crate::export::ssg::site::SiteBuilder;
-    
+
     let mut ssg = StaticSiteGenerator::default();
     let d_org = args.input.clone();
     ssg.generate(d_org);
-
 }

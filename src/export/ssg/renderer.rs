@@ -41,13 +41,14 @@ use html_escape;
 
 use crate::compiler::ast_builder::element::{
     self, CenterBlock, CommentBlock, Drawer, Element, ExampleBlock, ExportBlock, FixedWidth,
-    FootnoteDefinition, HeadingSubtree, Item, Keyword, LatexEnvironment, List, ListType, Paragraph,
-    QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableRow, TableRowType, VerseBlock,
+    FootnoteDefinition, HeadingSubtree, Item, Keyword, LatexEnvironment, List, ListType, OrgFile,
+    Paragraph, QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableRow, TableRowType,
+    VerseBlock,
 };
 use crate::compiler::ast_builder::object::{GeneralLink, Object, TableCellType};
 use crate::compiler::content::{Document, Section as ContentSection};
 use crate::constants::entity::ENTITYNAME_TO_HTML;
-use crate::export::ssg::site::{Site, SiteBuilder};
+use crate::export::ssg::site::{Page, Site, SiteBuilder};
 use crate::export::ssg::toc::{TableOfContents, TocNode};
 use crate::export::ssg::view_model::TableViewModel;
 
@@ -66,22 +67,25 @@ pub struct RendererContext {
     pub table_counter: usize,
     pub figure_counter: usize,
     pub tera: tera::Tera,
+    pub toc: TableOfContents,
 }
 
 impl Default for RendererContext {
     fn default() -> Self {
-        let tera = match tera::Tera::new("src/export/ssg/templates/**/*.html") {
+        let mut tera = match tera::Tera::new("src/export/ssg/templates/**/*.html") {
             Ok(t) => t,
             Err(e) => {
                 tracing::error!("template error: {}", e);
                 ::std::process::exit(1);
             }
         };
+        tera.autoescape_on(vec![]);
 
         Self {
             tera,
             table_counter: 0,
             figure_counter: 0,
+            toc: TableOfContents::default(),
         }
     }
 }
@@ -96,6 +100,7 @@ pub struct Renderer {
 #[derive(Debug, Clone)]
 pub struct RendererConfig {
     pub output_directory: String,
+    pub automatic_equaiton_numbering: bool,
     pub css: String, // path of css file
                      // pub class_prefix: String,
                      // pub highlight_code_blocks: bool,
@@ -106,12 +111,12 @@ impl Default for RendererConfig {
         Self {
             css: include_str!("default.css").to_string(),
             output_directory: "public".to_string(),
+            automatic_equaiton_numbering: true,
         }
     }
 }
 
 impl Default for Renderer {
-
     fn default() -> Self {
         Self {
             config: RendererConfig::default(),
@@ -139,138 +144,57 @@ impl Renderer {
 
     pub fn render_site(&mut self, site: &Site) {
         tracing::debug!("  render site todo");
+        self.context.toc = site.toc();
+
         for (id, page) in site.pages.iter() {
-            // self.render_page(page);
+            self.render_page(page);
         }
     }
 
-//     fn render_page(
-//         &mut self,
-//         page: &Page,
-//         toc: Option<TableOfContents>,
-//     ) -> std::io::Result<String> {
-//         tracing::trace!(full_path=?document.file_info.full_path, "render_document():");
+    fn render_page(&mut self, page: &Page) -> std::io::Result<String> {
+        let mut ctx = tera::Context::new();
+        ctx.insert("title", &page.title);
+        ctx.insert(
+            "toc",
+            &self.context.toc.to_html_nav(Some(page.url.as_str())),
+        );
+        ctx.insert(
+            "automatic_equaiton_numbering",
+            &self.config.automatic_equaiton_numbering,
+        );
+        let content = self.render_org_file(&page.ast);
+        ctx.insert("content", &content);
 
-//         let toc = if let Some(toc) = toc {
-//             toc.to_html_nav(Some(document.html_path().as_str()))
-//         } else {
-//             "".to_string()
-//         };
+        let html = self
+            .context
+            .tera
+            .render("page.tera.html", &ctx)
+            .unwrap_or_else(|err| format!("Template rendering page failed: {}", err));
 
-//         let org_file = &document.ast;
+        let f_html = Path::new(&self.config.output_directory).join(page.html_path.as_str());
+        let d_html = f_html.parent().expect("should have parent directory");
+        if !d_html.is_dir() {
+            fs::create_dir_all(d_html)?;
+        }
+        fs::write(f_html, &html)?;
 
-//         self.footnote_defintions = org_file.footnote_definitions.clone();
-//         let mut output = String::new();
-//         if let Some(section) = &org_file.zeroth_section {
-//             output.push_str(&self.render_section(section));
-//         }
+        Ok(String::from(""))
+    }
 
-//         for subtree in &org_file.heading_subtrees {
-//             output.push_str(&self.render_heading_subtree(subtree));
-//         }
+    fn render_org_file(&mut self, org_file: &OrgFile) -> String {
+        self.footnote_defintions = org_file.footnote_definitions.clone();
 
-//         let title = match org_file.keywords.get("title") {
-//             Some(objects) => objects
-//                 .iter()
-//                 .map(|e| Self::render_object(e))
-//                 .collect::<String>(),
-//             None => String::from(""),
-//         };
+        let mut output = String::new();
+        if let Some(section) = &org_file.zeroth_section {
+            output.push_str(&self.render_section(section));
+        }
 
-//         let post_amble = format!(r##"<div id="postamble" class="status"> </div>"##,);
+        for subtree in &org_file.heading_subtrees {
+            output.push_str(&self.render_heading_subtree(subtree));
+        }
 
-//         let automatic_equation_numbering = true;
-//         let aen = if automatic_equation_numbering {
-//             r##"<script>
-//     window.MathJax = {
-//       tex: {
-//        tags: 'ams'
-//       }
-//     };
-
-//     window.onload = function() {
-//       document.querySelectorAll('div.code pre.src code').forEach(el => {
-//         hljs.highlightElement(el);
-//       });
-//     };
-//     </script>"##
-//         } else {
-//             r##"<script>
-//     window.onload = function() {
-//       document.querySelectorAll('div.code pre.src code').forEach(el => {
-//         hljs.highlightElement(el);
-//       });
-//     };
-//     </script>"##
-//         };
-
-//         let myhtml = format!(
-//             r##"<!DOCTYPE html>
-// <html>
-//   <head>
-//     <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
-//     <meta name="viewport" content="width=device-width, initial-scale=1">
-//     <meta name="generator" content="Org Mode">
-
-//     <title>{}</title>
-
-//     <script defer src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
-
-//     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css">
-//     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
-
-//     <style type="text/css">
-//     {}
-//     </style>
-//     {}
-//   </head>
-//   <body>
-
-//   <div id="content" class="content">
-//     <div id="table-of-contents" role="doc-toc">
-//       <div id="text-table-of-contents" role="doc-toc">
-//       {}
-//       </div>
-//     </div>
-//   {}
-//   </div>
-//   {}
-//   </body>
-// </html>"##,
-//             title, self.config.css, aen, toc, output, post_amble
-//         );
-
-//         let f_output_html = Path::new(&self.config.output_directory).join(document.html_path());
-//         let d_output_html = f_output_html
-//             .parent()
-//             .expect("should have parent directory");
-//         if !d_output_html.is_dir() {
-//             fs::create_dir_all(&d_output_html)?;
-//         }
-//         tracing::trace!(f_output_html = ?f_output_html.display());
-//         fs::write(&f_output_html, &myhtml)?;
-
-//         let f_ast = f_output_html.parent().unwrap().join(
-//             f_output_html
-//                 .file_name()
-//                 .unwrap()
-//                 .to_string_lossy()
-//                 .to_string()
-//                 .replace(".html", "_ast.json"),
-//         );
-//         fs::write(&f_ast, format!("{:#?}", document.ast));
-//         let f_syntax = f_output_html.parent().unwrap().join(
-//             f_output_html
-//                 .file_name()
-//                 .unwrap()
-//                 .to_string_lossy()
-//                 .to_string()
-//                 .replace(".html", "_syntax.json"),
-//         );
-//         fs::write(&f_syntax, format!("{:#?}", document.syntax_tree));
-
-//         Ok(myhtml)
-//     }
+        output
+    }
 
     fn render_section(&mut self, section: &Section) -> String {
         section
@@ -683,7 +607,7 @@ impl Renderer {
     fn render_latex_environment(latex_environment: &LatexEnvironment) -> String {
         format!(r##"{}"##, latex_environment.text)
     }
-    
+
     fn render_drawer(&mut self, drawer: &Drawer) -> String {
         drawer
             .contents
@@ -691,7 +615,6 @@ impl Renderer {
             .map(|c| self.render_element(c))
             .collect()
     }
-
 
     // <p class=?>?
     // image
@@ -884,7 +807,6 @@ impl Renderer {
         )
     }
 
-
     // FIXME: roam id is missed here!!
     fn render_keyword(&self, keyword: &Keyword) -> String {
         match keyword.key.as_str() {
@@ -993,7 +915,6 @@ impl Renderer {
         //             }
         //         }
     }
-
 }
 
 // HTML转义工具函数
