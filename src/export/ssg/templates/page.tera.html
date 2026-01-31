@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Org Mode">
+
+    <title> {{ title }} </title>
+
+    <script defer src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+
+    {# <style type="text/css"> #}
+    {#   {{}} #}
+    {# </style> #}
+    {% if automatic_equaiton_numbering %}
+      <script>
+        window.MathJax = { tex: { tags: 'ams' } };
+        window.onload = function() {
+          document.querySelectorAll('div.code pre.src code').forEach(el => { hljs.highlightElement(el); });
+        };
+      </script>
+    {% else %}
+      <script>
+        window.onload = function() {
+          document.querySelectorAll('div.code pre.src code').forEach(el => { hljs.highlightElement(el); });
+        };
+      </script>"      
+    {% endif %}
+  </head>
+  
+  <body>
+    <div id="content" class="content">
+      <div id="table-of-contents" role="doc-toc">
+        <div id="text-table-of-contents" role="doc-toc">
+          {{ toc }}
+        </div>
+      </div>
+      {{ content }}
+    </div>
+
+    <div id="postamble" class="status"> </div>    
+   </body>
+ </html>
