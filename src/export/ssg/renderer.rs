@@ -36,38 +36,25 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
-use fs_extra::dir::{CopyOptions, copy, create_all};
 use html_escape;
 
 use crate::compiler::ast_builder::element::{
-    self, CenterBlock, CommentBlock, Drawer, Element, ExampleBlock, ExportBlock, FixedWidth,
-    FootnoteDefinition, HeadingSubtree, Item, Keyword, LatexEnvironment, List, ListType, OrgFile,
-    Paragraph, QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableRow, TableRowType,
-    VerseBlock,
+    self, CenterBlock, Drawer, Element, ExampleBlock, ExportBlock, FixedWidth, FootnoteDefinition,
+    HeadingSubtree, Item, Keyword, LatexEnvironment, List, ListType, OrgFile, Paragraph,
+    QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableRow, TableRowType, VerseBlock,
 };
 use crate::compiler::ast_builder::object::{GeneralLink, Object, TableCellType};
-use crate::compiler::content::{Document, Section as ContentSection};
 use crate::constants::entity::ENTITYNAME_TO_HTML;
-use crate::export::ssg::site::{Page, Site, SiteBuilder};
-use crate::export::ssg::toc::{TableOfContents, TocNode};
+use crate::export::ssg::site::{Page, PageId, Site};
+use crate::export::ssg::toc::TableOfContents;
 use crate::export::ssg::view_model::TableViewModel;
-
-fn copy_directory(from: &Path, to: &Path) -> Result<String, fs_extra::error::Error> {
-    let mut options = CopyOptions::new();
-    options.overwrite = false; // Overwrite existing files
-    options.copy_inside = false;
-    options.content_only = true;
-
-    copy(from, to, &options)?;
-
-    Ok("todo".to_string())
-}
 
 pub struct RendererContext {
     pub table_counter: usize,
     pub figure_counter: usize,
     pub tera: tera::Tera,
     pub toc: TableOfContents,
+    pub pageid_url: HashMap<PageId, String>,
 }
 
 impl Default for RendererContext {
@@ -86,6 +73,7 @@ impl Default for RendererContext {
             table_counter: 0,
             figure_counter: 0,
             toc: TableOfContents::default(),
+            pageid_url: HashMap::new(),
         }
     }
 }
@@ -145,9 +133,12 @@ impl Renderer {
     pub fn render_site(&mut self, site: &Site) {
         tracing::debug!("  render site todo");
         self.context.toc = site.toc();
-
         for (id, page) in site.pages.iter() {
-            self.render_page(page);
+            self.context.pageid_url.insert(id.clone(), page.url.clone());
+        }
+
+        for (_id, page) in site.pages.iter() {
+            self.render_page(page).expect("render_page should success");
         }
     }
 
@@ -164,6 +155,13 @@ impl Renderer {
         );
         let content = self.render_org_file(&page.ast);
         ctx.insert("content", &content);
+
+        let prev_url = if let Some(parent_id) = &page.parent_id {
+            Some(self.context.pageid_url.get(parent_id).unwrap().to_string())
+        } else {
+            None
+        };
+        ctx.insert("prev_url", &prev_url);
 
         let html = self
             .context
@@ -186,7 +184,7 @@ impl Renderer {
                 .to_string()
                 .replace(".html", "_ast.json"),
         );
-        fs::write(&f_ast, format!("{:#?}", page.ast));
+        fs::write(&f_ast, format!("{:#?}", page.ast))?;
         let f_syntax = f_html.parent().unwrap().join(
             f_html
                 .file_name()
@@ -195,7 +193,7 @@ impl Renderer {
                 .to_string()
                 .replace(".html", "_syntax.json"),
         );
-        fs::write(&f_syntax, format!("{:#?}", page.syntax_tree));
+        fs::write(&f_syntax, format!("{:#?}", page.syntax_tree))?;
 
         Ok(String::from(""))
     }

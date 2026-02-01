@@ -30,7 +30,6 @@ use element::{
 };
 use error::AstError;
 use object::{CitationReference, GeneralLink, Object, TableCell, TableCellType};
-use petgraph::matrix_graph::Zero;
 
 use super::parser::syntax::{OrgSyntaxKind, SyntaxElement, SyntaxNode, SyntaxToken};
 use crate::compiler::org_roam::{NodeType, RoamNode};
@@ -74,7 +73,11 @@ impl fmt::Debug for SourcePathSegment {
                     path.file_name().expect("todo").to_string_lossy()
                 )
             }
-            SourcePathSegment::Heading { title, id, level } => {
+            SourcePathSegment::Heading {
+                title,
+                id: _,
+                level: _,
+            } => {
                 write!(
                     f,
                     r##"{}"##,

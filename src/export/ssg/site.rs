@@ -1,16 +1,17 @@
+use std::cell::RefCell;
 /// Content Model, where Site is composed of Pages and
 /// - Site := Page + ... + Page
 /// - Section -> SiteBuilder -> Site
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt;
 use std::path::{Path, PathBuf};
 
-use fs_extra::dir::{CopyOptions, copy, create_all};
+use fs_extra::dir::{CopyOptions, copy};
 use walkdir::WalkDir;
 
 use crate::compiler::ast_builder::element::OrgFile;
 use crate::compiler::content::{Document, Section};
-use crate::compiler::parser::syntax::{self, SyntaxNode};
+use crate::compiler::parser::syntax::{OrgSyntaxKind, SyntaxNode};
 use crate::export::ssg::toc::{TableOfContents, TocNode};
 
 #[derive(Clone)]
@@ -23,30 +24,58 @@ pub struct Page {
     pub ast: OrgFile,
     pub syntax_tree: SyntaxNode,
 
-    // tree: directory/section tree
-    // 层级导航，树形结构，生成侧边栏目录、面包屑
     pub parent_id: Option<PageId>,
     pub children_ids: Vec<PageId>,
-    // 兄弟导航，父节点下的线性链表，章节内“上一节/下一节”
-    pub prev_id: Option<PageId>,
-    pub next_id: Option<PageId>,
+    pub prev_sibling_id: Option<PageId>,
+    pub next_sibling_id: Option<PageId>,
+    pub prev_flattened_id: Option<PageId>,
+    pub next_flattened_id: Option<PageId>,
 
     pub tags: HashSet<String>,
     pub category: Vec<String>,
 
-    // flat global navigation
-    // 全局扁平导航,全站深度优先序列,博客式“上一篇/下一篇”，跨章节连续阅读
-    pub next_flattened_id: Option<PageId>,
-    pub prev_flattened_id: Option<PageId>,
     // is_index?
 
     // return the html path relatie to root of site, such as "blog/foo/index.html"
     pub html_path: String,
 }
 
+impl Page {
+    // fn faked(id: PageId, children_ids: Vec<PageId>) -> Self {
+    //     Self {
+    //         id,
+    //         children_ids,
+
+    //         title: String::default(),
+    //         url: String::default(),
+    //         metadata: PageMetadata {  },
+    //         ast: OrgFile {
+    //             zeroth_section: None,
+    //             heading_subtrees: vec![],
+    //             footnote_definitions: vec![],
+    //             keywords: BTreeMap::default(),
+    //             properties: BTreeMap::default(),
+    //             extracted_links: vec![],
+    //             roam_nodes: vec![]
+    //         },
+    //         syntax_tree: crate::node!(OrgSyntaxKind::Root, vec![]),
+
+    //         parent_id: None,
+
+    //         prev_sibling_id: None,
+    //         next_sibling_id: None,
+    //         prev_flattened_id: None,
+    //         next_flattened_id: None,
+    //         tags: HashSet::default(),
+    //         category: vec![],
+    //         html_path: String::default()
+    //     }
+    // }
+}
+
 #[derive(Debug, Clone)]
 pub struct PageMetadata {}
-type PageId = String;
+pub type PageId = String;
 impl fmt::Debug for Page {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
@@ -218,8 +247,10 @@ impl SiteBuilder {
         }
         let children_ids = vec![];
 
-        let prev_id = None;
-        let next_id = None;
+        let prev_sibling_id = None;
+        let next_sibling_id = None;
+        let next_flattened_id = None;
+        let prev_flattened_id = None;
 
         let tags = document
             .metadata
@@ -228,9 +259,6 @@ impl SiteBuilder {
             .into_iter()
             .collect::<HashSet<String>>();
         let category = document.metadata.category.clone();
-
-        let next_flattened_id = None;
-        let prev_flattened_id = None;
 
         self.pages.insert(
             id.clone(),
@@ -241,12 +269,12 @@ impl SiteBuilder {
                 metadata,
                 ast,
                 syntax_tree,
-                parent_id,
-                children_ids,
-                prev_id,
-                next_id,
                 tags,
                 category,
+                parent_id,
+                children_ids,
+                prev_sibling_id,
+                next_sibling_id,
                 next_flattened_id,
                 prev_flattened_id,
                 html_path: document.html_path(),
@@ -319,24 +347,11 @@ impl SiteBuilder {
         std::fs::copy(
             "src/export/ssg/static/default.css",
             static_directory_to.join("default.css"),
-        );
+        )?;
 
         // sass
 
         // non-org file in content
-        // let d_output = if let Some(relative_path) = &root_section.file_info.relative_path {
-        //     Path::new(&self.config.output_directory).join(relative_path)
-        // } else {
-        //     tracing::warn!(
-        //         "no 'content' found in {}, write to '{:?}' directly",
-        //         &root_section.file_info.full_path.display(),
-        //         self.config.output_directory
-        //     );
-        //     Path::new(&self.config.output_directory).to_path_buf()
-        // };
-        // if !d_output.is_dir() {
-        //     std::fs::create_dir_all(&d_output)?;
-        // }
         let directory = &root_section.file_info.full_path;
         for entry in WalkDir::new(directory).into_iter().filter_map(|e| e.ok()) {
             if entry.metadata().unwrap().is_file() {
@@ -381,6 +396,58 @@ impl SiteBuilder {
 
         tracing::debug!("build page tree");
         let root_page_id = self.process_section(root_section);
+
+        // get prev_sibling/prev_faltten
+        let mut pages = self.pages.clone();
+        let root = if let Some(root) = root_page_id.clone() {
+            root
+        } else {
+            let faked_root = PageId::from("FAKED_ROOT_ID");
+            for (_id, page) in pages.iter_mut() {
+                if page.parent_id.is_none() {
+                    page.parent_id = Some(faked_root.clone());
+                }
+            }
+            faked_root
+        };
+
+        fn preorder(root_page_id: PageId, pages: &HashMap<String, Page>) -> Vec<PageId> {
+            let mut result = vec![];
+            preorder_helper(&root_page_id, &mut result, pages);
+            result
+        }
+
+        fn preorder_helper(
+            page_id: &PageId,
+            result: &mut Vec<PageId>,
+            pages: &HashMap<String, Page>,
+        ) {
+            result.push(page_id.into());
+            for child in pages.get(page_id).unwrap().children_ids.iter() {
+                preorder_helper(child, result, pages);
+            }
+        }
+
+        let ans = preorder(root, &pages);
+        tracing::info!("ans={:?}", ans);
+        // // , pages: HashMap<String, Page>
+        // fn preorder(root_page: Option<Rc<RefCell<Page>>>) -> Vec<PageId> {
+        //     let mut result = vec![];
+        //     preorder_helper(&root_page, &mut result);
+        //     result
+        // }
+
+        // fn preorder_helper(node: &Option<Rc<RefCell<Page>>>, result: &mut Vec<PageId>) {
+        //     if let Some(page) = node {
+        //         let page = page.borrow();
+        //         result.push(page.id);
+
+        //         for child in page.children_ids {
+        //             preorder_helper(&child, result);
+        //         }
+        //     }
+        // }
+
         let pages = self.pages.clone();
         //         site.establish_sibling_links();
         // build a graph: root is index_page id or faked_root

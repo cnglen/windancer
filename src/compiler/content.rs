@@ -12,8 +12,8 @@ use std::path::{Path, PathBuf};
 use chrono::{DateTime, Local};
 use petgraph::graph::{DiGraph, NodeIndex};
 
-use crate::compiler::ast_builder::element::{HeadingSubtree, OrgFile};
-use crate::compiler::org_roam::{EdgeType, NodeType, RoamGraph, RoamNode};
+use crate::compiler::ast_builder::element::OrgFile;
+use crate::compiler::org_roam::{EdgeType, RoamGraph, RoamNode};
 use crate::compiler::parser::syntax::SyntaxNode;
 use crate::export::ssg::renderer::Renderer; // remove to exporter?
 

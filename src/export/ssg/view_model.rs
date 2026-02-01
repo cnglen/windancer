@@ -90,3 +90,20 @@ impl TableViewModel {
         }
     }
 }
+
+#[derive(serde::Serialize)]
+pub struct PageNavContext {
+    pub prev_sibling: Option<NavLink>,
+    pub next_sibling: Option<NavLink>,
+    pub prev_flatten: Option<NavLink>,
+    pub next_flatten: Option<NavLink>,
+    pub parent: Option<NavLink>,
+    pub children: Vec<NavLink>,
+}
+
+#[derive(serde::Serialize)]
+pub struct NavLink {
+    pub title: String,
+    pub href: String,
+    pub rel: Option<String>,
+}

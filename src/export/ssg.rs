@@ -8,7 +8,7 @@ pub mod view_model;
 use std::fs;
 use std::path::Path;
 
-use fs_extra::dir::{CopyOptions, copy, create_all};
+use fs_extra::dir::create_all;
 
 use crate::compiler::Compiler;
 use crate::export::ssg::renderer::Renderer;
@@ -78,9 +78,6 @@ impl StaticSiteGenerator {
 
         tracing::info!("build site ...");
         let site = self.site_builder.build(&section).unwrap();
-
-        let toc = site.toc();
-        // tracing::debug!("toc2={:?}", toc);
 
         tracing::info!("render site ...");
         self.renderer.render_site(&site);

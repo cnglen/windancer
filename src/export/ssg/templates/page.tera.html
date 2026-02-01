@@ -39,8 +39,40 @@
         </div>
       </div>
       {{ content }}
+
+      {# <a rel="next prefetch" href="{{}}" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right"> </a> #}
+
+      {# <nav class="page-navigation" aria-label="页面导航"> #}
+      {#   {% if nav_context.prev %} #}
+      {#     <a href="{{ nav_context.prev.permalink }}" rel="{{ nav_context.prev.rel }}" class="nav-link prev"> #}
+      {#       ← {{ nav_context.prev.title }} #}
+      {#     </a> #}
+      {#   {% endif %} #}
+      {#   {% if nav_context.parent %} #}
+      {#     <a href="{{ nav_context.parent.permalink }}" class="nav-link parent">↑ 返回上级</a> #}
+      {#   {% endif %} #}
+      {#   {% if nav_context.next %} #}
+      {#     <a href="{{ nav_context.next.permalink }}" rel="{{ nav_context.next.rel }}" class="nav-link next"> #}
+      {#       {{ nav_context.next.title }} → #}
+      {#     </a> #}
+      {#   {% endif %}         #}
+      {# </nav> #}
     </div>
 
-    <div id="postamble" class="status"> </div>    
+
+
+    
+    <div id="postamble" class="status"> </div>
+
+
+    {# <script id="page-nav-data" type="application/json"> #}
+    {#   { #}
+    {#   "prev": {{ nav_context.prev | default(value={}) | tojson | safe }}, #}
+    {#   "next": {{ nav_context.next | default(value={}) | tojson | safe }}, #}
+    {#   "parent": {{ nav_context.parent | default(value={}) | tojson | safe }} #}
+    {#   } #}
+    {# </script> #}
    </body>
  </html>
+
+

@@ -13,9 +13,8 @@ use std::collections::{BTreeMap, HashMap};
 
 use petgraph::graph::{DiGraph, NodeIndex};
 
+use crate::compiler::ast_builder::SourcePathSegment;
 use crate::compiler::ast_builder::object::Object;
-use crate::compiler::ast_builder::{SourcePathSegment, element};
-use crate::compiler::content::FileInfo;
 use crate::export::ssg::renderer::Renderer;
 
 #[derive(Debug, Clone)]
