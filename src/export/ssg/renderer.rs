@@ -47,7 +47,7 @@ use crate::compiler::ast_builder::object::{GeneralLink, Object, TableCellType};
 use crate::constants::entity::ENTITYNAME_TO_HTML;
 use crate::export::ssg::site::{Page, PageId, Site};
 use crate::export::ssg::toc::TableOfContents;
-use crate::export::ssg::view_model::TableViewModel;
+use crate::export::ssg::view_model::{PageNavContext, TableViewModel};
 
 pub struct RendererContext {
     pub table_counter: usize,
@@ -143,7 +143,9 @@ impl Renderer {
     }
 
     fn render_page(&mut self, page: &Page) -> std::io::Result<String> {
-        let mut ctx = tera::Context::new();
+        let page_nav_context = PageNavContext::from_page(page, &self.context.pageid_url);
+        let mut ctx = tera::Context::from_serialize(page_nav_context)
+            .expect("render_page: from serialize failed");
         ctx.insert("title", &page.title);
         ctx.insert(
             "toc",
@@ -155,13 +157,6 @@ impl Renderer {
         );
         let content = self.render_org_file(&page.ast);
         ctx.insert("content", &content);
-
-        let prev_url = if let Some(parent_id) = &page.parent_id {
-            Some(self.context.pageid_url.get(parent_id).unwrap().to_string())
-        } else {
-            None
-        };
-        ctx.insert("prev_url", &prev_url);
 
         let html = self
             .context

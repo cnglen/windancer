@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 /// Content Model, where Site is composed of Pages and
 /// - Site := Page + ... + Page
 /// - Section -> SiteBuilder -> Site
@@ -40,37 +39,38 @@ pub struct Page {
     pub html_path: String,
 }
 
+use rowan::GreenNode;
 impl Page {
-    // fn faked(id: PageId, children_ids: Vec<PageId>) -> Self {
-    //     Self {
-    //         id,
-    //         children_ids,
+    fn faked(id: PageId, children_ids: Vec<PageId>) -> Self {
+        Self {
+            id,
+            children_ids,
 
-    //         title: String::default(),
-    //         url: String::default(),
-    //         metadata: PageMetadata {  },
-    //         ast: OrgFile {
-    //             zeroth_section: None,
-    //             heading_subtrees: vec![],
-    //             footnote_definitions: vec![],
-    //             keywords: BTreeMap::default(),
-    //             properties: BTreeMap::default(),
-    //             extracted_links: vec![],
-    //             roam_nodes: vec![]
-    //         },
-    //         syntax_tree: crate::node!(OrgSyntaxKind::Root, vec![]),
+            title: String::default(),
+            url: String::default(),
+            metadata: PageMetadata {},
+            ast: OrgFile {
+                zeroth_section: None,
+                heading_subtrees: vec![],
+                footnote_definitions: vec![],
+                keywords: BTreeMap::default(),
+                properties: BTreeMap::default(),
+                extracted_links: vec![],
+                roam_nodes: vec![],
+            },
+            syntax_tree: SyntaxNode::new_root(GreenNode::new(OrgSyntaxKind::Root.into(), vec![])),
 
-    //         parent_id: None,
+            parent_id: None,
 
-    //         prev_sibling_id: None,
-    //         next_sibling_id: None,
-    //         prev_flattened_id: None,
-    //         next_flattened_id: None,
-    //         tags: HashSet::default(),
-    //         category: vec![],
-    //         html_path: String::default()
-    //     }
-    // }
+            prev_sibling_id: None,
+            next_sibling_id: None,
+            prev_flattened_id: None,
+            next_flattened_id: None,
+            tags: HashSet::default(),
+            category: vec![],
+            html_path: String::default(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -113,7 +113,7 @@ pub struct Site {
     pub config: SiteConfig,
     pub pages: HashMap<PageId, Page>,
     pub url_to_page_id: HashMap<String, PageId>,
-    pub root_page_id: Option<PageId>,
+    pub root_page_id: PageId,
 
     // build_tag_index(), get_pages_by_tag，generate_tag_pages
     pub tag_index: HashMap<String, Vec<PageId>>,
@@ -133,6 +133,10 @@ pub struct Site {
     // pub related_pages: HashMap<PageId, Vec<RelatedPage>>,
 }
 impl Site {
+    fn is_faked_root(page_id: &PageId) -> bool {
+        page_id == "FAKED_ROOT_PAGE_ID"
+    }
+
     fn get_toc_of_page(&self, page_id: &PageId) -> TocNode {
         let page = self.pages.get(page_id).unwrap();
         let mut children = vec![];
@@ -152,21 +156,23 @@ impl Site {
 
     /// Get the toc
     pub fn toc(&self) -> TableOfContents {
-        let root_nodes = if let Some(root) = self.root_page_id.clone() {
-            let root_toc = self.get_toc_of_page(&root);
-            root_toc.children
-        } else {
-            let mut children = vec![];
-            for id in self
-                .pages
-                .iter()
-                .filter(|(_, page)| page.parent_id.is_none())
-                .map(|(id, _)| id)
-            {
-                children.push(self.get_toc_of_page(&id));
-            }
-            children
-        };
+        let root_nodes = self.get_toc_of_page(&self.root_page_id).children;
+
+        // let root_nodes = if let Some(root) = self.root_page_id.clone() {
+        //     let root_toc = self.get_toc_of_page(&root);
+        //     root_toc.children
+        // } else {
+        //     let mut children = vec![];
+        //     for id in self
+        //         .pages
+        //         .iter()
+        //         .filter(|(_, page)| page.parent_id.is_none())
+        //         .map(|(id, _)| id)
+        //     {
+        //         children.push(self.get_toc_of_page(&id));
+        //     }
+        //     children
+        // };
 
         TableOfContents { root_nodes }
     }
@@ -177,7 +183,7 @@ impl Default for Site {
             config: SiteConfig::default(),
             pages: HashMap::new(),
             url_to_page_id: HashMap::new(),
-            root_page_id: None,
+            root_page_id: PageId::new(),
             tag_index: HashMap::new(),
             flattened_pages: vec![],
             static_assets: vec![],
@@ -390,63 +396,111 @@ impl SiteBuilder {
         Ok(static_assets)
     }
 
+    fn preorder(&self, root_page_id: &PageId) -> Vec<PageId> {
+        let mut result = vec![];
+        self.preorder_helper(root_page_id, &mut result);
+        result
+    }
+
+    fn preorder_helper(&self, page_id: &PageId, result: &mut Vec<PageId>) {
+        result.push(page_id.into());
+        for child in self.pages.get(page_id).unwrap().children_ids.iter() {
+            self.preorder_helper(child, result);
+        }
+    }
+
+    // next_flattened_id/prev_flattened_id
+    // next_sibling_id/prev_sibling_id
+    fn update_page_relation(&mut self, root_page_id: &PageId) {
+        // update next_flattened_id and prev_flattened_id
+        let flatten_page_ids = self.preorder(root_page_id);
+        tracing::debug!("faltten_page_ids={:?}", flatten_page_ids);
+        let idx_start = if Site::is_faked_root(root_page_id) {
+            1
+        } else {
+            0
+        };
+        for idx in (idx_start + 1)..flatten_page_ids.len() {
+            self.pages
+                .get_mut(&flatten_page_ids[idx])
+                .expect("todo")
+                .prev_flattened_id = Some(
+                self.pages
+                    .get(&flatten_page_ids[idx - 1])
+                    .expect("todo")
+                    .id
+                    .clone(),
+            );
+        }
+        for idx in (idx_start)..flatten_page_ids.len() - 1 {
+            self.pages
+                .get_mut(&flatten_page_ids[idx])
+                .expect("todo")
+                .next_flattened_id = Some(
+                self.pages
+                    .get(&flatten_page_ids[idx + 1])
+                    .expect("todo")
+                    .id
+                    .clone(),
+            );
+        }
+
+        // update next_sibling_id and prev_sibling_id
+        let mut siblings = vec![];
+        for (_id, page) in self.pages.iter() {
+            if page.children_ids.len() >= 2 {
+                siblings.push(page.children_ids.clone());
+            }
+        }
+        for sibling in siblings.into_iter() {
+            for idx in 1..sibling.len() {
+                self.pages
+                    .get_mut(&sibling[idx])
+                    .expect("todo")
+                    .prev_sibling_id =
+                    Some(self.pages.get(&sibling[idx - 1]).expect("todo").id.clone());
+            }
+            for idx in 0..(sibling.len() - 1) {
+                self.pages
+                    .get_mut(&sibling[idx])
+                    .expect("todo")
+                    .next_sibling_id =
+                    Some(self.pages.get(&sibling[idx + 1]).expect("todo").id.clone());
+            }
+        }
+    }
+
     /// Build Site from
     pub fn build(&mut self, root_section: &Section) -> std::io::Result<Site> {
         self.pages.clear();
 
         tracing::debug!("build page tree");
-        let root_page_id = self.process_section(root_section);
-
-        // get prev_sibling/prev_faltten
-        let mut pages = self.pages.clone();
-        let root = if let Some(root) = root_page_id.clone() {
-            root
+        let maybe_root_page_id = self.process_section(root_section);
+        let root_page_id = if let Some(root_page_id) = maybe_root_page_id.clone() {
+            root_page_id
         } else {
-            let faked_root = PageId::from("FAKED_ROOT_ID");
-            for (_id, page) in pages.iter_mut() {
+            // faked a root page
+            let children_ids = self
+                .pages
+                .iter()
+                .filter(|(_id, page)| page.parent_id.is_none())
+                .map(|(id, _)| id.to_string())
+                .collect::<Vec<_>>();
+
+            let faked_root_page_id = PageId::from("FAKED_ROOT_ID");
+            let faked_root = Page::faked(faked_root_page_id.clone(), children_ids);
+
+            for (_id, page) in self.pages.iter_mut() {
                 if page.parent_id.is_none() {
-                    page.parent_id = Some(faked_root.clone());
+                    page.parent_id = Some(faked_root_page_id.clone());
                 }
             }
-            faked_root
+            self.pages.insert(faked_root_page_id.clone(), faked_root);
+
+            faked_root_page_id
         };
 
-        fn preorder(root_page_id: PageId, pages: &HashMap<String, Page>) -> Vec<PageId> {
-            let mut result = vec![];
-            preorder_helper(&root_page_id, &mut result, pages);
-            result
-        }
-
-        fn preorder_helper(
-            page_id: &PageId,
-            result: &mut Vec<PageId>,
-            pages: &HashMap<String, Page>,
-        ) {
-            result.push(page_id.into());
-            for child in pages.get(page_id).unwrap().children_ids.iter() {
-                preorder_helper(child, result, pages);
-            }
-        }
-
-        let ans = preorder(root, &pages);
-        tracing::info!("ans={:?}", ans);
-        // // , pages: HashMap<String, Page>
-        // fn preorder(root_page: Option<Rc<RefCell<Page>>>) -> Vec<PageId> {
-        //     let mut result = vec![];
-        //     preorder_helper(&root_page, &mut result);
-        //     result
-        // }
-
-        // fn preorder_helper(node: &Option<Rc<RefCell<Page>>>, result: &mut Vec<PageId>) {
-        //     if let Some(page) = node {
-        //         let page = page.borrow();
-        //         result.push(page.id);
-
-        //         for child in page.children_ids {
-        //             preorder_helper(&child, result);
-        //         }
-        //     }
-        // }
+        self.update_page_relation(&root_page_id);
 
         let pages = self.pages.clone();
         //         site.establish_sibling_links();
