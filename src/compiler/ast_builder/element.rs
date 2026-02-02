@@ -72,7 +72,7 @@ pub(crate) fn get_properties(property_drawer: &Option<PropertyDrawer>) -> BTreeM
     if let Some(drawer) = property_drawer {
         for property in drawer.contents.iter() {
             if let Some(value) = property.value.clone() {
-                properties.insert(property.name.clone(), value);
+                properties.insert(property.name.to_ascii_uppercase(), value);
             }
         }
     }

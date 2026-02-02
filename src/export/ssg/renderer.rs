@@ -50,11 +50,14 @@ use crate::export::ssg::toc::TableOfContents;
 use crate::export::ssg::view_model::{PageNavContext, TableViewModel};
 
 pub struct RendererContext {
+    // table counter in sit or page?
     pub table_counter: usize,
+    // figure counter in site or page?
     pub figure_counter: usize,
     pub tera: tera::Tera,
     pub toc: TableOfContents,
-    pub pageid_url: HashMap<PageId, String>,
+    pub pageid_to_url: HashMap<PageId, String>,
+    pub roamid_to_url: HashMap<String, String>,
 }
 
 impl Default for RendererContext {
@@ -73,7 +76,8 @@ impl Default for RendererContext {
             table_counter: 0,
             figure_counter: 0,
             toc: TableOfContents::default(),
-            pageid_url: HashMap::new(),
+            pageid_to_url: HashMap::default(),
+            roamid_to_url: HashMap::default(),
         }
     }
 }
@@ -133,9 +137,8 @@ impl Renderer {
     pub fn render_site(&mut self, site: &Site) {
         tracing::debug!("  render site todo");
         self.context.toc = site.toc();
-        for (id, page) in site.pages.iter() {
-            self.context.pageid_url.insert(id.clone(), page.url.clone());
-        }
+        self.context.pageid_to_url = site.pageid_to_url.clone();
+        self.context.roamid_to_url = site.knowledge_graph.id_to_url.clone();
 
         for (_id, page) in site.pages.iter() {
             self.render_page(page).expect("render_page should success");
@@ -143,7 +146,7 @@ impl Renderer {
     }
 
     fn render_page(&mut self, page: &Page) -> std::io::Result<String> {
-        let page_nav_context = PageNavContext::from_page(page, &self.context.pageid_url);
+        let page_nav_context = PageNavContext::from_page(page, &self.context.pageid_to_url);
         let mut ctx = tera::Context::from_serialize(page_nav_context)
             .expect("render_page: from serialize failed");
         ctx.insert("title", &page.title);
@@ -197,6 +200,21 @@ impl Renderer {
         self.footnote_defintions = org_file.footnote_definitions.clone();
 
         let mut output = String::new();
+
+        // check title
+        if let Some(title_objects) = org_file.keywords.get("TITLE") {
+            let title = title_objects
+                .iter()
+                .map(|e| self.render_object(e))
+                .collect::<String>();
+            let html = if let Some(id) = org_file.properties.get("ID") {
+                format!(r##"<h1 class="title" id="{}">{}</h1>"##, id, title)
+            } else {
+                format!(r##"<h1 class="title">{}</h1>"##, title)
+            };
+            output.push_str(&html);
+        }
+
         if let Some(section) = &org_file.zeroth_section {
             output.push_str(&self.render_section(section));
         }
@@ -220,7 +238,7 @@ impl Renderer {
         let title = heading
             .title
             .iter()
-            .map(|e| Self::render_object(e))
+            .map(|e| self.render_object(e))
             .collect::<String>();
 
         if heading.is_commented {
@@ -317,11 +335,11 @@ impl Renderer {
             Element::CenterBlock(center_block) => self.render_center_block(center_block),
             Element::QuoteBlock(quote_block) => self.render_quote_block(quote_block),
             Element::SpecialBlock(special_block) => self.render_special_block(special_block),
-            Element::ExampleBlock(example_block) => Self::render_example_block(example_block),
-            Element::ExportBlock(export_block) => Self::render_export_block(export_block),
+            Element::ExampleBlock(example_block) => self.render_example_block(example_block),
+            Element::ExportBlock(export_block) => self.render_export_block(export_block),
             Element::CommentBlock(_comment_block) => Self::render_comment_block(),
-            Element::SrcBlock(src_block) => Self::render_src_block(src_block),
-            Element::VerseBlock(verse_block) => Self::render_verse_block(verse_block),
+            Element::SrcBlock(src_block) => self.render_src_block(src_block),
+            Element::VerseBlock(verse_block) => self.render_verse_block(verse_block),
 
             Element::List(list) => self.render_list(list),
             Element::Comment(_) => Self::render_comment(),
@@ -344,8 +362,47 @@ impl Renderer {
         }
     }
 
+    pub fn get_table_vm(&mut self, table: &Table) -> TableViewModel {
+        let has_caption = !table.caption.is_empty();
+        let table_number = if has_caption {
+            self.context.table_counter += 1;
+            Some(self.context.table_counter)
+        } else {
+            None
+        };
+        let caption = table
+            .caption
+            .iter()
+            .map(|e| self.render_object(e))
+            .collect::<String>();
+
+        let has_header = !table.header.is_empty();
+        let header_rows = table
+            .header
+            .iter()
+            .map(|r| self.render_table_row(r))
+            .collect();
+        let body_rows = table
+            .rows
+            .iter()
+            .map(|e| self.render_table_row(e))
+            .collect();
+
+        TableViewModel {
+            table_number,
+
+            has_caption,
+            caption,
+
+            has_header,
+            header_rows,
+
+            body_rows,
+        }
+    }
+
     fn render_table(&mut self, table: &Table) -> String {
-        let table_view_model = TableViewModel::from_ast_v2(table, &mut self.context);
+        let table_view_model = self.get_table_vm(table);
         let ctx = tera::Context::from_serialize(&table_view_model)
             .expect("render_table: from serialize failed");
         self.context
@@ -354,14 +411,14 @@ impl Renderer {
             .unwrap_or_else(|err| format!("Template rendering table failed: {}", err))
     }
 
-    pub(crate) fn render_table_row(table_row: &TableRow) -> String {
+    pub(crate) fn render_table_row(&self, table_row: &TableRow) -> String {
         match table_row.row_type {
             TableRowType::Data | TableRowType::Header => format!(
                 "<tr>{}</tr>\n",
                 table_row
                     .cells
                     .iter()
-                    .map(|e| Self::render_object(&e))
+                    .map(|e| self.render_object(&e))
                     .collect::<String>()
             ),
 
@@ -373,36 +430,36 @@ impl Renderer {
         String::from("")
     }
 
-    pub(crate) fn render_object(object: &Object) -> String {
+    pub(crate) fn render_object(&self, object: &Object) -> String {
         match object {
             Object::Text(text) => html_escape::encode_text(text).to_string(),
 
             Object::Bold(objects) => {
-                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
                 format!("<b>{}</b>", inner)
             }
             Object::Italic(objects) => {
-                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
                 format!("<i>{}</i>", inner)
             }
 
             Object::Underline(objects) => {
-                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
                 format!(r##"<span class="underline">{}</span>"##, inner)
             }
 
             Object::Strikethrough(objects) => {
-                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
                 format!(r##"<del>{}</del>"##, inner)
             }
 
             Object::Code(objects) => {
-                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
                 format!(r##"<code>{}</code>"##, inner)
             }
 
             Object::Verbatim(objects) => {
-                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
                 format!(r##"<code>{}</code>"##, inner)
             }
 
@@ -421,7 +478,7 @@ impl Renderer {
                 } else {
                     &description
                         .iter()
-                        .map(|e| Self::render_object(e))
+                        .map(|e| self.render_object(e))
                         .collect::<String>()
                 };
 
@@ -440,8 +497,15 @@ impl Renderer {
                         path.split("/").last().expect("todo")
                     )
                 } else if protocol == "id" {
-                    // fixme: if roam id is in other file
-                    let href = format!("#{}", path.strip_prefix("id:").expect("id:"));
+                    // fixme: if roam id is in other file: in general link, page/url info is missed?
+                    let id = path.strip_prefix("id:").expect("id:");
+
+                    let href = if let Some(url) = self.context.roamid_to_url.get(id) {
+                        format!("{}", url)
+                    } else {
+                        tracing::warn!("no url found for {}", id);
+                        format!("#{}", id)
+                    };
                     format!(r##"<a href="{}">{}</a>"##, href, desc)
                 } else {
                     format!(r##"<a href="{}">{}</a>"##, path, desc)
@@ -452,7 +516,7 @@ impl Renderer {
                 let contents = table_cell
                     .contents
                     .iter()
-                    .map(|e| Self::render_object(e))
+                    .map(|e| self.render_object(e))
                     .collect::<String>();
 
                 match table_cell.cell_type {
@@ -499,22 +563,22 @@ impl Renderer {
             }
 
             Object::RadioTarget(objects) => {
-                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
                 format!(r##"<a id="{inner}">{inner}</a>"##)
             }
 
             Object::RadioLink(objects) => {
-                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
                 format!(r##"<a href="#{inner}">{inner}</a>"##)
             }
 
             Object::Subscript(objects) => {
-                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
                 format!(r##"<sub>{}</sub>"##, inner)
             }
 
             Object::Superscript(objects) => {
-                let inner: String = objects.iter().map(|o| Self::render_object(o)).collect();
+                let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
                 format!(r##"<sup>{}</sup>"##, inner)
             }
 
@@ -555,33 +619,33 @@ impl Renderer {
         }
     }
 
-    fn render_example_block(block: &ExampleBlock) -> String {
+    fn render_example_block(&self, block: &ExampleBlock) -> String {
         format!(
             r##"<pre class="example">{}</pre>"##,
             block
                 .contents
                 .iter()
-                .map(|e| Self::render_object(e))
+                .map(|e| self.render_object(e))
                 .collect::<String>()
         )
     }
 
-    fn render_verse_block(block: &VerseBlock) -> String {
+    fn render_verse_block(&self, block: &VerseBlock) -> String {
         format!(
             r##"<p class="verse">{}</p>"##,
             block
                 .contents
                 .iter()
-                .map(|e| Self::render_object(e))
+                .map(|e| self.render_object(e))
                 .collect::<String>()
         )
     }
 
-    fn render_src_block(block: &SrcBlock) -> String {
+    fn render_src_block(&self, block: &SrcBlock) -> String {
         let s = block
             .contents
             .iter()
-            .map(|e| Self::render_object(e))
+            .map(|e| self.render_object(e))
             .collect::<String>();
         format!(
             r##"<div class="code org-src-container"><pre class="src src-{}"><code class="language-{}">{}</code></pre></div>"##,
@@ -590,13 +654,13 @@ impl Renderer {
     }
 
     // FIXME: only supoort html now
-    fn render_export_block(block: &ExportBlock) -> String {
+    fn render_export_block(&self, block: &ExportBlock) -> String {
         format!(
             r##"{}"##,
             block
                 .contents
                 .iter()
-                .map(|e| Self::render_object(e))
+                .map(|e| self.render_object(e))
                 .collect::<String>()
         )
     }
@@ -639,7 +703,7 @@ impl Renderer {
             .map(|e| {
                 e.value
                     .iter()
-                    .map(|ee| Self::render_object(ee))
+                    .map(|ee| self.render_object(ee))
                     .collect::<Vec<String>>()
                     .join("")
             })
@@ -669,7 +733,7 @@ impl Renderer {
         let contents: String = paragraph
             .objects
             .iter()
-            .map(|object| Self::render_object(object))
+            .map(|object| self.render_object(object))
             .collect();
 
         if is_figure_only_paragrah {
@@ -680,7 +744,7 @@ impl Renderer {
                 .map(|e| {
                     e.value
                         .iter()
-                        .map(|ee| Self::render_object(ee))
+                        .map(|ee| self.render_object(ee))
                         .collect::<Vec<String>>()
                         .join("")
                 })
@@ -819,18 +883,11 @@ impl Renderer {
         )
     }
 
-    // FIXME: roam id is missed here!!
     fn render_keyword(&self, keyword: &Keyword) -> String {
-        match keyword.key.as_str() {
-            "title" => format!(
-                r##"<h1 class="title">{}</h1>"##,
-                keyword
-                    .value
-                    .iter()
-                    .map(|e| Self::render_object(e))
-                    .collect::<String>()
-            ),
-            _ => format!(r##""##),
+        // title has been rendered in render_org_file() with id
+        match keyword.key.to_ascii_uppercase().as_str() {
+            "TITLE" => format!(""),
+            _ => format!(""),
         }
     }
 
@@ -901,7 +958,7 @@ impl Renderer {
         let tag_html = item
             .tag
             .iter()
-            .map(|e| Self::render_object(e))
+            .map(|e| self.render_object(e))
             .collect::<String>();
 
         format!(

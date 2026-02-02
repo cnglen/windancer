@@ -42,17 +42,17 @@
 
       {# <a rel="next prefetch" href="{{}}" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right"> </a> #}
       {% if nav_valid %}
-      <nav class="page-navigation" aria-label="页面导航"> 
+      <nav class="page-navigation flex-container"> 
         {% if prev_flattened %}
-          <a href="/{{ prev_flattened }}" rel="prev sibling" class="nav-link prev"> ← 上一页 </a> 
+          <a href="{{ prev_flattened }}" rel="prev sibling" class="nav-link prev"> ← 上一页 </a> 
         {% endif %}
         
         {% if parent %} 
-          <a href="/{{ parent }}" class="nav-link parent">↑ 返回上级</a> 
+          <a href="{{ parent }}" class="nav-link parent">↑ 返回上级</a> 
         {% endif %}
         
         {% if next_flattened %} 
-          <a href="/{{ next_flattened }}" rel="next sibling" class="nav-link next"> 下一页 →  </a> 
+          <a href="{{ next_flattened }}" rel="next sibling" class="nav-link next"> 下一页 →  </a> 
         {% endif %}         
       </nav> 
       {% endif %}

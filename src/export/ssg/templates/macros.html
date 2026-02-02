@@ -4,7 +4,7 @@
   {%- if node.level <= max_depth -%}
     {% set is_active = active_slug and active_slug == node.path | trim_start_matches(pat="#") %}
     <li{% if is_active %} class="active"{% endif %}>
-      <a href="/{{ node.path }}">{{ node.title }}</a>
+      <a href="{{ node.path }}">{{ node.title }}</a>
       {%- if node.children and node.level < max_depth %}
         <ol>
           {%- for child in node.children %}

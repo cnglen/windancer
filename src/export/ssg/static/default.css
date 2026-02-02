@@ -282,3 +282,18 @@ div.code pre.src code {
     font-size: 100%;
     margin-bottom:0.809em
 }
+
+/* a.next { */
+/*     float: right */
+/* } */
+
+/* a.prev { */
+/*     float: left */
+/* } */
+
+nav.flex-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;     
+}
+

@@ -50,7 +50,7 @@ impl TableOfContents {
         context.insert("active_slug", &active_slug);
         context.insert("max_depth", &5);
         let html = tera
-            .render("toc_nav.html", &context)
+            .render("toc_nav.tera.html", &context)
             .unwrap_or_else(|err| format!("Template rendering failed: {}", err));
 
         // beatufity html

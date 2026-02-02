@@ -1,4 +1,4 @@
-/// Content Model, where Site is composed of Pages and
+/// Content Model, where Site is composed of Pages
 /// - Site := Page + ... + Page
 /// - Section -> SiteBuilder -> Site
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -6,6 +6,8 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 
 use fs_extra::dir::{CopyOptions, copy};
+use petgraph::graph::{DiGraph, NodeIndex};
+use rowan::GreenNode;
 use walkdir::WalkDir;
 
 use crate::compiler::ast_builder::element::OrgFile;
@@ -18,7 +20,10 @@ pub struct Page {
     pub id: PageId,
 
     pub title: String,
+    // the url relative to root of site, such as "/blog/foo/index.html"
     pub url: String,
+    // the html path relatie to root of site, such as "blog/foo/index.html"
+    pub html_path: String,
     pub metadata: PageMetadata,
     pub ast: OrgFile,
     pub syntax_tree: SyntaxNode,
@@ -32,14 +37,8 @@ pub struct Page {
 
     pub tags: HashSet<String>,
     pub category: Vec<String>,
-
-    // is_index?
-
-    // return the html path relatie to root of site, such as "blog/foo/index.html"
-    pub html_path: String,
 }
 
-use rowan::GreenNode;
 impl Page {
     fn faked(id: PageId, children_ids: Vec<PageId>) -> Self {
         Self {
@@ -72,7 +71,6 @@ impl Page {
         }
     }
 }
-
 #[derive(Debug, Clone)]
 pub struct PageMetadata {}
 pub type PageId = String;
@@ -98,7 +96,6 @@ pub struct SiteConfig {
     // pub base_url: String,
     // pub theme: String,
     // pub generate_search_index: bool,
-    // ... 其他配置
 }
 impl Default for SiteConfig {
     fn default() -> Self {
@@ -108,11 +105,13 @@ impl Default for SiteConfig {
     }
 }
 
+// roam from site
+
 #[derive(Debug)]
 pub struct Site {
     pub config: SiteConfig,
     pub pages: HashMap<PageId, Page>,
-    pub url_to_page_id: HashMap<String, PageId>,
+    pub pageid_to_url: HashMap<PageId, String>,
     pub root_page_id: PageId,
 
     // build_tag_index(), get_pages_by_tag，generate_tag_pages
@@ -121,15 +120,19 @@ pub struct Site {
 
     // static assets: including css/image/fonts.
     static_assets: Vec<(PathBuf, PathBuf)>,
-    // pub knowledge_graph: RoamGraph? // 更好的可视化js?
-    // // 🔥 核心图结构
+
+    pub knowledge_graph: KnowledgeGraph,
+    // roam_id, roamd_node, page_id
+    // pub roam_nodes: Vec<String, >
+    // todo: <roam_id> with page_id
+    // roam_id <-> with page(url)
+
     // // 使用 PageId 作为图的节点，边的类型可以自定义（如：引用、提及、相关）
     // pub graph: petgraph::graph::DiGraph<PageId, LinkType>;
-
     // // 快速查找：从 org-roam id 到 page id 的映射
     // pub roam_id_to_page_id: HashMap<String, PageId>;
 
-    // // 🔥 为每个页面预计算的相关页面列表（用于渲染，避免实时遍历图）
+    // // 为每个页面预计算的相关页面列表（用于渲染，避免实时遍历图）
     // pub related_pages: HashMap<PageId, Vec<RelatedPage>>,
 }
 impl Site {
@@ -182,25 +185,75 @@ impl Default for Site {
         Self {
             config: SiteConfig::default(),
             pages: HashMap::new(),
-            url_to_page_id: HashMap::new(),
+            pageid_to_url: HashMap::new(),
             root_page_id: PageId::new(),
             tag_index: HashMap::new(),
             flattened_pages: vec![],
             static_assets: vec![],
+            knowledge_graph: KnowledgeGraph::default(),
+        }
+    }
+}
+
+use crate::compiler::ast_builder::object::Object;
+use crate::compiler::org_roam::{EdgeType, NodeType, RoamNode};
+
+#[derive(Debug, Clone)]
+pub struct GraphNode {
+    pub id: String,
+    pub title: Vec<Object>,
+    pub node_type: NodeType,
+    pub aliases: Vec<String>,
+    pub refs: Vec<String>,
+    pub properties: BTreeMap<String, String>,
+    pub tags: Vec<String>,
+    pub level: u8,
+    pub parent_id: Option<String>,
+
+    pub url: String,
+}
+
+impl GraphNode {
+    fn from(roam_node: &RoamNode, url: String) -> Self {
+        Self {
+            id: roam_node.id.clone(),
+            title: roam_node.title.clone(),
+            node_type: roam_node.node_type.clone(),
+            aliases: roam_node.aliases.clone(),
+            refs: roam_node.refs.clone(),
+            properties: roam_node.properties.clone(),
+            tags: roam_node.tags.clone(),
+            level: roam_node.level.clone(),
+            parent_id: roam_node.parent_id.clone(),
+            url: url,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct KnowledgeGraph {
+    pub graph: DiGraph<GraphNode, EdgeType>,
+    pub id_to_index: HashMap<String, NodeIndex>,
+    pub id_to_url: HashMap<String, String>,
+}
+
+impl Default for KnowledgeGraph {
+    fn default() -> Self {
+        Self {
+            graph: DiGraph::default(),
+            id_to_index: HashMap::default(),
+            id_to_url: HashMap::default(),
         }
     }
 }
 
 pub struct SiteBuilder {
-    // template_engine: Tera,
-    // resource_processor: ResourceProcessor, // // 资源处理（图片、CSS等）
     config: SiteConfig,
-    // 可能还有插件系统、图关系构建器等
+    // plugin? search?
 
-    // state during processing
-    // parent_stack during `build()` for get parent page
+    // state during processing： parent_stack during `build()` to get parent page
     parent_stack: Vec<PageId>,
-    // pages during `build()' for output and get parent page to set children_ids
+    // state during processing: pages during `build()' for output and get parent page to set children_ids
     pages: HashMap<PageId, Page>,
 }
 impl Default for SiteBuilder {
@@ -239,7 +292,7 @@ impl SiteBuilder {
             .clone()
             .unwrap_or("no title found".to_string());
 
-        let url = document.html_path();
+        let url = format!("/{}", document.html_path());
         let metadata = PageMetadata {};
 
         let parent_id = self.parent_stack.last().cloned();
@@ -396,7 +449,7 @@ impl SiteBuilder {
         Ok(static_assets)
     }
 
-    fn preorder(&self, root_page_id: &PageId) -> Vec<PageId> {
+    fn preorder_dfs_traverse(&self, root_page_id: &PageId) -> Vec<PageId> {
         let mut result = vec![];
         self.preorder_helper(root_page_id, &mut result);
         result
@@ -411,9 +464,9 @@ impl SiteBuilder {
 
     // next_flattened_id/prev_flattened_id
     // next_sibling_id/prev_sibling_id
-    fn update_page_relation(&mut self, root_page_id: &PageId) {
+    fn establish_sibling_flatten_links(&mut self, root_page_id: &PageId) {
         // update next_flattened_id and prev_flattened_id
-        let flatten_page_ids = self.preorder(root_page_id);
+        let flatten_page_ids = self.preorder_dfs_traverse(root_page_id);
         tracing::debug!("faltten_page_ids={:?}", flatten_page_ids);
         let idx_start = if Site::is_faked_root(root_page_id) {
             1
@@ -470,44 +523,135 @@ impl SiteBuilder {
         }
     }
 
+    fn build_knowledge_graph(&self, root_section: &Section) -> KnowledgeGraph {
+        let mut graph = DiGraph::<GraphNode, EdgeType>::new();
+        let mut id_to_index: HashMap<String, NodeIndex> = HashMap::new();
+        let mut refs_to_id: HashMap<String, String> = HashMap::new();
+
+        fn build_section(
+            section: &Section,
+            mut graph: &mut DiGraph<GraphNode, EdgeType>,
+            mut id_to_index: &mut HashMap<String, NodeIndex>,
+            mut refs_to_id: &mut HashMap<String, String>,
+        ) {
+            for document in section.documents.iter() {
+                for node in document.ast.roam_nodes.iter() {
+                    let url = format!("/{}#{}", document.html_path(), node.id);
+                    let graph_node = GraphNode::from(node, url);
+                    let index = graph.add_node(graph_node.clone());
+                    id_to_index.insert(graph_node.id.clone(), index);
+                    for refs in graph_node.refs.iter() {
+                        refs_to_id.insert(refs.clone(), graph_node.id.clone());
+                    }
+                }
+
+                for node in document.ast.roam_nodes.iter() {
+                    if let Some(parent_id) = &node.parent_id {
+                        if let Some(current_index) = id_to_index.get(node.id.as_str()) {
+                            if let Some(parent_index) = id_to_index.get(parent_id.as_str()) {
+                                graph.add_edge(*parent_index, *current_index, EdgeType::Parent {});
+                            }
+                        }
+                    }
+
+                    for extracted_link in document.ast.extracted_links.iter() {
+                        if extracted_link.link.protocol == "id" {
+                            if let Some(source_id) = extracted_link.source_roam_id() {
+                                let target_id = extracted_link
+                                    .link
+                                    .path
+                                    .strip_prefix("id:")
+                                    .expect("must have ID in path")
+                                    .to_string();
+
+                                if let Some(source_index) = id_to_index.get(source_id.as_str()) {
+                                    if let Some(target_index) = id_to_index.get(&target_id) {
+                                        if !graph.contains_edge(*source_index, *target_index) {
+                                            graph.add_edge(
+                                                *source_index,
+                                                *target_index,
+                                                EdgeType::ExplicitReference {
+                                                    source_path: extracted_link.source_path.clone(),
+                                                },
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            for subsection in &section.subsections {
+                build_section(subsection, &mut graph, &mut id_to_index, &mut refs_to_id);
+            }
+        }
+
+        build_section(root_section, &mut graph, &mut id_to_index, &mut refs_to_id);
+
+        let mut id_to_url = HashMap::<String, String>::new();
+        for (id, index) in id_to_index.iter() {
+            let node = &graph[*index];
+            id_to_url.insert(id.clone(), node.url.clone());
+        }
+
+        KnowledgeGraph {
+            id_to_index,
+            graph,
+            id_to_url,
+        }
+    }
+
     /// Build Site from
     pub fn build(&mut self, root_section: &Section) -> std::io::Result<Site> {
         self.pages.clear();
 
-        tracing::debug!("build page tree");
+        tracing::debug!("  build page tree ...");
+
+        // render page: general link, needs to lookup roam_id -> url
+        // render knowlege graph: document html_path
+
+        // todo:
+        let knowledge_graph = self.build_knowledge_graph(root_section);
+        // 处理所有页面中的 org-roam 链接，构建图
+        // site.build_roam_graph();
+        // let g = section.build_graph();
+        // let g_dot = Dot::new(&g.graph);
+        // tracing::debug!("Basic DOT format:\n{:?}\n", g_dot);
+        // tracing::debug!("{:#?}", g.graph);
+        // 基于图关系为每个页面预计算“相关页面”
+        // site.precompute_related_pages();
+
         let maybe_root_page_id = self.process_section(root_section);
         let root_page_id = if let Some(root_page_id) = maybe_root_page_id.clone() {
             root_page_id
         } else {
-            // faked a root page
+            // fake a root page
             let children_ids = self
                 .pages
                 .iter()
                 .filter(|(_id, page)| page.parent_id.is_none())
                 .map(|(id, _)| id.to_string())
                 .collect::<Vec<_>>();
-
             let faked_root_page_id = PageId::from("FAKED_ROOT_ID");
-            let faked_root = Page::faked(faked_root_page_id.clone(), children_ids);
-
+            let faked_root = Page::faked(faked_root_page_id.clone(), children_ids); // root_page -children-> children
             for (_id, page) in self.pages.iter_mut() {
                 if page.parent_id.is_none() {
-                    page.parent_id = Some(faked_root_page_id.clone());
+                    page.parent_id = Some(faked_root_page_id.clone()); // root_page <-parent- children
                 }
             }
+            // insert the faked root page to self.pages
             self.pages.insert(faked_root_page_id.clone(), faked_root);
 
             faked_root_page_id
         };
+        self.establish_sibling_flatten_links(&root_page_id);
 
-        self.update_page_relation(&root_page_id);
-
-        let pages = self.pages.clone();
-        //         site.establish_sibling_links();
         // build a graph: root is index_page id or faked_root
         // dfs to get flattened_pages? // toc?
 
-        tracing::debug!("build tag-index: tag -> page_id");
+        tracing::debug!("  build tag-index: tag -> page_id ...");
         let mut tag_index: HashMap<String, Vec<PageId>> = HashMap::new();
         for (page_id, page) in self.pages.iter() {
             for tag in page.tags.iter() {
@@ -519,24 +663,20 @@ impl SiteBuilder {
             }
         }
 
+        tracing::debug!("  process static assets ...");
         let static_assets = self.process_static_assets(root_section)?;
 
-        // todo:
-        // 处理所有页面中的 org-roam 链接，构建图
-        // site.build_roam_graph();
-
-        // let g = section.build_graph();
-        // let g_dot = Dot::new(&g.graph);
-        // tracing::debug!("Basic DOT format:\n{:?}\n", g_dot);
-        // tracing::debug!("{:#?}", g.graph);
-
-        //         // 3. 最后，基于图关系为每个页面预计算“相关页面”
-        //         site.precompute_related_pages();
+        let mut pageid_to_url: HashMap<PageId, String> = HashMap::new();
+        for (id, page) in self.pages.iter() {
+            pageid_to_url.insert(id.clone(), page.url.clone());
+        }
 
         let site = Site {
             config: self.config.clone(),
+            pages: self.pages.clone(),
             root_page_id,
-            pages,
+            pageid_to_url,
+            knowledge_graph,
             static_assets,
             ..Site::default()
         };

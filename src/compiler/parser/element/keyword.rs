@@ -35,7 +35,8 @@ pub(crate) fn affiliated_keyword_parser_inner<'a, C: 'a>(
     );
     let optval = single_expression.clone().repeated().at_least(1).to_slice();
 
-    just("#+")
+    object::whitespaces()
+        .then(just("#+"))
         .then(choice((
             // #+KEY[OPTVAL]: VALUE(string)
             key_optvalue_string
@@ -157,8 +158,12 @@ pub(crate) fn affiliated_keyword_parser_inner<'a, C: 'a>(
                 }),
         )))
         .then(object::newline_or_ending())
-        .map(|((hash_plus, others), maybe_newline)| {
-            let mut children = Vec::with_capacity(2 + others.len());
+        .map(|(((whitespaces, hash_plus), others), maybe_newline)| {
+            let mut children = Vec::with_capacity(3 + others.len());
+
+            if !whitespaces.is_empty() {
+                children.push(crate::token!(OSK::Whitespace, whitespaces));
+            }
             children.push(crate::token!(OSK::HashPlus, hash_plus));
             children.extend(others);
             if let Some(newline) = maybe_newline {

@@ -9,6 +9,7 @@ use std::fs;
 use std::path::Path;
 
 use fs_extra::dir::create_all;
+use petgraph::dot::Dot;
 
 use crate::compiler::Compiler;
 use crate::export::ssg::renderer::Renderer;
@@ -70,11 +71,10 @@ impl StaticSiteGenerator {
             .compile_section(d_org)
             .expect("NO document compiled");
 
-        // tracing::debug!("docs={:?}", section.documents);
-        // let g = section.build_graph();
-        // let g_dot = Dot::new(&g.graph);
-        // tracing::debug!("Basic DOT format:\n{:?}\n", g_dot);
-        // tracing::debug!("{:#?}", g.graph);
+        let g = section.build_graph();
+        let g_dot = Dot::new(&g.graph);
+        tracing::debug!("Basic DOT format:\n{:?}\n", g_dot);
+        tracing::debug!("{:#?}", g.graph);
 
         tracing::info!("build site ...");
         let site = self.site_builder.build(&section).unwrap();

@@ -16,3 +16,4 @@ dbg*
 dhat.out*
 *.old
 *backup*
+del*.rs

@@ -83,7 +83,7 @@ impl fmt::Debug for SourcePathSegment {
                     r##"{}"##,
                     title
                         .iter()
-                        .map(|o| Renderer::render_object(o))
+                        .map(|o| Renderer::default().render_object(o))
                         .collect::<Vec<_>>()
                         .join("")
                 )
@@ -137,9 +137,9 @@ impl ExtractedLink {
 }
 
 pub struct BuilderContext {
-    current_path: Vec<SourcePathSegment>,
+    current_path: Vec<SourcePathSegment>, // inclusing File -> ZerothSeciton -> Heading
     current_file_path: Option<std::path::PathBuf>,
-    current_roam_node_path: Vec<String>, // current roam node path to find parent roamd_id
+    current_roam_node_path: Vec<String>, // current roam node path stack(containing RoamId) to find parent roamd_id
 }
 
 impl BuilderContext {
@@ -295,9 +295,7 @@ impl Converter {
         (zeroth_nodes, remaining_nodes)
     }
 
-    // 内部转换方法可以访问状态
     fn convert_document(&mut self, node: &SyntaxNode) -> Result<OrgFile, AstError> {
-        // 使用内部状态进行转换
         let children = node.children().collect::<Vec<_>>();
         let (zeroth_nodes, remainig_nodes) = self.split_at_first_heading(children);
 

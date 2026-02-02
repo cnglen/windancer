@@ -45,6 +45,7 @@ impl fmt::Debug for EdgeType {
 
 pub struct RoamGraph {
     pub graph: DiGraph<RoamNode, EdgeType>,
+    // id in RoamNode -> index in DiGraph
     pub id_to_index: HashMap<String, NodeIndex>,
 }
 
@@ -72,7 +73,7 @@ pub struct RoamNode {
     /// ROAM_ALIASES property
     pub aliases: Vec<String>,
 
-    /// 引用键列表 (ROAM_REFS: citation keys, URLs, DOIs)
+    /// ROAM_REFS: citation keys, URLs, DOIs
     pub refs: Vec<String>,
 
     /// 属性映射 (Org PROPERTIES)
@@ -87,24 +88,7 @@ pub struct RoamNode {
     pub level: u8,
 
     pub parent_id: Option<String>,
-    // /// 节点原始内容 (Org-mode 格式)
-    // pub raw_ast: RawAst, // OrgFile Or HeadingSubtree
-
-    // /// 节点渲染后内容 (HTML/Markdown)?
-    // pub rendered_content: String,
-
-    // /// 创建时间戳
-    // pub created: DateTime<Utc>,
-
-    // /// 最后修改时间戳
-    // pub modified: DateTime<Utc>,
-
-    // /// 元数据哈希 (用于增量更新检测)
     // pub content_hash: String,
-
-    // pub page: Page,
-    // pub anchor: Option<String>, // page.link + #xxxxx; page.link
-    // pub link: String,           // url link
 }
 
 use std::fmt;
@@ -117,7 +101,7 @@ impl fmt::Debug for RoamNode {
             self.node_type,
             self.title
                 .iter()
-                .map(|o| Renderer::render_object(o))
+                .map(|o| Renderer::default().render_object(o))
                 .collect::<Vec<_>>()
                 .join(""),
         )
