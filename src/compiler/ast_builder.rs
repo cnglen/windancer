@@ -138,7 +138,7 @@ impl ExtractedLink {
 
 pub struct BuilderContext {
     current_path: Vec<SourcePathSegment>, // inclusing File -> ZerothSeciton -> Heading
-    current_file_path: Option<std::path::PathBuf>,
+    _current_file_path: Option<std::path::PathBuf>,
     current_roam_node_path: Vec<String>, // current roam node path stack(containing RoamId) to find parent roamd_id
 }
 
@@ -149,7 +149,7 @@ impl BuilderContext {
             current_path: vec![SourcePathSegment::File {
                 path: path.to_path_buf(),
             }],
-            current_file_path: Some(path.to_path_buf()),
+            _current_file_path: Some(path.to_path_buf()),
             current_roam_node_path: vec![],
         }
     }
@@ -219,7 +219,7 @@ impl Default for BuilderContext {
     fn default() -> Self {
         BuilderContext {
             current_path: vec![],
-            current_file_path: None,
+            _current_file_path: None,
             current_roam_node_path: vec![],
         }
     }

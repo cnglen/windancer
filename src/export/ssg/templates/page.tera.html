@@ -23,7 +23,9 @@
             }
         };
         window.onload = function() {
-        document.querySelectorAll('div.code pre.src code').forEach(el => { hljs.highlightElement(el); });
+            document.querySelectorAll('div.code pre.src code').forEach(block => {
+                hljs.highlightElement(block);
+            });
         };
       </script>
     {% else %}
@@ -35,7 +37,9 @@
             }
         };
         window.onload = function() {
-        document.querySelectorAll('div.code pre.src code').forEach(el => { hljs.highlightElement(el); });
+            document.querySelectorAll('div.code pre.src code').forEach(block => {
+                hljs.highlightElement(block);
+            });
         };
       </script>"      
     {% endif %}

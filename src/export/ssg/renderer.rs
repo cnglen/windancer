@@ -125,7 +125,9 @@ impl Renderer {
         self.context.prev_head_level = vec![0];
         let mut children = vec![];
         for heading_subtree in page.ast.heading_subtrees.iter() {
-            children.push(self.get_toc_of_heading_subtree(heading_subtree));
+            if !heading_subtree.is_commented {
+                children.push(self.get_toc_of_heading_subtree(heading_subtree));
+            }
         }
         TableOfContents {
             root_nodes: children,
@@ -165,7 +167,9 @@ impl Renderer {
 
         let mut children = vec![];
         for sub_heading in heading.sub_heading_subtrees.iter() {
-            children.push(self.get_toc_of_heading_subtree(sub_heading));
+            if !sub_heading.is_commented {
+                children.push(self.get_toc_of_heading_subtree(sub_heading));
+            }
         }
 
         TocNode {
@@ -532,12 +536,12 @@ impl Renderer {
 
             Object::Code(objects) => {
                 let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
-                format!(r##"<code>{}</code>"##, inner)
+                format!(r##"<code class="inline">{}</code>"##, inner)
             }
 
             Object::Verbatim(objects) => {
                 let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
-                format!(r##"<code>{}</code>"##, inner)
+                format!(r##"<code class="inline">{}</code>"##, inner)
             }
 
             Object::Whitespace(content) => {
@@ -725,17 +729,33 @@ impl Renderer {
     }
 
     fn render_src_block(&self, block: &SrcBlock) -> String {
+        let s = block
+            .contents
+            .iter()
+            .map(|e| self.render_object(e))
+            .collect::<String>();
+
+        // strip common start spaces
+        let n_start_common_spaces = s
+            .lines()
+            .filter(|line| line.trim().chars().count() > 0)
+            .map(|line| line.chars().take_while(|&c| c == ' ').count())
+            .min();
+        let s = if let Some(n) = n_start_common_spaces {
+            let prefix = " ".repeat(n);
+            s.lines()
+                .map(|line| line.strip_prefix(&prefix).unwrap_or(line))
+                .collect::<Vec<_>>()
+                .join("\n")
+        } else {
+            s
+        };
+
         if let Some(v) = &block.exports {
             match v.as_str() {
                 "code" | "both" => {
-                    let s = block
-                        .contents
-                        .iter()
-                        .map(|e| self.render_object(e))
-                        .collect::<String>();
-
                     format!(
-                        r##"<div class="code org-src-container"><pre class="src src-{}"><code class="language-{}">{}</code></pre></div>"##,
+                        r##"<div class="code org-src-container"><pre class="src src-{}"><code class="language-{} block">{}</code></pre></div>"##,
                         block.language, block.language, s
                     )
                 }
@@ -744,14 +764,8 @@ impl Renderer {
                 }
             }
         } else {
-            let s = block
-                .contents
-                .iter()
-                .map(|e| self.render_object(e))
-                .collect::<String>();
-
             format!(
-                r##"<div class="code org-src-container"><pre class="src src-{}"><code class="language-{}">{}</code></pre></div>"##,
+                r##"<div class="code org-src-container"><pre class="src src-{}"><code class="language-{} block">{}</code></pre></div>"##,
                 block.language, block.language, s
             )
         }

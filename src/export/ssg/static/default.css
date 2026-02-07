@@ -160,6 +160,18 @@ h2 {
   pointer-events: auto; /* 保持鼠标交互 */
 }
 
+code.inline {
+    background: #fff;
+    border: solid 1px lightblue;
+    font-family: Consolas,"Andale Mono WT","Andale Mono","Lucida Console","Lucida Sans Typewriter","DejaVu Sans Mono","Bitstream Vera Sans Mono","Liberation Mono","Nimbus Mono L",Monaco,"Courier New",Courier,monospace;
+    font-size: 75%;
+    max-width: 100%;
+    overflow-x: auto;
+    padding: 0 5px;
+    white-space: nowrap;
+    color:darkred;
+}
+
 
 /* todo */
 /* #content { max-width: 60em; margin: auto; } */

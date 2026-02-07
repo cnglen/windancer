@@ -11,7 +11,7 @@ use petgraph::graph::{DiGraph, NodeIndex};
 use rowan::GreenNode;
 use walkdir::WalkDir;
 
-use crate::compiler::ast_builder::element::{HeadingSubtree, OrgFile};
+use crate::compiler::ast_builder::element::OrgFile;
 use crate::compiler::content::{Document, Section};
 use crate::compiler::parser::syntax::{OrgSyntaxKind, SyntaxNode};
 use crate::export::ssg::toc::{TableOfContents, TocNode};
@@ -125,7 +125,7 @@ pub struct Site {
     pub flattened_pages: Vec<PageId>,
 
     // static assets: including css/image/fonts.
-    static_assets: Vec<(PathBuf, PathBuf)>,
+    _static_assets: Vec<(PathBuf, PathBuf)>,
 
     pub knowledge_graph: KnowledgeGraph,
     // roam_id, roamd_node, page_id
@@ -195,7 +195,7 @@ impl Default for Site {
             root_page_id: PageId::new(),
             tag_index: HashMap::new(),
             flattened_pages: vec![],
-            static_assets: vec![],
+            _static_assets: vec![],
             knowledge_graph: KnowledgeGraph::default(),
         }
     }
@@ -690,7 +690,7 @@ impl SiteBuilder {
             root_page_id,
             pageid_to_url,
             knowledge_graph,
-            static_assets,
+            _static_assets: static_assets,
             ..Site::default()
         };
 
