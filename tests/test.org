@@ -8,7 +8,7 @@
 :end:
 #+title: test
 #+macro: color @@html:<span style="color:$1">$2</span>@@ @@latex:\textcolor{$1}{$2}@@
-#+date: [2025-08-02 Sat 18:43]
+#+date: 2025-08-02T18:43:00+0800
 #+OPTIONS: toc:nil
 #+project: windancer
 #+author: cnglen

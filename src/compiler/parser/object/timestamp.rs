@@ -11,7 +11,12 @@ pub struct FlexibleDateTimeParser {
 impl FlexibleDateTimeParser {
     pub fn new() -> Self {
         Self {
-            formats: vec!["%Y-%m-%d %a %H:%M", "%Y-%m-%d %H:%M", "%Y-%m-%d"],
+            formats: vec![
+                "%Y-%m-%d %a %H:%M",
+                "%Y-%m-%d %H:%M",
+                "%Y-%m-%d",
+                "%Y-%m-%dT%H:%M:%S%z",
+            ],
         }
     }
 

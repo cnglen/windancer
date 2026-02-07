@@ -10,7 +10,9 @@ use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
 
+use parser::object;
 use rowan::WalkEvent;
+use walkdir::WalkDir;
 
 use crate::compiler::ast_builder::AstBuilder;
 use crate::compiler::content::{Document, DocumentMetadata, FileInfo, Section, SectionMetadata};
@@ -46,7 +48,20 @@ impl Compiler {
 
         let ast = self.ast_builder.build(&syntax_tree, f_org).expect("build");
         let file_info = FileInfo::from(f_org);
-        let metadata = Self::get_metadata(&syntax_tree);
+        let mut metadata = Self::get_metadata(&syntax_tree);
+
+        // FIXME: property > keyword? remove keyword's date?
+        metadata.last_modified_ts = ast.properties.get("LAST_MODIFIED").map(|e| {
+            object::timestamp::FlexibleDateTimeParser::new()
+                .parse(e.as_str())
+                .expect("get ts")
+        });
+        metadata.created_ts = ast.properties.get("CREATED").map(|e| {
+            object::timestamp::FlexibleDateTimeParser::new()
+                .parse(e.as_str())
+                .expect("get ts")
+        });
+
         let doc = Document {
             file_info,
             ast,
@@ -61,6 +76,7 @@ impl Compiler {
     // collect all links
     // id 引用
 
+    // // FIXME: keyword? in ast_builder? keywords/properties
     // 有一个SyntaxNode (rowan)
     // 如何收集RoamNode，构建一张基于RoamNode图, 并构建RoamNode的父子关系及ID引用关系。(a，a的儿子b,a的孙子c均是RoamNode, c引用了RoamNode x, a和x, b和x的关系该如何处理？)
     fn get_metadata(syntax_tree: &SyntaxNode) -> DocumentMetadata {
@@ -122,6 +138,19 @@ impl Compiler {
                     .contains("NIL")
             })
             .unwrap_or(true);
+        let created_ts = keyword.remove("DATE").map(|e| e.join("")).map(|e| {
+            object::timestamp::FlexibleDateTimeParser::new()
+                .parse(e.as_str())
+                .expect("get ts")
+        });
+        let last_modified_ts = keyword
+            .remove("LAST_MODIFIED")
+            .map(|e| e.join(""))
+            .map(|e| {
+                object::timestamp::FlexibleDateTimeParser::new()
+                    .parse(e.as_str())
+                    .expect("get ts")
+            });
 
         DocumentMetadata {
             title,
@@ -130,12 +159,13 @@ impl Compiler {
             category,
             enable_render,
             extra: keyword,
+            last_modified_ts,
+            created_ts,
             ..DocumentMetadata::default()
         }
     }
 
     fn has_org_file<P: AsRef<Path>>(path: P) -> bool {
-        use walkdir::WalkDir;
         for entry in WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
             if entry.metadata().unwrap().is_file() {
                 if entry.path().extension().unwrap_or(OsStr::new("")) == "org" {

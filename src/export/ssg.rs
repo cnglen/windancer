@@ -77,7 +77,10 @@ impl StaticSiteGenerator {
         tracing::debug!("{:#?}", g.graph);
 
         tracing::info!("build site ...");
-        let site = self.site_builder.build(&section).unwrap();
+        let site = self
+            .site_builder
+            .build(&section)
+            .expect("site_builder.build() failed");
 
         tracing::info!("render site ...");
         self.renderer.render_site(&site);

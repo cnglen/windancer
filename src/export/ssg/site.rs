@@ -5,12 +5,13 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt;
 use std::path::{Path, PathBuf};
 
+use chrono::{DateTime, Local};
 use fs_extra::dir::{CopyOptions, copy};
 use petgraph::graph::{DiGraph, NodeIndex};
 use rowan::GreenNode;
 use walkdir::WalkDir;
 
-use crate::compiler::ast_builder::element::OrgFile;
+use crate::compiler::ast_builder::element::{HeadingSubtree, OrgFile};
 use crate::compiler::content::{Document, Section};
 use crate::compiler::parser::syntax::{OrgSyntaxKind, SyntaxNode};
 use crate::export::ssg::toc::{TableOfContents, TocNode};
@@ -37,6 +38,9 @@ pub struct Page {
 
     pub tags: HashSet<String>,
     pub category: Vec<String>,
+
+    pub created_ts: Option<DateTime<Local>>,
+    pub last_modified_ts: Option<DateTime<Local>>,
 }
 
 impl Page {
@@ -68,6 +72,8 @@ impl Page {
             tags: HashSet::default(),
             category: vec![],
             html_path: String::default(),
+            last_modified_ts: None,
+            created_ts: None,
         }
     }
 }
@@ -140,8 +146,8 @@ impl Site {
         page_id == "FAKED_ROOT_PAGE_ID"
     }
 
-    fn get_toc_of_page(&self, page_id: &PageId) -> TocNode {
-        let page = self.pages.get(page_id).unwrap();
+    fn get_toc_of_page(&self, root_page_id: &PageId) -> TocNode {
+        let page = self.pages.get(root_page_id).unwrap();
         let mut children = vec![];
         for child_page_id in page.children_ids.iter() {
             children.push(self.get_toc_of_page(child_page_id));
@@ -281,6 +287,7 @@ impl SiteBuilder {
             document.metadata.title,
             document.html_path()
         );
+
         let ast = document.ast.clone();
         let syntax_tree = document.syntax_tree.clone();
         let mut hasher = blake3::Hasher::new();
@@ -291,6 +298,8 @@ impl SiteBuilder {
             .title
             .clone()
             .unwrap_or("no title found".to_string());
+        let last_modified_ts = document.metadata.last_modified_ts.clone();
+        let created_ts = document.metadata.created_ts.clone();
 
         let url = format!("/{}", document.html_path());
         let metadata = PageMetadata {};
@@ -337,6 +346,8 @@ impl SiteBuilder {
                 next_flattened_id,
                 prev_flattened_id,
                 html_path: document.html_path(),
+                created_ts,
+                last_modified_ts,
             },
         );
 
@@ -349,13 +360,15 @@ impl SiteBuilder {
         let mut index_page_id = None;
         let mut n_index_page: usize = 0;
         for doc in section.documents.iter() {
-            if doc.file_info.maybe_index {
-                let id = self.process_document(doc);
-                index_page_id = Some(id.clone());
-                n_index_page = n_index_page + 1;
-                self.parent_stack.push(id);
-            } else {
-                self.process_document(doc);
+            if doc.metadata.enable_render {
+                if doc.file_info.maybe_index {
+                    let id = self.process_document(doc);
+                    index_page_id = Some(id.clone());
+                    n_index_page = n_index_page + 1;
+                    self.parent_stack.push(id);
+                } else {
+                    self.process_document(doc);
+                }
             }
         }
         if n_index_page != 1 {

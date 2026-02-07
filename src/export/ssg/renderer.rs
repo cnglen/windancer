@@ -46,7 +46,7 @@ use crate::compiler::ast_builder::element::{
 use crate::compiler::ast_builder::object::{GeneralLink, Object, TableCellType};
 use crate::constants::entity::ENTITYNAME_TO_HTML;
 use crate::export::ssg::site::{Page, PageId, Site};
-use crate::export::ssg::toc::TableOfContents;
+use crate::export::ssg::toc::{TableOfContents, TocNode};
 use crate::export::ssg::view_model::{PageNavContext, TableViewModel};
 
 pub struct RendererContext {
@@ -58,6 +58,7 @@ pub struct RendererContext {
     pub toc: TableOfContents,
     pub pageid_to_url: HashMap<PageId, String>,
     pub roamid_to_url: HashMap<String, String>,
+    pub prev_head_level: Vec<u8>,
 }
 
 impl Default for RendererContext {
@@ -78,6 +79,7 @@ impl Default for RendererContext {
             toc: TableOfContents::default(),
             pageid_to_url: HashMap::default(),
             roamid_to_url: HashMap::default(),
+            prev_head_level: vec![0],
         }
     }
 }
@@ -119,6 +121,61 @@ impl Default for Renderer {
 }
 
 impl Renderer {
+    fn get_toc_of_page(&mut self, page: &Page) -> TableOfContents {
+        self.context.prev_head_level = vec![0];
+        let mut children = vec![];
+        for heading_subtree in page.ast.heading_subtrees.iter() {
+            children.push(self.get_toc_of_heading_subtree(heading_subtree));
+        }
+        TableOfContents {
+            root_nodes: children,
+        }
+    }
+
+    fn get_toc_of_heading_subtree(&mut self, heading: &HeadingSubtree) -> TocNode {
+        if heading.level > self.context.prev_head_level.len() as u8 {
+            self.context.prev_head_level.push(1);
+        } else if heading.level == self.context.prev_head_level.len() as u8 {
+            let tmp = self.context.prev_head_level.pop().unwrap();
+            self.context.prev_head_level.push(tmp + 1);
+        } else {
+            while heading.level < self.context.prev_head_level.len() as u8 {
+                let _ = self.context.prev_head_level.pop().unwrap();
+            }
+            let tmp = self.context.prev_head_level.pop().unwrap();
+            self.context.prev_head_level.push(tmp + 1);
+        }
+        let index = self
+            .context
+            .prev_head_level
+            .iter()
+            .map(|n| n.to_string())
+            .collect::<Vec<String>>()
+            .join(".");
+
+        let title = heading
+            .title
+            .iter()
+            .map(|e| self.render_object(e))
+            .collect::<String>();
+        let title = format!("{} {}", index, title);
+
+        let path = format!("#{}", heading.id());
+        let level = heading.level;
+
+        let mut children = vec![];
+        for sub_heading in heading.sub_heading_subtrees.iter() {
+            children.push(self.get_toc_of_heading_subtree(sub_heading));
+        }
+
+        TocNode {
+            title,
+            path,
+            level: level.into(),
+            children,
+        }
+    }
+
     pub fn slugify(s: String) -> String {
         s.to_ascii_lowercase()
             .split(&['-', '_', ' '])
@@ -150,6 +207,17 @@ impl Renderer {
         let mut ctx = tera::Context::from_serialize(page_nav_context)
             .expect("render_page: from serialize failed");
         ctx.insert("title", &page.title);
+        let id = page.ast.properties.get("ID");
+        ctx.insert("id", &id);
+
+        let create_date = page.created_ts.map(|e| e.format("%Y-%m-%d").to_string());
+        let last_modified_date = page
+            .last_modified_ts
+            .map(|e| e.format("%Y-%m-%d").to_string());
+
+        ctx.insert("create_date", &create_date);
+        ctx.insert("last_modified_date", &last_modified_date);
+
         ctx.insert(
             "toc",
             &self.context.toc.to_html_nav(Some(page.url.as_str())),
@@ -160,6 +228,9 @@ impl Renderer {
         );
         let content = self.render_org_file(&page.ast);
         ctx.insert("content", &content);
+
+        let toc = self.get_toc_of_page(page).to_html_nav(None);
+        ctx.insert("toc_of_current_page", &toc);
 
         let html = self
             .context
@@ -196,24 +267,13 @@ impl Renderer {
         Ok(String::from(""))
     }
 
+    // todo: use tera template
     fn render_org_file(&mut self, org_file: &OrgFile) -> String {
+        self.context.prev_head_level = vec![0];
+
         self.footnote_defintions = org_file.footnote_definitions.clone();
 
         let mut output = String::new();
-
-        // check title
-        if let Some(title_objects) = org_file.keywords.get("TITLE") {
-            let title = title_objects
-                .iter()
-                .map(|e| self.render_object(e))
-                .collect::<String>();
-            let html = if let Some(id) = org_file.properties.get("ID") {
-                format!(r##"<h1 class="title" id="{}">{}</h1>"##, id, title)
-            } else {
-                format!(r##"<h1 class="title">{}</h1>"##, title)
-            };
-            output.push_str(&html);
-        }
 
         if let Some(section) = &org_file.zeroth_section {
             output.push_str(&self.render_section(section));
@@ -235,6 +295,26 @@ impl Renderer {
     }
 
     fn render_heading_subtree(&mut self, heading: &HeadingSubtree) -> String {
+        if heading.level > self.context.prev_head_level.len() as u8 {
+            self.context.prev_head_level.push(1);
+        } else if heading.level == self.context.prev_head_level.len() as u8 {
+            let tmp = self.context.prev_head_level.pop().unwrap();
+            self.context.prev_head_level.push(tmp + 1);
+        } else {
+            while heading.level < self.context.prev_head_level.len() as u8 {
+                let _ = self.context.prev_head_level.pop().unwrap();
+            }
+            let tmp = self.context.prev_head_level.pop().unwrap();
+            self.context.prev_head_level.push(tmp + 1);
+        }
+        let index = self
+            .context
+            .prev_head_level
+            .iter()
+            .map(|n| n.to_string())
+            .collect::<Vec<String>>()
+            .join(".");
+
         let title = heading
             .title
             .iter()
@@ -249,7 +329,7 @@ impl Renderer {
         let id_html = if let Some(id) = heading.properties.get("ID") {
             format!(r##"id="{}""##, id)
         } else {
-            format!("")
+            format!(r##"id={}"##, heading.id())
         };
 
         let todo_html = if let Some(todo) = &heading.keyword {
@@ -307,17 +387,14 @@ impl Renderer {
         };
 
         format!(
-            r##"<div class="outline-{level}">
-  <h{level} {id_html}>
-  {todo}
-  {title}
-  {tags}
-  </h{level}>
+            r##"<section class="outline-{level}">
+  <h{level} {id_html}> {index} {todo} {title} {tags} </h{level}>
   {section}
   {content}
-</div>
- "##,
-            level = heading.level + 1,
+</section>
+"##,
+            index = index,
+            level = heading.level,
             title = escape_html(&title),
             todo = todo_html,
             tags = tags_html,
@@ -492,10 +569,16 @@ impl Renderer {
                     };
 
                     format!(
-                        r##"<img src="{}" alt="{}">"##,
+                        r##"<figure><img src="{}" alt="{}" /></figure>"##,
                         path_html,
                         path.split("/").last().expect("todo")
                     )
+
+                    // format!(
+                    //     r##"<img src="{}" alt="{}">"##,
+                    //     path_html,
+                    //     path.split("/").last().expect("todo")
+                    // )
                 } else if protocol == "id" {
                     // fixme: if roam id is in other file: in general link, page/url info is missed?
                     let id = path.strip_prefix("id:").expect("id:");
@@ -642,15 +725,36 @@ impl Renderer {
     }
 
     fn render_src_block(&self, block: &SrcBlock) -> String {
-        let s = block
-            .contents
-            .iter()
-            .map(|e| self.render_object(e))
-            .collect::<String>();
-        format!(
-            r##"<div class="code org-src-container"><pre class="src src-{}"><code class="language-{}">{}</code></pre></div>"##,
-            block.language, block.language, s
-        )
+        if let Some(v) = &block.exports {
+            match v.as_str() {
+                "code" | "both" => {
+                    let s = block
+                        .contents
+                        .iter()
+                        .map(|e| self.render_object(e))
+                        .collect::<String>();
+
+                    format!(
+                        r##"<div class="code org-src-container"><pre class="src src-{}"><code class="language-{}">{}</code></pre></div>"##,
+                        block.language, block.language, s
+                    )
+                }
+                _ => {
+                    format!("")
+                }
+            }
+        } else {
+            let s = block
+                .contents
+                .iter()
+                .map(|e| self.render_object(e))
+                .collect::<String>();
+
+            format!(
+                r##"<div class="code org-src-container"><pre class="src src-{}"><code class="language-{}">{}</code></pre></div>"##,
+                block.language, block.language, s
+            )
+        }
     }
 
     // FIXME: only supoort html now
@@ -778,20 +882,24 @@ impl Renderer {
             };
 
             format!(
-                r##"<div class="figure">
-<p> <img src="{}" {}></p>
-<p> <span class="figure-number">Figure {}: </span> {}</p>
-</div>
-"##,
-                path_html, attr_html, self.context.figure_counter, caption,
+                r##"<figure> <img src="{}" alt="{}" {}></p> <figcaption>Figure {}: {}</figcaption> </figure>"##,
+                path_html,
+                path.split("/").last().expect("todo"),
+                attr_html,
+                self.context.figure_counter,
+                caption
             )
+
+        //             format!(
+        //                 r##"<div class="figure">
+        // <p> <img src="{}" {}></p>
+        // <p> <span class="figure-number">Figure {}: </span> {}</p>
+        // </div>
+        // "##,
+        //                 path_html, attr_html, self.context.figure_counter, caption,
+        //             )
         } else {
-            format!(
-                r##"<p>{}
-</p>
-"##,
-                contents
-            )
+            format!(r##"<p>{}</p>"##, contents)
         }
     }
 
@@ -799,10 +907,7 @@ impl Renderer {
     fn render_footnote_definition(&mut self, footnote_definition: &FootnoteDefinition) -> String {
         let c = if footnote_definition.rids.len() == 1 {
             format!(
-                r##"  <sup>
-    <a class="footnum" href="#fnr.{label}.{rid}" role="doc-backlink">^</a>
-  </sup>
-"##,
+                r##"<sup> <a class="footnum" href="#fnr.{label}.{rid}" role="doc-backlink">^</a> </sup> "##,
                 label = footnote_definition.label,
                 rid = 1
             )
@@ -812,10 +917,7 @@ impl Renderer {
                 .iter()
                 .map(|rid| {
                     format!(
-                        r##"  <sup>
-    <a class="footnum" href="#fnr.{label}.{rid}" role="doc-backlink">{rid}</a>
-  </sup>
-"##,
+                        r##"<sup><a class="footnum" href="#fnr.{label}.{rid}" role="doc-backlink">{rid}</a>  </sup>"##,
                         label = footnote_definition.label,
                         rid = rid
                     )
@@ -824,13 +926,7 @@ impl Renderer {
         };
 
         format!(
-            r##"<div class="footdef">
-  <a id="fn.{label}">{nid}</a>: {c}
-  <div class="footpara" role="doc-footnote">
-   {label} := {def}
-  </div>
-</div>
-"##,
+            r##"<div class="footdef"><a id="fn.{label}">{nid}</a>: {c}<div class="footpara" role="doc-footnote">{label} := {def}</div></div>"##,
             label = footnote_definition.label,
             nid = footnote_definition.nid,
             c = c,
@@ -845,9 +941,7 @@ impl Renderer {
 
     fn render_center_block(&mut self, block: &CenterBlock) -> String {
         format!(
-            r##"<div class="org-center">
-{}</div>
-"##,
+            r##"<div class="org-center">{}</div>"##,
             block
                 .contents
                 .iter()
@@ -858,9 +952,7 @@ impl Renderer {
 
     fn render_quote_block(&mut self, block: &QuoteBlock) -> String {
         format!(
-            r##"<blockquote>
-{}</blockquote>
-"##,
+            r##"<blockquote>{}</blockquote>"##,
             block
                 .contents
                 .iter()
@@ -870,10 +962,15 @@ impl Renderer {
     }
 
     fn render_special_block(&mut self, block: &SpecialBlock) -> String {
+        let maybe_note = if block.name == "note" {
+            r##"<p class="note admonition-title" >Note</p>"##
+        } else {
+            ""
+        };
+
         format!(
-            r##"<div class="{}">
-{}</div>
-"##,
+            r##"{}<div class="{}">{}</div>"##,
+            maybe_note,
             block.name,
             block
                 .contents
@@ -895,9 +992,7 @@ impl Renderer {
         match list.list_type {
             ListType::Unordered => {
                 format!(
-                    r##"<ul>
-{}</ul>
-"##,
+                    r##"<ul>{}</ul>"##,
                     list.items
                         .iter()
                         .map(|i| self.render_item(&i))
@@ -907,9 +1002,7 @@ impl Renderer {
 
             ListType::Ordered => {
                 format!(
-                    r##"<ol>
-{}</ol>
-"##,
+                    r##"<ol>{}</ol>"##,
                     list.items
                         .iter()
                         .map(|i| self.render_item(&i))
@@ -919,9 +1012,7 @@ impl Renderer {
 
             ListType::Descriptive => {
                 format!(
-                    r##"<dl>
-{}</dl>
-"##,
+                    r##"<dl>{}</dl>"##,
                     list.items
                         .iter()
                         .map(|i| self.render_item(&i))
@@ -961,28 +1052,14 @@ impl Renderer {
             .map(|e| self.render_object(e))
             .collect::<String>();
 
-        format!(
-            r##"  <dt>{} {}</dt> <dd>{}</dd>
-"##,
-            checkbox_html, tag_html, contents_html,
-        )
-
-        //         match &item.tag {
-        //             None => format!(
-        //                 r##"  <li>
-        // {} {}  </li>
-        // "##,
-        //                 checkbox_html, contents_html
-        //             ),
-
-        //             Some(tag) => {
-        //                 format!(
-        //                     r##"  <dt>{} {}</dt> <dd>{}</dd>
-        // "##,
-        //                     checkbox_html, tag, contents_html,
-        //                 )
-        //             }
-        //         }
+        if tag_html.is_empty() {
+            format!(r##"  <li> {} {}  </li> "##, checkbox_html, contents_html)
+        } else {
+            format!(
+                r##"  <dt>{} {}</dt> <dd>{}</dd>"##,
+                checkbox_html, tag_html, contents_html,
+            )
+        }
     }
 }
 

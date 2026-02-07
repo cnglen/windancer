@@ -1816,11 +1816,16 @@ impl Converter {
         })
     }
 
+    // // FIXME: parse argument data? in compiler stage?
     // element.src_block
     fn convert_src_block(&mut self, node: &SyntaxNode) -> Result<SrcBlock, AstError> {
-        let data = None;
-        let mut contents = vec![];
         let mut language = String::new();
+        let mut switches: Vec<String> = vec![];
+        let mut results = None;
+        let mut exports = None;
+        let mut vars: BTreeMap<String, String> = BTreeMap::new();
+        let mut other_args: BTreeMap<String, String> = BTreeMap::new();
+        let mut contents = vec![];
         match node.kind() {
             OrgSyntaxKind::SrcBlock => {
                 language = node
@@ -1833,6 +1838,58 @@ impl Converter {
                     .text()
                     .to_string()
                     .to_lowercase();
+
+                switches = node
+                    .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockBegin)
+                    .unwrap()
+                    .first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::SrcBlockSwitches)
+                    .map_or(vec![], |e| {
+                        e.as_token()
+                            .unwrap()
+                            .text()
+                            .split_whitespace()
+                            .map(|e| e.to_string())
+                            .collect::<Vec<String>>()
+                    });
+
+                let raw_arguments = node
+                    .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockBegin)
+                    .unwrap()
+                    .first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::SrcBlockHeaderArguments)
+                    .map_or(String::from(""), |e| {
+                        e.as_token().unwrap().text().to_string().to_lowercase()
+                    });
+
+                let mut parts = raw_arguments.split_whitespace();
+
+                while let Some(part) = parts.next() {
+                    if part.starts_with(':') {
+                        let key = &part[1..]; // 去掉冒号
+                        if let Some(value) = parts.next() {
+                            match key {
+                                "results" => results = Some(value.to_string()),
+                                "exports" => exports = Some(value.to_string()),
+                                "var" => {
+                                    if let Some((var_name, var_value)) = value.split_once('=') {
+                                        vars.insert(var_name.to_string(), var_value.to_string());
+                                    }
+                                }
+                                _ => {
+                                    other_args.insert(key.to_string(), value.to_string());
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if exports.is_none() {
+                    match language.as_str() {
+                        "ditaa" | "mermaid" | "dot" => {
+                            exports = Some("results".to_string());
+                        }
+                        _ => {}
+                    }
+                }
 
                 let maybe_block_content =
                     node.first_child_by_kind(&|c| c == OrgSyntaxKind::BlockContent);
@@ -1849,9 +1906,14 @@ impl Converter {
         }
 
         Ok(SrcBlock {
-            language: language,
-            data: data,
-            contents: contents,
+            language,
+            switches,
+            results,
+            exports,
+            vars,
+            other_args,
+
+            contents,
         })
     }
 

@@ -288,7 +288,8 @@ pub(crate) fn keyword_parser_inner<'a, C: 'a + std::default::Default>(
 
     // FIXME: better method? element vs blankline?
     // #+KEY: VALUE(string)
-    let p1_part1 = just("#+")
+    let p1_part1 = object::whitespaces()
+        .then(just("#+"))
         .then(key_parser())
         .then(just(":"))
         .then(object::whitespaces())
@@ -321,8 +322,11 @@ pub(crate) fn keyword_parser_inner<'a, C: 'a + std::default::Default>(
     ))
     .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
     .map(
-        |((((((hash_plus, key), colon), ws), value), nl), blank_lines)| {
-            let mut children = Vec::with_capacity(6 + blank_lines.len());
+        |(((((((whitespaces, hash_plus), key), colon), ws), value), nl), blank_lines)| {
+            let mut children = Vec::with_capacity(7 + blank_lines.len());
+            if !whitespaces.is_empty() {
+                children.push(crate::token!(OSK::Whitespace, whitespaces));
+            }
 
             children.push(crate::token!(OSK::HashPlus, hash_plus));
 
@@ -362,7 +366,8 @@ pub(crate) fn keyword_parser_inner<'a, C: 'a + std::default::Default>(
     );
 
     // #+KEY: VALUE(objects)
-    let p1a_part1 = just("#+")
+    let p1a_part1 = object::whitespaces()
+        .then(just("#+"))
         .then(key_with_objects)
         .then(just(":"))
         .then(object::whitespaces())
@@ -386,8 +391,11 @@ pub(crate) fn keyword_parser_inner<'a, C: 'a + std::default::Default>(
     ))
     .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
     .map(
-        |((((((hash_plus, key), colon), ws), value), nl), blank_lines)| {
-            let mut children = Vec::with_capacity(6 + blank_lines.len());
+        |(((((((whitespaces, hash_plus), key), colon), ws), value), nl), blank_lines)| {
+            let mut children = Vec::with_capacity(7 + blank_lines.len());
+            if !whitespaces.is_empty() {
+                children.push(crate::token!(OSK::Whitespace, whitespaces));
+            }
             children.push(crate::token!(OSK::HashPlus, hash_plus));
             children.push(crate::node!(
                 OSK::KeywordKey,

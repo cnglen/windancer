@@ -1,6 +1,7 @@
 //! AST definition for element in org-mode
 use std::collections::BTreeMap;
 use std::fmt;
+use std::hash::{DefaultHasher, Hash, Hasher};
 
 use crate::compiler::ast_builder::ExtractedLink;
 use crate::compiler::ast_builder::object::Object;
@@ -49,7 +50,7 @@ roam_nodes: {:#?},
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Hash)]
 pub struct HeadingSubtree {
     // heading row info
     pub level: u8,
@@ -66,6 +67,14 @@ pub struct HeadingSubtree {
     pub properties: BTreeMap<String, String>,
 }
 
+impl HeadingSubtree {
+    pub fn id(&self) -> String {
+        let mut hasher = DefaultHasher::new();
+        self.hash(&mut hasher);
+        let hash_val = hasher.finish();
+        format!("{:x}", hash_val)
+    }
+}
 // todo: if key duplicated?
 pub(crate) fn get_properties(property_drawer: &Option<PropertyDrawer>) -> BTreeMap<String, String> {
     let mut properties: BTreeMap<String, String> = BTreeMap::new();
@@ -112,7 +121,7 @@ impl fmt::Debug for HeadingSubtree {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Hash)]
 pub struct Section {
     pub elements: Vec<Element>,
 }
@@ -130,7 +139,7 @@ impl fmt::Debug for Section {
 
 // 块级元素（Block-level elements）： Greater Or Lesser Element
 // 第一个Table := Element:Table表示枚举，第二个Table表示该枚举所带的数据的类型(结构体)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub enum Element {
     // Greater
     Table(Table),
@@ -166,37 +175,37 @@ pub enum Element {
     Comment(Comment),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct ZerothSectionPreamble {
     pub comment: Option<Comment>,
     pub property_drawer: Option<PropertyDrawer>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct Drawer {
     pub name: String,
     pub contents: Vec<Element>,
     pub affiliated_keywords: Vec<AffiliatedKeyword>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct PropertyDrawer {
     pub contents: Vec<NodeProperty>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct NodeProperty {
     pub name: String,
     pub value: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct Planning {
     pub keyword: String,
     pub timestamp: Object,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Hash)]
 pub struct Table {
     pub name: Option<String>, // 表格名称 (#+NAME:)
     pub caption: Vec<Object>, // 表格标题 (#+CAPTION:)
@@ -217,7 +226,7 @@ impl fmt::Debug for Table {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Hash)]
 pub struct TableRow {
     pub cells: Vec<Object>,
     pub row_type: TableRowType,
@@ -230,7 +239,7 @@ impl fmt::Debug for TableRow {
 }
 
 // 行类型
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TableRowType {
     Header,  // 表头行
     Rule,    // 分隔线行: rule
@@ -255,7 +264,7 @@ pub enum TableRowType {
 // }
 
 // 表格公式
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct TableFormula {
     pub data: String,
     // pub target: String,         // 目标单元格/范围
@@ -263,26 +272,26 @@ pub struct TableFormula {
     // pub format: Option<String>, // 格式说明
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct Paragraph {
     pub affiliated_keywords: Vec<AffiliatedKeyword>,
     pub objects: Vec<Object>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct List {
     pub list_type: ListType,
     pub items: Vec<Item>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ListType {
     Ordered,
     Unordered,
     Descriptive,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct Item {
     pub bullet: String,
     pub counter_set: Option<String>,
@@ -291,19 +300,19 @@ pub struct Item {
     pub contents: Vec<Element>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct CenterBlock {
     pub parameters: Option<String>,
     pub contents: Vec<Element>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct QuoteBlock {
     pub parameters: Option<String>,
     pub contents: Vec<Element>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct SpecialBlock {
     pub name: String,
     pub parameters: Option<String>,
@@ -311,38 +320,45 @@ pub struct SpecialBlock {
 }
 
 // Lesser
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct ExampleBlock {
     pub data: Option<String>,
     pub contents: Vec<Object>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct CommentBlock {
     pub data: Option<String>,
     pub contents: Vec<Object>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct VerseBlock {
     pub data: Option<String>,
     pub contents: Vec<Object>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct ExportBlock {
     pub data: Option<String>,
     pub contents: Vec<Object>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct SrcBlock {
     pub language: String,
-    pub data: Option<String>,
+
+    pub switches: Vec<String>,
+
+    pub results: Option<String>,
+    pub exports: Option<String>,
+    pub vars: BTreeMap<String, String>,
+    pub other_args: BTreeMap<String, String>,
+
     pub contents: Vec<Object>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct FootnoteDefinition {
     pub nid: usize, // one label determines one nid, `nid` used to sort the defintions by the order of first occurrenced reference
     pub label: String, // the actual id of a footnote definition
@@ -350,33 +366,33 @@ pub struct FootnoteDefinition {
     pub contents: Vec<Element>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct HorizontalRule {}
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct Keyword {
     pub key: String,
     pub value: Vec<Object>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct AffiliatedKeyword {
     pub key: String,
     pub optvalue: Option<String>,
     pub value: Vec<Object>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct LatexEnvironment {
     pub(crate) text: String,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash)]
 pub struct Comment {
     pub text: String,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash)]
 pub struct FixedWidth {
     pub text: String,
 }

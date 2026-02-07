@@ -43,6 +43,7 @@ see [[file:docs/status.org][status]] for status.
   - prev
   - table of contents
 - link: roam node id?
+- #+include keyword to include files in compile stage
   
 
 ** about index.html

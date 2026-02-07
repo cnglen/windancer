@@ -1,7 +1,7 @@
 //! AST node definition for object in org-mode
 
 // 内联元素（Inline-level elements）
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub enum Object {
     Text(String),
 
@@ -96,7 +96,7 @@ pub enum Object {
     Whitespace(String),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct TableCell {
     pub contents: Vec<Object>,
     // pub alignment: CellAlignment, // 对齐方式
@@ -104,20 +104,20 @@ pub struct TableCell {
     pub cell_type: TableCellType,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TableCellType {
     Header,
     Data,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct CitationReference {
     pub key_prefix: Vec<Object>,
     pub key: String,
     pub key_suffix: Vec<Object>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct GeneralLink {
     pub protocol: String, // protocol or type, http/file/#
     pub path: String,

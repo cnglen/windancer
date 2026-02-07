@@ -6,11 +6,11 @@
     <li{% if is_active %} class="active"{% endif %}>
       <a href="{{ node.path }}">{{ node.title }}</a>
       {%- if node.children and node.level < max_depth %}
-        <ol>
+        <ul>
           {%- for child in node.children %}
             {{ self::render_toc_node(node=child, active_slug=active_slug, max_depth=max_depth) }}
           {%- endfor %}
-        </ol>
+        </ul>
       {%- endif %}
     </li>
   {%- endif -%}
