@@ -3,6 +3,7 @@ mod common;
 mod element;
 pub(crate) mod object;
 mod org_file;
+mod preprocess;
 pub(crate) mod syntax;
 
 use std::collections::{HashMap, HashSet};
@@ -11,6 +12,7 @@ use std::path::Path;
 
 use chrono::prelude::*;
 use chumsky::prelude::*;
+use preprocess::IncludePreProcessor;
 use rowan::{GreenNode, GreenNodeBuilder, GreenToken, NodeOrToken, WalkEvent};
 use syntax::{OrgSyntaxKind, SyntaxNode};
 use tracing;
@@ -86,6 +88,8 @@ impl ParserResult {
 pub struct OrgParser {
     pub config: config::OrgParserConfig,
 }
+
+// line -> inlude_params -> string
 
 impl OrgParser {
     pub fn new(config: config::OrgParserConfig) -> Self {
@@ -456,6 +460,19 @@ impl OrgParser {
             HashSet::new()
         };
 
+        // FIXME: process include
+        // IncludeProcessor::new().process(line)
+        tracing::trace!("  Expand ‘#+include’ keywords in the whole buffer ...");
+        let include_preprocessor = IncludePreProcessor {
+            input_file: input_file.as_ref().to_path_buf(),
+        };
+        let input = &input
+            .lines()
+            .map(|line| include_preprocessor.parse(line))
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        tracing::trace!("  Replace macros in the whole buffer ...");
         let n_macro_reference = input
             .lines()
             .filter(|s| s.contains("{{{") && s.contains("}}}"))
@@ -497,6 +514,7 @@ impl OrgParser {
             tracing::trace!("preprocess ignored");
             input
         };
+
         tracing::trace!("preprocess done");
 
         let parse_result = org_file::org_file_parser(self.config.clone()).parse_with_state(
