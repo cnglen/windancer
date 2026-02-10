@@ -3,6 +3,7 @@
 #![allow(warnings)]
 use clap::Parser;
 use export::ssg::StaticSiteGenerator;
+use export::ssg::renderer::{Renderer, RendererConfig};
 use orgize::config;
 use tracing_subscriber::FmtSubscriber;
 
@@ -56,7 +57,15 @@ fn main() {
     let subscriber = FmtSubscriber::builder().with_max_level(max_level).finish();
     tracing::subscriber::set_global_default(subscriber).expect("set global subscripber failed");
 
-    let mut ssg = StaticSiteGenerator::default();
+    let mut ssg = StaticSiteGenerator {
+        renderer: Renderer::new(RendererConfig {
+            input_directory: args.input.clone(),
+            ..RendererConfig::default()
+        }),
+
+        ..StaticSiteGenerator::default()
+    };
+
     let d_org = args.input.clone();
     ssg.generate(d_org);
 }

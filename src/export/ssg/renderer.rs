@@ -36,6 +36,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
+use chrono::{Datelike, Local};
 use html_escape;
 
 use crate::compiler::ast_builder::element::{
@@ -50,11 +51,11 @@ use crate::export::ssg::toc::{TableOfContents, TocNode};
 use crate::export::ssg::view_model::{PageNavContext, TableViewModel};
 
 pub struct RendererContext {
+    tera: tera::Tera,
     // table counter in sit or page?
     pub table_counter: usize,
     // figure counter in site or page?
     pub figure_counter: usize,
-    pub tera: tera::Tera,
     pub toc: TableOfContents,
     pub pageid_to_url: HashMap<PageId, String>,
     pub roamid_to_url: HashMap<String, String>,
@@ -63,7 +64,8 @@ pub struct RendererContext {
 
 impl Default for RendererContext {
     fn default() -> Self {
-        let mut tera = match tera::Tera::new("src/export/ssg/templates/**/*.html") {
+        let tera_dir = "src/export/ssg/templates/**/*.html";
+        let mut tera = match tera::Tera::new(tera_dir) {
             Ok(t) => t,
             Err(e) => {
                 tracing::error!("template error: {}", e);
@@ -94,6 +96,7 @@ pub struct Renderer {
 #[derive(Debug, Clone)]
 pub struct RendererConfig {
     pub output_directory: String,
+    pub input_directory: String,
     pub automatic_equaiton_numbering: bool,
     pub css: String, // path of css file
                      // pub class_prefix: String,
@@ -105,16 +108,93 @@ impl Default for RendererConfig {
         Self {
             css: include_str!("static/default.css").to_string(),
             output_directory: "public".to_string(),
+            input_directory: "content".to_string(),
             automatic_equaiton_numbering: true,
         }
     }
 }
 
+fn load_templates_from_dir(dir: &str) -> std::io::Result<HashMap<String, String>> {
+    let mut templates = HashMap::new();
+    let path = Path::new(dir);
+
+    if !path.exists() {
+        return Ok(templates);
+    }
+
+    for entry in fs::read_dir(path)? {
+        let entry = entry?;
+        let path = entry.path();
+
+        if path.is_file() && path.extension().map_or(false, |ext| ext == "html") {
+            if let Some(stem) = path.file_name().and_then(|s| s.to_str()) {
+                let content = fs::read_to_string(&path)?;
+                templates.insert(stem.to_string(), content);
+            }
+        }
+    }
+
+    Ok(templates)
+}
+
+fn build_merged_tera(default_dir: &str, user_dir: &str) -> std::io::Result<tera::Tera> {
+    let mut tera = tera::Tera::default();
+    let mut all_templates = HashMap::new();
+
+    let default_tmpls = load_templates_from_dir(default_dir)?;
+    all_templates.extend(default_tmpls);
+
+    let user_tmpls = load_templates_from_dir(user_dir)?;
+    all_templates.extend(user_tmpls);
+
+    let name = "macros.tera.html";
+    if let Some(content) = all_templates.remove(name) {
+        tera.add_raw_template(name, &content)
+            .expect("add raw template");
+    }
+
+    for (name, content) in all_templates {
+        tera.add_raw_template(&name, &content)
+            .expect("add raw template");
+    }
+
+    Ok(tera)
+}
+
 impl Default for Renderer {
     fn default() -> Self {
+        let config = RendererConfig::default();
+        let input_directory = std::path::Path::new(&config.input_directory);
+        // let binding = input_directory.parent().expect("parent should exists").join("templates").join("**/*.html");
+        // let tera_dir = binding.to_str().expect("to str");
+        // let tera_dir = if input_directory.parent().expect("parent should exists").join("templates").exists() {
+        //     tera_dir
+        // } else {
+        //     "src/export/ssg/templates/**/*.html"
+        // };
+        // let mut tera = match tera::Tera::new(tera_dir) {
+        //     Ok(t) => t,
+        //     Err(e) => {
+        //         tracing::error!("template error: {}", e);
+        //         ::std::process::exit(1);
+        //     }
+        // };
+
+        let default_dir = "src/export/ssg/templates";
+        let binding = input_directory
+            .parent()
+            .expect("parent should exists")
+            .join("templates");
+        let user_dir = binding.to_str().expect("todo");
+        let mut tera = build_merged_tera(default_dir, user_dir).expect("");
+        tera.autoescape_on(vec![]);
+
         Self {
-            config: RendererConfig::default(),
-            context: RendererContext::default(),
+            config,
+            context: RendererContext {
+                tera,
+                ..RendererContext::default()
+            },
             footnote_defintions: vec![],
         }
     }
@@ -188,10 +268,23 @@ impl Renderer {
     }
 
     pub fn new(config: RendererConfig) -> Self {
+        let input_directory = std::path::Path::new(&config.input_directory);
+        let default_dir = "src/export/ssg/templates";
+        let binding = input_directory
+            .parent()
+            .expect("parent should exists")
+            .join("templates");
+        let user_dir = binding.to_str().expect("todo");
+        let mut tera = build_merged_tera(default_dir, user_dir).expect("");
+        tera.autoescape_on(vec![]);
+
         Self {
-            config: config,
+            config,
+            context: RendererContext {
+                tera,
+                ..RendererContext::default()
+            },
             footnote_defintions: vec![],
-            context: RendererContext::default(),
         }
     }
 
@@ -213,6 +306,17 @@ impl Renderer {
         ctx.insert("title", &page.title);
         let id = page.ast.properties.get("ID");
         ctx.insert("id", &id);
+
+        let is_home = if page.url == "/index.html" {
+            true
+        } else {
+            false
+        };
+        ctx.insert("is_home", &is_home);
+
+        let now = Local::now();
+        let current_year = now.year();
+        ctx.insert("current_year", &current_year);
 
         let create_date = page.created_ts.map(|e| e.format("%Y-%m-%d").to_string());
         let last_modified_date = page

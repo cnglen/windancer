@@ -60,7 +60,7 @@ impl TableOfContents {
             .tabs(false)
             .strip_comments(false);
 
-        let doc = Doc::new(html, false).expect("todo"); // 第二个参数 `false` 表示输入非XHTML
+        let doc = Doc::new(html, false).expect("todo");
         doc.format(&opts).expect("todo")
     }
 }

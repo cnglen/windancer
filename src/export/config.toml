@@ -1,2 +1,3 @@
 [site]
 output_dir = "public"
+input_dir = "content"

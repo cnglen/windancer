@@ -4,9 +4,11 @@
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="Org Mode">
+    <meta name="HandheldFriendly" content="true">
+    <meta name="MobileOptimized" content="width">
 
     <title>{{title}}</title>
-    <link rel="icon" type="image/png" href="/favicon.png">    
+    <link rel="icon" type="image/png" href="/favicon.png">
 
     <script defer src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css" />
@@ -41,47 +43,172 @@
                 hljs.highlightElement(block);
             });
         };
-      </script>"      
-    {% endif %}
-  </head>
+      </script>
+      {% endif %}
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+          const tocSiteBtn = document.querySelector('.mobile-toc-site-button');
+          const tocPageBtn = document.querySelector('.mobile-toc-page-button');
+          const siteSidebar = document.querySelector('.toc-sidebar-site');
+          const pageSidebar = document.querySelector('.toc-sidebar-page');
+          const overlay = document.querySelector('.sidebar-overlay');
+
+          function isTouchDevice() {
+              return 'ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
+          }
+
+
+          function shouldPreventClose(element) {
+              if (!element) return false;
+    
+              var tagName = element.tagName.toLowerCase();
+    
+              var preventElements = ['a', 'button', 'input', 'textarea', 'select'];
+    
+              if (preventElements.includes(tagName)) {
+                  return true;
+              }
+    
+              var preventClasses = ['no-close', 'dropdown', 'accordion', 'toggle'];
+              for (var i = 0; i < preventClasses.length; i++) {
+                  if (element.classList.contains(preventClasses[i])) {
+                      return true;
+                  }
+              }
+    
+              if (element.closest('a, button, [role="button"], [role="link"]')) {
+                  return true;
+              }
+    
+              return false;
+          }
   
+          function closeAllSidebars() {
+              if (siteSidebar) siteSidebar.classList.remove('active');
+              if (pageSidebar) pageSidebar.classList.remove('active');
+              if (overlay) overlay.classList.remove('active');
+              document.body.classList.remove('sidebar-active');
+          }
+  
+
+          function openSidebar(sidebar) {
+              closeAllSidebars();
+              if (sidebar) {
+                  sidebar.classList.add('active');
+                  if (overlay) overlay.classList.add('active');
+                  document.body.classList.add('sidebar-active');
+              }
+          }
+  
+          function toggleSidebar(sidebar) {
+              if (!sidebar) return closeAllSidebars();
+    
+              if (sidebar.classList.contains('active')) {
+                  closeAllSidebars();
+              } else {
+                  openSidebar(sidebar);
+              }
+          }
+  
+          function setupSidebarClickHandler(sidebar) {
+              if (!sidebar) return;
+              
+              sidebar.addEventListener('click', function(e) {
+                  var target = e.target;
+                  
+                  if (shouldPreventClose(target)) {
+                      if (target.tagName === 'A' && target.getAttribute('href') && target.getAttribute('href').startsWith('#')) {
+                          e.preventDefault();
+                          var targetId = target.getAttribute('href').substring(1);
+                          var targetElement = document.getElementById(targetId);
+                          
+                          setTimeout(function() {
+                              closeAllSidebars();
+                              if (targetElement) {
+                                  targetElement.scrollIntoView({ behavior: 'smooth' });
+                              }
+                          }, 100);
+                      }
+
+                      return;
+                  }
+                  
+                  if (sidebar.classList.contains('active')) {
+                      closeAllSidebars();
+                  }
+              });
+          }
+          
+          if (tocSiteBtn && siteSidebar) {
+              tocSiteBtn.addEventListener('click', function(e) {
+                  e.stopPropagation();
+                  toggleSidebar(siteSidebar);
+              });
+          }
+          
+          if (tocPageBtn && pageSidebar) {
+              tocPageBtn.addEventListener('click', function(e) {
+                  e.stopPropagation();
+                  toggleSidebar(pageSidebar);
+              });
+          }
+          
+          setupSidebarClickHandler(siteSidebar);
+          setupSidebarClickHandler(pageSidebar);
+          
+          if (overlay) {
+              overlay.addEventListener('click', function(e) {
+                  e.stopPropagation();
+                  closeAllSidebars();
+              });
+          }
+          
+          document.addEventListener('click', function(e) {
+              var isSidebarClick = 
+                  (siteSidebar && (siteSidebar === e.target || siteSidebar.contains(e.target))) ||
+                  (pageSidebar && (pageSidebar === e.target || pageSidebar.contains(e.target))) ||
+                  (tocSiteBtn && (tocSiteBtn === e.target || tocSiteBtn.contains(e.target))) ||
+                  (tocPageBtn && (tocPageBtn === e.target || tocPageBtn.contains(e.target)));
+              
+              if (!isSidebarClick) {
+                  closeAllSidebars();
+              }
+          });
+          
+          document.addEventListener('keydown', function(e) {
+              if (e.key === 'Escape') {
+                  closeAllSidebars();
+              }
+          });          
+
+      });          
+    </script>
+  </head>
+
   <body>
-
-    <!-- <header class="site-header" role="banner"> -->
-    <!--   <div class="container"> -->
-    <!--     <a href="/" class="logo"> -->
-    <!--       <img src="logo.png" alt="网站Logo" width="100" height="40"> -->
-    <!--     </a> -->
-        
-    <!--     <nav aria-label="主导航"> -->
-    <!--       <ul class="main-nav"> -->
-    <!--         <li><a href="/" aria-current="page">首页</a></li> -->
-    <!--         <li><a href="/blog">博客</a></li> -->
-    <!--         <li><a href="/about">关于</a></li> -->
-    <!--       </ul> -->
-    <!--     </nav> -->
-        
-    <!--     <div class="header-actions"> -->
-    <!--       <form role="search" aria-label="站内搜索"> -->
-    <!--         <input type="search" placeholder="搜索..."> -->
-    <!--         <button type="submit">🔍</button> -->
-    <!--       </form> -->
-    <!--     </div> -->
-    <!--   </div> -->
-    <!-- </header> -->
-
-    <main id="content" class="content" role="main">
-      <nav class="toc-sidebar-site">
-        <div>☰ 全站目录 </div>
-        <div id="table-of-contents" role="doc-toc">
-          <div id="text-table-of-contents" role="doc-toc">
-            {{ toc }}
-          </div>
+    <div class="sidebar-overlay"></div>
+    
+    <main id="main-content" class="content main-content" role="main">
+      <nav class="toc-sidebar-site" aria-label="site-navigation" role="navigation">
+        <div>☰ Site Navigation </div>
+        <div id="text-table-of-contents" role="doc-toc">
+          {{ toc }}
         </div>
       </nav>
-
+      
       <article id="page">
         <header>
+          <div class="article-container">
+            <button class="mobile-toc-site-button"> ☰ </button>
+            <div class="header-actions"> 
+              <form role="search" aria-label="search"> 
+                <input type="search" placeholder="Search...">
+              </form> 
+            </div> 
+            <button class="mobile-toc-page-button"> 📖 </button>
+          </div>
+          
           {% if id %}          
           <h1 class="title" id="{{id}}">{{title}}</h1>
           {% else %}
@@ -89,10 +216,10 @@
           {% endif %} 
           <div class="meta">
             {% if create_date %}
-            <time datetime="{{create_date}}">首次创建: {{create_date}}</time>
+            <time datetime="{{create_date}}">created: {{create_date}}</time>
             {% endif %}
             {% if last_modified_date %}
-            <time datetime="{{last_modified_date}}">最后修改: {{last_modified_date}}</time>            
+            <time datetime="{{last_modified_date}}">updated: {{last_modified_date}}</time>            
             {% endif %}            
           </div>
         </header>
@@ -102,25 +229,18 @@
         </div>
 
         <footer> 
-          <!-- <div class="tags"> -->
-          <!--   <strong>标签:</strong> -->
-          <!--   <a href="/tag/html">HTML</a> -->
-          <!--   <a href="/tag/semantic">语义化</a> -->
-          <!--   <a href="/tag/web">Web开发</a> -->
-          <!-- </div> -->
-
           {% if nav_valid %}
           <nav class="page-navigation">
             {% if prev_flattened %}
-              <a href="{{ prev_flattened }}" rel="prev sibling" class="nav-link prev"> ← 上一页 </a>
+              <a href="{{ prev_flattened }}" rel="prev sibling" class="nav-link prev"> ← Prev Page </a>
             {% endif %}
             
             {% if parent %}
-              <a href="{{ parent }}" class="nav-link parent">↑ 返回上级</a>
+              <a href="{{ parent }}" class="nav-link parent">↑ Back</a>
             {% endif %}
             
             {% if next_flattened %}
-              <a href="{{ next_flattened }}" rel="next sibling" class="nav-link next"> 下一页 →  </a>
+              <a href="{{ next_flattened }}" rel="next sibling" class="nav-link next"> Next Page →  </a>
             {% endif %}         
           </nav> 
           {% endif %}
@@ -130,65 +250,17 @@
 
       <nav class="toc-sidebar-page">
         <div id="table-of-contents" role="doc-toc">
-          <div>📖 内容大纲</div>
+          <div>📖 content outline </div>
           <div id="text-table-of-contents" role="doc-toc">
             {{ toc_of_current_page }}
           </div>
         </div>
       </nav>
-      
-      <!-- <aside class="related-posts" aria-label="相关文章"> -->
-      <!--   <h2>相关推荐</h2> -->
-      <!--   <article class="related-post"> -->
-      <!--     <h3><a href="#">CSS Grid布局指南</a></h3> -->
-      <!--     <p>学习如何使用CSS Grid进行现代布局</p> -->
-      <!--   </article> -->
-      <!--   <article class="related-post"> -->
-      <!--     <h3><a href="#">JavaScript最佳实践</a></h3> -->
-      <!--     <p>编写高质量JavaScript代码的技巧</p> -->
-      <!--   </article> -->
-      <!-- </aside> -->
-
     </main>
 
-    <!-- <footer class="site-footer" role="contentinfo"> -->
-    <!--   <div class="container"> -->
-    <!--     <div class="footer-content"> -->
-    <!--       <section class="footer-section"> -->
-    <!--         <h3>快速链接</h3> -->
-    <!--         <nav aria-label="页脚导航"> -->
-    <!--           <ul> -->
-    <!--             <li><a href="/sitemap">网站地图</a></li> -->
-    <!--             <li><a href="/privacy">隐私政策</a></li> -->
-    <!--             <li><a href="/terms">使用条款</a></li> -->
-    <!--           </ul> -->
-    <!--         </nav> -->
-    <!--       </section> -->
-          
-    <!--       <section class="footer-section"> -->
-    <!--         <h3>联系我们</h3> -->
-    <!--         <address> -->
-    <!--           北京市朝阳区<br> -->
-    <!--           <a href="mailto:contact@example.com">contact@example.com</a><br> -->
-    <!--           <a href="tel:+861012345678">+86 10 1234 5678</a> -->
-    <!--         </address> -->
-    <!--       </section> -->
-          
-    <!--       <section class="footer-section"> -->
-    <!--         <h3>关注我们</h3> -->
-    <!--         <div class="social-links"> -->
-    <!--           <a href="#" aria-label="微信公众号">📱</a> -->
-    <!--           <a href="#" aria-label="知乎">📘</a> -->
-    <!--         </div> -->
-    <!--       </section> -->
-    <!--     </div> -->
-        
-    <!--     <div class="copyright"> -->
-    <!--       <p>&copy; 2024 公司名称. 保留所有权利.</p> -->
-    <!--       <p>京ICP备12345678号</p> -->
-    <!--     </div> -->
-    <!--   </div> -->
-    <!-- </footer> -->
-
+    <footer class="site-footer" role="contentinfo">
+      {% include "site_footer.tera.html" ignore missing %}
+    </footer>
+    
   </body>
 </html>

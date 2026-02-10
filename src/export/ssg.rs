@@ -30,10 +30,10 @@ impl Default for Config {
 }
 
 pub struct StaticSiteGenerator {
-    compiler: Compiler,
-    site_builder: SiteBuilder,
-    renderer: Renderer,
-    config: Config,
+    pub compiler: Compiler,
+    pub site_builder: SiteBuilder,
+    pub renderer: Renderer,
+    pub config: Config,
 }
 
 impl Default for StaticSiteGenerator {
