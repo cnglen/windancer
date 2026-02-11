@@ -7,46 +7,10 @@
     <meta name="HandheldFriendly" content="true">
     <meta name="MobileOptimized" content="width">
 
-    <title>{{title}}</title>
+    <title>{{tag}}</title>
     <link rel="icon" type="image/png" href="/favicon.png">
 
-    <script defer src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
     <link rel="stylesheet" href="/default.css" />
-    
-    {% if automatic_equaiton_numbering %}
-      <script>
-        window.MathJax = {
-            tex: { tags: 'ams' },
-            output: {displayOverflow: 'scale'},
-            options: {
-                enableExplorer: false,
-                enableMenu: false
-            }
-        };
-        window.onload = function() {
-            document.querySelectorAll('div.code pre.src code').forEach(block => {
-                hljs.highlightElement(block);
-            });
-        };
-      </script>
-    {% else %}
-      <script>
-        window.MathJax = {
-            output: {displayOverflow: 'scale'},
-            options: {
-                enableExplorer: false,
-                enableMenu: false
-            }
-        };
-        window.onload = function() {
-            document.querySelectorAll('div.code pre.src code').forEach(block => {
-                hljs.highlightElement(block);
-            });
-        };
-      </script>
-      {% endif %}
 
     <script>
       document.addEventListener('DOMContentLoaded', function() {
@@ -204,73 +168,27 @@
           <div class="article-container">
             <button class="mobile-toc-site-button"> ☰ </button>
             <div class="header-actions"> 
-              {# <form role="search" aria-label="search">  #}
-              {#   <input type="search" placeholder="Search..."> #}
-              {# </form>  #}
+              <!-- <form role="search" aria-label="search">  -->
+              <!--   <input type="search" placeholder="Search..."> -->
+              <!-- </form>  -->
             </div> 
             <button class="mobile-toc-page-button"> 📖 </button>
           </div>
-          
-          {% if id %}          
-          <h1 class="title" id="{{id}}">{{title}}</h1>
-          {% else %}
-          <h1 class="title">{{title}}</h1>          
-          {% endif %} 
-          <div class="meta">
-            {% if create_date %}
-              <button type="button" class="created">
-                <time datetime="{{last_modified_date}}" class="created">
-                  <span class="created">🆕{{create_date}}</span>
-                </time>
-              </button>
-            {% endif %}
-            {% if last_modified_date %}
-              <button type="button" class="last-modified">                
-              <time datetime="{{last_modified_date}}" class="last-modified">
-                <span class="last-modified">🔄{{last_modified_date}}</span>
-              </time>
-              </button>              
-            {% endif %}
-            {% for tag_bgcolor in tags %}
-              <a href="/tags/{{tag_bgcolor.0}}" class="v-chip" style="background-color: {{tag_bgcolor.1}};"> 
-                <span class="v-chip-content">🏷{{tag_bgcolor.0|safe}}</span> 
-              </a> 
-            {% endfor %}
-          </div>
+
+          <h1 class="title">{{tag}}</h1>
         </header>
 
         <div>
-          {{ content }}
+          <ul>
+            {% for url_title in url_titles %}            
+            <li>
+              <a href={{url_title.0}}>{{url_title.1}}</a>
+            </li>
+            {% endfor%}            
+          </ul>
         </div>
 
-        <footer> 
-          {% if nav_valid %}
-          <nav class="page-navigation">
-            {% if prev_flattened %}
-              <a href="{{ prev_flattened }}" rel="prev sibling" class="nav-link prev"> ← Prev Page </a>
-            {% endif %}
-            
-            {% if parent %}
-              <a href="{{ parent }}" class="nav-link parent">↑ Back</a>
-            {% endif %}
-            
-            {% if next_flattened %}
-              <a href="{{ next_flattened }}" rel="next sibling" class="nav-link next"> Next Page →  </a>
-            {% endif %}         
-          </nav> 
-          {% endif %}
-          
-        </footer>
       </article>
-
-      <nav class="toc-sidebar-page">
-        <div id="table-of-contents" role="doc-toc">
-          <div>📖 content outline </div>
-          <div id="text-table-of-contents" role="doc-toc">
-            {{ toc_of_current_page }}
-          </div>
-        </div>
-      </nav>
     </main>
 
     <footer class="site-footer" role="contentinfo">

@@ -49,7 +49,7 @@ impl Default for StaticSiteGenerator {
 
 impl StaticSiteGenerator {
     pub fn generate<P: AsRef<Path>>(&mut self, d_org: P) -> std::io::Result<String> {
-        tracing::info!("prepare output director ...");
+        tracing::info!("prepare output directory ...");
         let output_directory = Path::new(&self.config.site_config.output_directory);
         if output_directory.exists() {
             let now_utc = chrono::Utc::now();
@@ -85,6 +85,7 @@ impl StaticSiteGenerator {
         tracing::info!("render site ...");
         self.renderer.render_site(&site);
 
+        tracing::info!("done");
         Ok(String::from("todo"))
     }
 }

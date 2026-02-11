@@ -1,3 +1,4 @@
-[site]
+[ssg]
 output_dir = "public"
 input_dir = "content"
+debug =  false

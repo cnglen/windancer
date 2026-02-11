@@ -127,7 +127,14 @@ impl Compiler {
 
         let title = keyword.remove("TITLE").map(|e| e.join(" "));
         let authors = keyword.remove("AUTHOR").unwrap_or(vec![]);
-        let filetags = keyword.remove("FILETAGS").unwrap_or(vec![]);
+        let filetags = keyword
+            .remove("FILETAGS")
+            .unwrap_or(vec![])
+            .iter()
+            .flat_map(|e| e.split(":"))
+            .map(String::from)
+            .filter(|e| !e.is_empty())
+            .collect::<Vec<_>>();
         let category = keyword.remove("CATEGORY").unwrap_or(vec![]);
         let enable_render = keyword
             .remove("RENDER")

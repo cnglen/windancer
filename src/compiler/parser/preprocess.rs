@@ -177,10 +177,10 @@ impl IncludePreProcessor {
             let lines: Vec<&str> = content.lines().collect();
 
             let (start_line, end_line) = (
-                include_params.lines.0.unwrap_or(0),
-                include_params.lines.1.unwrap_or(lines.len()),
+                include_params.lines.0.unwrap_or(1),
+                include_params.lines.1.unwrap_or(lines.len() + 1),
             );
-            let start_line = start_line.max(0);
+            let start_line = start_line.max(1);
             let end_line = end_line.min(lines.len());
 
             if start_line > end_line {

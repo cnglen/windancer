@@ -34,6 +34,7 @@
 //! - footnote
 use std::collections::HashMap;
 use std::fs;
+use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::Path;
 
 use chrono::{Datelike, Local};
@@ -49,6 +50,12 @@ use crate::constants::entity::ENTITYNAME_TO_HTML;
 use crate::export::ssg::site::{Page, PageId, Site};
 use crate::export::ssg::toc::{TableOfContents, TocNode};
 use crate::export::ssg::view_model::{PageNavContext, TableViewModel};
+
+fn hash_string_to_usize(input: &str) -> usize {
+    let mut hasher = DefaultHasher::new();
+    input.hash(&mut hasher);
+    hasher.finish() as usize
+}
 
 pub struct RendererContext {
     tera: tera::Tera,
@@ -98,9 +105,10 @@ pub struct RendererConfig {
     pub output_directory: String,
     pub input_directory: String,
     pub automatic_equaiton_numbering: bool,
-    pub css: String, // path of css file
-                     // pub class_prefix: String,
-                     // pub highlight_code_blocks: bool,
+    pub css: String,
+    /// debug mode: true will generate syntax_tree/ast data in json format
+    pub debug: bool,
+    pub bgcolor_for_white: Vec<String>,
 }
 
 impl Default for RendererConfig {
@@ -110,6 +118,18 @@ impl Default for RendererConfig {
             output_directory: "public".to_string(),
             input_directory: "content".to_string(),
             automatic_equaiton_numbering: true,
+            debug: false,
+            bgcolor_for_white: [
+                "#330000", "#331900", "#333300", "#193300", "#003300", "#003319", "#003333",
+                "#001933", "#000033", "#190033", "#330033", "#330019", "#4D0000", "#4D2600",
+                "#4D4D00", "#264D00", "#004D00", "#004D26", "#004D4D", "#00264D", "#00004D",
+                "#26004D", "#4D004D", "#4D0026", "#660000", "#663300", "#666600", "#336600",
+                "#006600", "#006633", "#006666", "#003366", "#000066", "#330066", "#660066",
+                "#660033",
+            ]
+            .into_iter()
+            .map(String::from)
+            .collect(),
         }
     }
 }
@@ -297,6 +317,42 @@ impl Renderer {
         for (_id, page) in site.pages.iter() {
             self.render_page(page).expect("render_page should success");
         }
+
+        // render tags
+        for (tag, page_ids) in site.tag_index.iter() {
+            let pages = page_ids
+                .iter()
+                .map(|e| site.pages.get(e).expect("get page"))
+                .collect::<Vec<_>>();
+            let mut ctx = tera::Context::new();
+            ctx.insert("tag", &tag);
+
+            let url_titles = pages
+                .iter()
+                .map(|p| (p.url.clone(), p.title.clone()))
+                .collect::<Vec<(String, String)>>();
+            ctx.insert("url_titles", &url_titles);
+            ctx.insert("is_home", &false);
+            let now = Local::now();
+            let current_year = now.year();
+            ctx.insert("current_year", &current_year);
+
+            ctx.insert("toc", &self.context.toc.to_html_nav(None));
+
+            let html = self
+                .context
+                .tera
+                .render("tag.tera.html", &ctx)
+                .unwrap_or_else(|err| format!("Template rendering page failed: {}", err));
+
+            let f_html =
+                Path::new(&self.config.output_directory).join(format!("tags/{tag}.html").as_str());
+            let d_html = f_html.parent().expect("should have parent directory");
+            if !d_html.is_dir() {
+                fs::create_dir_all(d_html).expect("create dir");
+            }
+            fs::write(&f_html, &html).expect("write file");
+        }
     }
 
     fn render_page(&mut self, page: &Page) -> std::io::Result<String> {
@@ -339,6 +395,19 @@ impl Renderer {
 
         let toc = self.get_toc_of_page(page).to_html_nav(None);
         ctx.insert("toc_of_current_page", &toc);
+        let n_color = self.config.bgcolor_for_white.len();
+        let tags = page
+            .tags
+            .iter()
+            .map(|e| {
+                (
+                    e.to_string(),
+                    self.config.bgcolor_for_white[hash_string_to_usize(e) % n_color].clone(),
+                )
+            })
+            .collect::<Vec<_>>();
+        tracing::trace!("tags={tags:?}");
+        ctx.insert("tags", &tags);
 
         let html = self
             .context
@@ -353,24 +422,26 @@ impl Renderer {
         }
         fs::write(&f_html, &html)?;
 
-        let f_ast = f_html.parent().unwrap().join(
-            f_html
-                .file_name()
-                .unwrap()
-                .to_string_lossy()
-                .to_string()
-                .replace(".html", "_ast.json"),
-        );
-        fs::write(&f_ast, format!("{:#?}", page.ast))?;
-        let f_syntax = f_html.parent().unwrap().join(
-            f_html
-                .file_name()
-                .unwrap()
-                .to_string_lossy()
-                .to_string()
-                .replace(".html", "_syntax.json"),
-        );
-        fs::write(&f_syntax, format!("{:#?}", page.syntax_tree))?;
+        if self.config.debug {
+            let f_ast = f_html.parent().unwrap().join(
+                f_html
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string()
+                    .replace(".html", "_ast.json"),
+            );
+            fs::write(&f_ast, format!("{:#?}", page.ast))?;
+            let f_syntax = f_html.parent().unwrap().join(
+                f_html
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string()
+                    .replace(".html", "_syntax.json"),
+            );
+            fs::write(&f_syntax, format!("{:#?}", page.syntax_tree))?;
+        }
 
         Ok(String::from(""))
     }

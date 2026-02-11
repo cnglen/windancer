@@ -413,7 +413,8 @@ impl SiteBuilder {
             options.copy_inside = false;
             options.content_only = true;
 
-            copy(&static_directory_from, &static_directory_to, &options).expect("copy failed");
+            copy(&static_directory_from, &static_directory_to, &options)
+                .expect(format!("copy failed from {}", static_directory_from.display()).as_str());
             static_assets.push((static_directory_from, static_directory_to.to_path_buf()));
         }
         std::fs::copy(
@@ -675,6 +676,7 @@ impl SiteBuilder {
                 }
             }
         }
+        tracing::trace!("tag_index: {:?}", tag_index);
 
         tracing::debug!("  process static assets ...");
         let static_assets = self.process_static_assets(root_section)?;
@@ -690,6 +692,7 @@ impl SiteBuilder {
             root_page_id,
             pageid_to_url,
             knowledge_graph,
+            tag_index,
             _static_assets: static_assets,
             ..Site::default()
         };
