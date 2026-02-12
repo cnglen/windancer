@@ -12,6 +12,7 @@ use std::path::Path;
 
 use parser::object;
 use rowan::WalkEvent;
+use serde::Deserialize;
 use walkdir::WalkDir;
 
 use crate::compiler::ast_builder::AstBuilder;
@@ -23,17 +24,27 @@ use crate::compiler::parser::{OrgParser, get_text};
 pub struct Compiler {
     parser: OrgParser,
     ast_builder: AstBuilder,
+    debug: bool,
+}
+
+#[derive(Debug, Deserialize, Default)]
+#[serde(default)]
+pub struct CompilerConfig {
+    parser: OrgParserConfig,
+    debug: bool,
 }
 
 impl Compiler {
-    pub fn new() -> Self {
-        let config =
-            OrgParserConfig::default().with_use_sub_superscripts(OrgUseSubSuperscripts::Brace);
-        let parser = OrgParser::new(config);
+    pub fn new(config: CompilerConfig) -> Self {
+        // let config =
+        //     OrgParserConfig::default().with_use_sub_superscripts(OrgUseSubSuperscripts::Brace);
+        let parser = OrgParser::new(config.parser);
+        let debug = config.debug;
         let ast_builder = AstBuilder::new();
         Self {
             parser,
             ast_builder,
+            debug,
         }
     }
 
@@ -69,6 +80,29 @@ impl Compiler {
             syntax_tree,
         };
 
+        if self.debug {
+            let f_ast = f_org.parent().unwrap().join(
+                f_org
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string()
+                    .replace(".org", "_ast.json"),
+            );
+            fs::write(&f_ast, format!("{:#?}", doc.ast))?;
+            tracing::trace!("write f_ast: {}", f_ast.display());
+
+            let f_syntax = f_org.parent().unwrap().join(
+                f_org
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string()
+                    .replace(".org", "_syntax.json"),
+            );
+            fs::write(&f_syntax, format!("{:#?}", doc.syntax_tree))?;
+            tracing::trace!("write to f_syntax: {}", f_syntax.display());
+        }
         Ok(doc)
     }
 
@@ -233,6 +267,7 @@ impl Default for Compiler {
         Self {
             parser,
             ast_builder,
+            debug: false,
         }
     }
 }
@@ -246,7 +281,7 @@ mod tests {
     #[test]
     fn test_compile_file() {
         let f_org = "tests/test.org";
-        let compiler = Compiler::new();
+        let compiler = Compiler::default();
         let _doc = compiler.compile_file(f_org).expect("no Document compiled");
         // println!("{:#?}", _doc.metadata);
         println!("{:#?}", _doc.file_info);
@@ -260,7 +295,7 @@ mod tests {
         tracing::subscriber::set_global_default(subscriber).expect("set global subscripber failed");
 
         let d_org = "tests";
-        let compiler = Compiler::new();
+        let compiler = Compiler::default();
         let _sections = compiler
             .compile_section(d_org)
             .expect("no Document compiled");

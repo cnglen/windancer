@@ -241,8 +241,8 @@ pub(crate) fn simple_src_block_parser<'a, C: 'a>(
     let switch_p2 = one_of("+-")
         .then(any().filter(|c: &char| c.is_alphanumeric()))
         .to_slice();
-    let switches = switch_p1.or(switch_p2).repeated().to_slice();
-    let arguments = none_of("\n").repeated().to_slice();
+    let switches = switch_p1.or(switch_p2).repeated().at_least(1).to_slice();
+    let arguments = none_of("\n").repeated().at_least(1).to_slice();
     let begin_row = object::whitespaces()
         .then(object::just_case_insensitive("#+BEGIN_"))
         .then(object::just_case_insensitive("SRC")) // name
@@ -250,6 +250,7 @@ pub(crate) fn simple_src_block_parser<'a, C: 'a>(
         .then(language)
         .then(object::whitespaces_g1().then(switches).or_not())
         .then(object::whitespaces_g1().then(arguments).or_not())
+        .then(object::whitespaces())
         .then(just("\n"));
 
     let end_row = end_row_parser("src");
@@ -292,12 +293,16 @@ pub(crate) fn src_block_parser<'a, C: 'a>(
         .then(language)
         .then(object::whitespaces_g1().then(switches).or_not())
         .then(object::whitespaces_g1().then(arguments).or_not())
+        .then(object::whitespaces())
         .then(just("\n"))
         .map(
             |(
                 (
-                    (((((ws1, begin), block_type), ws2), language), maybe_ws3_switches),
-                    maybe_ws4_arguments,
+                    (
+                        (((((ws1, begin), block_type), ws2), language), maybe_ws3_switches),
+                        maybe_ws4_arguments,
+                    ),
+                    ws5,
                 ),
                 nl,
             )| {
@@ -309,6 +314,7 @@ pub(crate) fn src_block_parser<'a, C: 'a>(
                     language,
                     maybe_ws3_switches,
                     maybe_ws4_arguments,
+                    ws5,
                     nl,
                 )
             },
@@ -341,9 +347,10 @@ pub(crate) fn src_block_parser<'a, C: 'a>(
                         language,
                         maybe_ws3_switches,
                         maybe_ws4_arguments,
+                        ws5,
                         nl,
                     ) = begin_row;
-                    let mut children = Vec::with_capacity(10);
+                    let mut children = Vec::with_capacity(11);
                     if !ws1.is_empty() {
                         children.push(crate::token!(OSK::Whitespace, &ws1));
                     }
@@ -368,6 +375,10 @@ pub(crate) fn src_block_parser<'a, C: 'a>(
                         children.push(crate::token!(OSK::Whitespace, &ws4));
 
                         children.push(crate::token!(OSK::SrcBlockHeaderArguments, arguments));
+                    }
+
+                    if !ws5.is_empty() {
+                        children.push(crate::token!(OSK::Whitespace, &ws5));
                     }
 
                     children.push(crate::token!(OSK::Newline, &nl));
@@ -1516,6 +1527,71 @@ xyz
       Text@53..59 "#+end_"
       Text@59..61 "xx"
       Newline@61..62 "\n"
+"##
+        );
+    }
+
+    #[test]
+    fn test_center_block_08() {
+        // cant nested the same block
+        assert_eq!(
+            get_parsers_output(
+                element_parser::<()>(OrgParserConfig::default())
+                    .repeated()
+                    .collect::<Vec<_>>(),
+                r##"#+begin_src bash :eval never
+brew install git 
+#+end_src
+"##
+            ),
+            r##"Root@0..57
+  SrcBlock@0..57
+    BlockBegin@0..29
+      Text@0..8 "#+begin_"
+      Text@8..11 "src"
+      Whitespace@11..12 " "
+      SrcBlockLanguage@12..16 "bash"
+      Whitespace@16..17 " "
+      SrcBlockHeaderArguments@17..28 ":eval never"
+      Newline@28..29 "\n"
+    BlockContent@29..47
+      Text@29..47 "brew install git \n"
+    BlockEnd@47..57
+      Text@47..53 "#+end_"
+      Text@53..56 "src"
+      Newline@56..57 "\n"
+"##
+        );
+    }
+
+    #[test]
+    fn test_center_block_09() {
+        // cant nested the same block
+        assert_eq!(
+            get_parsers_output(
+                element_parser::<()>(OrgParserConfig::default())
+                    .repeated()
+                    .collect::<Vec<_>>(),
+                r##"#+begin_src bash    
+brew install git 
+#+end_src
+"##
+            ),
+            r##"Root@0..49
+  SrcBlock@0..49
+    BlockBegin@0..21
+      Text@0..8 "#+begin_"
+      Text@8..11 "src"
+      Whitespace@11..12 " "
+      SrcBlockLanguage@12..16 "bash"
+      Whitespace@16..20 "    "
+      Newline@20..21 "\n"
+    BlockContent@21..39
+      Text@21..39 "brew install git \n"
+    BlockEnd@39..49
+      Text@39..45 "#+end_"
+      Text@45..48 "src"
+      Newline@48..49 "\n"
 "##
         );
     }

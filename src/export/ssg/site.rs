@@ -445,6 +445,8 @@ impl SiteBuilder {
                 if from.is_file()
                     && from.extension() != Some(std::ffi::OsStr::new("org"))
                     && (!from_filename.starts_with(&['.', '#']))
+                    && (!from_filename.ends_with("_ast.json"))
+                    && (!from_filename.ends_with("_syntax.json"))
                 {
                     let to_directory = Path::new(&self.config.output_directory)
                         .join(relative_directories.join("/"));

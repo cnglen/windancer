@@ -233,6 +233,7 @@ mod tests {
         let parser = include_parser::<()>();
         let input = r##"#+INCLUDE: "~/.emacs" src emacs-lisp"##;
         let expected_output = r##"IncludeParams {
+    n_whitespace: 0,
     file_name: "\"~/.emacs\"",
     block_name: Some(
         "src",
@@ -258,6 +259,7 @@ mod tests {
         let parser = include_parser::<()>();
         let input = r##"#+INCLUDE: "~/my-book/chapter2.org" :minlevel 1"##;
         let expected_output = r##"IncludeParams {
+    n_whitespace: 0,
     file_name: "\"~/my-book/chapter2.org\"",
     block_name: None,
     language: "org",
@@ -283,6 +285,7 @@ mod tests {
         let parser = include_parser::<()>();
         let input = r##"#+INCLUDE: "~/.emacs" :lines "5-10""##;
         let expected_output = r##"IncludeParams {
+    n_whitespace: 0,
     file_name: "\"~/.emacs\"",
     block_name: None,
     language: "org",
@@ -310,6 +313,7 @@ mod tests {
         let parser = include_parser::<()>();
         let input = r##"#+INCLUDE: "~/.emacs" :lines "-10" "##;
         let expected_output = r##"IncludeParams {
+    n_whitespace: 0,
     file_name: "\"~/.emacs\"",
     block_name: None,
     language: "org",
@@ -335,6 +339,7 @@ mod tests {
         let parser = include_parser::<()>();
         let input = r##"#+INCLUDE: "~/.emacs" :lines "10-" "##;
         let expected_output = r##"IncludeParams {
+    n_whitespace: 0,
     file_name: "\"~/.emacs\"",
     block_name: None,
     language: "org",
@@ -360,6 +365,7 @@ mod tests {
         let parser = include_parser::<()>();
         let input = r##"#+INCLUDE: "./paper.org::*conclusion" :lines "1-20" "##;
         let expected_output = r##"IncludeParams {
+    n_whitespace: 0,
     file_name: "\"./paper.org::*conclusion\"",
     block_name: None,
     language: "org",
@@ -387,6 +393,7 @@ mod tests {
         let parser = include_parser::<()>();
         let input = r##"#+INCLUDE: "./paper.org::#theory" :only-contents t"##;
         let expected_output = r##"IncludeParams {
+    n_whitespace: 0,
     file_name: "\"./paper.org::#theory\"",
     block_name: None,
     language: "org",

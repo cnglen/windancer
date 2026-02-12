@@ -39,6 +39,7 @@ use std::path::Path;
 
 use chrono::{Datelike, Local};
 use html_escape;
+use serde::Deserialize;
 
 use crate::compiler::ast_builder::element::{
     self, CenterBlock, Drawer, Element, ExampleBlock, ExportBlock, FixedWidth, FootnoteDefinition,
@@ -61,7 +62,6 @@ pub struct RendererContext {
     tera: tera::Tera,
     // table counter in sit or page?
     pub table_counter: usize,
-    // figure counter in site or page?
     pub figure_counter: usize,
     pub toc: TableOfContents,
     pub pageid_to_url: HashMap<PageId, String>,
@@ -100,12 +100,13 @@ pub struct Renderer {
     context: RendererContext,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Clone)]
+#[serde(default)]
 pub struct RendererConfig {
     pub output_directory: String,
     pub input_directory: String,
     pub automatic_equaiton_numbering: bool,
-    pub css: String,
+
     /// debug mode: true will generate syntax_tree/ast data in json format
     pub debug: bool,
     pub bgcolor_for_white: Vec<String>,
@@ -114,7 +115,6 @@ pub struct RendererConfig {
 impl Default for RendererConfig {
     fn default() -> Self {
         Self {
-            css: include_str!("static/default.css").to_string(),
             output_directory: "public".to_string(),
             input_directory: "content".to_string(),
             automatic_equaiton_numbering: true,
@@ -185,20 +185,6 @@ impl Default for Renderer {
     fn default() -> Self {
         let config = RendererConfig::default();
         let input_directory = std::path::Path::new(&config.input_directory);
-        // let binding = input_directory.parent().expect("parent should exists").join("templates").join("**/*.html");
-        // let tera_dir = binding.to_str().expect("to str");
-        // let tera_dir = if input_directory.parent().expect("parent should exists").join("templates").exists() {
-        //     tera_dir
-        // } else {
-        //     "src/export/ssg/templates/**/*.html"
-        // };
-        // let mut tera = match tera::Tera::new(tera_dir) {
-        //     Ok(t) => t,
-        //     Err(e) => {
-        //         tracing::error!("template error: {}", e);
-        //         ::std::process::exit(1);
-        //     }
-        // };
 
         let default_dir = "src/export/ssg/templates";
         let binding = input_directory
@@ -356,6 +342,8 @@ impl Renderer {
     }
 
     fn render_page(&mut self, page: &Page) -> std::io::Result<String> {
+        self.context.figure_counter = 0;
+        self.context.table_counter = 0;
         let page_nav_context = PageNavContext::from_page(page, &self.context.pageid_to_url);
         let mut ctx = tera::Context::from_serialize(page_nav_context)
             .expect("render_page: from serialize failed");
@@ -421,27 +409,6 @@ impl Renderer {
             fs::create_dir_all(d_html)?;
         }
         fs::write(&f_html, &html)?;
-
-        if self.config.debug {
-            let f_ast = f_html.parent().unwrap().join(
-                f_html
-                    .file_name()
-                    .unwrap()
-                    .to_string_lossy()
-                    .to_string()
-                    .replace(".html", "_ast.json"),
-            );
-            fs::write(&f_ast, format!("{:#?}", page.ast))?;
-            let f_syntax = f_html.parent().unwrap().join(
-                f_html
-                    .file_name()
-                    .unwrap()
-                    .to_string_lossy()
-                    .to_string()
-                    .replace(".html", "_syntax.json"),
-            );
-            fs::write(&f_syntax, format!("{:#?}", page.syntax_tree))?;
-        }
 
         Ok(String::from(""))
     }
@@ -977,12 +944,13 @@ impl Renderer {
         format!(r##"{}"##, latex_environment.text)
     }
 
-    fn render_drawer(&mut self, drawer: &Drawer) -> String {
-        drawer
-            .contents
-            .iter()
-            .map(|c| self.render_element(c))
-            .collect()
+    fn render_drawer(&mut self, _drawer: &Drawer) -> String {
+        String::new()
+        // drawer
+        //     .contents
+        //     .iter()
+        //     .map(|c| self.render_element(c))
+        //     .collect()
     }
 
     // <p class=?>?

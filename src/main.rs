@@ -3,29 +3,15 @@
 #![allow(warnings)]
 use clap::Parser;
 use export::ssg::StaticSiteGenerator;
-use export::ssg::renderer::{Renderer, RendererConfig};
-use orgize::config;
 use tracing_subscriber::FmtSubscriber;
 
 mod compiler;
+mod config;
 mod constants;
 mod engine;
 mod export;
-use std::fs;
 
-use orgize::Org;
-use orgize::rowan::ast::AstNode;
-use rowan::{GreenNode, GreenToken, NodeOrToken, WalkEvent};
-
-use crate::compiler::Compiler;
-use crate::compiler::ast_builder::AstBuilder;
-use crate::compiler::parser::OrgParser;
-use crate::compiler::parser::config::{OrgParserConfig, OrgUseSubSuperscripts};
-use crate::compiler::parser::syntax::SyntaxToken;
-use crate::engine::Engine;
-use crate::export::ssg::Config;
-use crate::export::ssg::html::HtmlRenderer;
-use crate::export::ssg::site::SiteBuilder;
+use crate::config::load_config;
 
 #[derive(Parser)]
 #[command(name = "winancer")]
@@ -34,38 +20,32 @@ use crate::export::ssg::site::SiteBuilder;
 struct Cli {
     /// Input path of org file or input directory
     #[arg(short = 'i', long)]
-    input: String,
+    input_directory: Option<String>,
 
     /// Output path of html file or input directory
     #[arg(short = 'o', long)]
     output: Option<String>,
-
-    /// Turn debugging information on: `-d -dd -ddd -dddd`
-    #[arg(short, long, action = clap::ArgAction::Count)]
-    debug: u8,
 }
 
 fn main() {
+    let mut config = load_config().expect("read config");
     let args = Cli::parse();
-    let max_level = match args.debug {
-        0 => tracing::Level::ERROR,
-        1 => tracing::Level::WARN,
-        2 => tracing::Level::INFO,
-        3 => tracing::Level::DEBUG,
+    if let Some(input_directory) = args.input_directory {
+        config.general.input_directory = input_directory;
+        config.renderer.input_directory = config.general.input_directory.clone();
+    }
+
+    let max_level = match config.general.tracing_max_level.as_str() {
+        "error" => tracing::Level::ERROR,
+        "warn" => tracing::Level::WARN,
+        "info" => tracing::Level::INFO,
+        "debug" => tracing::Level::DEBUG,
         _ => tracing::Level::TRACE,
     };
     let subscriber = FmtSubscriber::builder().with_max_level(max_level).finish();
     tracing::subscriber::set_global_default(subscriber).expect("set global subscripber failed");
+    tracing::info!("config={:#?}", config);
 
-    let mut ssg = StaticSiteGenerator {
-        renderer: Renderer::new(RendererConfig {
-            input_directory: args.input.clone(),
-            ..RendererConfig::default()
-        }),
-
-        ..StaticSiteGenerator::default()
-    };
-
-    let d_org = args.input.clone();
-    ssg.generate(d_org);
+    let mut ssg = StaticSiteGenerator::new(config.compiler, config.renderer);
+    let _ = ssg.generate(config.general.input_directory);
 }

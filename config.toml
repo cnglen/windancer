@@ -1,0 +1,19 @@
+[general]
+input_directory = "content"
+tracing_max_level = "info"
+
+[compiler]
+debug = false
+[compiler.parser]
+org_use_sub_superscripts = "brace"
+org_element_parsed_keywords = ["CAPTION"]
+org_element_dual_keywords = ["CAPTION", "RESULTS"]
+org_element_affiliated_keywords = [ "CAPTION", "DATA", "HEADER", "HEADERS", "LABEL", "NAME", "PLOT", "RESNAME", "RESULT", "RESULTS", "SOURCE", "SRCNAME", "TBLNAME", ]
+
+
+[parser.org_todo_keywords]
+requiring_action = ["TODO"]
+no_further_action = ["DONE"]
+
+[renderer]
+output_directory = "public"

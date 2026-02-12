@@ -17,7 +17,7 @@ pub mod element;
 mod error;
 pub mod object;
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::env;
 use std::path::Path;
 
@@ -140,6 +140,7 @@ pub struct BuilderContext {
     current_path: Vec<SourcePathSegment>, // inclusing File -> ZerothSeciton -> Heading
     _current_file_path: Option<std::path::PathBuf>,
     current_roam_node_path: Vec<String>, // current roam node path stack(containing RoamId) to find parent roamd_id
+    kind_stack: Vec<OrgSyntaxKind>,
 }
 
 impl BuilderContext {
@@ -151,6 +152,7 @@ impl BuilderContext {
             }],
             _current_file_path: Some(path.to_path_buf()),
             current_roam_node_path: vec![],
+            kind_stack: vec![],
         }
     }
 
@@ -221,6 +223,7 @@ impl Default for BuilderContext {
             current_path: vec![],
             _current_file_path: None,
             current_roam_node_path: vec![],
+            kind_stack: vec![],
         }
     }
 }
@@ -268,7 +271,8 @@ impl Converter {
     }
 
     fn convert(&mut self, root: &SyntaxNode) -> Result<OrgFile, AstError> {
-        self.convert_document(root)
+        let ans = self.convert_document(root);
+        ans
     }
 
     /// 在第一个标题处分割节点列表
@@ -571,7 +575,8 @@ impl Converter {
 
     /// Conver SyntaxTree(RedTree) to ast::Element
     fn convert_element(&mut self, node: &SyntaxNode) -> Result<Element, AstError> {
-        match node.kind() {
+        self.context.kind_stack.push(node.kind());
+        let ans = match node.kind() {
             OrgSyntaxKind::Paragraph => Ok(Element::Paragraph(self.convert_paragraph(&node)?)),
 
             OrgSyntaxKind::Drawer => Ok(Element::Drawer(self.convert_drawer(&node)?)),
@@ -642,7 +647,9 @@ impl Converter {
                     position: None,
                 })
             }
-        }
+        };
+        self.context.kind_stack.pop();
+        ans
     }
 
     // conver to object
@@ -650,7 +657,8 @@ impl Converter {
         &mut self,
         node_or_token: &SyntaxElement,
     ) -> Result<Option<Object>, AstError> {
-        match node_or_token.kind() {
+        self.context.kind_stack.push(node_or_token.kind());
+        let ans = match node_or_token.kind() {
             OrgSyntaxKind::Text => {
                 // Ok(Some(Object::Text(node_or_token.as_token().unwrap().text().to_string())));
                 Ok(self.convert_text(node_or_token.as_token().unwrap())?)
@@ -748,7 +756,9 @@ impl Converter {
                 kind: node_or_token.kind(),
                 position: None,
             }),
-        }
+        };
+        self.context.kind_stack.pop();
+        ans
     }
 
     // element.paragraph
@@ -1075,7 +1085,49 @@ impl Converter {
 
     // object.text
     fn convert_text(&self, token: &SyntaxToken) -> Result<Option<Object>, AstError> {
-        Ok(Some(Object::Text(token.text().to_string())))
+        let trim_kinds_1: HashSet<OrgSyntaxKind> = [OrgSyntaxKind::Paragraph].into_iter().collect();
+        let trim_kinds_0: HashSet<OrgSyntaxKind> = [
+            OrgSyntaxKind::SrcBlock,
+            OrgSyntaxKind::Verbatim,
+            OrgSyntaxKind::Code,
+        ]
+        .into_iter()
+        .collect();
+
+        let mut stack = self.context.kind_stack.clone();
+        stack.pop();
+
+        let mut has_kinds_0 = false;
+        let mut has_kinds_1 = false;
+        for kind in stack.iter() {
+            if trim_kinds_1.contains(kind) {
+                has_kinds_1 = true;
+            }
+
+            if trim_kinds_0.contains(kind) {
+                has_kinds_0 = true;
+            }
+        }
+        let enable_trim = if has_kinds_1 && !has_kinds_0 {
+            true
+        } else {
+            false
+        };
+        if enable_trim {
+            Ok(Some(Object::Text(
+                token
+                    .text()
+                    .split("\n")
+                    .collect::<Vec<_>>()
+                    .iter()
+                    .map(|e| e.trim())
+                    .collect::<Vec<_>>()
+                    .join("")
+                    .to_string(),
+            )))
+        } else {
+            Ok(Some(Object::Text(token.text().to_string())))
+        }
     }
 
     // object.subscript

@@ -1,14 +1,18 @@
 /// config for org parser
 use std::collections::HashSet;
 
-#[derive(Clone, Debug)]
+use serde::Deserialize;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum OrgUseSubSuperscripts {
     Nil,   // disable subscript and superscript
     Brace, // only _{} is recognized as subscript, only ^{} is recognized as superscript
     True,  // see https://orgmode.org/worg/org-syntax.html
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
+#[serde(default)]
 pub struct OrgTodoKeywords {
     pub requiring_action: HashSet<String>,
     pub no_further_action: HashSet<String>,
@@ -33,7 +37,8 @@ impl OrgTodoKeywords {
 }
 
 // Toggle inclusion of statistics cookies: (‘org-export-with-statistics-cookies’).
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
+#[serde(default)]
 pub struct OrgParserConfig {
     pub org_todo_keywords: OrgTodoKeywords,
 

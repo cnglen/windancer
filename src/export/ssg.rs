@@ -10,8 +10,9 @@ use std::path::Path;
 
 use fs_extra::dir::create_all;
 use petgraph::dot::Dot;
+use renderer::RendererConfig;
 
-use crate::compiler::Compiler;
+use crate::compiler::{Compiler, CompilerConfig};
 use crate::export::ssg::renderer::Renderer;
 // ::renderer_vold::Renderer;
 // use crate::export::ssg::renderer::Renderer;
@@ -48,6 +49,17 @@ impl Default for StaticSiteGenerator {
 }
 
 impl StaticSiteGenerator {
+    pub fn new(compiler_config: CompilerConfig, render_config: RendererConfig) -> Self {
+        let compiler = Compiler::new(compiler_config);
+
+        let renderer = Renderer::new(render_config);
+        Self {
+            compiler,
+            renderer,
+            ..Self::default()
+        }
+    }
+
     pub fn generate<P: AsRef<Path>>(&mut self, d_org: P) -> std::io::Result<String> {
         tracing::info!("prepare output directory ...");
         let output_directory = Path::new(&self.config.site_config.output_directory);
