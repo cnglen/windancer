@@ -341,7 +341,7 @@ impl Renderer {
         }
     }
 
-    fn render_page(&mut self, page: &Page) -> std::io::Result<String> {
+    pub fn render_page_inner(&mut self, page: &Page) -> String {
         self.context.figure_counter = 0;
         self.context.table_counter = 0;
         let page_nav_context = PageNavContext::from_page(page, &self.context.pageid_to_url);
@@ -402,6 +402,12 @@ impl Renderer {
             .tera
             .render("page.tera.html", &ctx)
             .unwrap_or_else(|err| format!("Template rendering page failed: {}", err));
+
+        html
+    }
+
+    fn render_page(&mut self, page: &Page) -> std::io::Result<String> {
+        let html = self.render_page_inner(page);
 
         let f_html = Path::new(&self.config.output_directory).join(page.html_path.as_str());
         let d_html = f_html.parent().expect("should have parent directory");

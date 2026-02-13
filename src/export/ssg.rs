@@ -1,12 +1,11 @@
 mod engine;
-pub mod html;
 pub mod renderer;
 pub mod site;
 pub mod toc;
 pub mod view_model;
-
 use std::fs;
 use std::path::Path;
+use std::time::Instant;
 
 use fs_extra::dir::create_all;
 use petgraph::dot::Dot;
@@ -14,8 +13,6 @@ use renderer::RendererConfig;
 
 use crate::compiler::{Compiler, CompilerConfig};
 use crate::export::ssg::renderer::Renderer;
-// ::renderer_vold::Renderer;
-// use crate::export::ssg::renderer::Renderer;
 use crate::export::ssg::site::{SiteBuilder, SiteConfig};
 
 pub struct Config {
@@ -58,6 +55,27 @@ impl StaticSiteGenerator {
             renderer,
             ..Self::default()
         }
+    }
+
+    pub fn generate_html<P: AsRef<Path>>(&mut self, f_org: P) -> String {
+        let start = Instant::now();
+        let doc = self
+            .compiler
+            .compile_file(f_org)
+            .expect("compile org to Document");
+        let duration = start.elapsed();
+        tracing::info!("windancer@parser           : {:?}", duration);
+
+        let start = Instant::now();
+        let page = self.site_builder.build_document(&doc);
+        let duration = start.elapsed();
+        tracing::info!("windancer@site_builder     : {:?}", duration);
+
+        let start = Instant::now();
+        let html = self.renderer.render_page_inner(&page);
+        let duration = start.elapsed();
+        tracing::info!("windancer@renderer         : {:?}", duration);
+        html
     }
 
     pub fn generate<P: AsRef<Path>>(&mut self, d_org: P) -> std::io::Result<String> {

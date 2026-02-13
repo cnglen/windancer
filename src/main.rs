@@ -1,6 +1,6 @@
 //! org -> html
 // #![feature(test)]
-#![allow(warnings)]
+// #![allow(warnings)]
 use clap::Parser;
 use export::ssg::StaticSiteGenerator;
 use tracing_subscriber::FmtSubscriber;
@@ -8,7 +8,7 @@ use tracing_subscriber::FmtSubscriber;
 mod compiler;
 mod config;
 mod constants;
-mod engine;
+// mod engine;
 mod export;
 
 use crate::config::load_config;

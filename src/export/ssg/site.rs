@@ -280,6 +280,11 @@ impl SiteBuilder {
         }
     }
 
+    pub fn build_document(&mut self, document: &Document) -> Page {
+        let id = self.process_document(document);
+        self.pages.get(&id).expect("get page").clone()
+    }
+
     fn process_document(&mut self, document: &Document) -> PageId {
         tracing::trace!(
             "parent_stack={:?}, doc title={:?} path={:?}",
