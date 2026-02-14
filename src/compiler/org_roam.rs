@@ -12,12 +12,13 @@
 use std::collections::{BTreeMap, HashMap};
 
 use petgraph::graph::{DiGraph, NodeIndex};
+use serde::{Deserialize, Serialize};
 
 use crate::compiler::ast_builder::SourcePathSegment;
 use crate::compiler::ast_builder::object::Object;
 use crate::export::ssg::renderer::Renderer;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum NodeType {
     File,
     Headline,
@@ -64,7 +65,7 @@ pub struct RoamGraph {
 // node -- [id:] -> node1
 // node -- links with oram_refs -> node2 ()
 // node -- has children  -->
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct RoamNode {
     pub id: String,
     pub title: Vec<Object>,

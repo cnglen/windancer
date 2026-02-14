@@ -1,7 +1,9 @@
 //! AST node definition for object in org-mode
 
+use serde::{Deserialize, Serialize};
+
 // 内联元素（Inline-level elements）
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Object {
     Text(String),
 
@@ -96,7 +98,7 @@ pub enum Object {
     Whitespace(String),
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TableCell {
     pub contents: Vec<Object>,
     // pub alignment: CellAlignment, // 对齐方式
@@ -104,20 +106,20 @@ pub struct TableCell {
     pub cell_type: TableCellType,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TableCellType {
     Header,
     Data,
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CitationReference {
     pub key_prefix: Vec<Object>,
     pub key: String,
     pub key_suffix: Vec<Object>,
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GeneralLink {
     pub protocol: String, // protocol or type, http/file/#
     pub path: String,

@@ -1,7 +1,6 @@
 //! Table of contents for SSG
 
 use serde;
-use tera::{Context, Tera};
 
 /// Node of TableOfContents
 #[derive(Debug, Clone, serde::Serialize)]
@@ -21,7 +20,7 @@ pub struct TocNode {
 
 #[derive(Debug, Clone)]
 pub struct TableOfContents {
-    pub root_nodes: Vec<TocNode>, // not flatten
+    root_nodes: Vec<TocNode>, // not flatten
 }
 
 impl TableOfContents {
@@ -38,20 +37,37 @@ impl Default for TableOfContents {
 
 impl TableOfContents {
     pub fn to_html_nav(&self, active_slug: Option<&str>) -> String {
-        let tera = match Tera::new("src/export/ssg/templates/**/*.html") {
-            Ok(t) => t,
-            Err(e) => {
-                tracing::error!("template error: {}", e);
-                ::std::process::exit(1);
+        fn node_to_html(
+            node: &TocNode,
+            active_slug: Option<&str>,
+            html: &mut String,
+            max_depth: usize,
+        ) {
+            let is_active =
+                active_slug.map_or(false, |slug| slug == node.path.trim_start_matches('#'));
+            let active_class = if is_active { r#" class="active""# } else { "" };
+            if node.level <= max_depth {
+                html.push_str(&format!(
+                    r#"<li{}><a href="{}">{}</a>"#,
+                    active_class, node.path, node.title
+                ));
+                if !node.children.is_empty() && node.level < max_depth {
+                    html.push_str("\n<ul>\n");
+                    for child in &node.children {
+                        node_to_html(child, active_slug, html, max_depth);
+                    }
+                    html.push_str("</ul>\n");
+                }
+                html.push_str("</li>\n");
             }
-        };
-        let mut context = Context::new();
-        context.insert("root_nodes", &self.root_nodes);
-        context.insert("active_slug", &active_slug);
-        context.insert("max_depth", &5);
-        let html = tera
-            .render("toc_nav.tera.html", &context)
-            .unwrap_or_else(|err| format!("Template rendering failed: {}", err));
+        }
+
+        let max_depth = 5;
+        let mut html = String::from(r#"<nav class="toc"> <ul>"#);
+        for node in &self.root_nodes {
+            node_to_html(node, active_slug, &mut html, max_depth);
+        }
+        html.push_str(r#"</ul></nav>"#);
 
         // beatufity html
         use tidier::{Doc, FormatOptions};

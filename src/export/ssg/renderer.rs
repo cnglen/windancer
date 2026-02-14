@@ -35,7 +35,7 @@
 use std::collections::HashMap;
 use std::fs;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use chrono::{Datelike, Local};
 use html_escape;
@@ -43,7 +43,7 @@ use serde::Deserialize;
 
 use crate::compiler::ast_builder::element::{
     self, CenterBlock, Drawer, Element, ExampleBlock, ExportBlock, FixedWidth, FootnoteDefinition,
-    HeadingSubtree, Item, Keyword, LatexEnvironment, List, ListType, OrgFile, Paragraph,
+    HeadingSubtree, Id, Item, Keyword, LatexEnvironment, List, ListType, OrgFile, Paragraph,
     QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableRow, TableRowType, VerseBlock,
 };
 use crate::compiler::ast_builder::object::{GeneralLink, Object, TableCellType};
@@ -103,8 +103,8 @@ pub struct Renderer {
 #[derive(Debug, Deserialize, Clone)]
 #[serde(default)]
 pub struct RendererConfig {
-    pub output_directory: String,
-    pub input_directory: String,
+    pub output_directory: PathBuf,
+    pub input_directory: PathBuf,
     pub automatic_equaiton_numbering: bool,
 
     /// debug mode: true will generate syntax_tree/ast data in json format
@@ -115,8 +115,8 @@ pub struct RendererConfig {
 impl Default for RendererConfig {
     fn default() -> Self {
         Self {
-            output_directory: "public".to_string(),
-            input_directory: "content".to_string(),
+            output_directory: "public".into(),
+            input_directory: "content".into(),
             automatic_equaiton_numbering: true,
             debug: false,
             bgcolor_for_white: [
@@ -215,9 +215,7 @@ impl Renderer {
                 children.push(self.get_toc_of_heading_subtree(heading_subtree));
             }
         }
-        TableOfContents {
-            root_nodes: children,
-        }
+        TableOfContents::new(children)
     }
 
     fn get_toc_of_heading_subtree(&mut self, heading: &HeadingSubtree) -> TocNode {
@@ -331,8 +329,10 @@ impl Renderer {
                 .render("tag.tera.html", &ctx)
                 .unwrap_or_else(|err| format!("Template rendering page failed: {}", err));
 
-            let f_html =
-                Path::new(&self.config.output_directory).join(format!("tags/{tag}.html").as_str());
+            let f_html = self
+                .config
+                .output_directory
+                .join(format!("tags/{tag}.html").as_str());
             let d_html = f_html.parent().expect("should have parent directory");
             if !d_html.is_dir() {
                 fs::create_dir_all(d_html).expect("create dir");
@@ -344,6 +344,7 @@ impl Renderer {
     pub fn render_page_inner(&mut self, page: &Page) -> String {
         self.context.figure_counter = 0;
         self.context.table_counter = 0;
+
         let page_nav_context = PageNavContext::from_page(page, &self.context.pageid_to_url);
         let mut ctx = tera::Context::from_serialize(page_nav_context)
             .expect("render_page: from serialize failed");
@@ -372,17 +373,20 @@ impl Renderer {
 
         ctx.insert(
             "toc",
-            &self.context.toc.to_html_nav(Some(page.url.as_str())),
+            &self.context.toc.to_html_nav(Some(page.url.as_str())), // FIXME: this is slow
         );
+
         ctx.insert(
             "automatic_equaiton_numbering",
             &self.config.automatic_equaiton_numbering,
         );
-        let content = self.render_org_file(&page.ast);
+
+        let content = self.render_org_file(&page.ast); // 7ms
         ctx.insert("content", &content);
 
         let toc = self.get_toc_of_page(page).to_html_nav(None);
         ctx.insert("toc_of_current_page", &toc);
+
         let n_color = self.config.bgcolor_for_white.len();
         let tags = page
             .tags
@@ -409,7 +413,7 @@ impl Renderer {
     fn render_page(&mut self, page: &Page) -> std::io::Result<String> {
         let html = self.render_page_inner(page);
 
-        let f_html = Path::new(&self.config.output_directory).join(page.html_path.as_str());
+        let f_html = self.config.output_directory.join(page.html_path.as_str());
         let d_html = f_html.parent().expect("should have parent directory");
         if !d_html.is_dir() {
             fs::create_dir_all(d_html)?;
@@ -481,7 +485,7 @@ impl Renderer {
         let id_html = if let Some(id) = heading.properties.get("ID") {
             format!(r##"id="{}""##, id)
         } else {
-            format!(r##"id={}"##, heading.id())
+            format!(r##"id="{}""##, heading.id())
         };
 
         let todo_html = if let Some(todo) = &heading.keyword {
@@ -983,8 +987,8 @@ impl Renderer {
                 .iter()
                 .filter(|e| match e {
                     Object::GeneralLink(GeneralLink {
-                        protocol,
-                        path,
+                        protocol: _,
+                        path: _,
                         description,
                         is_image,
                     }) if description.len() == 0 && *is_image => true,

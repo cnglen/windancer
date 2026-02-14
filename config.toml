@@ -15,5 +15,11 @@ org_element_affiliated_keywords = [ "CAPTION", "DATA", "HEADER", "HEADERS", "LAB
 requiring_action = ["TODO"]
 no_further_action = ["DONE"]
 
-[renderer]
+[ssg]
 output_directory = "public"
+
+[ssg.site]
+
+[ssg.renderer]
+
+

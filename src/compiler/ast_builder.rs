@@ -30,6 +30,7 @@ use element::{
 };
 use error::AstError;
 use object::{CitationReference, GeneralLink, Object, TableCell, TableCellType};
+use serde::{Deserialize, Serialize};
 
 use super::parser::syntax::{OrgSyntaxKind, SyntaxElement, SyntaxNode, SyntaxToken};
 use crate::compiler::org_roam::{NodeType, RoamNode};
@@ -47,7 +48,7 @@ impl AstBuilder {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub enum SourcePathSegment {
     File {
         path: std::path::PathBuf,
@@ -95,7 +96,7 @@ impl fmt::Debug for SourcePathSegment {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExtractedLink {
     // full path from file root to link location
     pub source_path: Vec<SourcePathSegment>,

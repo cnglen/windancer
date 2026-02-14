@@ -1,3 +1,4 @@
+#![allow(warnings)]
 use std::fmt;
 
 use thiserror::Error;

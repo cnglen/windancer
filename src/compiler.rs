@@ -1,5 +1,6 @@
 //! Compile the raw org file to `Document' containing AST, file_info and meta_data
-//! one org file --parser--> GreenNode --SyntaxNode::new_root()--> SyntaxNode --ast_builder--> AST
+//! - one org file --parser--> GreenNode --SyntaxNode::new_root()--> SyntaxNode --ast_builder--> AST
+//! - one directory --> Section
 pub mod ast_builder;
 pub mod content;
 pub mod org_roam;
