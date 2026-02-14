@@ -33,7 +33,7 @@ fn radio_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, String, MyExtra<'a, C>>
         let mut longest_match: Option<(String, usize)> = None;
         for candidate in radio_targets {
             if try_match_string(stream, &candidate) {
-                let match_len = candidate.len();
+                let match_len = candidate.chars().count();
                 if longest_match
                     .as_ref()
                     .map_or(true, |(_, len)| match_len > *len)
@@ -47,6 +47,7 @@ fn radio_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, String, MyExtra<'a, C>>
             for _ in 0..len {
                 stream.next();
             }
+            tracing::trace!("radio_parser: len={}, matched_string={}", len, matched_string);
             Ok(matched_string)
         } else {
             Err(Rich::custom(
@@ -64,10 +65,10 @@ where
     E: Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone + 'a,
 {
     let post = any()
-        .filter(|c: &char| !c.is_alphanumeric())
+        .filter(|c: &char| !c.is_ascii_alphanumeric())
         .or(end().to('x'));
 
-    object::prev_valid_parser(|c| c.map_or(true, |c| !c.is_alphanumeric()))
+    object::prev_valid_parser(|c| c.map_or(true, |c| !c.is_ascii_alphanumeric()))
         .ignore_then(radio_parser_slice_or_object)
         .then_ignore(post.rewind())
         .map(|radio| crate::node!(OSK::RadioLink, radio))
