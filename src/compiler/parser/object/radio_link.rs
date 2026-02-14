@@ -47,7 +47,11 @@ fn radio_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, String, MyExtra<'a, C>>
             for _ in 0..len {
                 stream.next();
             }
-            tracing::trace!("radio_parser: len={}, matched_string={}", len, matched_string);
+            tracing::trace!(
+                "radio_parser: len={}, matched_string={}",
+                len,
+                matched_string
+            );
             Ok(matched_string)
         } else {
             Err(Rich::custom(

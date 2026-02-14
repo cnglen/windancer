@@ -2,7 +2,7 @@
 use chumsky::prelude::*;
 
 use crate::compiler::parser::config::OrgParserConfig;
-use crate::compiler::parser::{MyExtra, NT, OSK, element, object};
+use crate::compiler::parser::{MyExtra, NT, OSK, ParserState, element, object};
 
 // counter <- ([0-9]+ / [a-z])
 fn item_counter_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Clone {
@@ -135,6 +135,7 @@ fn create_item_node<'a, C: 'a + std::default::Default>(
     maybe_tag: Option<NT>,
     maybe_content: Option<&'a str>,
     maybe_blankline: Option<NT>,
+    state: &mut extra::SimpleState<ParserState>,
 ) -> NT {
     let mut children = Vec::with_capacity(7);
 
@@ -162,7 +163,7 @@ fn create_item_node<'a, C: 'a + std::default::Default>(
                 .repeated()
                 .collect::<Vec<_>>()
                 .map(|s| crate::node!(OSK::ListItemContent, s))
-                .parse(content)
+                .parse_with_state(content, state)
                 .into_output()
                 .unwrap() // fixme
         };
@@ -236,7 +237,7 @@ fn plain_list_parser_inner<'a, C: 'a + std::default::Default>(
             ),
         )
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
-        .map(move |((keywords, items), blanklines)| {
+        .map_with(move |((keywords, items), blanklines), e| {
             let (
                 indent,
                 (
@@ -266,6 +267,7 @@ fn plain_list_parser_inner<'a, C: 'a + std::default::Default>(
                 maybe_tag,
                 maybe_content,
                 maybe_blankline,
+                &mut e.state().clone(),
             );
             children.push(first_item);
 
@@ -289,6 +291,7 @@ fn plain_list_parser_inner<'a, C: 'a + std::default::Default>(
                     maybe_tag,
                     maybe_content,
                     maybe_blankline,
+                    &mut e.state().clone(),
                 );
                 children.push(item);
             }
