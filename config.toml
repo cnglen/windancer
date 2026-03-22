@@ -21,7 +21,7 @@ output_directory = "public"
 [ssg.site]
 
 [ssg.renderer]
-enable_tinydis = true
+enable_tinydis = false
 tinydis_server_url = "http://127.0.0.1:3000"
 
 
