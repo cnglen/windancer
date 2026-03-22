@@ -3,15 +3,16 @@
 /// - Section -> SiteBuilder -> Site
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use chrono::{DateTime, Local};
 use fs_extra::dir::{CopyOptions, copy};
 use petgraph::graph::{DiGraph, NodeIndex};
 use rowan::GreenNode;
+use serde::Deserialize;
 use walkdir::WalkDir;
 
-use crate::compiler::ast_builder::element::OrgFile;
+use crate::compiler::ast_builder::element::{Id, OrgFile};
 use crate::compiler::content::{Document, Section};
 use crate::compiler::parser::syntax::{OrgSyntaxKind, SyntaxNode};
 use crate::export::ssg::toc::{TableOfContents, TocNode};
@@ -96,7 +97,8 @@ impl fmt::Debug for Page {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default)]
 pub struct SiteConfig {
     pub output_directory: PathBuf,
     // pub base_url: String,
@@ -183,7 +185,7 @@ impl Site {
         //     children
         // };
 
-        TableOfContents { root_nodes }
+        TableOfContents::new(root_nodes)
     }
 }
 impl Default for Site {
@@ -231,7 +233,7 @@ impl GraphNode {
             tags: roam_node.tags.clone(),
             level: roam_node.level.clone(),
             parent_id: roam_node.parent_id.clone(),
-            url: url,
+            url,
         }
     }
 }
@@ -254,7 +256,7 @@ impl Default for KnowledgeGraph {
 }
 
 pub struct SiteBuilder {
-    config: SiteConfig,
+    pub config: SiteConfig,
     // plugin? search?
 
     // state during processing： parent_stack during `build()` to get parent page
@@ -285,6 +287,7 @@ impl SiteBuilder {
         self.pages.get(&id).expect("get page").clone()
     }
 
+    // page := id +
     fn process_document(&mut self, document: &Document) -> PageId {
         tracing::trace!(
             "parent_stack={:?}, doc title={:?} path={:?}",
@@ -295,9 +298,8 @@ impl SiteBuilder {
 
         let ast = document.ast.clone();
         let syntax_tree = document.syntax_tree.clone();
-        let mut hasher = blake3::Hasher::new();
-        hasher.update(format!("{:?}", ast).as_bytes());
-        let id = format!("{}", hasher.finalize().to_hex());
+        let id = document.ast.id();
+
         let title = document
             .metadata
             .title
@@ -409,7 +411,7 @@ impl SiteBuilder {
             .parent()
             .expect("must have parent directory")
             .join("static");
-        let static_directory_to = Path::new(&self.config.output_directory);
+        let static_directory_to = &self.config.output_directory;
         if static_directory_from.is_dir() {
             tracing::debug!(from=?static_directory_from.display(), to=?static_directory_to.display());
 
@@ -453,7 +455,9 @@ impl SiteBuilder {
                     && (!from_filename.ends_with("_ast.json"))
                     && (!from_filename.ends_with("_syntax.json"))
                 {
-                    let to_directory = Path::new(&self.config.output_directory)
+                    let to_directory = self
+                        .config
+                        .output_directory
                         .join(relative_directories.join("/"));
                     if !to_directory.is_dir() {
                         std::fs::create_dir_all(&to_directory)?;
@@ -635,6 +639,8 @@ impl SiteBuilder {
 
         // todo:
         let knowledge_graph = self.build_knowledge_graph(root_section);
+
+        tracing::trace!("kg={:?}", knowledge_graph);
         // 处理所有页面中的 org-roam 链接，构建图
         // site.build_roam_graph();
         // let g = section.build_graph();

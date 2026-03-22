@@ -27,15 +27,6 @@ impl Default for OrgTodoKeywords {
     }
 }
 
-impl OrgTodoKeywords {
-    pub fn new(requiring_action: HashSet<String>, no_further_action: HashSet<String>) -> Self {
-        Self {
-            requiring_action,
-            no_further_action,
-        }
-    }
-}
-
 // Toggle inclusion of statistics cookies: (‘org-export-with-statistics-cookies’).
 #[derive(Clone, Debug, Deserialize)]
 #[serde(default)]

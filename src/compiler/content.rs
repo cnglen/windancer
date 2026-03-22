@@ -17,7 +17,9 @@ use crate::compiler::org_roam::{EdgeType, RoamGraph, RoamNode};
 use crate::compiler::parser::syntax::SyntaxNode;
 use crate::export::ssg::renderer::Renderer; // remove to exporter?
 
-/// A single directory is compiled to `Section`
+/// A single directory is compiled to a section, which:
+/// - includes several documents and subsections
+/// - has a tree structure like directories
 #[derive(Debug)]
 pub struct Section {
     pub file_info: FileInfo,
@@ -255,19 +257,6 @@ pub struct DocumentMetadata {
 
     // roam_nodes_in_heading: Vec<>
     pub extra: HashMap<String, Vec<String>>,
-}
-
-// // id <-> url?
-// // 原始链接表示
-// pub enum RawLink {
-//     RoamId { id: String },      // [[id:xxxxx][描述]]
-//     RoamFile { file: String },   // [[file:...][描述]]
-//     WebUrl { url: String },      // [[https://...][描述]]
-//     // ... 其他类型
-// }
-
-impl Section {
-    pub fn extract(&self) {}
 }
 
 impl Default for DocumentMetadata {

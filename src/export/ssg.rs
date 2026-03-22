@@ -4,34 +4,21 @@ pub mod site;
 pub mod toc;
 pub mod view_model;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use fs_extra::dir::create_all;
 use petgraph::dot::Dot;
-use renderer::RendererConfig;
+use serde::Deserialize;
 
 use crate::compiler::{Compiler, CompilerConfig};
-use crate::export::ssg::renderer::Renderer;
+use crate::export::ssg::renderer::{Renderer, RendererConfig};
 use crate::export::ssg::site::{SiteBuilder, SiteConfig};
-
-pub struct Config {
-    site_config: SiteConfig,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            site_config: SiteConfig::default(),
-        }
-    }
-}
 
 pub struct StaticSiteGenerator {
     pub compiler: Compiler,
     pub site_builder: SiteBuilder,
     pub renderer: Renderer,
-    pub config: Config,
 }
 
 impl Default for StaticSiteGenerator {
@@ -40,47 +27,21 @@ impl Default for StaticSiteGenerator {
             compiler: Compiler::default(),
             site_builder: SiteBuilder::default(),
             renderer: Renderer::default(),
-            config: Config::default(),
         }
     }
 }
 
+#[derive(Debug, Deserialize)]
+pub struct SsgConfig {
+    pub output_directory: PathBuf,
+    pub site: SiteConfig,
+    pub renderer: RendererConfig,
+}
+
 impl StaticSiteGenerator {
-    pub fn new(compiler_config: CompilerConfig, render_config: RendererConfig) -> Self {
-        let compiler = Compiler::new(compiler_config);
-
-        let renderer = Renderer::new(render_config);
-        Self {
-            compiler,
-            renderer,
-            ..Self::default()
-        }
-    }
-
-    pub fn generate_html<P: AsRef<Path>>(&mut self, f_org: P) -> String {
-        let start = Instant::now();
-        let doc = self
-            .compiler
-            .compile_file(f_org)
-            .expect("compile org to Document");
-        let duration = start.elapsed();
-        tracing::info!("windancer@parser           : {:?}", duration);
-
-        let start = Instant::now();
-        let page = self.site_builder.build_document(&doc);
-        let duration = start.elapsed();
-        tracing::info!("windancer@site_builder     : {:?}", duration);
-
-        let start = Instant::now();
-        let html = self.renderer.render_page_inner(&page);
-        let duration = start.elapsed();
-        tracing::info!("windancer@renderer         : {:?}", duration);
-        html
-    }
-
     pub fn generate<P: AsRef<Path>>(&mut self, d_org: P) -> std::io::Result<String> {
         tracing::info!("prepare output directory ...");
-        let output_directory = Path::new(&self.config.site_config.output_directory);
+        let output_directory = &self.site_config().output_directory;
         if output_directory.exists() {
             let now_utc = chrono::Utc::now();
             let created_ts = now_utc.format("%Y%m%dT%H%M%SZ").to_string();
@@ -117,5 +78,43 @@ impl StaticSiteGenerator {
 
         tracing::info!("done");
         Ok(String::from("todo"))
+    }
+
+    pub fn generate_html<P: AsRef<Path>>(&mut self, f_org: P) -> String {
+        let start = Instant::now();
+        let doc = self
+            .compiler
+            .compile_file(f_org)
+            .expect("compile org to Document(AST)");
+        let duration = start.elapsed();
+        tracing::info!("windancer@parser           : {:?}", duration);
+
+        let start = Instant::now();
+        let page = self.site_builder.build_document(&doc);
+        let duration = start.elapsed();
+        tracing::info!("windancer@site_builder     : {:?}", duration);
+
+        let start = Instant::now();
+        let html = self.renderer.render_page_inner(&page);
+        let duration = start.elapsed();
+        tracing::info!("windancer@renderer         : {:?}", duration);
+        html
+    }
+
+    pub fn new(compiler_config: CompilerConfig, ssg_config: SsgConfig) -> Self {
+        let site_config = ssg_config.site;
+        let renderer_config = ssg_config.renderer;
+        let compiler = Compiler::new(compiler_config);
+        let site_builder = SiteBuilder::new(site_config);
+        let renderer = Renderer::new(renderer_config);
+        Self {
+            compiler,
+            site_builder,
+            renderer,
+        }
+    }
+
+    pub fn site_config(&self) -> &SiteConfig {
+        &self.site_builder.config
     }
 }

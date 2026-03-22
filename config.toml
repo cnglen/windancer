@@ -15,8 +15,13 @@ org_element_affiliated_keywords = [ "CAPTION", "DATA", "HEADER", "HEADERS", "LAB
 requiring_action = ["TODO"]
 no_further_action = ["DONE"]
 
-[renderer]
+[ssg]
 output_directory = "public"
-enable_tinydis = false
+
+[ssg.site]
+
+[ssg.renderer]
+enable_tinydis = true
 tinydis_server_url = "http://127.0.0.1:3000"
+
 

@@ -1,13 +1,27 @@
 //! AST definition for element in org-mode
 use std::collections::BTreeMap;
 use std::fmt;
-use std::hash::{DefaultHasher, Hash, Hasher};
+
+use bincode;
+use serde::{Deserialize, Serialize};
 
 use crate::compiler::ast_builder::ExtractedLink;
 use crate::compiler::ast_builder::object::Object;
 use crate::compiler::org_roam::RoamNode;
 
-#[derive(Clone)]
+pub(crate) trait Id {
+    fn id(&self) -> String
+    where
+        Self: Serialize,
+    {
+        let bytes = bincode::serialize(self).expect("serialize failed");
+        let mut hasher = blake3::Hasher::new();
+        hasher.update(&bytes);
+        hasher.finalize().to_hex().to_string()
+    }
+}
+
+#[derive(Clone, Serialize)]
 pub struct OrgFile {
     pub zeroth_section: Option<Section>,
     pub heading_subtrees: Vec<HeadingSubtree>,
@@ -25,6 +39,8 @@ pub struct OrgFile {
     /// Roam Nodes
     pub roam_nodes: Vec<RoamNode>,
 }
+
+impl Id for OrgFile {}
 
 impl fmt::Debug for OrgFile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -50,7 +66,7 @@ roam_nodes: {:#?},
     }
 }
 
-#[derive(Clone, Hash)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct HeadingSubtree {
     // heading row info
     pub level: u8,
@@ -67,14 +83,8 @@ pub struct HeadingSubtree {
     pub properties: BTreeMap<String, String>,
 }
 
-impl HeadingSubtree {
-    pub fn id(&self) -> String {
-        let mut hasher = DefaultHasher::new();
-        self.hash(&mut hasher);
-        let hash_val = hasher.finish();
-        format!("{:x}", hash_val)
-    }
-}
+impl Id for HeadingSubtree {}
+
 // todo: if key duplicated?
 pub(crate) fn get_properties(property_drawer: &Option<PropertyDrawer>) -> BTreeMap<String, String> {
     let mut properties: BTreeMap<String, String> = BTreeMap::new();
@@ -121,7 +131,7 @@ impl fmt::Debug for HeadingSubtree {
     }
 }
 
-#[derive(Clone, Hash)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Section {
     pub elements: Vec<Element>,
 }
@@ -139,7 +149,7 @@ impl fmt::Debug for Section {
 
 // 块级元素（Block-level elements）： Greater Or Lesser Element
 // 第一个Table := Element:Table表示枚举，第二个Table表示该枚举所带的数据的类型(结构体)
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Element {
     // Greater
     Table(Table),
@@ -175,37 +185,37 @@ pub enum Element {
     Comment(Comment),
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ZerothSectionPreamble {
     pub comment: Option<Comment>,
     pub property_drawer: Option<PropertyDrawer>,
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Drawer {
     pub name: String,
     pub contents: Vec<Element>,
     pub affiliated_keywords: Vec<AffiliatedKeyword>,
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PropertyDrawer {
     pub contents: Vec<NodeProperty>,
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NodeProperty {
     pub name: String,
     pub value: Option<String>,
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Planning {
     pub keyword: String,
     pub timestamp: Object,
 }
 
-#[derive(Clone, Hash)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Table {
     pub name: Option<String>, // 表格名称 (#+NAME:)
     pub caption: Vec<Object>, // 表格标题 (#+CAPTION:)
@@ -226,7 +236,7 @@ impl fmt::Debug for Table {
     }
 }
 
-#[derive(Clone, Hash)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct TableRow {
     pub cells: Vec<Object>,
     pub row_type: TableRowType,
@@ -239,7 +249,7 @@ impl fmt::Debug for TableRow {
 }
 
 // 行类型
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TableRowType {
     Header,  // 表头行
     Rule,    // 分隔线行: rule
@@ -264,7 +274,7 @@ pub enum TableRowType {
 // }
 
 // 表格公式
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TableFormula {
     pub data: String,
     // pub target: String,         // 目标单元格/范围
@@ -272,26 +282,26 @@ pub struct TableFormula {
     // pub format: Option<String>, // 格式说明
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Paragraph {
     pub affiliated_keywords: Vec<AffiliatedKeyword>,
     pub objects: Vec<Object>,
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct List {
     pub list_type: ListType,
     pub items: Vec<Item>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ListType {
     Ordered,
     Unordered,
     Descriptive,
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Item {
     pub bullet: String,
     pub counter_set: Option<String>,
@@ -300,19 +310,19 @@ pub struct Item {
     pub contents: Vec<Element>,
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CenterBlock {
     pub parameters: Option<String>,
     pub contents: Vec<Element>,
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QuoteBlock {
     pub parameters: Option<String>,
     pub contents: Vec<Element>,
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpecialBlock {
     pub name: String,
     pub parameters: Option<String>,
@@ -320,31 +330,31 @@ pub struct SpecialBlock {
 }
 
 // Lesser
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExampleBlock {
     pub data: Option<String>,
     pub contents: Vec<Object>,
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommentBlock {
     pub data: Option<String>,
     pub contents: Vec<Object>,
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VerseBlock {
     pub data: Option<String>,
     pub contents: Vec<Object>,
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportBlock {
     pub data: Option<String>,
     pub contents: Vec<Object>,
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SrcBlock {
     pub language: String,
 
@@ -358,7 +368,7 @@ pub struct SrcBlock {
     pub contents: Vec<Object>,
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FootnoteDefinition {
     pub nid: usize, // one label determines one nid, `nid` used to sort the defintions by the order of first occurrenced reference
     pub label: String, // the actual id of a footnote definition
@@ -366,33 +376,33 @@ pub struct FootnoteDefinition {
     pub contents: Vec<Element>,
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HorizontalRule {}
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Keyword {
     pub key: String,
     pub value: Vec<Object>,
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AffiliatedKeyword {
     pub key: String,
     pub optvalue: Option<String>,
     pub value: Vec<Object>,
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LatexEnvironment {
     pub(crate) text: String,
 }
 
-#[derive(Clone, Debug, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Comment {
     pub text: String,
 }
 
-#[derive(Clone, Debug, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FixedWidth {
     pub text: String,
 }

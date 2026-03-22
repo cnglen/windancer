@@ -42,7 +42,7 @@ fn main() -> std::io::Result<()> {
     let html = ssg.generate_html(f_org);
     let _ = fs::write("tests/windancer_output.html", format!("{}", html));
     let duration = start.elapsed();
-    tracing::info!("windancer@Html render: {:?}", duration);
+    tracing::info!("windancer:               : {:?}", duration);
 
     // let start = Instant::now();
     // let org_config =
