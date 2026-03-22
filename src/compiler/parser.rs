@@ -442,7 +442,8 @@ impl OrgParser {
         targets
     }
 
-    pub fn parse<P: AsRef<Path>>(&self, input_file: P) -> SyntaxNode {
+    pub fn parse<P: AsRef<Path> + Clone>(&self, input_file: P) -> SyntaxNode {
+        tracing::info!("input_file: {}", input_file.as_ref().display());
         let path = input_file.as_ref();
 
         let input = &fs::read_to_string(path)

@@ -107,6 +107,9 @@ pub struct RendererConfig {
     pub input_directory: String,
     pub automatic_equaiton_numbering: bool,
 
+    pub enable_tinydis: bool,
+    pub tinydis_server_url: String,
+
     /// debug mode: true will generate syntax_tree/ast data in json format
     pub debug: bool,
     pub bgcolor_for_white: Vec<String>,
@@ -118,6 +121,8 @@ impl Default for RendererConfig {
             output_directory: "public".to_string(),
             input_directory: "content".to_string(),
             automatic_equaiton_numbering: true,
+            enable_tinydis: false,
+            tinydis_server_url: "http://127.0.0.1:3000".to_string(),
             debug: false,
             bgcolor_for_white: [
                 "#330000", "#331900", "#333300", "#193300", "#003300", "#003319", "#003333",
@@ -397,6 +402,8 @@ impl Renderer {
         tracing::trace!("tags={tags:?}");
         ctx.insert("tags", &tags);
 
+        ctx.insert("enable_tinydis", &self.config.enable_tinydis);
+        ctx.insert("tinydis_server_url", &self.config.tinydis_server_url);
         let html = self
             .context
             .tera
