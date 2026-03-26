@@ -9,173 +9,90 @@
 
     <title>{{tag}}</title>
     <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="stylesheet" href="/encre.css" />
+    <link rel="stylesheet" href="/default.css" />  
+  <style>
+    @media (max-width: 768px) {
 
-    <link rel="stylesheet" href="/default.css" />
+      .toc-site,
+      .toc-page {
+        display: none !important;
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        width: 280px;
+        z-index: 1000;
+        transition: transform 0.3s ease;
+      }
 
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-          const tocSiteBtn = document.querySelector('.mobile-toc-site-button');
-          const tocPageBtn = document.querySelector('.mobile-toc-page-button');
-          const siteSidebar = document.querySelector('.toc-sidebar-site');
-          const pageSidebar = document.querySelector('.toc-sidebar-page');
-          const overlay = document.querySelector('.sidebar-overlay');
+      .toc-site {
+        left: 0;
+        transform: translateX(-100%);
+      }
 
-          function isTouchDevice() {
-              return 'ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
-          }
+      .toc-page {
+        right: 0;
+        transform: translateX(100%);
+      }
 
+      #toggle-toc-site:checked~main nav.toc-site,
+      #toggle-toc-page:checked~main nav.toc-page {
+        display: block !important;
+        transform: translateX(0);
+      }
 
-          function shouldPreventClose(element) {
-              if (!element) return false;
+      #toggle-toc-site:checked~.overlay-toc-site,
+      #toggle-toc-page:checked~.overlay-toc-page {
+        display: block;
+      }
+    }
+  </style>
     
-              var tagName = element.tagName.toLowerCase();
-    
-              var preventElements = ['a', 'button', 'input', 'textarea', 'select'];
-    
-              if (preventElements.includes(tagName)) {
-                  return true;
-              }
-    
-              var preventClasses = ['no-close', 'dropdown', 'accordion', 'toggle'];
-              for (var i = 0; i < preventClasses.length; i++) {
-                  if (element.classList.contains(preventClasses[i])) {
-                      return true;
-                  }
-              }
-    
-              if (element.closest('a, button, [role="button"], [role="link"]')) {
-                  return true;
-              }
-    
-              return false;
-          }
-  
-          function closeAllSidebars() {
-              if (siteSidebar) siteSidebar.classList.remove('active');
-              if (pageSidebar) pageSidebar.classList.remove('active');
-              if (overlay) overlay.classList.remove('active');
-              document.body.classList.remove('sidebar-active');
-          }
-  
-
-          function openSidebar(sidebar) {
-              closeAllSidebars();
-              if (sidebar) {
-                  sidebar.classList.add('active');
-                  if (overlay) overlay.classList.add('active');
-                  document.body.classList.add('sidebar-active');
-              }
-          }
-  
-          function toggleSidebar(sidebar) {
-              if (!sidebar) return closeAllSidebars();
-    
-              if (sidebar.classList.contains('active')) {
-                  closeAllSidebars();
-              } else {
-                  openSidebar(sidebar);
-              }
-          }
-  
-          function setupSidebarClickHandler(sidebar) {
-              if (!sidebar) return;
-              
-              sidebar.addEventListener('click', function(e) {
-                  var target = e.target;
-                  
-                  if (shouldPreventClose(target)) {
-                      if (target.tagName === 'A' && target.getAttribute('href') && target.getAttribute('href').startsWith('#')) {
-                          e.preventDefault();
-                          var targetId = target.getAttribute('href').substring(1);
-                          var targetElement = document.getElementById(targetId);
-                          
-                          setTimeout(function() {
-                              closeAllSidebars();
-                              if (targetElement) {
-                                  targetElement.scrollIntoView({ behavior: 'smooth' });
-                              }
-                          }, 100);
-                      }
-
-                      return;
-                  }
-                  
-                  if (sidebar.classList.contains('active')) {
-                      closeAllSidebars();
-                  }
-              });
-          }
-          
-          if (tocSiteBtn && siteSidebar) {
-              tocSiteBtn.addEventListener('click', function(e) {
-                  e.stopPropagation();
-                  toggleSidebar(siteSidebar);
-              });
-          }
-          
-          if (tocPageBtn && pageSidebar) {
-              tocPageBtn.addEventListener('click', function(e) {
-                  e.stopPropagation();
-                  toggleSidebar(pageSidebar);
-              });
-          }
-          
-          setupSidebarClickHandler(siteSidebar);
-          setupSidebarClickHandler(pageSidebar);
-          
-          if (overlay) {
-              overlay.addEventListener('click', function(e) {
-                  e.stopPropagation();
-                  closeAllSidebars();
-              });
-          }
-          
-          document.addEventListener('click', function(e) {
-              var isSidebarClick = 
-                  (siteSidebar && (siteSidebar === e.target || siteSidebar.contains(e.target))) ||
-                  (pageSidebar && (pageSidebar === e.target || pageSidebar.contains(e.target))) ||
-                  (tocSiteBtn && (tocSiteBtn === e.target || tocSiteBtn.contains(e.target))) ||
-                  (tocPageBtn && (tocPageBtn === e.target || tocPageBtn.contains(e.target)));
-              
-              if (!isSidebarClick) {
-                  closeAllSidebars();
-              }
-          });
-          
-          document.addEventListener('keydown', function(e) {
-              if (e.key === 'Escape') {
-                  closeAllSidebars();
-              }
-          });          
-
-      });          
-    </script>
   </head>
 
   <body>
-    <div class="sidebar-overlay"></div>
-    
-    <main id="main-content" class="content main-content" role="main">
-      <nav class="toc-sidebar-site" aria-label="site-navigation" role="navigation">
+  {# hidden checkbox to save state: toggle-toc-site/toggle-toc-page #}
+  <input type="checkbox" id="toggle-toc-site" class="hidden">
+  <input type="checkbox" id="toggle-toc-page" class="hidden">
+
+  {# overlay: only be shown when sidebar is open and be clicked to close sidebar #}
+  <label for="toggle-toc-site"
+    class="overlay-toc-site fixed inset-0 z-[999] hidden bg-transparent cursor-default"></label>
+  <label for="toggle-toc-page"
+    class="overlay-toc-page fixed inset-0 z-[999] hidden bg-transparent cursor-default"></label>
+
+  <main id="main-content"
+    class="grid min-h-screen transition-all duration-300 ease max-md:grid-cols-1 max-md:px-[1%] max-md:gap-0 md:grid-cols-[1fr_3fr_1fr] grid-rows-1 print:block"
+    role="main">
+    {# toc-site sidebar #}
+    <label for="toggle-toc-site">
+      <nav
+        class="toc-site hidden z-[1000] sticky top-0 left-0 bg-gray-50 border-r border-gray-100 col-start-1 row-start-1 pl-2 pr-2 pt-6 pb-6 overflow-y-auto h-screen print:hidden md:block w-80 max-w-xs md:max-w-sm lg:max-w-md transition-transform duration-300 shadow-[2px_0_10px_rgba(0,0,0,0.1)]"
+        aria-label="site-navigation" role="navigation">
         <div>☰ Site Navigation </div>
         <div id="text-table-of-contents" role="doc-toc">
           {{ toc }}
         </div>
       </nav>
-      
-      <article id="page">
-        <header>
-          <div class="article-container">
-            <button class="mobile-toc-site-button"> ☰ </button>
-            <div class="header-actions"> 
-              <!-- <form role="search" aria-label="search">  -->
-              <!--   <input type="search" placeholder="Search..."> -->
-              <!-- </form>  -->
-            </div> 
-            <button class="mobile-toc-page-button"> 📖 </button>
-          </div>
+    </label>
 
-          <h1 class="title">{{tag}}</h1>
+    <article class="prose lg:prose-xl print:w-full print:p-0 max-md:col-start-1 max-md:row-start-1 max-md:p-5 col-start-2 row-start-1 p-8 overflow-x-hidden max-w-full">
+
+      <header class="mb-8">
+        <div
+          class="article-container grid grid-cols-[1fr_3fr_1fr] grid-rows-[1fr] transition-all duration-300 ease z-[1001]">
+          <label for="toggle-toc-site" class="lg:hidden col-start-1 row-start-1 text-left">
+            ☰
+          </label>
+          <div class="header-actions col-start-2 row-start-1">
+            {# <form role="search" aria-label="search"> #}
+              {# <input type="search" placeholder="Search..."> #}
+              {# </form> #}
+          </div>
+        </div>
+          
+
+        <h1 class="title">{{tag}}</h1>
         </header>
 
         <div>

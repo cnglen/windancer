@@ -599,6 +599,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "encre-css"
+version = "0.20.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c14c98eb65ca535f4c9f6db521ebb37992536768af40b13bdb9a257e7423c093"
+dependencies = [
+ "phf 0.13.1",
+ "serde",
+ "thiserror",
+ "toml",
+]
+
+[[package]]
+name = "encre-css-typography"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6cd591006089928c76ab0326558c8b3d8489ec342b1b38ae215c3711fa7b8ca5"
+dependencies = [
+ "encre-css",
+]
+
+[[package]]
 name = "equivalent"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1670,10 +1691,12 @@ version = "0.9.12+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf92845e79fc2e2def6a5d828f0801e29a2f8acc037becc5ab08595c7d5e9863"
 dependencies = [
+ "indexmap",
  "serde_core",
  "serde_spanned",
  "toml_datetime",
  "toml_parser",
+ "toml_writer",
  "winnow",
 ]
 
@@ -1694,6 +1717,12 @@ checksum = "247eaa3197818b831697600aadf81514e577e0cba5eab10f7e064e78ae154df1"
 dependencies = [
  "winnow",
 ]
+
+[[package]]
+name = "toml_writer"
+version = "1.1.0+spec-1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d282ade6016312faf3e41e57ebbba0c073e4056dab1232ab1cb624199648f8ed"
 
 [[package]]
 name = "tracing"
@@ -1921,6 +1950,8 @@ dependencies = [
  "colored",
  "config",
  "criterion",
+ "encre-css",
+ "encre-css-typography",
  "fs_extra",
  "html-escape",
  "orgize",

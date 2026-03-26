@@ -1,285 +1,223 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="generator" content="Org Mode">
-    <meta name="HandheldFriendly" content="true">
-    <meta name="MobileOptimized" content="width">
 
-    <title>{{title}}</title>
-    <link rel="icon" type="image/png" href="/favicon.png">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="generator" content="Org Mode">
+  <meta name="HandheldFriendly" content="true">
+  <meta name="MobileOptimized" content="width">
 
-    <script defer src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
-    <link rel="stylesheet" href="/default.css" />
+  <title>{{title}}</title>
+  <link rel="icon" type="image/png" href="/favicon.png">
 
-    {% if enable_tinydis %}
-    <link rel="stylesheet" href="/assets/tinydis.css" />
-    {% endif %}
-    
-    {% if automatic_equaiton_numbering %}
-      <script>
-        window.MathJax = {
-            tex: { tags: 'ams' },
-            output: {displayOverflow: 'scale'},
-            options: {
-                enableExplorer: false,
-                enableMenu: false
-            }
-        };
-        window.onload = function() {
-            document.querySelectorAll('div.code pre.src code').forEach(block => {
-                hljs.highlightElement(block);
-            });
-        };
-      </script>
-    {% else %}
-      <script>
-        window.MathJax = {
-            output: {displayOverflow: 'scale'},
-            options: {
-                enableExplorer: false,
-                enableMenu: false
-            }
-        };
-        window.onload = function() {
-            document.querySelectorAll('div.code pre.src code').forEach(block => {
-                hljs.highlightElement(block);
-            });
-        };
-      </script>
-      {% endif %}
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+  <link rel="stylesheet" href="/encre.css" />
+  <link rel="stylesheet" href="/default.css" />  
 
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-          const tocSiteBtn = document.querySelector('.mobile-toc-site-button');
-          const tocPageBtn = document.querySelector('.mobile-toc-page-button');
-          const siteSidebar = document.querySelector('.toc-sidebar-site');
-          const pageSidebar = document.querySelector('.toc-sidebar-page');
-          const overlay = document.querySelector('.sidebar-overlay');
+  {% if enable_tinydis %}
+  <link rel="stylesheet" href="/assets/tinydis.css" />
+  {% endif %}
 
-          function isTouchDevice() {
-              return 'ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
-          }
+  {% if automatic_equaiton_numbering %}
+  <script>
+    window.MathJax = {
+      tex: { tags: 'ams' },
+      output: { displayOverflow: 'scale' },
+      options: {
+        enableExplorer: false,
+        enableMenu: false
+      }
+    };
+    window.onload = function () {
+      document.querySelectorAll('div.code pre.src code').forEach(block => {
+        hljs.highlightElement(block);
+      });
+    };
+  </script>
+  {% else %}
+  <script>
+    window.MathJax = {
+      output: { displayOverflow: 'scale' },
+      options: {
+        enableExplorer: false,
+        enableMenu: false
+      }
+    };
+    window.onload = function () {
+      document.querySelectorAll('div.code pre.src code').forEach(block => {
+        hljs.highlightElement(block);
+      });
+    };
+  </script>
+  {% endif %}
 
+  {#
+  two hidden checkbox ~ states of left toc site / right toc page
+  - checked: hidden
+  - unchecked: shown
+  #}
+  <style>
+    @media (max-width: 768px) {
 
-          function shouldPreventClose(element) {
-              if (!element) return false;
-    
-              var tagName = element.tagName.toLowerCase();
-    
-              var preventElements = ['a', 'button', 'input', 'textarea', 'select'];
-    
-              if (preventElements.includes(tagName)) {
-                  return true;
-              }
-    
-              var preventClasses = ['no-close', 'dropdown', 'accordion', 'toggle'];
-              for (var i = 0; i < preventClasses.length; i++) {
-                  if (element.classList.contains(preventClasses[i])) {
-                      return true;
-                  }
-              }
-    
-              if (element.closest('a, button, [role="button"], [role="link"]')) {
-                  return true;
-              }
-    
-              return false;
-          }
-  
-          function closeAllSidebars() {
-              if (siteSidebar) siteSidebar.classList.remove('active');
-              if (pageSidebar) pageSidebar.classList.remove('active');
-              if (overlay) overlay.classList.remove('active');
-              document.body.classList.remove('sidebar-active');
-          }
-  
+      .toc-site,
+      .toc-page {
+        display: none !important;
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        width: 280px;
+        z-index: 1000;
+        transition: transform 0.3s ease;
+      }
 
-          function openSidebar(sidebar) {
-              closeAllSidebars();
-              if (sidebar) {
-                  sidebar.classList.add('active');
-                  if (overlay) overlay.classList.add('active');
-                  document.body.classList.add('sidebar-active');
-              }
-          }
-  
-          function toggleSidebar(sidebar) {
-              if (!sidebar) return closeAllSidebars();
-    
-              if (sidebar.classList.contains('active')) {
-                  closeAllSidebars();
-              } else {
-                  openSidebar(sidebar);
-              }
-          }
-  
-          function setupSidebarClickHandler(sidebar) {
-              if (!sidebar) return;
-              
-              sidebar.addEventListener('click', function(e) {
-                  var target = e.target;
-                  
-                  if (shouldPreventClose(target)) {
-                      if (target.tagName === 'A' && target.getAttribute('href') && target.getAttribute('href').startsWith('#')) {
-                          e.preventDefault();
-                          var targetId = target.getAttribute('href').substring(1);
-                          var targetElement = document.getElementById(targetId);
-                          
-                          setTimeout(function() {
-                              closeAllSidebars();
-                              if (targetElement) {
-                                  targetElement.scrollIntoView({ behavior: 'smooth' });
-                              }
-                          }, 100);
-                      }
+      .toc-site {
+        left: 0;
+        transform: translateX(-100%);
+      }
 
-                      return;
-                  }
-                  
-                  if (sidebar.classList.contains('active')) {
-                      closeAllSidebars();
-                  }
-              });
-          }
-          
-          if (tocSiteBtn && siteSidebar) {
-              tocSiteBtn.addEventListener('click', function(e) {
-                  e.stopPropagation();
-                  toggleSidebar(siteSidebar);
-              });
-          }
-          
-          if (tocPageBtn && pageSidebar) {
-              tocPageBtn.addEventListener('click', function(e) {
-                  e.stopPropagation();
-                  toggleSidebar(pageSidebar);
-              });
-          }
-          
-          setupSidebarClickHandler(siteSidebar);
-          setupSidebarClickHandler(pageSidebar);
-          
-          if (overlay) {
-              overlay.addEventListener('click', function(e) {
-                  e.stopPropagation();
-                  closeAllSidebars();
-              });
-          }
-          
-          document.addEventListener('click', function(e) {
-              var isSidebarClick = 
-                  (siteSidebar && (siteSidebar === e.target || siteSidebar.contains(e.target))) ||
-                  (pageSidebar && (pageSidebar === e.target || pageSidebar.contains(e.target))) ||
-                  (tocSiteBtn && (tocSiteBtn === e.target || tocSiteBtn.contains(e.target))) ||
-                  (tocPageBtn && (tocPageBtn === e.target || tocPageBtn.contains(e.target)));
-              
-              if (!isSidebarClick) {
-                  closeAllSidebars();
-              }
-          });
-          
-          document.addEventListener('keydown', function(e) {
-              if (e.key === 'Escape') {
-                  closeAllSidebars();
-              }
-          });          
+      .toc-page {
+        right: 0;
+        transform: translateX(100%);
+      }
 
-      });          
-    </script>
-  </head>
+      #toggle-toc-site:checked~main nav.toc-site,
+      #toggle-toc-page:checked~main nav.toc-page {
+        display: block !important;
+        transform: translateX(0);
+      }
 
-  <body>
-    <div class="sidebar-overlay"></div>
-    
-    <main id="main-content" class="content main-content" role="main">
-      <nav class="toc-sidebar-site" aria-label="site-navigation" role="navigation">
+      #toggle-toc-site:checked~.overlay-toc-site,
+      #toggle-toc-page:checked~.overlay-toc-page {
+        display: block;
+      }
+    }
+  </style>
+
+</head>
+
+<body>
+  {# hidden checkbox to save state: toggle-toc-site/toggle-toc-page #}
+  <input type="checkbox" id="toggle-toc-site" class="hidden">
+  <input type="checkbox" id="toggle-toc-page" class="hidden">
+
+  {# overlay: only be shown when sidebar is open and be clicked to close sidebar #}
+  <label for="toggle-toc-site"
+    class="overlay-toc-site fixed inset-0 z-[999] hidden bg-transparent cursor-default"></label>
+  <label for="toggle-toc-page"
+    class="overlay-toc-page fixed inset-0 z-[999] hidden bg-transparent cursor-default"></label>
+
+  <main id="main-content"
+    class="px-4 grid min-h-screen transition-all duration-300 ease max-md:grid-cols-1 max-md:px-[1%] max-md:gap-0 md:grid-cols-[1fr_3fr_1fr] grid-rows-1 print:block"
+    role="main">
+    {# toc-site sidebar #}
+    <label for="toggle-toc-site">
+      <nav
+        class="toc-site hidden z-[1000] sticky top-0 left-0 bg-gray-50 border-r border-gray-100 col-start-1 row-start-1 pl-2 pr-2 pt-6 pb-6 overflow-y-auto h-screen print:hidden md:block max-w-xs md:max-w-sm lg:max-w-md transition-transform duration-300 shadow-[2px_0_10px_rgba(0,0,0,0.1)]"
+        aria-label="site-navigation" role="navigation">
         <div>☰ Site Navigation </div>
         <div id="text-table-of-contents" role="doc-toc">
           {{ toc }}
         </div>
       </nav>
-      
-      <article data-article-id="{{id}}">
-        <header>
-          <div class="article-container">
-            <button class="mobile-toc-site-button"> ☰ </button>
-            <div class="header-actions"> 
-              {# <form role="search" aria-label="search">  #}
-              {#   <input type="search" placeholder="Search..."> #}
-              {# </form>  #}
-            </div> 
-            <button class="mobile-toc-page-button"> 📖 </button>
-          </div>
-          
-          {% if id %}          
-          <h1 class="title" id="{{id}}">{{title}}</h1>
-          {% else %}
-          <h1 class="title">{{title}}</h1>          
-          {% endif %} 
-          <div class="meta">
-            {% if create_date %}
-              <button type="button" class="created">
-                <time datetime="{{last_modified_date}}" class="created">
-                  <span class="created">🆕{{create_date}}</span>
-                </time>
-              </button>
-            {% endif %}
-            {% if last_modified_date %}
-              <button type="button" class="last-modified">                
-              <time datetime="{{last_modified_date}}" class="last-modified">
-                <span class="last-modified">🔄{{last_modified_date}}</span>
-              </time>
-              </button>              
-            {% endif %}
-            {% for tag_bgcolor in tags %}
-              <a href="/tags/{{tag_bgcolor.0}}" class="v-chip" style="background-color: {{tag_bgcolor.1}};"> 
-                <span class="v-chip-content">🏷{{tag_bgcolor.0|safe}}</span> 
-              </a> 
-            {% endfor %}
-          </div>
-        </header>
+    </label>
 
-        <div>
-          {{ content }}
+    {# article #}
+    <article
+      class="prose lg:prose-xl print:w-full print:p-0 col-start-1 row-start-1 p-5 md:col-start-2 md:row-start-1 md:p-8 overflow-x-hidden max-w-full"
+      data-article-id="{{id}}">
+      <header class="mb-8">
+        <div
+          class="article-container grid grid-cols-[1fr_3fr_1fr] grid-rows-[1fr] transition-all duration-300 ease z-[1001]">
+          <label for="toggle-toc-site" class="lg:hidden col-start-1 row-start-1 text-left">
+            ☰
+          </label>
+          <div class="header-actions col-start-2 row-start-1">
+            {# <form role="search" aria-label="search"> #}
+              {# <input type="search" placeholder="Search..."> #}
+              {# </form> #}
+          </div>
+          <label for="toggle-toc-page" class="lg:hidden col-start-3 row-start-1 text-right">
+            📖
+          </label>
         </div>
 
-        {% if enable_tinydis %}
-          {% if id %}
-          <div id="tinydis" data-page-id="{{id}}" data-server-url="{{tinydis_server_url}}"></div>
-          {% else %}
-          <div id="tinydis" data-server-url="{{tinydis_server_url}}"></div>
+        {% if id %}
+        <h1 class="title" id="{{id}}">{{title}}</h1>
+        {% else %}
+        <h1 class="title">{{title}}</h1>
+        {% endif %}
+        <div class="meta flex flex-wrap items-center gap-2.5">
+          {% if create_date %}
+          <button type="button"
+            class="created whitespace-nowrap inline-flex no-underline box-border px-4 py-2 bg-gray-100">
+            <time datetime="{{last_modified_date}}" class="created">
+              <span class="created">🆕{{create_date}}</span>
+            </time>
+          </button>
           {% endif %}
+          {% if last_modified_date %}
+          <button type="button"
+            class="last-modified whitespace-nowrap inline-flex no-underline box-border px-4 py-2 bg-gray-100">
+            <time datetime="{{last_modified_date}}" class="last-modified">
+              <span class="last-modified">🔄{{last_modified_date}}</span>
+            </time>
+          </button>
+          {% endif %}
+          {% for tag_bgcolor in tags %}
+          <a href="/tags/{{tag_bgcolor.0}}"
+            class="v-chip text-white whitespace-nowrap inline-flex no-underline box-border px-4 py-2"
+            style="background-color: {{tag_bgcolor.1}};">
+            <span class="v-chip-content">🏷{{tag_bgcolor.0|safe}}</span>
+          </a>
+          {% endfor %}
+        </div>
+      </header>
+
+      <div>
+        {{ content }}
+      </div>
+
+      {% if enable_tinydis %}
+        {% if id %}
+          <div id="tinydis" data-page-id="{{id}}" data-server-url="{{tinydis_server_url}}"></div>
+        {% else %}
+          <div id="tinydis" data-server-url="{{tinydis_server_url}}"></div>
+        {% endif %}
 
         <script type="module">
           import init from '/assets/tinydis.js';
           init();
         </script>
-        {% endif %}
+      {% endif %}
 
-        <footer> 
-          {% if nav_valid %}
-          <nav class="page-navigation">
-            {% if prev_flattened %}
-              <a href="{{ prev_flattened }}" rel="prev sibling" class="nav-link prev"> ← Prev Page </a>
-            {% endif %}
-            
-            {% if parent %}
-              <a href="{{ parent }}" class="nav-link parent">↑ Back</a>
-            {% endif %}
-            
-            {% if next_flattened %}
-              <a href="{{ next_flattened }}" rel="next sibling" class="nav-link next"> Next Page →  </a>
-            {% endif %}         
-          </nav> 
+      <footer class="mt-8">
+        {% if nav_valid %}
+        <nav class="page-navigation grid grid-cols-[1fr_auto_1fr] items-center">
+          {% if prev_flattened %}
+          <a href="{{ prev_flattened }}" rel="prev sibling" class="nav-link prev text-left col-start-1"> ← Prev Page
+          </a>
           {% endif %}
-        </footer>
-      </article>
 
-      <nav class="toc-sidebar-page">
+          {% if parent %}
+          <a href="{{ parent }}" class="nav-link parent text-center col-start-2">↑ Back</a>
+          {% endif %}
+
+          {% if next_flattened %}
+          <a href="{{ next_flattened }}" rel="next sibling" class="nav-link next text-right col-start-3"> Next Page →
+          </a>
+          {% endif %}
+        </nav>
+        {% endif %}
+      </footer>
+    </article>
+
+    {# toc page sidebar #}
+    <label for="toggle-toc-page">
+      <nav
+        class="toc-page hidden z-[1000] sticky top-0 right-0 bg-gray-50 border-r border-gray-100 col-start-3 row-start-1 pl-2 pr-2 pt-6 pb-6 overflow-y-auto h-screen print:hidden md:block max-w-xs md:max-w-sm lg:max-w-md transition-transform duration-300 shadow-[2px_0_10px_rgba(0,0,0,0.1)]">
         <div id="table-of-contents" role="doc-toc">
           <div>📖 content outline </div>
           <div id="text-table-of-contents" role="doc-toc">
@@ -287,12 +225,13 @@
           </div>
         </div>
       </nav>
-    </main>
+    </label>
+  </main>
 
-    <footer class="site-footer" role="contentinfo">
-      {% include "site_footer.tera.html" ignore missing %}
-    </footer>
+  <footer class="site-footer" role="contentinfo">
+    {% include "site_footer.tera.html" ignore missing %}
+  </footer>
 
-  </body>
+</body>
+
 </html>
-

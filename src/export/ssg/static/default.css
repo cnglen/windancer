@@ -1,41 +1,4 @@
 /* tested */
-main.main-content {
-    padding-inline: 3%;
-    display: grid;
-    grid-template-columns: 1fr 3fr 1fr;
-    grid-template-rows: 1fr;
-    min-height: 100vh;
-    transition: all 0.3s ease;             
-}
-
-.mobile-toc-site-button,
-.mobile-toc-page-button {
-    display: none;
-}
-nav.toc-sidebar-site,
-nav.toc-sidebar-page {
-    background: #f8f9fa;
-    border-right: 1px solid #e9ecef;
-    padding: 1.5rem;
-    overflow-y: auto;
-    position: sticky;
-    top: 0;
-    height: 100vh;
-
-}
-
-nav.toc-sidebar-site {
-    grid-column: 1;
-    grid-row: 1;
-}
-
-article {
-    grid-column: 2;
-    grid-row: 1;
-    padding: 2rem;
-    overflow-x: hidden;
-    max-width: 100%;
-}
 article header div.article-container {
     display: grid;
     grid-template-columns: 1fr 3fr 1fr;
@@ -59,25 +22,6 @@ article header input[type="search"] {
     width: -webkit-fill-available;
     margin-left: 1em;
     margin-right: 1em; 
-}
-article header {
-    margin-bottom: 4em;
-}
-article footer {
-    margin-top: 4em;
-}
-
-
-nav.toc-sidebar-page {
-    grid-column: 3;
-    grid-row: 1;
-}
-
-article header div.meta {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px;
 }
 
 article header div.meta button,
@@ -112,28 +56,6 @@ button span.last-modified, button span.created {
     }
     
 }
-
-
-@media print {
-    nav.toc-sidebar-site,
-    nav.toc-sidebar-page,
-    .mobile-toc-site-button,
-    .mobile-toc-page-button,
-    .toc-toggle-button {
-        display: none !important;
-    }
-
-    .main-content {
-        display: block;
-        min-height: auto;
-    }
-
-    article {
-        width: 100%;
-        padding: 0;
-    }
-}
-
 
 
 /* figure */
@@ -488,33 +410,6 @@ div.code pre.src code {
         border: 1px solid #e1e4e5;
     }
     
-    
-    nav.toc-sidebar-site,
-    nav.toc-sidebar-page {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 280px;
-        height: 100vh;
-        z-index: 1000;
-        transform: translateX(-100%);
-        transition: transform 0.3s ease;
-        box-shadow: 2px 0 10px rgba(0,0,0,0.1);
-    }
-    
-    nav.toc-sidebar-site.active,
-    nav.toc-sidebar-page.active {
-        display: grid;
-        transform: translateX(0);
-    }
-    
-    article {
-        grid-column: 1;
-        grid-row: 1;
-        padding: 1.25rem;
-    }
-
     .sidebar-overlay {
         display: none;
         position: fixed;
@@ -563,3 +458,6 @@ div.code pre.src code {
     }
 }
 
+nav.toc ul {
+    padding-left: 1em;
+}
