@@ -38,10 +38,6 @@ see [[file:docs/status.org][status]] for status.
 - Error: Rich maybe slow
 - use group rather then nested then?
 - image width: max?
-- toc; section: which is index?
-  - next
-  - prev
-  - table of contents
 - link: roam node id?
 - #+include keyword to include files in compile stage
   

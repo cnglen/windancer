@@ -191,6 +191,9 @@ pre {
 pre.src {
     position: relative;
     overflow: auto;
+    color: #444;
+    background-color: #f3f3f3;
+
 }
 pre.src:before {
     display: none;
@@ -353,3 +356,4 @@ nav.toc ul {
 nav.toc li.active {
     color: blue;
 }
+
