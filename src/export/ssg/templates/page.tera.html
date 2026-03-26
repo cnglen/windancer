@@ -110,7 +110,7 @@
     class="overlay-toc-page fixed inset-0 z-[999] hidden bg-transparent cursor-default"></label>
 
   <main id="main-content"
-    class="px-4 grid min-h-screen transition-all duration-300 ease max-md:grid-cols-1 max-md:px-[1%] max-md:gap-0 md:grid-cols-[1fr_3fr_1fr] grid-rows-1 print:block"
+    class="grid min-h-screen transition-all duration-300 ease grid-cols-1 px-[1%] gap-0 md:px-4 md:grid-cols-[1fr_3fr_1fr] grid-rows-1 print:block"
     role="main">
     {# toc-site sidebar #}
     <label for="toggle-toc-site">
@@ -152,7 +152,7 @@
         <div class="meta flex flex-wrap items-center gap-2.5">
           {% if create_date %}
           <button type="button"
-            class="created whitespace-nowrap inline-flex no-underline box-border px-4 py-2 bg-gray-100">
+            class="created text-center whitespace-nowrap inline-flex no-underline box-border px-4 py-2 bg-gray-100">
             <time datetime="{{last_modified_date}}" class="created">
               <span class="created">🆕{{create_date}}</span>
             </time>
@@ -160,7 +160,7 @@
           {% endif %}
           {% if last_modified_date %}
           <button type="button"
-            class="last-modified whitespace-nowrap inline-flex no-underline box-border px-4 py-2 bg-gray-100">
+            class="last-modified text-center whitespace-nowrap inline-flex no-underline box-border px-4 py-2 bg-gray-100">
             <time datetime="{{last_modified_date}}" class="last-modified">
               <span class="last-modified">🔄{{last_modified_date}}</span>
             </time>
@@ -168,7 +168,7 @@
           {% endif %}
           {% for tag_bgcolor in tags %}
           <a href="/tags/{{tag_bgcolor.0}}"
-            class="v-chip text-white whitespace-nowrap inline-flex no-underline box-border px-4 py-2"
+            class="v-chip text-white text-center whitespace-nowrap inline-flex no-underline box-border px-4 py-2"
             style="background-color: {{tag_bgcolor.1}};">
             <span class="v-chip-content">🏷{{tag_bgcolor.0|safe}}</span>
           </a>

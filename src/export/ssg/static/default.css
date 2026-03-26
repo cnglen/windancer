@@ -1,62 +1,11 @@
 /* tested */
-article header div.article-container {
-    display: grid;
-    grid-template-columns: 1fr 3fr 1fr;
-    grid-template-rows: 1fr;
-    transition: all 0.3s ease;             
-}
-article header div.article-container button.mobile-toc-site-button {
-    grid-column: 1;
-    grid-row: 1;
-}
-article header div.article-container div.header-actions {
-    grid-column: 2;
-    grid-row: 1;
-}
-article header div.article-container button.mobile-toc-site-button {
-    grid-column: 3;
-    grid-row: 1;
-}
-
-article header input[type="search"] {
-    width: -webkit-fill-available;
-    margin-left: 1em;
-    margin-right: 1em; 
-}
-
-article header div.meta button,
-article header div.meta a {
-    align-items: center;
-    display: inline-flex;
-    padding: 10px 20px;
-    text-decoration: none;
-    box-sizing: border-box; 
-}
-
-article header div.meta button span.last-modified,
-article header div.meta button span.created,
-article header div.meta a.v-chip {
-    white-space: nowrap;
-}
-
-article header div.meta a {
-    color: #fff;    
-}
-
-
-button span.last-modified, button span.created {
-    background: #f5f5f5;
-}
-
 @media screen and (min-width: 2048px) {
     button span.last-modified,
     button span.created,
     body {
         font-size: 1.6rem;
     }
-    
 }
-
 
 /* figure */
 figure {
@@ -171,6 +120,12 @@ table {
     border-left-style: hidden;
     border-right-style: hidden;
     border-bottom-style: hidden;
+}
+
+@media screen and (max-width: 768px) {
+    table td, table th {
+        padding: 2px 4px;
+    }
 }
 
 h2 {
@@ -391,73 +346,10 @@ div.code pre.src code {
     white-space: pre;
 }
 
-
-/* phone (<768px) */
-@media screen and (max-width: 768px) {
-    main.main-content {
-        grid-template-columns: 1fr;
-        grid-template-rows: 1fr;
-        padding-inline: 1%;
-        gap: 0;
-    }
-
-    table td, table th {
-        font-size: 90%;
-        margin: 0;
-        overflow: visible;
-        padding: 2px 4px;
-        background-color: white;
-        border: 1px solid #e1e4e5;
-    }
-    
-    .sidebar-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.5);
-        z-index: 999;
-    }
-    
-    .sidebar-overlay.active {
-        display: block;
-    }
-    
-    .mobile-toc-site-button {
-        display: flex;
-        position: fixed;
-        top: 15px;
-        left: 15px;
-        z-index: 1001;
-        background: #6c757d;
-
-        color: white;
-        border: none;
-        border-radius: 4px;
-        padding: 8px 12px;
-        font-size: 14px;
-        cursor: pointer;
-    }
-    
-    .mobile-toc-page-button {
-        display: flex;
-        position: fixed;
-        top: 15px;
-        right: 15px;
-        z-index: 1001;
-        background: #6c757d;
-        
-        color: white;
-        border: none;
-        border-radius: 4px;
-        padding: 8px 12px;
-        font-size: 14px;
-        cursor: pointer;
-    }
-}
-
 nav.toc ul {
     padding-left: 1em;
+}
+
+nav.toc li.active {
+    color: blue;
 }
