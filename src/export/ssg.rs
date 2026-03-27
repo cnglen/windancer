@@ -1,9 +1,9 @@
+pub mod css_generator;
 mod engine;
 pub mod renderer;
 pub mod site;
 pub mod toc;
 pub mod view_model;
-pub mod css_generator;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -69,7 +69,6 @@ impl StaticSiteGenerator {
         tracing::debug!("Basic DOT format:\n{:?}\n", g_dot);
         tracing::debug!("{:#?}", g.graph);
 
-
         tracing::info!("build site ...");
         let site = self
             .site_builder
@@ -79,10 +78,9 @@ impl StaticSiteGenerator {
         tracing::info!("render site ...");
         self.renderer.render_site(&site);
 
-
         tracing::info!("  generate css ...");
         css_generator::generate(&f_css);
-            
+
         tracing::info!("done");
         Ok(String::from("todo"))
     }

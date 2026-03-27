@@ -389,8 +389,11 @@ impl Renderer {
         let content = self.render_org_file(&page.ast); // 7ms
         ctx.insert("content", &content);
 
-        let toc = self.get_toc_of_page(page).to_html_nav(None);
+        let toc = self.get_toc_of_page(page);
+        let is_toc_page_has_content = !toc.is_empty();
+        let toc = toc.to_html_nav(None);
         ctx.insert("toc_of_current_page", &toc);
+        ctx.insert("is_toc_page_has_content", &is_toc_page_has_content);
 
         let n_color = self.config.bgcolor_for_white.len();
         let tags = page

@@ -36,6 +36,10 @@ impl Default for TableOfContents {
 }
 
 impl TableOfContents {
+    pub fn is_empty(&self) -> bool {
+        self.root_nodes.is_empty()
+    }
+
     pub fn to_html_nav(&self, active_slug: Option<&str>) -> String {
         fn node_to_html(
             node: &TocNode,

@@ -28,9 +28,12 @@ pub fn generate<P: AsRef<Path>>(f_output: P) -> std::io::Result<String> {
     }
 
     let css = encre_css::generate(sources.iter().map(|s| s.as_str()), &config);
-    let css = format!(r##"@layer encre_base {{
+    let css = format!(
+        r##"@layer encre_base {{
 {}
-}}"##, css);
+}}"##,
+        css
+    );
     let _ = std::fs::write(f_output, css);
 
     Ok(String::from(""))
