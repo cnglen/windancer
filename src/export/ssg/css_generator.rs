@@ -1,5 +1,6 @@
-use encre_css::Config;
 use std::path::Path;
+
+use encre_css::Config;
 use walkdir::WalkDir;
 
 pub fn generate<P: AsRef<Path>>(f_output: P) -> std::io::Result<String> {

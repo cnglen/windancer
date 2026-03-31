@@ -119,13 +119,14 @@ impl ExtractedLink {
         None
     }
 
+    #[allow(dead_code)]
     pub fn direct_heading(&self) -> Option<&SourcePathSegment> {
         self.source_path
             .iter()
             .rev()
             .find(|seg| matches!(seg, SourcePathSegment::Heading { .. }))
     }
-
+    #[allow(dead_code)]
     pub fn is_under_heading_with_id(&self, target_id: &str) -> bool {
         self.source_path.iter().any(|seg| {
             if let SourcePathSegment::Heading { id: Some(id), .. } = seg {

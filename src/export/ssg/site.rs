@@ -17,6 +17,7 @@ use crate::compiler::content::{Document, Section};
 use crate::compiler::parser::syntax::{OrgSyntaxKind, SyntaxNode};
 use crate::export::ssg::toc::{TableOfContents, TocNode};
 
+#[allow(dead_code)]
 #[derive(Clone)]
 pub struct Page {
     pub id: PageId,
@@ -100,21 +101,19 @@ impl fmt::Debug for Page {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
 pub struct SiteConfig {
-    pub output_directory: PathBuf,
     // pub base_url: String,
     // pub theme: String,
     // pub generate_search_index: bool,
 }
 impl Default for SiteConfig {
     fn default() -> Self {
-        Self {
-            output_directory: "public".into(),
-        }
+        Self {}
     }
 }
 
 // roam from site
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Site {
     pub config: SiteConfig,
@@ -206,6 +205,7 @@ impl Default for Site {
 use crate::compiler::ast_builder::object::Object;
 use crate::compiler::org_roam::{EdgeType, NodeType, RoamNode};
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct GraphNode {
     pub id: String,
@@ -238,6 +238,7 @@ impl GraphNode {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct KnowledgeGraph {
     pub graph: DiGraph<GraphNode, EdgeType>,
@@ -256,6 +257,8 @@ impl Default for KnowledgeGraph {
 }
 
 pub struct SiteBuilder {
+    pub output_directory: PathBuf,
+
     pub config: SiteConfig,
     // plugin? search?
 
@@ -267,6 +270,7 @@ pub struct SiteBuilder {
 impl Default for SiteBuilder {
     fn default() -> Self {
         Self {
+            output_directory: std::path::Path::new("public").to_path_buf(),
             config: SiteConfig::default(),
             parent_stack: vec![],
             pages: HashMap::new(),
@@ -274,14 +278,16 @@ impl Default for SiteBuilder {
     }
 }
 impl SiteBuilder {
-    pub fn new(config: SiteConfig) -> Self {
+    pub fn new<'a>(config: SiteConfig, output_directory: &'a str) -> Self {
         Self {
+            output_directory: std::path::Path::new(output_directory).to_path_buf(),
             config,
             parent_stack: vec![],
             pages: HashMap::new(),
         }
     }
 
+    #[allow(dead_code)]
     pub fn build_document(&mut self, document: &Document) -> Page {
         let id = self.process_document(document);
         self.pages.get(&id).expect("get page").clone()
@@ -411,7 +417,7 @@ impl SiteBuilder {
             .parent()
             .expect("must have parent directory")
             .join("static");
-        let static_directory_to = &self.config.output_directory;
+        let static_directory_to = &self.output_directory;
         if static_directory_from.is_dir() {
             tracing::debug!(from=?static_directory_from.display(), to=?static_directory_to.display());
 
@@ -455,10 +461,7 @@ impl SiteBuilder {
                     && (!from_filename.ends_with("_ast.json"))
                     && (!from_filename.ends_with("_syntax.json"))
                 {
-                    let to_directory = self
-                        .config
-                        .output_directory
-                        .join(relative_directories.join("/"));
+                    let to_directory = self.output_directory.join(relative_directories.join("/"));
                     if !to_directory.is_dir() {
                         std::fs::create_dir_all(&to_directory)?;
                     }

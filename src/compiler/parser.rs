@@ -68,6 +68,7 @@ pub fn get_text(e: &SyntaxNode) -> String {
 
 impl ParserResult {
     // green tree
+    #[allow(dead_code)]
     pub fn green(&self) -> &GreenNode {
         match &self.green {
             NodeOrToken::Node(e) => e,

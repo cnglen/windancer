@@ -95,6 +95,7 @@ impl Default for RendererContext {
 
 // context: prev / next
 pub struct Renderer {
+    output_directory: PathBuf,
     config: RendererConfig,
     footnote_defintions: Vec<FootnoteDefinition>,
     context: RendererContext,
@@ -103,10 +104,7 @@ pub struct Renderer {
 #[derive(Debug, Deserialize, Clone)]
 #[serde(default)]
 pub struct RendererConfig {
-    pub output_directory: PathBuf,
-    pub input_directory: PathBuf,
     pub automatic_equaiton_numbering: bool,
-
     pub enable_tinydis: bool,
     pub tinydis_server_url: String,
 
@@ -118,8 +116,6 @@ pub struct RendererConfig {
 impl Default for RendererConfig {
     fn default() -> Self {
         Self {
-            output_directory: "public".into(),
-            input_directory: "content".into(),
             automatic_equaiton_numbering: true,
             enable_tinydis: false,
             tinydis_server_url: "http://127.0.0.1:3000".to_string(),
@@ -189,7 +185,8 @@ fn build_merged_tera(default_dir: &str, user_dir: &str) -> std::io::Result<tera:
 impl Default for Renderer {
     fn default() -> Self {
         let config = RendererConfig::default();
-        let input_directory = std::path::Path::new(&config.input_directory);
+        let input_directory = std::path::Path::new("content").to_path_buf();
+        let output_directory = std::path::Path::new("public").to_path_buf();
 
         let default_dir = "src/export/ssg/templates";
         let binding = input_directory
@@ -201,6 +198,7 @@ impl Default for Renderer {
         tera.autoescape_on(vec![]);
 
         Self {
+            output_directory,
             config,
             context: RendererContext {
                 tera,
@@ -276,8 +274,13 @@ impl Renderer {
             .join("-")
     }
 
-    pub fn new(config: RendererConfig) -> Self {
-        let input_directory = std::path::Path::new(&config.input_directory);
+    pub fn new<'a>(
+        config: RendererConfig,
+        input_directory: &'a str,
+        output_directory: &'a str,
+    ) -> Self {
+        let input_directory = std::path::Path::new(input_directory).to_path_buf();
+        let output_directory = std::path::Path::new(output_directory).to_path_buf();
         let default_dir = "src/export/ssg/templates";
         let binding = input_directory
             .parent()
@@ -288,6 +291,7 @@ impl Renderer {
         tera.autoescape_on(vec![]);
 
         Self {
+            output_directory,
             config,
             context: RendererContext {
                 tera,
@@ -335,7 +339,6 @@ impl Renderer {
                 .unwrap_or_else(|err| format!("Template rendering page failed: {}", err));
 
             let f_html = self
-                .config
                 .output_directory
                 .join(format!("tags/{tag}.html").as_str());
             let d_html = f_html.parent().expect("should have parent directory");
@@ -423,7 +426,7 @@ impl Renderer {
     fn render_page(&mut self, page: &Page) -> std::io::Result<String> {
         let html = self.render_page_inner(page);
 
-        let f_html = self.config.output_directory.join(page.html_path.as_str());
+        let f_html = self.output_directory.join(page.html_path.as_str());
         let d_html = f_html.parent().expect("should have parent directory");
         if !d_html.is_dir() {
             fs::create_dir_all(d_html)?;

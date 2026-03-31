@@ -41,7 +41,7 @@ pub struct OrgParserConfig {
     pub org_element_parsed_keywords: HashSet<String>,
 
     /// #+KEY[OPTVAL]: VALUE    
-    /// Only keywords which are a member of org-element-dual-keywords: [OPTVAL] is supported    
+    /// Only keywords which are a member of org-element-dual-keywords: [OPTVAL] is supported
     pub org_element_dual_keywords: HashSet<String>,
 
     pub org_element_affiliated_keywords: HashSet<String>,

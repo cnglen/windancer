@@ -44,6 +44,7 @@ impl fmt::Debug for EdgeType {
     }
 }
 
+#[allow(dead_code)]
 pub struct RoamGraph {
     pub graph: DiGraph<RoamNode, EdgeType>,
     // id in RoamNode -> index in DiGraph

@@ -25,6 +25,7 @@ pub struct Section {
     pub file_info: FileInfo,
     pub documents: Vec<Document>,
     pub subsections: Vec<Section>,
+    #[allow(dead_code)]
     pub metadata: SectionMetadata,
 }
 
@@ -157,6 +158,7 @@ pub struct FileInfo {
     pub file_name: String,
 
     // without extension
+    #[allow(dead_code)]
     pub name: String,
 
     /// relative path staring from "content"
@@ -234,6 +236,7 @@ impl FileInfo {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct DocumentMetadata {
     pub title: Option<String>,
@@ -278,6 +281,7 @@ impl Default for DocumentMetadata {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct SectionMetadata {
     pub title: String,

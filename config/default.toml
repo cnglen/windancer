@@ -1,0 +1,78 @@
+[general]
+# the input directory, which contains sub directories or multiple org files
+input_directory = "content"
+# max level of tracing, trace/debug/info/warn/error
+tracing_max_level = "info"
+
+[general.output_directory]
+# SSG's output directory, which contains html files, the root directoy of static site
+ssg = "public"
+
+[compiler]
+# if debug is true: _syntax.json(Syntax Tree) and _ast.json(AST) will be generated with the same basename of org file in the same directory of org file
+debug = false 
+
+[compiler.parser]
+# Three value supported:
+# - brace: only _{}/^{} is recognized as subscript and superscript
+# - nil: disable subscript and superscript
+# - true: todo
+org_use_sub_superscripts = "brace"
+# #+KEY[OPTVAL]: VALUE
+# Only KEY which are a member of `org_element_parsed_keywords`, VALUE can contain objects
+org_element_parsed_keywords = ["CAPTION"]
+# #+KEY[OPTVAL]: VALUE    
+# Only KEY which are a member of org-element-dual-keywords: [OPTVAL] is supported
+org_element_dual_keywords = ["CAPTION", "RESULTS"]
+# todo:
+org_element_affiliated_keywords = [
+    "CAPTION",
+    "DATA",
+    "HEADER",
+    "HEADERS",
+    "LABEL",
+    "NAME",
+    "PLOT",
+    "RESNAME",
+    "RESULT",
+    "RESULTS",
+    "SOURCE",
+    "SRCNAME",
+    "TBLNAME",
+]
+
+
+[compiler.parser.org_todo_keywords]
+requiring_action = ["TODO"]
+no_further_action = ["DONE"]
+
+[ssg]
+[ssg.site]
+
+[ssg.renderer]
+automatic_equaiton_numbering = true
+debug = false
+# weather to use tindydis(https://github.com/cnglen/tinydis) plugin to allow anonymous discussion
+# - false:
+# - true: you have to start backend server and copy tinydis.js, tinydis.css and tindydis_bg.wasm manually 
+enable_tinydis = false
+# tinydis backend server url
+# - in develop or test, typical value is "http://127.0.0.1:3000", default host:port starting tinydis command
+# - if set as empty string, use the origin, you have to rewrite the tinydis to the backend tinydis server, see below
+# in nginx, you can set as follows:
+#   location /api/ {            # 
+#     proxy_pass http://127.0.0.1:3000;
+#     proxy_set_header Host $host;
+#     proxy_set_header X-Real-IP $remote_addr;
+#     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#     proxy_set_header X-Forwarded-Proto $scheme;
+#   }
+
+#   location /review-result/ {
+#     proxy_pass http://127.0.0.1:3000;
+#     proxy_set_header Host $host;
+#     proxy_set_header X-Real-IP $remote_addr;
+#     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#     proxy_set_header X-Forwarded-Proto $scheme;
+# }
+tinydis_server_url = ""

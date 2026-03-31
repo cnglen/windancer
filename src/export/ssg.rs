@@ -5,7 +5,7 @@ pub mod site;
 pub mod toc;
 pub mod view_model;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::Instant;
 
 use fs_extra::dir::create_all;
@@ -34,7 +34,6 @@ impl Default for StaticSiteGenerator {
 
 #[derive(Debug, Deserialize)]
 pub struct SsgConfig {
-    pub output_directory: PathBuf,
     pub site: SiteConfig,
     pub renderer: RendererConfig,
 }
@@ -42,7 +41,7 @@ pub struct SsgConfig {
 impl StaticSiteGenerator {
     pub fn generate<P: AsRef<Path>>(&mut self, d_org: P) -> std::io::Result<String> {
         tracing::info!("prepare output directory ...");
-        let output_directory = &self.site_config().output_directory;
+        let output_directory = &self.site_builder.output_directory;
         if output_directory.exists() {
             let now_utc = chrono::Utc::now();
             let created_ts = now_utc.format("%Y%m%dT%H%M%SZ").to_string();
@@ -79,12 +78,13 @@ impl StaticSiteGenerator {
         self.renderer.render_site(&site);
 
         tracing::info!("  generate css ...");
-        css_generator::generate(&f_css);
+        let _ = css_generator::generate(&f_css);
 
         tracing::info!("done");
         Ok(String::from("todo"))
     }
 
+    #[allow(dead_code)]
     pub fn generate_html<P: AsRef<Path>>(&mut self, f_org: P) -> String {
         let start = Instant::now();
         let doc = self
@@ -106,20 +106,21 @@ impl StaticSiteGenerator {
         html
     }
 
-    pub fn new(compiler_config: CompilerConfig, ssg_config: SsgConfig) -> Self {
+    pub fn new<'a>(
+        compiler_config: CompilerConfig,
+        ssg_config: SsgConfig,
+        input_directory: &'a str,
+        output_directory: &'a str,
+    ) -> Self {
         let site_config = ssg_config.site;
         let renderer_config = ssg_config.renderer;
         let compiler = Compiler::new(compiler_config);
-        let site_builder = SiteBuilder::new(site_config);
-        let renderer = Renderer::new(renderer_config);
+        let site_builder = SiteBuilder::new(site_config, output_directory);
+        let renderer = Renderer::new(renderer_config, input_directory, output_directory);
         Self {
             compiler,
             site_builder,
             renderer,
         }
-    }
-
-    pub fn site_config(&self) -> &SiteConfig {
-        &self.site_builder.config
     }
 }
