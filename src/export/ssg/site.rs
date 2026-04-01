@@ -73,7 +73,7 @@ impl Page {
             next_flattened_id: None,
             tags: HashSet::default(),
             category: vec![],
-            html_path: String::default(),
+            html_path: String::from("index.html"),
             last_modified_ts: None,
             created_ts: None,
         }
@@ -403,6 +403,7 @@ impl SiteBuilder {
         index_page_id
     }
 
+    // todo: template?
     // copy and process static assets
     fn process_static_assets(
         &mut self,
@@ -430,38 +431,51 @@ impl SiteBuilder {
                 .expect(format!("copy failed from {}", static_directory_from.display()).as_str());
             static_assets.push((static_directory_from, static_directory_to.to_path_buf()));
         }
-        std::fs::copy(
-            "src/export/ssg/static/default.css",
-            static_directory_to.join("default.css"),
-        )?;
+        let default_css = include_str!("static/default.css");
+        std::fs::write(static_directory_to.join("default.css"), default_css)
+            .expect("write default.css failed");
 
         // sass
 
-        // non-org file in content
+        // non-org file in `general.input_directory`
         let directory = &root_section.file_info.full_path;
         for entry in WalkDir::new(directory).into_iter().filter_map(|e| e.ok()) {
             if entry.metadata().unwrap().is_file() {
                 let from = entry.path();
 
-                let mut is_in_content = false;
-                let mut relative_directories = vec![];
-                for section in from.parent().unwrap().components() {
-                    let component = section.as_os_str().to_string_lossy();
-                    if is_in_content {
-                        relative_directories.push(component.to_string());
-                    } else if component == "content" {
-                        is_in_content = true;
+                let from_parent_full_path = std::fs::canonicalize(from.parent().unwrap()).expect(
+                    "input file `from` should have a parent and the parent have a full path",
+                );
+                let relative_directories_vec = match from_parent_full_path.strip_prefix(&directory)
+                {
+                    Ok(relative_path) => relative_path
+                        .components()
+                        .map(|e| e.as_os_str().to_string_lossy().to_string())
+                        .collect::<Vec<String>>(),
+                    Err(e) => {
+                        tracing::error!(
+                            "from({}, {}): No relative path found: {e}",
+                            from_parent_full_path.display(),
+                            directory.display()
+                        );
+                        vec![]
                     }
-                }
+                };
 
-                let from_filename = from.file_name().expect("xx").to_string_lossy().to_string();
+                let from_filename = from
+                    .file_name()
+                    .expect("from should have a file name")
+                    .to_string_lossy()
+                    .to_string();
                 if from.is_file()
                     && from.extension() != Some(std::ffi::OsStr::new("org"))
                     && (!from_filename.starts_with(&['.', '#']))
                     && (!from_filename.ends_with("_ast.json"))
                     && (!from_filename.ends_with("_syntax.json"))
                 {
-                    let to_directory = self.output_directory.join(relative_directories.join("/"));
+                    let to_directory = self
+                        .output_directory
+                        .join(relative_directories_vec.join("/"));
                     if !to_directory.is_dir() {
                         std::fs::create_dir_all(&to_directory)?;
                     }
@@ -635,7 +649,7 @@ impl SiteBuilder {
     pub fn build(&mut self, root_section: &Section) -> std::io::Result<Site> {
         self.pages.clear();
 
-        tracing::debug!("  build page tree ...");
+        tracing::info!("  build page tree ...");
 
         // render page: general link, needs to lookup roam_id -> url
         // render knowlege graph: document html_path
@@ -681,7 +695,7 @@ impl SiteBuilder {
         // build a graph: root is index_page id or faked_root
         // dfs to get flattened_pages? // toc?
 
-        tracing::debug!("  build tag-index: tag -> page_id ...");
+        tracing::info!("  build tag-index: tag -> page_id ...");
         let mut tag_index: HashMap<String, Vec<PageId>> = HashMap::new();
         for (page_id, page) in self.pages.iter() {
             for tag in page.tags.iter() {
@@ -694,7 +708,7 @@ impl SiteBuilder {
         }
         tracing::trace!("tag_index: {:?}", tag_index);
 
-        tracing::debug!("  process static assets ...");
+        tracing::info!("  process static assets ...");
         let static_assets = self.process_static_assets(root_section)?;
 
         let mut pageid_to_url: HashMap<PageId, String> = HashMap::new();

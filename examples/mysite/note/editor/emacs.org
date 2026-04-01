@@ -1,0 +1,494 @@
+#+TITLE: Emacs
+#+MACRO: color @@html:<span style="color:$1">$2</span>@@@@latex:\textcolor{$1}{$2}@@
+#+MACRO: bgcolor @@html:<span style="background-color:$1;">$2</span>@@@@latex:$2@@
+
+Emacs is great and I love emacs and org-mode.
+
+* org
+
+org-mode [fn:2] is great.
+
+* objects in org-mode
+
+minimal set objects(6)
+
+01 text-markup: *bold*, /italic/, _underline_, +strike-throught+, ​~code~, =verbatim=
+
+02 entity: \alpha
+
+03 latex-fragment: $\sum_{i=1}^{n}i$
+
+04 suscripot: a_{i,j}
+
+05 supscript: a^3
+
+06 plain-text: text
+
+standard set object(21)
+
+07 footnote-reference: [fn:1]
+
+08 line-break: \\
+
+09 timestamp: <1234-07-31>
+
+10 macro: {{{title}}}
+
+11 radio-target: <<<radio target>>>
+
+12 target: 
+<<target>>
+
+13-16 link: plain link https://foo.bar, angle link <mailto:foo@bar>, radio link radio target, regular link [[target]]
+
+17 statistics-cookie: todo
+
+18 inline-babel-call: todo
+
+19 inline-src-block: todo
+
+20 citation: todo
+
+21 export-snippet: todo
+
+
+other objects (2):
+
+22 table-cell:
+| foo |   | bar |
+
+23 citation-reference: todo
+
+
+
+** DONE Entity
+CLOSED: [2025-10-22 Wed 11:37]
+:LOGBOOK:
+- State "DONE"       from "DOING"      [2025-10-22 Wed 11:37]
+:END:
+
+pattern1: ​=\NAME=​ This is a entity \alpha, and another entity \beta, and last \Delta
+
+pattern2: ​=\NAME{}=​ without spaces \pi{}d.
+
+pattern3: ​=\_SPACES=​
+
+\_   3spaces
+\_                    20spaces
+\_                     21spaces, split into 20 space entity + one space.
+
+
+** DONE Latex fragment
+CLOSED: [2025-10-22 Wed 11:38]
+:LOGBOOK:
+- State "DONE"       from              [2025-10-22 Wed 11:38]
+:END:
+
+- ​=\NAME BRACKETS=​: \enlargethispage{2\baselineskip}
+- ​=\(CONTENTS\)=​: \(\pi=3.1415\)
+- ​=\[CONTENTS\]=​: \[\sum_{n=1}^{n}n = \frac{n(n+1)}{2}$$\]  
+- ​=PRE$BORDER1 BODY BORDER2$POST=​: $a+b$
+- ​=PRE$CHAR$POST=​: $a$, $\pi$
+- ​=$$CONTENTS$$=​: $$\sum_{n=1}^{n}n = \frac{n(n+1)}{2}$$
+
+let $a=2$, \(b=2\), $c$ is sum of $a$ and $b$, then
+$$c=a+b=3$$
+\[a-b=1\]
+
+\enlargethispage{2\baselineskip}
+\enlargethispage[2\baselineskip]
+
+If $a^2=b$ and \( b=2 \), then the solution must be either $$ a=+\sqrt{2} $$ or \[ a=-\sqrt{2} \].
+
+$$a$ bad fragment
+
+
+** DONE Export snippet
+CLOSED: [2026-01-13 Tue 11:06]
+:LOGBOOK:
+- State "DONE"       from              [2026-01-13 Tue 11:06]
+:END:
+
+​=@@html:@@not bold text@@html:</b>@@=​: @@html:@@not bold text@@html:</b>@@
+
+​=@@html:<b>@@bold text@@html:</b>@@=​: @@html:<b>@@bold text@@html:</b>@@
+
+​=@@beamer:some code@@ ignored in html backend=​: @@beamer:some code@@ ignored in html backend
+
+
+** DONE Line break
+CLOSED: [2026-01-13 Tue 11:04]
+:LOGBOOK:
+- State "DONE"       from              [2026-01-13 Tue 11:04]
+:END:
+
+First line\\
+Second line
+
+Not line break \\\
+since PRE is backslash.
+
+
+
+*** case1: detected
+
+[[https:///baidu.com][baidu]]\\
+second line
+
+*** case2: detected
+
+text\\
+second line
+
+*** case3: detected
+
+text\\  
+second line
+
+text  \\  
+second line
+
+
+*** case4: NOT detected
+
+a \\\
+b
+
+
+
+** DONE Macro
+CLOSED: [2026-01-13 Tue 10:30]
+:PROPERTIES:
+:CUSTOM_ID: macro test
+:END:
+:LOGBOOK:
+- State "DONE"       from              [2026-01-13 Tue 10:30]
+:END:
+
+| macro name        | arguments     | raw reference                                  | rendered value                                   | kind                                                 | supported |
+|-------------------+---------------+------------------------------------------------+--------------------------------------------------+------------------------------------------------------+-----------|
+| title             |               | ={{{title}}}=                                  | {{{title}}}                                      | keyword(title)                                       |           |
+| author            |               | ={{{author}}}=                                 | {{{author}}}                                     | keyword(author)                                      |           |
+| author            |               | ={{{author()}}}=                               | {{{author}}}                                     | keyword(author)                                      |           |
+| email             |               | ={{{email}}}=                                  | {{{email}}}                                      | keyword(email)                                       |           |
+| keyword           | NAME          | ={{{keyword(project)}}}=                       | {{{keyword(project)}}}                           | keyword(NAME)                                        |           |
+| date              |               | ={{{date}}}=                                   | {{{date}}}                                       | keyword(date)                                        |           |
+| date              | FORMAT        | ={{{date(%Y-%m-%dT%H:%M:%S%z)}}}=              | {{{date(%Y-%m-%dT%H:%M:%S%z)}}}                  | format keyword(DATE) if it's a signle timestamp      |           |
+|-------------------+---------------+------------------------------------------------+--------------------------------------------------+------------------------------------------------------+-----------|
+| time              | FORMAT        | ={{{time(%Y-%m-%dT%H:%M:%S%z)}}}=              | {{{time(%Y-%m-%dT%H:%M:%S%z)}}}                  | export time                                          |           |
+| modification-time | FORMAT        | ={{{modification-time(%Y-%m-%dT%H:%M:%S%z)}}}= | {{{modification-time(%Y-%m-%dT%H:%M:%S%z)}}}     | modification time                                    |           |
+|-------------------+---------------+------------------------------------------------+--------------------------------------------------+------------------------------------------------------+-----------|
+| input-file        |               | ={{{input-file}}}=                             | {{{input-file}}}                                 | filename of the exported file                        |           |
+|-------------------+---------------+------------------------------------------------+--------------------------------------------------+------------------------------------------------------+-----------|
+| property          | PROPERTY_NAME | ={{{property(custom_id)}}}=                    | {{{property(custom_id)}}}                        | value of property PROPERTY_NAME in the current entry | No        |
+|-------------------+---------------+------------------------------------------------+--------------------------------------------------+------------------------------------------------------+-----------|
+| n                 |               | ={{{n}}}=                                      | {{{n}}}                                          | number of macro expanded: NOT supported              | No        |
+|-------------------+---------------+------------------------------------------------+--------------------------------------------------+------------------------------------------------------+-----------|
+| color             |               | ={{{color(red, red text)}}}=                   | {{{color(red, red text)}}}                       | by =#+macro:=                                        |           |
+|-------------------+---------------+------------------------------------------------+--------------------------------------------------+------------------------------------------------------+-----------|
+| results           | value         |                                                | src_python{print("hello")} {{{results(=None=)}}} | inline source block                                  |           |
+
+{{{color(red, tow line
+of red)}}}
+
+
+** Link Test
+:PROPERTIES:
+:ID:       e30bb0f4-a323-4dce-8f6b-2f3b060e6dd0
+:END:
+
+regular link: with description [[https://www.baidu.com][baidu]]; without description [[https://foo.bar][foo_bar]]; description with objects [[http://foo.bar][\alpha *bold* $a+b$ foo]]; fuzzy internal [[target]]
+
+plain link: https://plainlink.org https://foo(bar).org
+
+angle link: <mailto:xx@xx.com> <https://foo(bar).org>
+
+radio link: my radio target, define three radio target <<<*bold* target>>> and <<<my radio target>>>  and <<<\alpha>>> and <<<$\alpha$>>>, then we have *bold* target, my radio target, notmyradio target and $\alpha$ and \alpha.
+
+
+#+name: Blossoming Swirls of Elegance
+#+caption: This is a caption for the image linked below
+#+caption: Blossoming Swirls of Elegance Free Vector Download
+[[https://images.freeimages.com/image/previews/1b1/blossoming-swirls-of-elegance-5690563.jpg]]
+
+
+
+*** image test
+
+https://www.gnu.org/software/emacs/images/emacs.png
+
+
+** DONE timestamp
+CLOSED: [2026-01-13 Tue 11:10]
+:LOGBOOK:
+- State "DONE"       from              [2026-01-13 Tue 11:10]
+:END:
+
+*** example
+[2004-08-24 Tue]--[2004-08-26 Thu]
+
+<2012-02-08 Wed 20:00 ++1d>
+
+<2030-10-05 Sat +1m -3d>
+
+*** p1
+<1997-11-03>
+
+<1997-11-03 Mon>
+
+<1997-11-03 Mon 19:15>
+
+<1997-11-03 Mon 19:15 +23d>
+
+
+*** p2
+<1997-11-03 Mon 19:15 +23d>--<1997-12-13>
+
+<1997-11-03 Mon 19:15 +23d>--<1997-12-13 Mon>
+
+<1997-11-03 Mon 19:15 +23d>--<1997-12-13 Mon 19:15>
+
+<1997-11-03 Mon 19:15 +23d>--<1997-12-13 Mon 19:15 +23d>
+
+<1997-11-03 19:15 +23d>--<1997-12-13>
+
+<1997-11-03 +23d>--<1997-12-13 Mon>
+
+<1997-11-03>--<1997-12-13 Mon 19:15>
+
+<1997-11-03>--<1997-12-13 Mon 19:15 +23d>
+
+<1997-11-03 19:15>--<1997-12-13 Mon 19:15 +23d>
+
+<1997-11-03 Mon 19:15>--<1997-12-13 Mon 19:15 +23d>
+
+<1997-11-03 Mon 19:15 +23d>--<1997-12-13 Mon 19:15 +23d>
+
+*** p3
+<1997-11-03 Mon 19:15-20:18 +23d>
+  
+
+** text-markup
+
+*** basic test
+
+a *bold*, a /italic/, a _underline_, a +strikethrough+, a ~code~, and a =verbatim= text
+
+一个​*粗体*​、​/斜体/​、​_下划线_​、​+横划线+​、​~编程~​和​=字面=​文本
+
+Not*bold* bad PRE
+
+Not *bold*( bad POST
+
+Not * bold* *bold * bad content
+
+*** Nested test
+
+a */bold-italic/* text
+
+a *bold NOT/italic/* text
+
+*/This text is bold and italic, _and this part is also underlined_./*
+
+a */bold-italic/ *bold*
+
+**** nested test
+
+*/_bold-italic-underline_/*
+
+*_/bold-underline-italic/_*
+
+_/*underline-italic-bold*/_
+
+_*/underline-bold-italic/*_
+
+/_*italic-underline-bold*_/
+
+/*_italic-bold-underline_*/
+
++/*_strikethrough-italic-bold-underline_*/+
+
++/_*strikethrough-italic-underline-bold*_/+
+
++/_*strikethrough-italic_*/+
+
+*_~inner-most~_*
+
+*_~=inner-most-include-equal=~_*
+
+*_=~inner-most-include-tilde~=_*    
+
+~=*_/inner-most-include-equal-star-underscore-slash/_*=~
+
+ 
+未正确嵌套的处理，未定义:
+
+ */abc/
+
+ */abc/ _adf_
+
+ */_abc/* bar_
+
+ /*+/
+
+ ** a **
+
+ **a bold** : 2b
+
+ ***a bold** : 2b
+    
+ ***a bold*** : 3b
+
+
+
+
+***  object in markup
+
+a *[[https://www.foo.org][foo]]* link
+
+*** todo
+
+a /i/ line
+
+a ​*bold*​ line
+
+
+
+
+b _*/underline-bold-italic/*_ line
+c /_*italic-underline-bold*_/ line
+d /*_italic-bold-underline_*/ line
+e ~=*_/inner-most/_*=~ line
+
+
+
+a *bold* line
+
+a ~=*/bold_italic/*=~ line
+
+
+中文​*bold*​测试
+
+
+
+
+** superscript and subscript
+*** superscript
+
+simple
+
+a^{34}
+
+a^{(34)}
+
+complex
+
+a^{(34)+3}
+
+a^{(385)+3}
+
+a^{(385)+{a*b + (c/d) + a^{d}} + [d+e]}
+
+a^{c+[d+e}
+
+a^{c+(d+e}: bad
+
+a^(c+4)
+
+a^(c+4}: bad
+
+complex with object
+
+a^{foo *boldmarkup* bar}
+
+a^{*boldmarkup*}
+
+a^{*boldmarkup* foo \alpha}
+
+a^{\alpha} 
+
+a^(385+3 [[https://baidu.com][baidu]])
+
+a^{385+3 [[https://baidu.com][baidu]]}
+
+a single asterisk: b^*, ^^*, ,^*
+
+an expression enclosed in curly brackets: a^{2}, a^{b{3}}, a^{b^{c}^{d}^{e}} (org-toggle-pretty-entities C-c C-x \)
+
+sign(optional) chars final: foo^abc... a^+34, a^-12,889,,,,78.3\a, 10^24, 10^tau, 10^-12, 10^-tau, x^2-y^3, x^(2-i), x^{i^2}, a^2Kو b^(3+2),
+
+
+
+b^[a]: bad
+
+a^+aa,
+
+*** subscript
+
+a single asterisk: b_*, __*, ,_*
+
+an expression enclosed in curly brackets: a_{2}, a_{b{3}}, a_{b_{c}_{d}_{e}} (org-toggle-pretty-entities C-c C-x \)
+
+sign(optional) chars final: a_+34, a_-12,889,78.3\a, 10_24, 10_tau, 10_-12, 10_-tau, x_2-y_3, x_(2-i), x_{i_2}, a_2Kو b_(3+2),
+
+
+** TODO inline source
+:LOGBOOK:
+- State "TODO"       from              [2026-01-09 Fri 22:26]
+:END:
+
+src_python{print("hello")} {{{results(=None=)}}}
+
+src_cpp[:includes <iostream>]{std::cout<< "hi cpp" << std::endl;} {{{results(=hi cpp=)}}}
+
+
+** target
+<<<y>>>
+
+<<y>>
+
+<<yes a target>>
+
+<<not a target   >>
+
+<< not a target>>
+
+<<not
+a target>>
+
+one item
+
+<<target>>another item
+
+Here we refer to item [[target][descript of target]]. (C-c C-o)
+
+
+
+** radio target
+
+define a radio target: <<<*bold* target>>>, reference a target *bold* target
+
+
+** inline babel call
+
+# call_NAME[HEADER1](ARGUMENTS)[HEADER2]
+# call_NAME(ARGUMENTS)
+
+
+** citation
+
+[cite/style:common prefix ;prefix @key suffix; prefix @foo suffix ; common suffix]
+
+[cite/a/f:c.f.;the very important @@atkey @ once;the crucial @baz vol. 3]
+
+[cite:@key]
+
+
+
+
+
+* Footnotes
+
+[fn:1] org-mode is a markup language from emacs
+[fn:2] this asdf asd f. 
+

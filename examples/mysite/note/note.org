@@ -1,0 +1,18 @@
+#+title: demo
+
+I'm a file, named ~note.org~, I will be rendered to ~index.html~, since I have a name "note"(without extention), which is the same to my parent directory.
+
+I have two subdirectories
+
+* editor
+
+My favorite editor is ~Emacs~, and sometimes I use *vi*.
+
+#+begin_note
+- The subdirectoy named editor doesn't have a file named *editor.org*, so no index.html is generated in editor directory
+- In the left sidebar, since editor/index.html doestn't exist, so emacs.html/vi.html is flattened into the root.
+#+end_note
+
+* life
+
+I love *music*, and I love running. 

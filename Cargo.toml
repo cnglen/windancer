@@ -1,6 +1,6 @@
 [package]
 name = "windancer"
-version = "0.1.3"
+version = "0.2.0"
 edition = "2024"
 authors = ["cnglen <cnglen@gmail.com>"]
 description = "An org-mode toolkit, including parser, renderer."
@@ -8,12 +8,12 @@ homepage = "https://github.com/cnglen/windancer"
 repository = "https://github.com/cnglen/windancer"
 license = "GPL-3.0"
 keywords = ["org-mode", "parse", "render"]
-categories = ["parser-implementations", "parsing", "text-processing"]
+categories = ["parser-implementations", "parsing", "text-processing", "ssg"]
 readme = "README.md"
 exclude = ["readme_cn.org"]
 
-[[bin]]
-name = "kite"  # to rename
+# [[bin]]
+# name = "kite"  # to rename
 
 [[bench]]
 harness = false
@@ -49,7 +49,8 @@ criterion = "0.8.0"
 pretty_assertions = "1.4.1"
 
 [patch.crates-io]
-chumsky = { git = "https://github.com/cnglen/chumsky.git" }
+chumsky = { git = "https://github.com/zesterer/chumsky.git" }
+
 
 [profile.bench]
 debug = true  # sudo sysctl kernel.perf_event_paranoid=1

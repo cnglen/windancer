@@ -425,8 +425,8 @@ impl Renderer {
 
     fn render_page(&mut self, page: &Page) -> std::io::Result<String> {
         let html = self.render_page_inner(page);
-
         let f_html = self.output_directory.join(page.html_path.as_str());
+        tracing::trace!("f_html={}", f_html.display());
         let d_html = f_html.parent().expect("should have parent directory");
         if !d_html.is_dir() {
             fs::create_dir_all(d_html)?;
@@ -1106,7 +1106,7 @@ impl Renderer {
         };
 
         format!(
-            r##"<div class="footdef"><a id="fn.{label}">{nid}</a>: {c}<div class="footpara" role="doc-footnote">{label} := {def}</div></div>"##,
+            r##"<div class="footdef"><a id="fn.{label}">{nid}</a>: {c}<div class="footpara" role="doc-footnote"> {def}</div></div>"##,
             label = footnote_definition.label,
             nid = footnote_definition.nid,
             c = c,

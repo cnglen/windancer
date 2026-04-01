@@ -60,7 +60,7 @@ impl StaticSiteGenerator {
         let d_org = d_org.as_ref();
         let section = self
             .compiler
-            .compile_section(d_org)
+            .compile_section(d_org, d_org)
             .expect("NO document compiled");
 
         let g = section.build_graph();
@@ -89,7 +89,7 @@ impl StaticSiteGenerator {
         let start = Instant::now();
         let doc = self
             .compiler
-            .compile_file(f_org)
+            .compile_file(f_org.as_ref(), f_org.as_ref().parent().unwrap())
             .expect("compile org to Document(AST)");
         let duration = start.elapsed();
         tracing::info!("windancer@parser           : {:?}", duration);

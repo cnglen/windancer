@@ -21,7 +21,7 @@ pub fn generate<P: AsRef<Path>>(f_output: P) -> std::io::Result<String> {
                 && from.extension() == Some(std::ffi::OsStr::new("html"))
                 && !from_filename.starts_with(&['.', '#'])
             {
-                tracing::info!("  tailwincss from content: {:?}", from);
+                tracing::debug!("  tailwincss from content: {:?}", from);
                 let content = std::fs::read_to_string(from).expect("read to string");
                 sources.push(content);
             }

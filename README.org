@@ -12,11 +12,18 @@ A toolkit for parsing and rendering Org-mode.
 ** How to use?
 
 #+begin_src bash
-  cargo install windancer
+  # cargo install windancer
+  cargo build -r
+  cargo run --bin winacer
   windancer --help
 #+end_src
 
 see [[file:docs/status.org][status]] for status.
+
+
+** input
+
+A directory containing all the resources, such as org files, images in the org files, see [[file:examples/mysite/note/][note]] in example.
 
 
 * Development

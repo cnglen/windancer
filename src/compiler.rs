@@ -53,13 +53,14 @@ impl Compiler {
     pub fn compile_file<P: AsRef<Path>>(
         &self,
         f_org: P,
+        d_base: P,
     ) -> Result<Document, Box<dyn std::error::Error>> {
         let f_org = f_org.as_ref();
         let syntax_tree = self.parser.parse(f_org);
         // tracing::trace!("syntax_tree:{:#?}", syntax_tree);
 
         let ast = self.ast_builder.build(&syntax_tree, f_org).expect("build");
-        let file_info = FileInfo::from(f_org);
+        let file_info = FileInfo::from(f_org, d_base.as_ref());
         let mut metadata = Self::get_metadata(&syntax_tree);
 
         // FIXME: property > keyword? remove keyword's date?
@@ -218,14 +219,20 @@ impl Compiler {
         false
     }
 
+    /// Compile the directory containging org-files `d_org` into a `Section`
+    /// - use recursive to support subdirectories
+    /// Args:
+    ///   d_org:
+    ///   d_base: base path
     pub fn compile_section<P: AsRef<Path>>(
         &self,
         d_org: P,
+        d_base: P,
     ) -> Result<Section, Box<dyn std::error::Error>> {
         let mut documents = vec![];
         let mut subsections = vec![];
 
-        let file_info = FileInfo::from(&d_org);
+        let file_info = FileInfo::from(&d_org, &d_base);
 
         for entry in fs::read_dir(d_org)? {
             let entry = entry?;
@@ -236,13 +243,13 @@ impl Compiler {
             if path.is_dir() && (!filename.starts_with(&['.', '#'])) {
                 if Self::has_org_file(&path) {
                     tracing::debug!("compile_section@dir: {}", path.display());
-                    subsections.push(self.compile_section(path)?);
+                    subsections.push(self.compile_section(path.as_path(), &d_base.as_ref())?);
                 }
             } else if path.extension() == Some(OsStr::new("org"))
                 && (!filename.starts_with(&['.', '#']))
             {
                 tracing::debug!("compile_section@org: {}", path.display());
-                documents.push(self.compile_file(path)?);
+                documents.push(self.compile_file(path, d_base.as_ref().to_path_buf())?);
             }
         }
 

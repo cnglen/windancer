@@ -1110,11 +1110,13 @@ impl Converter {
                 has_kinds_0 = true;
             }
         }
+        // todo: how to compress whitespaces?
         let enable_trim = if has_kinds_1 && !has_kinds_0 {
-            true
+            false
         } else {
             false
         };
+
         if enable_trim {
             Ok(Some(Object::Text(
                 token

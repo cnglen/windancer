@@ -144,26 +144,32 @@ impl Document {
     }
 }
 
-/// File info for a file(directory is a speical case of file), for example
-/// - filename: bar.org
+/// File info for a file(directory is a special case of file), for example
+/// if file is "/foo/content/blog/bar/bar.org", base_path is "/foo/content", then:
 /// - full_path: /foo/content/blog/bar/bar.org
-/// - relative_path: blog/bar/bar.org
+/// - filename: bar.org
+/// - name: bar
+/// - relative_path: Some(blog/bar/bar.org)
+/// - maybe_index: true (since bar/bar.org)
 /// - relative_directories: [blog, bar]
 #[derive(Debug, Clone)]
 pub struct FileInfo {
-    /// full path in file system
+    /// full path in file system, including the file name
     pub full_path: PathBuf,
 
     /// file name, e.g, "bar.org"
     pub file_name: String,
 
-    // without extension
+    /// file name without extension
     #[allow(dead_code)]
     pub name: String,
 
-    /// relative path staring from "content"
+    /// relative path starting from the base path, which is configured by `general.input_directory`
     pub relative_path: Option<String>,
 
+    /// wheather to rename to index.html：
+    /// - 'content/foo/foo.org' -> 'content/foo/index.html'
+    /// - 'content/foo/bar.org' -> 'content/foo/bar.html'
     pub(crate) maybe_index: bool,
 
     /// relative directories
@@ -173,62 +179,90 @@ pub struct FileInfo {
 }
 
 impl FileInfo {
-    // f: ~ not supported, you have to expand HOME your self if needed
-    pub fn from<P: AsRef<Path>>(f: P) -> Self {
-        let path = f.as_ref();
-        let file_name = path
+    // Example:
+    //   from("content/foo/bar.org", "content")
+    //   from("content/foo/foo.org", "content")
+    // args:
+    //   f: input file(or directory) path, Note '~' not supported in f
+    //   base_path: base path used to calculate relative path
+    pub fn from<P: AsRef<Path>>(f: P, base: P) -> Self {
+        let f_path = f.as_ref();
+        let f_file_name = f_path
             .file_name()
             .expect("no file name")
             .to_string_lossy()
             .to_string();
+        let f_name = f_path.file_stem().unwrap().to_string_lossy().to_string();
 
-        let name = path.file_stem().unwrap().to_string_lossy().to_string();
+        let f_full_path = fs::canonicalize(f_path).expect("input file `f` should have a full path");
+        let f_parent_full_path = fs::canonicalize(f_path.parent().unwrap())
+            .expect("input file `f` should have a parent and the parent have a full path");
+        let base_path = base.as_ref();
+        let full_base_path =
+            fs::canonicalize(base_path).expect("base path should have a full path");
 
-        let full_path = fs::canonicalize(path).expect("no full path");
-
-        let mut is_in_content = false;
-        let mut relative_directories_vec = vec![];
-        for section in path.parent().unwrap().components() {
-            let component = section.as_os_str().to_string_lossy();
-            if is_in_content {
-                relative_directories_vec.push(component.to_string());
-            } else if component == "content" {
-                is_in_content = true;
-            }
+        if f_path.to_string_lossy() == base_path.to_string_lossy() {
+            return Self {
+                full_path: f_full_path,
+                file_name: f_file_name,
+                name: f_name,
+                maybe_index: false,
+                relative_path: None,
+                relative_directories: None,
+            };
         }
 
+        let relative_directories_vec = match f_parent_full_path.strip_prefix(&full_base_path) {
+            Ok(relative_path) => relative_path
+                .components()
+                .map(|e| e.as_os_str().to_string_lossy().to_string())
+                .collect::<Vec<String>>(),
+            Err(e) => {
+                tracing::error!(
+                    "from({}, {}): No relative path found: {e}",
+                    f_path.display(),
+                    base_path.display()
+                );
+                vec![]
+            }
+        };
+
+        let base_path_last_directory = full_base_path
+            .file_name()
+            .expect("should have a leaf directory")
+            .to_string_lossy()
+            .to_string();
         let n = relative_directories_vec.len();
-        let maybe_index = if n > 0 && relative_directories_vec[n - 1] == name {
+        let maybe_index = if n > 0 && relative_directories_vec[n - 1] == f_name {
             true
-        } else if n == 0 && name == "content" {
+        } else if n == 0 && f_name == base_path_last_directory {
             true
         } else {
             false
         };
 
-        let (relative_path, relative_directories) = if is_in_content {
-            (
-                if !relative_directories_vec.is_empty() {
-                    Some(format!(
-                        "{}/{}",
-                        relative_directories_vec.join("/"),
-                        file_name
-                    ))
-                } else {
-                    Some(file_name.clone())
-                },
-                Some(relative_directories_vec),
-            )
-        } else if file_name == "content" && path.is_dir() {
-            (Some("".to_string()), Some(relative_directories_vec))
-        } else {
-            (None, None)
-        };
+        let (relative_path, relative_directories) =
+            if f_path.to_string_lossy() == base_path.to_string_lossy() {
+                (Some("".to_string()), Some(relative_directories_vec))
+            } else {
+                (
+                    if !relative_directories_vec.is_empty() {
+                        Some(format!(
+                            "{}/{}",
+                            relative_directories_vec.join("/"),
+                            f_file_name
+                        ))
+                    } else {
+                        Some(f_file_name.clone())
+                    },
+                    Some(relative_directories_vec),
+                )
+            };
 
         Self {
-            full_path,
-            file_name,
-            name,
+            full_path: f_full_path,
+            file_name: f_file_name,
+            name: f_name,
             maybe_index,
             relative_path,
             relative_directories,

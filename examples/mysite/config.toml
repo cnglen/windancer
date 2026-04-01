@@ -1,0 +1,10 @@
+[general]
+input_directory = "examples/mysite/note"
+tracing_max_level = "info"
+
+[general.output_directory]
+ssg = "mysite.publish"
+
+[compiler]
+debug = false
+

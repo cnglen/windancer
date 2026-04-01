@@ -71,7 +71,7 @@ fn main() {
     };
     let subscriber = FmtSubscriber::builder().with_max_level(max_level).finish();
     tracing::subscriber::set_global_default(subscriber).expect("set global subscripber failed");
-    tracing::info!("config={:#?}", config);
+    tracing::debug!("config={:#?}", config);
 
     let mut ssg = StaticSiteGenerator::new(
         config.compiler,
