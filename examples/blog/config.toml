@@ -1,9 +1,9 @@
 [general]
-input_directory = "examples/mysite/note"
+input_directory = "examples/blog/note"
 tracing_max_level = "info"
 
 [general.output_directory]
-ssg = "mysite.publish"
+ssg = "example.blog.publish"
 
 [compiler]
 debug = false

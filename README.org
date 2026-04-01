@@ -2,10 +2,10 @@ A toolkit for parsing and rendering org-mode.
 
 * Features
 
-- Single binary
-- A parser implemented using Rust
-- SSG(static site generator) from a directory, which containing org files
+- A org-mode parser implemented using [[https://rust-lang.org/][Rust]], according to [[https://orgmode.org/worg/org-syntax.html][Org Syntax]]
+- A static site generator(SSG)
   - anonymous discusstion can be supported by [[https://github.com/cnglen/tinydis][tinydis]]
+- Single binary
 
 ** Todo
 
@@ -18,28 +18,78 @@ A toolkit for parsing and rendering org-mode.
 
 ** Quick start
 
-Build from source:
-#+begin_src bash
-  git clone https://github.com/cnglen/windancer.git
-  cd windancer && cargo build -r
+Please see the detailed [[#installation][installation instructions for your platform]].
 
-  # example
-  cargo run -- -c ./examples/mysite/config.toml
-  python -m http.server -d mysite.publish
+With ​~windancer~​ installed, a static site can be generate from the input directory. The following example use [[https://github.com/cnglen/windancer/tree/main/examples/blog/note][examples/blog/note]] as input directory, which has the following stru
+cture:
+
+#+begin_src plain
+examples/blog/                   <-- root directory, which contains INPUT DIRECTORY and optional static/templates directory
+├── config.toml
+├── note                         <-- INPUT DIRECTORY which contains org-mode files
+│   ├── editor
+│   │   ├── emacs.org
+│   │   └── vi.org
+│   ├── life
+│   │   ├── life.org             <-- the same name to parent directory, will generate index.html
+│   │   ├── music.org
+│   │   ├── running.org
+│   │   └── todo.org
+│   └── note.org                 <-- the same name to parent directory, will generate index.html
+├── static                       <-- optional 
+│   └── robots.txt
+└── templates                    <-- optional
+    └── site_footer.tera.html
 #+end_src
 
-Download from release page:
+Let's build the static site:
+
 #+begin_src bash
-  wget https://github.com/cnglen/windancer/releases/download/v0.2.0/windancer-x86_64-unknown-linux-gnu.tar.gz -O /tmp/windancer.tar.gz && tar xvfz /tmp/windancer.tar.gz -C ~/.local/bin/
-  windancer -i PATH_OF_DIRECTOY_OF_ORG_FILES -o /tmp/output
+windancer -i examples/blog/note/ -o /tmp/blog.site  
+#+end_src
+
+The following output directory will be generated, which can be served by one http server, e.g, ​=python -m http.server -d /tmp/blog.site=​
+
+#+begin_src plain
+/tmp/blog.site                   <-- root directory, which has matched structure of INPUT directory
+├── default.css
+├── editor
+│   ├── emacs.html
+│   └── vi.html
+├── encre.css
+├── index.htlm                   <-- from note.org
+├── life
+│   ├── index.html               <-- from life.org
+│   ├── music.html
+│   ├── running.html
+│   └── todo.html
+└── robots.txt
 #+end_src
 
 
+** Installation
+:PROPERTIES:
+:CUSTOM_ID: installation
+:END:
+
+Pre-built binaries for Linux and Windows are provided on the [[https://github.com/cnglen/windancer/releases][Github release page]].
+
+*** From source
+
+To build from source, [[https://rust-lang.org/][Rust and Cargo]] need to be installed. Then, from
+a terminal, you can run the following commands to install the ~windancer~
+binary into ​=~/.cargo/bin/=​. It will take about 5 minutes.
+
+#+begin_src bash
+  cargo install --locked --git https://github.com/cnglen/windancer
+  windancer --version
+#+end_src
 
 
-** Config
+** Configuration
 
-A directory containing all the resources, such as org files, images in the org files, see [[file:examples/mysite/note/][note]] in example.
+See [[file:examples/blog/note/][note]] and [[https://github.com/cnglen/windancer/blob/main/config/default.toml][default.toml]]
+
 
 * FAQ
 
@@ -53,13 +103,13 @@ Emacs comes with built-in org-mode support, including its own parser. However, c
 
 There are plenty of SSG tools for Markdown, but native org-mode support is rare. The usual approach is to convert org-mode to Markdown, but that often results in imperfect output.
 
-That’s why windancer is created—to parse org-mode directly and render it as an HTML site. PDF export may be added in the future.
+That’s why windancer is created—to parse org-mode directly and render it as an HTML site. Pdf book/slide export may be added in the future.
 
 
 * Contribute
 
 You can support my work on [[https://ko-fi.com/cnglen][ko-fi]].
 
-Another way to help is to report issues or suggest new features.
+Another way to help is to report issues or bugs, or suggest new features.
 
 

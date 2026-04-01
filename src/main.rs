@@ -12,19 +12,20 @@ mod constants;
 mod export;
 
 #[derive(Parser)]
-#[command(name = "winancer")]
-#[command(version = "0.1")]
-#[command(about = "Render a org file to html", long_about = None)]
+#[command(version)]
+#[command(author)]
+#[command(name = "windancer")]
+#[command(about = "A toolkit for parsing and rendering org-mode.", long_about = None)]
 struct Cli {
-    /// Input directory
+    /// Input directory, which contains org-mode files
     #[arg(short = 'i', long)]
     input_directory: Option<String>,
 
-    /// Output directory of SSG(static site generator)
+    /// Output directory for static site generator(SSG)
     #[arg(short = 'o', long)]
     ssg_output_directory: Option<String>,
 
-    /// Config file in toml format
+    /// Config file in TOML format
     #[arg(short = 'c', long)]
     config_file: Option<String>,
 }

@@ -1,0 +1,72 @@
+* Development
+
+Build from source:
+#+begin_src bash
+  git clone https://github.com/cnglen/windancer.git
+  cd windancer && cargo build -r
+
+  # example
+  cargo run -- -c ./examples/blog/config.toml
+  python -m http.server -d mysite.publish
+#+end_src
+
+Download from release page:
+#+begin_src bash
+  wget https://github.com/cnglen/windancer/releases/download/v0.2.0/windancer-x86_64-unknown-linux-gnu.tar.gz -O /tmp/windancer.tar.gz && tar xvfz /tmp/windancer.tar.gz -C ~/.local/bin/
+  windancer -i PATH_OF_DIRECTOY_OF_ORG_FILES -o /tmp/output
+#+end_src
+
+
+#+begin_src bash
+  cargo test
+
+  # bench
+  cargo bench
+  # performance
+  cargo flamegraph --example main
+  perf report
+#+end_src
+
+
+** Planning
+- doc
+- windancer usage of ssg
+- keyword: multple parser, search k2v, keyword
+- support config of subscript
+- Error: Rich maybe slow
+- use group rather then nested then?
+- image width: max?
+- link: roam node id?
+- #+include keyword to include files in compile stage
+
+** misc
+
+*** about index.html
+
+index.html is recogized if filename is the same to parent directory.
+
+
+*** PRE during parsing
+
+https://github.com/zesterer/chumsky/issues/943
+
+- get byte index of previous utf8 char from input, rather than using state.
+- require chumsky's have public APT to visit the raw_input, such as InputRef::full_slice() be public.
+
+
+** change log
+
+
+- 2026-01-15 13:42:49: Support parse/render from input directory to output directory
+- 2026-01-05 20:12:45: Remove Rollback state, using ctx and *inp.full_slice()* to visit PRE(previous char), parse speed is 2x (for test file: 50ms -> 26ms). Note since chumsky full_slice() API is not public, so only local version chumsky worked. See [[https://github.com/zesterer/chumsky/issues/943][chumsky issue 946]]
+
+
+** Reference
+
+- [[https://orgmode.org/worg/org-syntax.html][org-syntax]]
+- [[https://github.com/zesterer/chumsky][chumsky]]
+- [[https://github.com/tfeldmann/organize][orgize]]
+- mdbook
+
+
+
