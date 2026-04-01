@@ -34,7 +34,7 @@ jobs:
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
 
-    - name: Verify rustup and WASM target
+    - name: Verify rustup
       run: |
         rustup --version
 

@@ -158,20 +158,30 @@ fn load_templates_from_dir(dir: &str) -> std::io::Result<HashMap<String, String>
     Ok(templates)
 }
 
-fn build_merged_tera(default_dir: &str, user_dir: &str) -> std::io::Result<tera::Tera> {
+use rust_embed::Embed;
+
+#[derive(Embed)]
+#[folder = "src/export/ssg/templates/"]
+struct DefaultTemplates;
+
+fn build_merged_tera(user_dir: &str) -> std::io::Result<tera::Tera> {
     let mut tera = tera::Tera::default();
     let mut all_templates = HashMap::new();
 
-    let default_tmpls = load_templates_from_dir(default_dir)?;
-    all_templates.extend(default_tmpls);
+    for file in DefaultTemplates::iter() {
+        let content = DefaultTemplates::get(&file).unwrap();
+        let content_str = std::str::from_utf8(&content.data).unwrap().to_string();
+        all_templates.insert(file.to_string(), content_str);
+    }
 
-    let user_tmpls = load_templates_from_dir(user_dir)?;
-    all_templates.extend(user_tmpls);
+    // let default_tmpls = load_templates_from_dir(default_dir)?;
+    // all_templates.extend(default_tmpls);
 
-    let name = "macros.tera.html";
-    if let Some(content) = all_templates.remove(name) {
-        tera.add_raw_template(name, &content)
-            .expect("add raw template");
+    let user_dir_path = Path::new(user_dir);
+    if user_dir_path.exists() {
+        tracing::info!("Load template from {user_dir}");
+        let user_tmpls = load_templates_from_dir(user_dir)?;
+        all_templates.extend(user_tmpls);
     }
 
     for (name, content) in all_templates {
@@ -188,13 +198,12 @@ impl Default for Renderer {
         let input_directory = std::path::Path::new("content").to_path_buf();
         let output_directory = std::path::Path::new("public").to_path_buf();
 
-        let default_dir = "src/export/ssg/templates";
         let binding = input_directory
             .parent()
             .expect("parent should exists")
             .join("templates");
         let user_dir = binding.to_str().expect("todo");
-        let mut tera = build_merged_tera(default_dir, user_dir).expect("");
+        let mut tera = build_merged_tera(user_dir).expect("");
         tera.autoescape_on(vec![]);
 
         Self {
@@ -281,13 +290,12 @@ impl Renderer {
     ) -> Self {
         let input_directory = std::path::Path::new(input_directory).to_path_buf();
         let output_directory = std::path::Path::new(output_directory).to_path_buf();
-        let default_dir = "src/export/ssg/templates";
         let binding = input_directory
             .parent()
             .expect("parent should exists")
             .join("templates");
         let user_dir = binding.to_str().expect("todo");
-        let mut tera = build_merged_tera(default_dir, user_dir).expect("");
+        let mut tera = build_merged_tera(user_dir).expect("");
         tera.autoescape_on(vec![]);
 
         Self {
@@ -1203,9 +1211,12 @@ impl Renderer {
     }
 
     fn render_item(&mut self, item: &Item) -> String {
-        let checkbox_html = match &item.checkbox {
+        let checkbox_html = match item.checkbox.as_deref() {
             None => String::from(""),
-            Some(e) => format!("<code>{e}</code>"),
+            Some("[X]") => format!("✅"),
+            Some("[ ]") => format!("⬜"),
+            Some("[-]") => format!("⏳"),
+            Some(_) => String::from(""),
         };
 
         let contents_html = if item.contents.len() == 1 {
