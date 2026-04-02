@@ -505,6 +505,8 @@ impl Renderer {
 
         let id_html = if let Some(id) = heading.properties.get("ID") {
             format!(r##"id="{}""##, id)
+        } else if let Some(custom_id) = heading.properties.get("CUSTOM_ID") {
+            format!(r##"id="{}""##, custom_id)
         } else {
             format!(r##"id="{}""##, heading.id())
         };
