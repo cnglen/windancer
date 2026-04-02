@@ -95,7 +95,7 @@ impl Default for RendererContext {
 
 // context: prev / next
 pub struct Renderer {
-    output_directory: PathBuf,
+    pub output_directory: PathBuf,
     config: RendererConfig,
     footnote_defintions: Vec<FootnoteDefinition>,
     context: RendererContext,

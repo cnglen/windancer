@@ -28,6 +28,10 @@ struct Cli {
     /// Config file in TOML format
     #[arg(short = 'c', long)]
     config_file: Option<String>,
+
+    /// Verbose information level, if not provided, log level is set to "info"; -v "debug"; -vv/-vvv or more: "trace"
+    #[arg(short = 'v', long, action=clap::ArgAction::Count)]
+    verbose: u8,
 }
 
 fn main() {
@@ -57,9 +61,18 @@ fn main() {
             .set_override("general.output_directory.ssg", ssg_output_directory)
             .unwrap();
     }
+
+    let tracing_max_level = match args.verbose {
+        0 => "info",
+        1 => "debug",
+        2.. => "trace",
+    };
+    builder = builder
+        .set_override("general.tracing_max_level", tracing_max_level)
+        .unwrap();
     let config = builder.build().expect("builder.build() failed");
 
-    let config: config::WindancerConfig = config
+    let mut config: config::WindancerConfig = config
         .try_deserialize()
         .expect("A config:WindancerConfig should be loaded from default/sources/overrides");
 
@@ -72,6 +85,10 @@ fn main() {
     };
     let subscriber = FmtSubscriber::builder().with_max_level(max_level).finish();
     tracing::subscriber::set_global_default(subscriber).expect("set global subscripber failed");
+
+    if let Err(e) = config.general.standardize_paths() {
+        tracing::warn!("Warning: failed to canonicalize paths: {}", e);
+    }
     tracing::debug!("config={:#?}", config);
 
     let mut ssg = StaticSiteGenerator::new(

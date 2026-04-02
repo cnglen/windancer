@@ -41,6 +41,7 @@ pub struct SsgConfig {
 impl StaticSiteGenerator {
     pub fn generate<P: AsRef<Path>>(&mut self, d_org: P) -> std::io::Result<String> {
         tracing::info!("prepare output directory ...");
+        let d_org = fs::canonicalize(d_org.as_ref())?;
         let output_directory = &self.site_builder.output_directory;
         if output_directory.exists() {
             let now_utc = chrono::Utc::now();
@@ -57,10 +58,10 @@ impl StaticSiteGenerator {
         let f_css = output_directory.join("encre.css");
 
         tracing::info!("compile ...");
-        let d_org = d_org.as_ref();
+        // let d_org = d_org.as_ref();
         let section = self
             .compiler
-            .compile_section(d_org, d_org)
+            .compile_section(d_org.as_path(), d_org.as_path())
             .expect("NO document compiled");
 
         let g = section.build_graph();
@@ -80,7 +81,19 @@ impl StaticSiteGenerator {
         tracing::info!("  generate css ...");
         let _ = css_generator::generate(&f_css);
 
-        tracing::info!("done");
+        tracing::info!(
+            "done, please visit `{}` to check the html files",
+            self.renderer.output_directory.display()
+        );
+        tracing::info!(
+            r#"You may start http server, e.g, using python or static-web-server
+- python -m http.server -d {} 8889
+- static-web-server -d {} -p 8889
+Then visit http://127.0.0.1:8889
+"#,
+            self.renderer.output_directory.display(),
+            self.renderer.output_directory.display()
+        );
         Ok(String::from("todo"))
     }
 
