@@ -1,8 +1,11 @@
-#+title: demo
+#+TITLE: Org-mode Syntax Demo
+#+EMAIL: cnglen@gmail.com
+#+HTML_HEAD: <style>pre.src{background:#282a36;color:#ffb86c;} </style>
+#+MACRO: color @@html:<span style="color:$1">$2</span>@@ @@latex:\textcolor{$1}{$2}@@
+#+MACRO: bgcolor @@html:<span style="background-color:$1;">$2</span>@@@@latex:$2@@
 
-I'm a file, named ~note.org~, I will be rendered to ~index.html~, since I have a name "note"(without extention), which is the same to my parent directory.
+Current file, whose name is ~note.org~, will be rendered to ~index.html~, since the file has the */_same name_/* "note"(without extention) to its parent directory.
 
-I have two subdirectories
 
 * editor
 
@@ -18,8 +21,25 @@ My favorite editor is ~Emacs~, and sometimes I use *vi*.
 I love *music*, and I love running. 
 
 
-* Plan
+* demo org-mode
+
+** Latex support
+
+Let $a=2$, \(b=1\), $c$ is sum of $a$ and $b$, d is diff of $a$ and \(b\), then 
+- $$c=a+b=3$$
+- \[d=a-b=1\]
+
+** TODO Figure
+:LOGBOOK:
+- State "TODO"       from              [2026-04-04 Sat 18:08]
+:END:
+
+** TODO List
+:LOGBOOK:
+- State "TODO"       from              [2026-04-04 Sat 18:08]
+:END:
 
 - [X] plan 1
 - [ ] plan 2
 - [-] plan 3
+

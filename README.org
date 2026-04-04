@@ -1,17 +1,20 @@
-A toolkit for parsing and rendering org-mode.
+A toolkit for *parsing* and *rendering* [[http://orgmode.org/][orgmode]] built entirely in [[https://rust-lang.org/][Rust]].
 
 * Features
 
-- A org-mode parser implemented using [[https://rust-lang.org/][Rust]], according to [[https://orgmode.org/worg/org-syntax.html][Org Syntax]]
-- A static site generator(SSG)
-  - anonymous discusstion can be supported by [[https://github.com/cnglen/tinydis][tinydis]]
-- Single binary
+- A pure /RUST/ org-mode *parser* following [[https://orgmode.org/worg/org-syntax.html][Org Syntax specification]].
+- A static site generator(*SSG*) that turns a directory of org files into a complete HTML website.
+  - Optinal *anonymous discussion* is provided via [[https://github.com/cnglen/tinydis][tinydis]]
+- Single binary: easy to isntall and run on Linux and Windows.
+
 
 ** Todo
 
-- [ ] org-roam for knowledge
+- [-] better documenation
+- [ ] themes customization    
 - [ ] search by keyword
-- [ ] better documenation
+- [ ] org-roam for knowledge
+
   
 
 * Usage
@@ -110,6 +113,4 @@ That’s why windancer is created—to parse org-mode directly and render it as 
 
 You can support my work on [[https://ko-fi.com/cnglen][ko-fi]].
 
-Another way to help is to report issues or bugs, or suggest new features.
-
-
+Another way to help is to report bugs, or suggest new features in [[https://github.com/cnglen/windancer/issues][windandcer issues]]

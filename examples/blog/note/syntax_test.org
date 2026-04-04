@@ -1,71 +1,71 @@
 
-
-# this is a org file to test `windancer`, which is
-# a parser and render
-:properties:
-:author: foo
-:key: value
-:end:
-#+title: test
-#+macro: color @@html:<span style="color:$1">$2</span>@@ @@latex:\textcolor{$1}{$2}@@
-#+date: 2025-08-02T18:43:00+0800
-#+OPTIONS: toc:nil
-#+project: windancer
-#+author: cnglen
-#+author: contributor
-#+email: cnglen@gmail.com
-#+caption: a *bold* text
-#+SETUPFILE: ~/.emacs.d/local/theme-readtheorg.setup
-#+SETUPFILE: ~/.emacs.d/local/org-latex-cn.setup
-#+macro: color @@html:<span style="color:$1">$2</span>@@@@latex:\textcolor{$1}{$2}@@
-#+macro: bgcolor @@html:<span style="background-color:$1;">$2</span>@@@@latex:$2@@
-#+latex_class: article
-#+OPTIONS: H:4
+:END:
+#+TITLE: Org-mode Syntax Test
+#+AUTHOR: cnglen
+#+AUTHOR: contributors
+#+EMAIL: cnglen@gmail.com
+#+FILETAGS: :emacs:org-mode:windancer:
 #+HTML_HEAD: <style>pre.src{background:#282a36;color:#ffb86c;} </style>
-#+render: nil
+#+MACRO: color @@html:<span style="color:$1">$2</span>@@@@latex:\textcolor{$1}{$2}@@
+#+MACRO: bgcolor @@html:<span style="background-color:$1;">$2</span>@@@@latex:$2@@
 
-Zero-th Section: this is a */_bold-italic-underline_/*
+An org-mode document begins an optional */_zeroth_/* section (everything before the first heading), followed by a sequence of headings.
 
-* Heading without section, but with blank lines
+* DONE Introduciton
 
-* heading test
+#+begin_quote
+Any Org document is represented by a sequence of _elements_, that can recursively contain other _elements_ and/or _objects_.
 
-** DONE [#A] heading  :tag:test:
-SCHEDULED: <1999-03-31 Wed>
-:PROPERTIES:
+From [[https://orgmode.org/worg/org-syntax.html#orgad766b8][org-syntax]]
+#+end_quote
 
-:CUSTOM_ID: someid
+A general structure of org document may be:
+
+#+begin_example
+(org-data ...
+ (zeroth-section ...
+  (keyword ...)
+  (paragraph ...)
+  (drawer
+   (paragraph ...)
+   (pragraph (plain-text) (bold (plain-text)))))
+ (heading
+  (section (paragraph ...))
+  (heading)
+  (heading (section ...)))
+ (heading))
+#+end_example
+
+#+begin_note
+The *element* and *object* are two important concepts in the org-mode syntax.
+
+You can:
+- ignore them if you are an org-mode user
+- if you are interested, see the [[https://orgmode.org/worg/org-syntax.html#orgad766b8][org-syntax]] for details.
+#+end_note
+
+
+* TODO Elements
+:LOGBOOK:
+- State "TODO"       from              [2026-04-04 Sat 18:02]
 :END:
 
-** TODO [#A] heading                                               :tag:test:
+*{{{color(red, NOTE)}}}*: this part is not stable yet.
 
-** DOING [#A] heading                                              :tag:test:
+** Headings and Sections
 
-foo bar
+*** DONE [#A] Heading test                                        :tag1:tag2:
+SCHEDULED: <1999-03-31 Wed>
+:PROPERTIES:
+:CUSTOM_ID: heading-demo
+:END:
 
-* Another heading with section
+This heading has a ​=DONE=​ keyword, a =[#A]= priority, a title ​=Heading test=​, and two tags ​=tag1=​ and ​=tag2=​.
 
-This is a section. It includes everything from "This is" down to "Last
-heading", including the trailing blank lines.
-
-* h1
-
-上面的BlankLine属于HeadingRow.
-
-This is a section of h1
-
-上面的BlankLine属于section.
-
-** h2
-
-asdfadf adf a f
-
-*** h3
-
-the end
+Note this heading has a 'CUSTOM_ID' property set to "heading-demo", which can be linked by [[#heading-demo]].
 
 
-* indentation
+**** h4
 
   This paragraph will not contain
   a long sequence of spaces before "a".
@@ -76,65 +76,43 @@ the end
     (+ 1 2)    
   #+end_src
 
-  The above source block preserves two leading spaces inside the code
+  The above source block preserves *two leading* spaces inside the code
   after removing the common indentation.
 
-* TODO [#A] COMMENT Title                                           :tag:a2%:
 
+***** h5
 
+a deep heading
 
+****** h6
 
+a very deep heading
 
-*  [#A]  Title  :电影:美术: 
+**** h4 again
 
-a short line * faked_title
+*** TODO [#A] COMMENT a commented heading
 
+Since this heading is a *commented*,  it (including its childen headings) will *NOT* be exported by SSG.
 
+****** Heading with level
 
-* title :tagb:taga:
+This should not be shown in html, since its parent is a *commented* heading.
 
-* footnote test
+*** section test
 
-This is a org [fn:1]. This is not markdown[fn:md]. This is luo [fn:luo]. This is [fn:3] . I'm bad[fn:2]. I love org[fn:1] bettern than md[fn:md]. this is a inline fn[fn:x:yy] and anonymous fn[fn::zz]. 中文[fn:祖冲之]
+This is a section. It includes everything from "This is" down to ​=**** h4=​, including the trailing blank lines.
 
-footnote reference: inside text.
+#+begin_quote
+Sections contain one or more non-heading elements. With the exception of the text before the first heading in a document (which is considered a section), sections only occur within headings.
+#+end_quote
 
-footnote definition: no indentation allowed
+Sections do not include blank lines immediately following the parent
+heading. It also means that headings containing only blank lines do
+not contain any section.
 
+**** h4
 
-
-
-another anonymous fn[fn::ZZ].
-
-footnote defintion (Greater Element)
-
-Footnote definitions must occur at the start of an /unindented/ line, and are structured according to the following pattern:
-
-
-#+begin_example
-[fn:LABEL] CONTENTS
-#+end_example
-
-- LABEL :: Either a number or an instance of the pattern WORD, where WORD represents a string consisting of word-constituent characters, hyphens and underscores (-_).
-- CONTENTS (optional) :: A collection of *zero or more elements*. It ends at the next footnote definition, the next heading, two consecutive blank lines, or the end of buffer.
-
-
-footnote reference (object):
-
-Footnote references are structured according to one of the following patterns:
-
-#+begin_src
-[fn:LABEL]
-[fn:LABEL:DEFINITION]
-[fn::DEFINITION]
-#+end_src
-
-- LABEL :: A string containing one or more word constituent characters, hyphens and underscores (-_).
-- DEFINITION (optional) :: One or more objects from the standard set, so long as opening and closing square brackets are balanced within DEFINITION.
-
-If the reference follows the second pattern, it is called an “inline footnote”. If it follows the third pattern, i.e. if LABEL is omitted, it is called an “anonymous footnote”.
-
-Note that the first pattern may not occur on an unindented line, as it is then a footnote definition.
+This is a section, too.
 
 
 
@@ -142,39 +120,61 @@ Note that the first pattern may not occur on an unindented line, as it is then a
 
 
 
+** Greater elements
 
 
-* elements
+*** Greater Block 
 
-** paragraph
+#+begin_center
+this is contents of a center block
+#+end_center
 
-Paragraphs are the default element, which means that any unrecognized
-context is a paragraph.
+#+begin_quote a b
+this is contents of a quote block
+#+end_quote
 
-Empty lines and other elements end paragraphs.
+  #+begin_xxx
+  this is contents of a special(xxx) block
+  #+end_xxx
 
-Paragraphs can contain the standard set of objects.
 
-Drawer:
-:d3:
-a
+*** Drawer
+
+The following drawer named d1's content will not appear in expoted html.
+:d1:
+ this is the content of a drawer named d1, it will not appear in exported html.
+ :end:
+
+
+The following drawer is NOT a property drawer, since property drawer are attached to a *heading* or *inlinetask*, or in zeroth section. And its content will not appear in exported html.
+
+:properties:
+:foo: bar
+:black: berry
 :end:
 
 
-block:
-#+begin_SRC python
-  print("hello")
-#+end_src
+*** TODO Dynamic block
+:LOGBOOK:
+- State "TODO"       from              [2026-04-04 Sat 21:21]
+:END:
+
+*{{{color(red, NOT supported)}}}* now, since it depends on user emacs lisp function to auto update the contents.
+
+#+begin_quote
+Org supports _dynamic blocks_ in Org documents.  They are inserted with
+begin and end markers like any other code block, but the contents are
+updated automatically by a user function.
+#+end_quote
 
 
-comment:
-# this is a comment
+
+#+BEGIN: myblock :parameter1 value1 :parameter2 value2 ...
+...
+#+END:
 
 
-** greater element
-
-
-*** list test
+*** plain lists
 
 - item
 - [@3] set to three
@@ -222,132 +222,7 @@ item := - context [list]
 3) 3
 
 
-*** Greater Block 
-#+begin_center
-this is contents of a center block
-#+end_center
-
-#+begin_quote a b
-this is contents of a quote block
-#+end_quote
-
-  #+begin_xxx
-  this is contents of a special(xxx) block
-  #+end_xxx
-
-
-** lesser element
-
-*** horizontal-rule
-
------
-
------
-
-horizontal must has at least 5 dashes: 
-
-----
-
-
-*** keyword
-
-#+key: value
-#+KEY: VALUE
-# #+call: not key word
-
-
-
-*** latex environment
-
-equation with number:
-
-\begin{equation}  
-\begin{split}
-a=b+c
-\end{split}
-\end{equation}
-
-equation without number:
-
-\[
-x = \sum_{i=1}^{n} i
-\]
-
-
-
-*** Lesser Block
-
-#+begin_comment
-comment content
-#+end_comment
-
-#+begin_example
-example content
-#+end_example
-
-#+begin_verse
-verse content
-#+end_verse
-
-#+caption: export block test
-    #+begin_export html
-      <span style="color:green;">hello org</span>
-    #+end_export
-
-
-#+begin_src python
-  print("hello")
-
-  def foo(s: int) -> int:
-      s+1
-#+end_src
-
-
-** drawer test
-
-:d1:
- this is the contents of drawer
- :end:
-
-
-drawer within blank lines
-:properties:
-
-:add: asd
-
-
-:dxx: asd
-
-
-
-:end:
-
-
-
-** test
-
-A test:
-- Item 1
-
-- Item 2
-  :drawer:
-  inside item 2
-  :end:
-
-
-B test:
-- a
-
-- b
-
-
-- c
-  - c
-    #+begin_src python
-      print("xx")
-    #+end_src
-
-** unodered list
+**** unodered list
 
 - a
   + a1
@@ -359,12 +234,12 @@ B test:
   1. c1
   2. c2
      
-** descriptive list
+**** descriptive list
 
 - a :: I'm A
 - b :: I'm B
 
-** ordered list
+**** ordered list
 
 1) 打开冰箱
 2) 放入冰箱
@@ -380,7 +255,8 @@ a. asdf
 b. df
 
 
-** table test
+
+*** table test
 
 #+CAPTION[object in table]: table with objects
 #+attr_html: :border 2 :rules all :frame border
@@ -467,10 +343,129 @@ table cell's CONTENT can contain:
   
 
 
+  
+** Lesser elements
+
+*** horizontal-rule
+
+-----
+
+-----
+
+horizontal must has at least 5 dashes: 
+
+----
+
+
+*** keyword
+
+#+key: value
+#+KEY: VALUE
+# #+call: not key word
+
+
+
+*** latex environment
+
+equation with number:
+
+\begin{equation}  
+\begin{split}
+a=b+c
+\end{split}
+\end{equation}
+
+equation without number:
+
+\[
+x = \sum_{i=1}^{n} i
+\]
+
+
+
+*** Lesser Block
+
+#+begin_comment
+comment content
+#+end_comment
+
+#+begin_example
+example content
+#+end_example
+
+#+begin_verse
+verse content
+#+end_verse
+
+#+caption: export block test
+    #+begin_export html
+      <span style="color:green;">hello org</span>
+    #+end_export
+
+
+#+begin_src python
+  print("hello")
+
+  def foo(s: int) -> int:
+      s+1
+#+end_src
+
+
+
+*** paragraph
+
+Paragraphs are the default element, which means that any unrecognized
+context is a paragraph.
+
+Empty lines and other elements end paragraphs.
+
+Paragraphs can contain the standard set of objects.
+
+Drawer:
+:d3:
+a
+:end:
+
+
+block:
+#+begin_SRC python
+  print("hello")
+#+end_src
+
+
+comment:
+# this is a comment
+
+
+** test
+
+A test:
+- Item 1
+
+- Item 2
+  :drawer:
+  inside item 2
+  :end:
+
+
+B test:
+- a
+
+- b
+
+
+- c
+  - c
+    #+begin_src python
+      print("xx")
+    #+end_src
+
+
 ** fixed width
 : This is a  
 :
 : fixed width area
+
 
 ** comment
 
@@ -491,7 +486,12 @@ table cell's CONTENT can contain:
 
 
 
-* objects
+* TODO Objects
+:LOGBOOK:
+- State "TODO"       from              [2026-04-04 Sat 18:03]
+:END:
+
+*{{{color(red, NOTE)}}}*: this part is not stable yet.
 
 minimal set objects(6)
 
@@ -702,14 +702,14 @@ radio link: my radio target, define three radio target <<<*bold* target>>> and <
 *** image test
 
 #+NAME: foo
-#+begin_src mermaid :file ./assets/test_demo_git.png :cache yes :exports results
+#+begin_src mermaid :file ./image/test_demo_git.png :cache yes :exports results
   flowchart RL
     WD[WorkingDirectory] -- git add --> SA[StageArea] -- git commit --> Repo[.git]
     Repo --> |git checkout| WD
 #+end_src
 
-#+RESULTS[442e341895730297fa3223727bed3168b836a95d]: foo
-[[file:./assets/test_demo_git.png]]
+#+RESULTS[78e2508f51e4853e901b6e1aa28643594183cf32]: foo
+[[file:./image/test_demo_git.png]]
 
 
 ** DONE timestamp
@@ -978,6 +978,50 @@ define a radio target: <<<*bold* target>>>, reference a target *bold* target
 [cite:@key]
 
 
+** TODO footnote test
+:LOGBOOK:
+- State "TODO"       from              [2026-04-04 Sat 17:37]
+:END:
+
+This is a org [fn:1]. This is not markdown[fn:md]. This is luo [fn:luo]. This is [fn:3] . I'm bad[fn:2]. I love org[fn:1] bettern than md[fn:md]. this is a inline fn[fn:x:yy] and anonymous fn[fn::zz]. 中文[fn:祖冲之]
+
+footnote reference: inside text.
+
+footnote definition: no indentation allowed
+
+another anonymous fn[fn::ZZ].
+
+footnote defintion (Greater Element)
+
+Footnote definitions must occur at the start of an /unindented/ line, and are structured according to the following pattern:
+
+
+#+begin_example
+[fn:LABEL] CONTENTS
+#+end_example
+
+- LABEL :: Either a number or an instance of the pattern WORD, where WORD represents a string consisting of word-constituent characters, hyphens and underscores (-_).
+- CONTENTS (optional) :: A collection of *zero or more elements*. It ends at the next footnote definition, the next heading, two consecutive blank lines, or the end of buffer.
+
+footnote reference (object):
+
+Footnote references are structured according to one of the following patterns:
+
+#+begin_src
+[fn:LABEL]
+[fn:LABEL:DEFINITION]
+[fn::DEFINITION]
+#+end_src
+
+- LABEL :: A string containing one or more word constituent characters, hyphens and underscores (-_).
+- DEFINITION (optional) :: One or more objects from the standard set, so long as opening and closing square brackets are balanced within DEFINITION.
+
+If the reference follows the second pattern, it is called an “inline footnote”. If it follows the third pattern, i.e. if LABEL is omitted, it is called an “anonymous footnote”.
+
+Note that the first pattern may not occur on an unindented line, as it is then a footnote definition.
+
+
+
 * Footnotes
 
 [fn:祖冲之] pi
@@ -986,4 +1030,5 @@ define a radio target: <<<*bold* target>>>, reference a target *bold* target
 [fn:md] markdown is another text std
 [fn:3] this asdf asd f. 
 [fn:luo] luo is here
+
 

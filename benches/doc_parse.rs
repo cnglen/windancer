@@ -8,7 +8,7 @@ use windancer::compiler::parser::OrgParser;
 use windancer::compiler::parser::config::OrgParserConfig;
 
 fn bench_windancer_orgize(c: &mut Criterion) {
-    let f_org = "tests/test.org";
+    let f_org = "examples/blog/note/syntax_test.org";
     let doc_raw = &fs::read_to_string(f_org).unwrap_or(String::new());
     let doc_raw = doc_raw.as_str();
 
@@ -19,7 +19,7 @@ fn bench_windancer_orgize(c: &mut Criterion) {
         .measurement_time(Duration::from_secs(5));
     group.throughput(Throughput::Bytes(doc_raw.len() as u64));
     group.bench_with_input(
-        BenchmarkId::new("windancer::OrgParser::parse", "test.org"),
+        BenchmarkId::new("windancer::OrgParser::parse", f_org),
         f_org,
         |b, f_org| {
             b.iter(|| {
@@ -34,7 +34,7 @@ fn bench_windancer_orgize(c: &mut Criterion) {
     );
 
     group.bench_with_input(
-        BenchmarkId::new("orgize::OrgizeOrg::parse", "test.org"),
+        BenchmarkId::new("orgize::OrgizeOrg::parse", f_org),
         &doc_raw,
         |b, &doc_raw| {
             b.iter(|| {

@@ -183,6 +183,7 @@ pre {
     border: 1px solid #e6e6e6;
     border-radius: 3px;
     background-color: #f2f2f2;
+    color: black;
     padding: 8pt;
     font-family: monospace;
     overflow: auto;

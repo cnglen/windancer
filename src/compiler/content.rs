@@ -195,7 +195,7 @@ impl FileInfo {
         let f_name = f_path.file_stem().unwrap().to_string_lossy().to_string();
 
         let f_full_path = fs::canonicalize(f_path).expect("input file `f` should have a full path");
-        let f_parent_full_path = fs::canonicalize(f_path.parent().unwrap())
+        let f_parent_full_path = fs::canonicalize(f_full_path.parent().unwrap())
             .expect("input file `f` should have a parent and the parent have a full path");
         let base_path = base.as_ref();
         let full_base_path =

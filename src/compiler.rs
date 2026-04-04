@@ -288,9 +288,11 @@ mod tests {
 
     #[test]
     fn test_compile_file() {
-        let f_org = "tests/test.org";
+        let f_org = "examples/blog/note/syntax_test.org";
         let compiler = Compiler::default();
-        let _doc = compiler.compile_file(f_org).expect("no Document compiled");
+        let _doc = compiler
+            .compile_file(f_org, "examples/blog/note/")
+            .expect("no Document compiled");
         // println!("{:#?}", _doc.metadata);
         println!("{:#?}", _doc.file_info);
     }
@@ -302,10 +304,10 @@ mod tests {
             .finish();
         tracing::subscriber::set_global_default(subscriber).expect("set global subscripber failed");
 
-        let d_org = "tests";
+        let d_org = "examples/blog/note";
         let compiler = Compiler::default();
         let _sections = compiler
-            .compile_section(d_org)
+            .compile_section(d_org, "examples/blog/note")
             .expect("no Document compiled");
         for (i, doc) in _sections.documents.into_iter().enumerate() {
             println!("{i}:\n  {:#?}\n  {:#?}", doc.file_info, doc.metadata);

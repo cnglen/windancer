@@ -3,8 +3,8 @@ input_directory = "examples/blog/note"
 tracing_max_level = "info"
 
 [general.output_directory]
-ssg = "example.blog.publish"
+ssg = "demo.blog.publish"
 
 [compiler]
-debug = false
+debug = true
 
