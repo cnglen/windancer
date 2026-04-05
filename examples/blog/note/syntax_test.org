@@ -1,4 +1,6 @@
-
+:PROPERTIES:
+:CREATED:       2026-04-04T11:35:44+0800
+:LAST_MODIFIED: 2026-04-05T22:08:35+0800
 :END:
 #+TITLE: Org-mode Syntax Test
 #+AUTHOR: cnglen
@@ -9,7 +11,7 @@
 #+MACRO: color @@html:<span style="color:$1">$2</span>@@@@latex:\textcolor{$1}{$2}@@
 #+MACRO: bgcolor @@html:<span style="background-color:$1;">$2</span>@@@@latex:$2@@
 
-An org-mode document begins an optional */_zeroth_/* section (everything before the first heading), followed by a sequence of headings.
+An org-mode[fn:org-mode] document begins an optional */_zeroth_/* section (everything before the first heading), followed by a sequence of headings.
 
 * DONE Introduciton
 
@@ -140,7 +142,7 @@ this is contents of a quote block
 
 *** Drawer
 
-The following drawer named d1's content will not appear in expoted html.
+The following drawer named d1's content will not appear in exported html.
 :d1:
  this is the content of a drawer named d1, it will not appear in exported html.
  :end:
@@ -174,26 +176,59 @@ updated automatically by a user function.
 #+END:
 
 
-*** plain lists
+*** Footnote Defintions
 
+#+begin_quote
+A footnote[fn:footnote_defintion] is started by a footnote marker in square brackets in column
+0, no indentation allowed.  It ends at the next footnote definition,
+headline, or after two consecutive empty lines.  The footnote reference
+is simply the marker in square brackets, inside text.  Markers always
+start with ‘fn:’.
+
+From emacs manual [fn:emacs_manual]
+#+end_quote
+
+
+This is a *inline* footnote[fn:inline_footnote:yy], an inline definition of a footnote, which also specifies a name for the note.  Since Org allows multiple references to the same note, you can then use =[fn:inline_footnote]= to create additional references.
+
+This is an *anonymous* footnote[fn::This is the inline definition of this footnotel].
+
+The above inline footnote[fn:inline_footnote] is referenced again here.
+
+The other footnote[fn:footnote_defintion] defintions of current file is
+defined in [[#footnote-heading][the last heading]] named "Footnotes". One footnote defintion
+can be referenced multiple times.
+
+
+*** TODO Inlinetasks
+:LOGBOOK:
+- State "TODO"       from              [2026-04-04 Sat 21:46]
+:END:
+
+*{{{color(red, NOT supported)}}}* now
+
+
+*** Items
+
+See [[#plain_list_heading][plain list]] since items live in a plain list.
+
+
+*** Plain lists
+:PROPERTIES:
+:custom_id: plain_list_heading
+:END:
+
+Test 1:
 - item
-- [@3] set to three
+- [@3] set to three, with attribue ​~id=3~​ in html
 - [-] tag :: item contents
   * item, note whitespace in front
 
-a:
- 1.  asdf
- 2.      sfd
+Test 2:
+ 1.  item 1
+ 2.      item 2
 
-item是一项，可以含list
-- list由多个item组成
-- item的内容可以含list
-
-list: = item.repeated()
-item := - context [list]
-
-
-
+Test 3:
 + いいよ，こいよ
 + [@1] 伊已逝，吾亦逝
 + [@4] 意易失，吾亦逝
@@ -202,61 +237,89 @@ item := - context [list]
 + [@4] こめいじ　こいし
 
 
-- 疑一时，误一世   ::   af t asf d asd as f asfd adf a df
-- a :: asfa
-+ [X] tag :: item contents
- * item, note whitespace in front
-
-
-1) 1
+Test 4:
+1) first item
    - 1.1.1
-2) 2
-   | a | b |
-   |---+---|
-   |   |   |
+2) seoncd item whih a table and source code block
+   | a   | b   |
+   |-----+-----|
+   | foo | bar |
 
    #+begin_src python
      print("hi")
    #+end_src
 
-3) 3
+3) third item
 
 
 **** unodered list
 
-- a
-  + a1
-  + a2
-- b
-  * b1
-  * b2
-- c 
-  1. c1
-  2. c2
+Write syntax test document [1/3]
+- [X] introduciton
+- [-] elements [1/3]
+  - [ ] headings and sections
+  - [-] greater elements [5/9]
+    - [X] greater blocks
+    - [X] drawers
+    - [ ] dynamic blocks
+    - [X] footnote defintion
+    - [ ] inline task
+    - [X] items
+    - [ ] plain lists
+    - [ ] property drawer
+    - [X] table
+  - [X] lesser element [0/0]
+- [-] objects
+
+
+
+Write a org parser and exporter
+- write a parser
+  * read syntax spec
+  * write code
+- write a exporter
+  + SSG
+  + pdf
      
 **** descriptive list
 
-- a :: I'm A
-- b :: I'm B
+- emacs :: An extensible, customizable, free/libre text editor — and more.
+- vi :: a screen-oriented text editor originally created by Bill Joy in 1976 for the Unix operating system
 
 **** ordered list
 
-1) 打开冰箱
-2) 放入冰箱
-3) 关闭冰箱
+1) Open the fridge
+2) Put the elephent into the fridge
+3) Close the fridge
 
 
-1) 打开冰箱
-2) 放入冰箱
-3) 关闭冰箱
-   
-
-a. asdf
-b. df
++ 打开冰箱
++ 把大象放入冰箱
++ 关闭冰箱
 
 
+1. Ouvrir le réfrigérateur.
+2. Mettre l'éléphant à l'intérieur.
+3. Fermer le réfrigérateur.   
 
-*** table test
+
+a. Den Kühlschrank öffnen.
+b. Den Elefanten hineintun.
+c. Den Kühlschrank schließen.
+
+
+*** Property drawers
+:PROPERTIES:
+:foo:      bar
+:key:      value
+:END:
+
+#+begin_quote
+Property drawers are a special type of drawer containing properties attached to a *heading* or *inlinetask*. They are located right after a heading and its planning information, as shown below:
+#+end_quote
+
+
+*** Table
 
 #+CAPTION[object in table]: table with objects
 #+attr_html: :border 2 :rules all :frame border
@@ -285,7 +348,6 @@ b. df
 | 21 export-snippet     | @@html:<b>@@bold text@@html:</b> | y                       |
 | 22 table-cell         | NA                               | n                       |
 | 23 citation-reference | NA                               | n                       |
-
 
 #+CAPTION: table
 | Name       | Phone | Age | as  |
@@ -331,15 +393,8 @@ table cell's CONTENT can contain:
 - targets
 - timestamps
 
-  
-  
 
 
-
-
-
-
-| *bold*      | entity: \alpha | latex fragment $a_b$ | a_b | [[https://www.foo.bar][link]] | my radio target | <2025-08-02> | [[target]] |   |
   
 
 
@@ -689,8 +744,6 @@ angle link: <mailto:xx@xx.com> <https://foo(bar).org>
 radio link: my radio target, define three radio target <<<*bold* target>>> and <<<my radio target>>>  and <<<\alpha>>> and <<<$\alpha$>>>, then we have *bold* target, my radio target, notmyradio target and $\alpha$ and \alpha.
 
 
-[[id:4f11c993-b0e7-4fbc-a325-4e2dff408e5e][音乐]]
-
 
 #+name: Blossoming Swirls of Elegance
 #+caption: This is a caption for the image linked below
@@ -978,57 +1031,29 @@ define a radio target: <<<*bold* target>>>, reference a target *bold* target
 [cite:@key]
 
 
-** TODO footnote test
+** TODO Footnote References
 :LOGBOOK:
 - State "TODO"       from              [2026-04-04 Sat 17:37]
 :END:
 
-This is a org [fn:1]. This is not markdown[fn:md]. This is luo [fn:luo]. This is [fn:3] . I'm bad[fn:2]. I love org[fn:1] bettern than md[fn:md]. this is a inline fn[fn:x:yy] and anonymous fn[fn::zz]. 中文[fn:祖冲之]
+This is a org [fn:org-mode] file, not not markdown[fn:md].
 
-footnote reference: inside text.
-
-footnote definition: no indentation allowed
-
-another anonymous fn[fn::ZZ].
-
-footnote defintion (Greater Element)
-
-Footnote definitions must occur at the start of an /unindented/ line, and are structured according to the following pattern:
-
-
-#+begin_example
-[fn:LABEL] CONTENTS
-#+end_example
-
-- LABEL :: Either a number or an instance of the pattern WORD, where WORD represents a string consisting of word-constituent characters, hyphens and underscores (-_).
-- CONTENTS (optional) :: A collection of *zero or more elements*. It ends at the next footnote definition, the next heading, two consecutive blank lines, or the end of buffer.
-
-footnote reference (object):
-
-Footnote references are structured according to one of the following patterns:
-
-#+begin_src
-[fn:LABEL]
-[fn:LABEL:DEFINITION]
-[fn::DEFINITION]
-#+end_src
-
-- LABEL :: A string containing one or more word constituent characters, hyphens and underscores (-_).
-- DEFINITION (optional) :: One or more objects from the standard set, so long as opening and closing square brackets are balanced within DEFINITION.
-
-If the reference follows the second pattern, it is called an “inline footnote”. If it follows the third pattern, i.e. if LABEL is omitted, it is called an “anonymous footnote”.
-
-Note that the first pattern may not occur on an unindented line, as it is then a footnote definition.
-
-
+This is a inline footnote[fn:x:yy] and anonymous fn[fn::zz]. 
 
 * Footnotes
+:PROPERTIES:
+:CUSTOM_ID: footnote-heading
+:END:
 
-[fn:祖冲之] pi
-[fn:2] asdfaf 
+[fn:org-mode] A GNU Emacs major mode for keeping notes, authoring documents, computational notebooks, literate programming, maintaining to-do lists, planning projects, and more — in a fast and effective plain text system.
+
+[fn:footnote_defintion] A footnote is a reference, explanation, or comment placed at the bottom of a page, designated by a superscript number (e.g., 
+) in the main text. They provide citations, background info, or copyright permissions without disrupting the text flow.
+
+[fn:emacs_manual] In emacs, type <C-h i>, then search org-mode, or visit [[https://www.gnu.org/software/emacs/manual/emacs.html][emacs manual]]
+
 [fn:1] org-mode is a text from emacs
-[fn:md] markdown is another text std
-[fn:3] this asdf asd f. 
-[fn:luo] luo is here
 
+[fn:md] markdown is another text file format
 
+[fn:footnote_defintion_without_reference] pi

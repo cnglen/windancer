@@ -2005,7 +2005,7 @@ impl Converter {
     // element.item
     fn convert_item(&mut self, node: &SyntaxNode) -> Result<Item, AstError> {
         let mut bullet = String::new();
-        let counter_set = None;
+        let mut counter_set = None;
         let mut checkbox = None;
         let mut tag = vec![];
         let mut contents = vec![];
@@ -2075,6 +2075,20 @@ impl Converter {
                     }
                 }
 
+                OrgSyntaxKind::ListItemCounter => {
+                    counter_set = Some(
+                        child
+                            .as_node()
+                            .unwrap()
+                            .first_child_or_token_by_kind(&|e| e == OrgSyntaxKind::Text)
+                            .unwrap()
+                            .as_token()
+                            .unwrap()
+                            .text()
+                            .to_string(),
+                    );
+                }
+
                 _ => {}
             }
         }
@@ -2137,11 +2151,18 @@ impl Converter {
             .map(|e| e.unwrap())
             .collect();
 
-        let rids = self.footnote_label_to_rids.get(&label).expect(&format!(
-            "convert_footnote_defintion(): Can't get {label} from {:?}, {node:?}",
-            self.footnote_label_to_rids
-        ));
-        let nid = self.footnote_label_to_nid.get(&label).expect("todo");
+        let rids = match self.footnote_label_to_rids.get(&label) {
+            Some(rids) => rids,
+            None => {
+                tracing::warn!(
+                    "Consider remove this footnote defintions {label}: \n  convert_footnote_defintion(): Can't get {label} from {:?}, {node:?}, a label 999 is used to generate this footnote defintion",
+                    self.footnote_label_to_rids
+                );
+                &vec![]
+            }
+        };
+
+        let nid = self.footnote_label_to_nid.get(&label).unwrap_or(&999);
 
         let footnote_definition = FootnoteDefinition {
             rids: rids.clone(),

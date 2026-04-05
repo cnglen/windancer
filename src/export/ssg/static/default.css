@@ -358,3 +358,6 @@ nav.toc li.active {
     color: blue;
 }
 
+dd {
+    margin-inline-start: 40px;
+}

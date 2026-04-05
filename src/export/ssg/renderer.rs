@@ -258,7 +258,13 @@ impl Renderer {
             .collect::<String>();
         let title = format!("{} {}", index, title);
 
-        let path = format!("#{}", heading.id());
+        let path = if let Some(id) = heading.properties.get("ID") {
+            format!(r##"#{}"##, id)
+        } else if let Some(custom_id) = heading.properties.get("CUSTOM_ID") {
+            format!(r##"#{}"##, custom_id)
+        } else {
+            format!(r##"#{}"##, heading.id())
+        };
         let level = heading.level;
 
         let mut children = vec![];
@@ -800,14 +806,15 @@ impl Renderer {
 
             Object::FootnoteReference {
                 label,
-                nid: _,
+                nid,
                 label_rid,
             } => {
                 // superscript:label
                 format!(
-                    r##"<sup><a id="fnr.{label}.{label_rid}" class="footref" href="#fn.{label}" role="doc-backlink">{label}</a></sup>"##,
+                    r##"<sup><a id="fnr.{label}.{label_rid}" class="footref" href="#fn.{label}" role="doc-backlink">{nid}</a></sup>"##,
                     label_rid = label_rid,
                     label = label,
+                    nid = nid,
                 )
             }
 
@@ -1221,6 +1228,7 @@ impl Renderer {
             Some(_) => String::from(""),
         };
 
+        // todo: when to remove <p>?
         let contents_html = if item.contents.len() == 1 {
             item.contents
                 .iter()
@@ -1236,6 +1244,7 @@ impl Renderer {
             item.contents
                 .iter()
                 .map(|i| self.render_element(&i))
+                .map(|i| i.replacen("<p>", "", 1))
                 .collect::<String>()
         };
 
@@ -1245,8 +1254,16 @@ impl Renderer {
             .map(|e| self.render_object(e))
             .collect::<String>();
 
+        let maybe_id = match &item.counter_set {
+            Some(counter) => format!(r##" id="{}""##, counter),
+            None => String::from(""),
+        };
+
         if tag_html.is_empty() {
-            format!(r##"  <li> {} {}  </li> "##, checkbox_html, contents_html)
+            format!(
+                r##"  <li{}> {} {}  </li> "##,
+                maybe_id, checkbox_html, contents_html
+            )
         } else {
             format!(
                 r##"  <dt>{} {}</dt> <dd>{}</dd>"##,

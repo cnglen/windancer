@@ -206,7 +206,7 @@ fn plain_list_parser_inner<'a, C: 'a + std::default::Default>(
         .then(
             object::whitespaces().then_with_ctx(
                 group((
-                    // fist item without preceding whitespaces
+                    // first item without preceding whitespaces
                     item_bullet_parser(),
                     item_counter_set_parser().or_not(),
                     item_checkbox_parser().or_not(),
@@ -214,7 +214,6 @@ fn plain_list_parser_inner<'a, C: 'a + std::default::Default>(
                     item_content_inner.clone().or_not(),
                     object::blank_line_parser().or_not(),
                 ))
-                .and_is(element::heading::simple_heading_row_parser().not())
                 .then(
                     // other items
                     group((
@@ -236,6 +235,7 @@ fn plain_list_parser_inner<'a, C: 'a + std::default::Default>(
                 ),
             ),
         )
+        .and_is(element::heading::simple_heading_row_parser().not())
         .then(object::blank_line_parser().repeated().collect::<Vec<_>>())
         .map_with(move |((keywords, items), blanklines), e| {
             let (
@@ -616,6 +616,30 @@ mod tests {
       Paragraph@47..55
         Text@47..55 "two\n    "
 "##
+        );
+    }
+
+    #[test]
+    fn test_list_08() {
+        let input = r##" * one
+    "##;
+        let list_parser = element::plain_list::plain_list_parser(
+            OrgParserConfig::default(),
+            element::element_parser::<&str>(OrgParserConfig::default()),
+        );
+        assert_eq!(
+            get_parser_output::<&str>(list_parser, input),
+            r#"List@0..11
+  ListItem@0..11
+    ListItemIndent@0..1
+      Whitespace@0..1 " "
+    ListItemBullet@1..3
+      Text@1..2 "*"
+      Whitespace@2..3 " "
+    ListItemContent@3..11
+      Paragraph@3..11
+        Text@3..11 "one\n    "
+"#
         );
     }
 }
