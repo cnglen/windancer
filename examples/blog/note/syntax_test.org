@@ -1,6 +1,6 @@
 :PROPERTIES:
 :CREATED:       2026-04-04T11:35:44+0800
-:LAST_MODIFIED: 2026-04-05T22:08:35+0800
+:LAST_MODIFIED: 2026-04-05T22:38:47+0800
 :END:
 #+TITLE: Org-mode Syntax Test
 #+AUTHOR: cnglen
@@ -1056,4 +1056,3 @@ This is a inline footnote[fn:x:yy] and anonymous fn[fn::zz].
 
 [fn:md] markdown is another text file format
 
-[fn:footnote_defintion_without_reference] pi

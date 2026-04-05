@@ -386,9 +386,12 @@ impl SiteBuilder {
         }
         if n_index_page != 1 {
             tracing::warn!(
-                "{} index pages found in section {:?} (should be 1, maybe 0)",
+                "{} index pages found in section {:?} (Suggested to be 1, add a file named:\n{})",
                 n_index_page,
-                section.file_info.relative_path
+                section.file_info.relative_path,
+                section.file_info.full_path.join(
+                    format!("{}.org", section.file_info.relative_path.clone().unwrap())
+                ).display()
             );
         }
 

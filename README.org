@@ -1,5 +1,9 @@
 A toolkit for *parsing* and *rendering* [[http://orgmode.org/][orgmode]] built entirely in [[https://rust-lang.org/][Rust]].
 
+[[file:docs/windancer_demo.gif][CLI demo]]
+
+See [[file:docs/windancer_ssg_output.mp4][the 37 seconds video]] for SSG output.
+
 * Features
 
 - A pure /RUST/ org-mode *parser* following [[https://orgmode.org/worg/org-syntax.html][Org Syntax specification]].
@@ -11,7 +15,7 @@ A toolkit for *parsing* and *rendering* [[http://orgmode.org/][orgmode]] built e
 ** Todo
 
 - [-] better documenation
-- [ ] themes customization    
+- [ ] themes customization
 - [ ] search by keyword
 - [ ] org-roam for knowledge
 

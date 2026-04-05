@@ -1,13 +1,42 @@
 #+TITLE: Org-mode Syntax Demo
-#+EMAIL: cnglen@gmail.com
-#+HTML_HEAD: <style>pre.src{background:#282a36;color:#ffb86c;} </style>
-#+MACRO: color @@html:<span style="color:$1">$2</span>@@ @@latex:\textcolor{$1}{$2}@@
-#+MACRO: bgcolor @@html:<span style="background-color:$1;">$2</span>@@@@latex:$2@@
 
 Current file, whose name is ~note.org~, will be rendered to ~index.html~, since the file has the */_same name_/* "note"(without extention) to its parent directory.
 
+* Demo
 
-* editor
+** Text
+
+- English: a *bold*, a /italic/, a _underline_, a +strikethrough+, a ~code~, and a =verbatim= text
+- Chinese: 一个​*粗体*​、​/斜体/​、​_下划线_​、​+横划线+​、​~编程~​和​=字面=​文本
+- complex: */_bold-italic-underline_/*, /*_italic-bold-underline_*/, +/*_strikethrough-italic-bold-underline_*/+
+
+** Latex support
+
+Let $a=2$, \(b=1\), $c$ is sum of $a$ and $b$, d is diff of $a$ and \(b\), then 
+- $$c=a+b=3$$
+- \[d=a-b=1\]
+
+** Todo
+
+- [X] plan a
+- [-] plan b
+- [ ] plan c
+
+** Figure and Table
+
+#+caption: Emacs
+[[https://www.gnu.org/software/emacs/images/emacs.png]]
+
+#+CAPTION: Table demo
+| Year | Event |
+|------+-------|
+| 1234 |  foo  |
+| 5789 |  bar  |
+
+#+CAPTION: Org Mode
+[[https://orgmode.org/resources/img/org-mode-unicorn.svg]]
+
+* Editor
 
 My favorite editor is ~Emacs~, and sometimes I use *vi*.
 
@@ -16,30 +45,6 @@ My favorite editor is ~Emacs~, and sometimes I use *vi*.
 - In the left sidebar, since editor/index.html doestn't exist, so emacs.html/vi.html is flattened into the root.
 #+end_note
 
-* life
+* Enjoy life
 
-I love *music*, and I love running. 
-
-
-* demo org-mode
-
-** Latex support
-
-Let $a=2$, \(b=1\), $c$ is sum of $a$ and $b$, d is diff of $a$ and \(b\), then 
-- $$c=a+b=3$$
-- \[d=a-b=1\]
-
-** TODO Figure
-:LOGBOOK:
-- State "TODO"       from              [2026-04-04 Sat 18:08]
-:END:
-
-** TODO List
-:LOGBOOK:
-- State "TODO"       from              [2026-04-04 Sat 18:08]
-:END:
-
-- [X] plan 1
-- [ ] plan 2
-- [-] plan 3
-
+I love writing, coding, music, and running.

@@ -6,5 +6,5 @@ tracing_max_level = "info"
 ssg = "demo.blog.publish"
 
 [compiler]
-debug = true
+debug = false
 
