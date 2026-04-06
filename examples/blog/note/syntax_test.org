@@ -1,6 +1,6 @@
 :PROPERTIES:
 :CREATED:       2026-04-04T11:35:44+0800
-:LAST_MODIFIED: 2026-04-05T22:38:47+0800
+:LAST_MODIFIED: 2026-04-06T21:35:25+0800
 :END:
 #+TITLE: Org-mode Syntax Test
 #+AUTHOR: cnglen
@@ -126,6 +126,9 @@ This is a section, too.
 
 
 *** Greater Block 
+:PROPERTIES:
+:CUSTOM_ID: greater_block_heading
+:END:
 
 #+begin_center
 this is contents of a center block
@@ -157,6 +160,9 @@ The following drawer is NOT a property drawer, since property drawer are attache
 
 
 *** TODO Dynamic block
+:PROPERTIES:
+:CUSTOM_ID: dynamic_block_heading
+:END:
 :LOGBOOK:
 - State "TODO"       from              [2026-04-04 Sat 21:21]
 :END:
@@ -164,9 +170,9 @@ The following drawer is NOT a property drawer, since property drawer are attache
 *{{{color(red, NOT supported)}}}* now, since it depends on user emacs lisp function to auto update the contents.
 
 #+begin_quote
-Org supports _dynamic blocks_ in Org documents.  They are inserted with
+Org supports _dynamic blocks_ in Org documents. They are inserted with
 begin and end markers like any other code block, but the contents are
-updated automatically by a user function.
+updated *automatically* by a *user function*.
 #+end_quote
 
 
@@ -401,18 +407,96 @@ table cell's CONTENT can contain:
   
 ** Lesser elements
 
-*** horizontal-rule
+*** Blocks
+
+There are three kinds of blocks:
+- [[#dynamic_block_heading][dynamic block]]
+- [[#greater_block_heading][greater block]]
+  - center
+  - quote
+  - any other value is a special block
+- block (current section)
+  - comment
+  - example
+  - verse
+  - export
+  - src
+
+**** Comment Block    
+#+begin_quote
+Regions surrounded by ‘#+BEGIN_COMMENT’ ... ‘#+END_COMMENT’ are not exported.
+#+end_quote
+
+#+begin_comment
+comment content
+#+end_comment
+
+**** Exampel Block
+
+In example block, the exact formatting are preserved, including spaces.
+#+begin_example
+ example  content    contating       whitesaces       .
+#+end_example
+
+**** Verse Block
+#+begin_verse
+verse content
+#+end_verse
+
+**** Export block
+
+Export block, where the export backend exports any code between any code bewteen begin and end markers.
+
+    #+begin_export html
+      <span style="color:green;">hello org</span>
+    #+end_export
+
+**** source code block
+
+Source block of python:
+#+begin_src python
+  print("hello")
+
+  def foo(s: int) -> int:
+      s + 1
+#+end_src
+
+
+*** TODO Clock
+:LOGBOOK:
+- State "TODO"       from              [2026-04-06 Mon 20:12]
+:END:
+
+*{{{color(red, NOT supported)}}}* now
+
+*** TODO Diary Sexp
+:LOGBOOK:
+- State "TODO"       from              [2026-04-06 Mon 20:12]
+:END:
+
+*{{{color(red, NOT supported)}}}* now
+
+*** Planning
+
+
+*** Comments
+
+
+*** Fixed Witdh Area
+
+
+*** Horizontal Rules
 
 -----
 
 -----
 
-horizontal must has at least 5 dashes: 
+Horizontal must has at least 5 dashes: 
 
 ----
 
 
-*** keyword
+*** Keywords
 
 #+key: value
 #+KEY: VALUE
@@ -420,7 +504,7 @@ horizontal must has at least 5 dashes:
 
 
 
-*** latex environment
+*** Latex Environments
 
 equation with number:
 
@@ -438,36 +522,9 @@ x = \sum_{i=1}^{n} i
 
 
 
-*** Lesser Block
+*** Node Properties
 
-#+begin_comment
-comment content
-#+end_comment
-
-#+begin_example
-example content
-#+end_example
-
-#+begin_verse
-verse content
-#+end_verse
-
-#+caption: export block test
-    #+begin_export html
-      <span style="color:green;">hello org</span>
-    #+end_export
-
-
-#+begin_src python
-  print("hello")
-
-  def foo(s: int) -> int:
-      s+1
-#+end_src
-
-
-
-*** paragraph
+*** Paragraphs
 
 Paragraphs are the default element, which means that any unrecognized
 context is a paragraph.
@@ -490,6 +547,9 @@ block:
 
 comment:
 # this is a comment
+
+
+*** Table Rows
 
 
 ** test

@@ -693,8 +693,20 @@ impl Renderer {
     }
 
     pub(crate) fn render_object(&self, object: &Object) -> String {
+        self.render_object_inner(object, true)
+    }
+
+    // don't escape if in export_block
+    pub(crate) fn render_object_without_escaple(&self, object: &Object) -> String {
+        self.render_object_inner(object, false)
+    }
+
+    pub(crate) fn render_object_inner(&self, object: &Object, escape: bool) -> String {
         match object {
-            Object::Text(text) => html_escape::encode_text(text).to_string(),
+            Object::Text(text) => match escape {
+                true => html_escape::encode_text(text).to_string(),
+                false => text.to_string(),
+            },
 
             Object::Bold(objects) => {
                 let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
@@ -953,14 +965,14 @@ impl Renderer {
         }
     }
 
-    // FIXME: only supoort html now
+    // FIXME: only support html now
     fn render_export_block(&self, block: &ExportBlock) -> String {
         format!(
             r##"{}"##,
             block
                 .contents
                 .iter()
-                .map(|e| self.render_object(e))
+                .map(|e| self.render_object_without_escaple(e))
                 .collect::<String>()
         )
     }
@@ -1278,3 +1290,5 @@ fn escape_html(text: &str) -> String {
     // html_escape::encode_text(text).to_string()
     text.to_string()
 }
+
+// todo: test in render for each render function?
