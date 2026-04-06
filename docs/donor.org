@@ -1,0 +1,6 @@
+Thank you to all donors for your support of this project. The following list is in chronological order, regardless of ranking.
+
+#+begin_note
+After making a donation, please send an email to cnglen at gmai.com, or reach out via GitHub, WeChat groups, or other social platforms, to provide the donor name, message, and link (your blog, GitHub, personal website, company product, etc.) that you would like to be displayed. If possible, please also leave your GitHub username.
+#+end_note
+

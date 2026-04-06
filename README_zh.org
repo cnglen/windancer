@@ -1,0 +1,123 @@
+一个完全用[[https://rust-lang.org/][Rust]]构建的、用于​*解析*​和​*渲染*​[[http://orgmode.org/][org-mode]]的工具。
+
+[[file:docs/windancer_demo.gif]]
+
+静态站点的导出效果，参见[[https://www.bilibili.com/video/BV1KRSdBoE1c/][这个约50秒的视频]] (持续优化中)
+
+* 特性
+
+- 一个纯​/Rust/​实现的org-mode​*解析器*​，遵循[[https://orgmode.org/worg/org-syntax.html][Org 语法规范]]
+- 一个​*静态站点生成器*​，可以将一个包含org文件的目录转换为完整的HTML网站
+  - 通过[[https://github.com/cnglen/tinydis][tinydis]]提供可选的​*匿名讨论*​功能
+- 单个二进制文件：在Linux和Windows上易于安装和运行
+
+** 待办
+
+- [-] 更好的文档
+- [ ] 主题定制
+- [ ] 按关键词搜索
+- [ ] 用于知识库的org-roam支持
+
+* 使用方法
+
+** 快速开始
+
+请查阅详细的 [[#installation][针对你平台的安装说明]]。
+
+安装好​~windancer~​后，可以从输入目录生成静态站点。下面的示例使用[[https://github.com/cnglen/windancer/tree/main/examples/blog/note][examples/blog/note]]作为输入目录，其目录结构如下：
+
+#+begin_src plain
+#+begin_src plain
+examples/blog/                   <-- 根目录，包含输入目录以及可选的static/templates目录
+├── config.toml                  <-- 可选
+├── note                         <-- 输入目录，包含org文件及子目录
+│   ├── editor
+│   │   ├── emacs.org
+│   │   └── vi.org
+│   ├── life
+│   │   ├── life.org             <-- 与父目录同名，将生成 index.html
+│   │   ├── music.org
+│   │   ├── running.org
+│   │   └── todo.org
+│   └── note.org                 <-- 与父目录同名，将生成 index.html
+├── static                       <-- 可选
+│   └── robots.txt
+└── templates                    <-- 可选
+    └── site_footer.tera.html
+#+end_src
+
+导出这个静态站点：
+
+#+begin_src bash
+windancer -i examples/blog/note/ -o /tmp/blog.site
+#+end_src
+
+将会生成如下输出目录，可以用任意HTTP服务器托管（例如 ​=python -m http.server -d /tmp/blog.site=​）：
+
+#+begin_src plain
+/tmp/blog.site                   <-- 根目录，与输入目录的结构匹配
+├── default.css
+├── editor
+│   ├── emacs.html
+│   └── vi.html
+├── encre.css
+├── index.htlm                   <-- 由 note.org 生成
+├── life
+│   ├── index.html               <-- 由 life.org 生成
+│   ├── music.html
+│   ├── running.html
+│   └── todo.html
+└── robots.txt
+#+end_src
+
+** 安装
+:PROPERTIES:
+:CUSTOM_ID: installation
+:END:
+
+预编译的Linux和Windows二进制文件可在[[https://github.com/cnglen/windancer/releases][GitHub 发布页面]]获取。
+
+*** 从源码构建
+
+要从源码构建，需要先安装[[https://rust-lang.org/][Rust 和 Cargo]]。然后在终端中运行以下命令，将​~windancer~​二进制安装到​=~/.cargo/bin/=​​。这个过程大约需要5分钟。
+
+#+begin_src bash
+  cargo install --locked --git https://github.com/cnglen/windancer
+  windancer --version
+#+end_src
+
+** 配置
+
+参见 [[file:examples/blog/note/][note]] 和 [[https://github.com/cnglen/windancer/blob/main/config/default.toml][default.toml]]
+
+* 常见问题
+
+** 问：是否支持所有 org-mode 语法？
+
+参见 [[file:docs/status.org][status]], 持续开发优化中
+
+** 问：为什么用Rust实现org-mode解析？
+
+Emacs自带org-mode支持，包括它自己的解析器。但定制或导出到其他工具可能比较麻烦。由于我不熟悉EmacsLisp，所以选择用Rust来实现解析逻辑。
+
+Markdown的SSG工具很多，但原生支持org-mode的很少。常见的做法是把org-mode转换成Markdown，但这样往往输出不完美。
+
+这就是windancer诞生的原因——直接解析org-mode并将其渲染为HTML站点。未来可能会添加PDF、书籍、幻灯片导出功能。
+
+
+* 贡献
+
+构建一个org-mode解析器和渲染器是一个漫长的过程，因为每个语法结构都需要实现和反复测试。我已经投入了半年多的时间，并且仍在继续开发——常常工作到深夜……
+
+如果你觉得windancer对你的开发工作有帮助，可以捐赠以支持我的开发工作。任何金额都欢迎，哪怕只是一瓶可乐。
+
+你可以通过微信支付或支付宝支持我的工作。捐赠后，你的昵称和留言将显示在 [[file:docs/donor.org][捐赠者列表]] 中。大额捐赠金额者，可提供定制开发功能。
+
+| 微信支付                  | 支付宝                     |
+|---------------------------+----------------------------|
+| [[file:docs/image/wepay.png]] | [[file:docs/image/alipay.png]] |
+
+
+另一种帮助方式是报告错误，或在 [[https://github.com/cnglen/windancer/issues][issues]] 中提出新功能建议。交流:
+- 微信群: 添加cnglen为好友，备注​*org*​
+- [[https://github.com/cnglen/windancer/discussions][Discussion]]

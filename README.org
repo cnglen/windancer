@@ -1,4 +1,4 @@
-A toolkit for *parsing* and *rendering* [[http://orgmode.org/][orgmode]] built entirely in [[https://rust-lang.org/][Rust]].
+A toolkit for *parsing* and *rendering* [[http://orgmode.org/][orgmode]] built entirely in [[https://rust-lang.org/][Rust]]. | [[file:README_zh.org][中文]]
 
 [[file:docs/windancer_demo.gif]]
 
@@ -115,6 +115,11 @@ That’s why windancer is created—to parse org-mode directly and render it as 
 
 * Contribute
 
-You can support my work on [[https://ko-fi.com/cnglen][ko-fi]].
+Building an org-mode parser and renderer is a lengthy process, as every syntactic construct needs to be implemented and tested. I've already devoted more than half a year to it, and I'm still at it—often working late into the night ...
 
-Another way to help is to report bugs, or suggest new features in [[https://github.com/cnglen/windancer/issues][windandcer issues]]
+If you find windancer helpful in your development work, you can donate to support my development work. Any amount is welcome, even if it's just a cola.
+
+You can support my work on [[https://ko-fi.com/cnglen][ko-fi]]. After donating, your nickname and message will be displayed on the [[file:docs/donor.org][donor list]].
+
+Another way to help is to report bugs, or suggest new features in [[https://github.com/cnglen/windancer/issues][issues]]
+
