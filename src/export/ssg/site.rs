@@ -427,11 +427,17 @@ impl SiteBuilder {
             .expect("must have parent directory")
             .join("static");
         let static_directory_to = &self.output_directory;
+
+        // write default.css
+        let default_css = include_str!("static/default.css");
+        std::fs::write(static_directory_to.join("default.css"), default_css)
+            .expect("write default.css failed");
+
         if static_directory_from.is_dir() {
             tracing::debug!(from=?static_directory_from.display(), to=?static_directory_to.display());
 
             let mut options = CopyOptions::new();
-            options.overwrite = false; // Overwrite existing files
+            options.overwrite = true; // Overwrite existing files
             options.copy_inside = false;
             options.content_only = true;
 
@@ -439,9 +445,6 @@ impl SiteBuilder {
                 .expect(format!("copy failed from {}", static_directory_from.display()).as_str());
             static_assets.push((static_directory_from, static_directory_to.to_path_buf()));
         }
-        let default_css = include_str!("static/default.css");
-        std::fs::write(static_directory_to.join("default.css"), default_css)
-            .expect("write default.css failed");
 
         // sass
 
