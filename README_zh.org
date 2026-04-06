@@ -1,4 +1,4 @@
-一个完全用[[https://rust-lang.org/][Rust]]构建的、用于​*解析*​和​*渲染*​[[http://orgmode.org/][org-mode]]的工具。
+一个完全用[[https://rust-lang.org/][Rust]]构建的、用于 ​*解析*​ 和 ​*渲染* ​[[http://orgmode.org/][org-mode]]的工具。
 
 [[file:docs/windancer_demo.gif]]
 
@@ -6,8 +6,8 @@
 
 * 特性
 
-- 一个纯​/Rust/​实现的org-mode​*解析器*​，遵循[[https://orgmode.org/worg/org-syntax.html][Org 语法规范]]
-- 一个​*静态站点生成器*​，可以将一个包含org文件的目录转换为完整的HTML网站
+- 一个纯 ​/Rust/​ 实现的org-mode ​*解析器*​ ，遵循[[https://orgmode.org/worg/org-syntax.html][Org 语法规范]]
+- 一个 ​*静态站点生成器*​ ，可以将一个包含org文件的目录转换为完整的HTML网站
   - 通过[[https://github.com/cnglen/tinydis][tinydis]]提供可选的​*匿名讨论*​功能
 - 单个二进制文件：在Linux和Windows上易于安装和运行
 
@@ -24,7 +24,7 @@
 
 请查阅详细的 [[#installation][针对你平台的安装说明]]。
 
-安装好​~windancer~​后，可以从输入目录生成静态站点。下面的示例使用[[https://github.com/cnglen/windancer/tree/main/examples/blog/note][examples/blog/note]]作为输入目录，其目录结构如下：
+安装好 ​~windancer~​ 后，可以从输入目录生成静态站点。下面的示例使用[[https://github.com/cnglen/windancer/tree/main/examples/blog/note][examples/blog/note]]作为输入目录，其目录结构如下：
 
 #+begin_src plain
 #+begin_src plain
@@ -52,7 +52,7 @@ examples/blog/                   <-- 根目录，包含输入目录以及可选�
 windancer -i examples/blog/note/ -o /tmp/blog.site
 #+end_src
 
-将会生成如下输出目录，可以用任意HTTP服务器托管（例如 ​=python -m http.server -d /tmp/blog.site=​）：
+将会生成如下输出目录，可以用任意HTTP服务器托管（例如 ​=python -m http.server -d /tmp/blog.site=​ ）：
 
 #+begin_src plain
 /tmp/blog.site                   <-- 根目录，与输入目录的结构匹配
@@ -79,7 +79,7 @@ windancer -i examples/blog/note/ -o /tmp/blog.site
 
 *** 从源码构建
 
-要从源码构建，需要先安装[[https://rust-lang.org/][Rust 和 Cargo]]。然后在终端中运行以下命令，将​~windancer~​二进制安装到​=~/.cargo/bin/=​​。这个过程大约需要5分钟。
+要从源码构建，需要先安装[[https://rust-lang.org/][Rust 和 Cargo]]。然后在终端中运行以下命令，将 ​~windancer~​ 二进制安装到 ​=~/.cargo/bin/= ​​。这个过程大约需要5分钟。
 
 #+begin_src bash
   cargo install --locked --git https://github.com/cnglen/windancer
