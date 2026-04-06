@@ -27,22 +27,21 @@ See [[https://www.youtube.com/watch?v=ycmglF9i1R8][the ~50 seconds video]] for S
 
 Please see the detailed [[#installation][installation instructions for your platform]].
 
-With ​~windancer~​ installed, a static site can be generate from the input directory. The following example use [[https://github.com/cnglen/windancer/tree/main/examples/blog/note][examples/blog/note]] as input directory, which has the following stru
-cture:
+With ~windancer~ installed, a static site can be generated from the input directory. The following example use [[https://github.com/cnglen/windancer/tree/main/examples/blog/note][examples/blog/note]] as input directory, which has the following structure:
 
 #+begin_src plain
-examples/blog/                   <-- root directory, which contains INPUT DIRECTORY and optional static/templates directory
+examples/blog/                   <-- root directory, which contains the INPUT DIRECTORY and an optional static/templates directory
 ├── config.toml
 ├── note                         <-- INPUT DIRECTORY which contains org-mode files
 │   ├── editor
 │   │   ├── emacs.org
 │   │   └── vi.org
 │   ├── life
-│   │   ├── life.org             <-- the same name to parent directory, will generate index.html
+│   │   ├── life.org             <-- the same name as the parent directory, will generate index.html
 │   │   ├── music.org
 │   │   ├── running.org
 │   │   └── todo.org
-│   └── note.org                 <-- the same name to parent directory, will generate index.html
+│   └── note.org                 <-- the same name as the parent directory, will generate index.html
 ├── static                       <-- optional 
 │   └── robots.txt
 └── templates                    <-- optional
@@ -55,10 +54,10 @@ Let's build the static site:
 windancer -i examples/blog/note/ -o /tmp/blog.site  
 #+end_src
 
-The following output directory will be generated, which can be served by one http server, e.g, ​=python -m http.server -d /tmp/blog.site=​
+The following output directory will be generated, which can be served by one HTTP server, e.g, =python -m http.server -d /tmp/blog.site=
 
 #+begin_src plain
-/tmp/blog.site                   <-- root directory, which has matched structure of INPUT directory
+/tmp/blog.site                   <-- root directory, which has the matched structure of the INPUT directory
 ├── default.css
 ├── editor
 │   ├── emacs.html
@@ -85,7 +84,7 @@ Pre-built binaries for Linux and Windows are provided on the [[https://github.co
 
 To build from source, [[https://rust-lang.org/][Rust and Cargo]] need to be installed. Then, from
 a terminal, you can run the following commands to install the ~windancer~
-binary into ​=~/.cargo/bin/=​. It will take about 5 minutes.
+binary into =~/.cargo/bin/=. It will take about 5 minutes.
 
 #+begin_src bash
   cargo install --locked --git https://github.com/cnglen/windancer
@@ -108,7 +107,7 @@ See [[file:docs/status.org][status]]
 
 Emacs comes with built-in org-mode support, including its own parser. However, customization or exporting to other tools can be cumbersome. Since I’m not familiar with Emacs Lisp, I chose to implement the parsing logic in Rust instead.
 
-There are plenty of SSG tools for Markdown, but native org-mode support is rare. The usual approach is to convert org-mode to Markdown, but that often results in imperfect output.
+There are plenty of SSG tools for Markdown, but native org-mode support is rare. The usual approach is to convert org-mode to Markdown, but this often yields imperfect output.
 
 That’s why windancer is created—to parse org-mode directly and render it as an HTML site. Pdf book/slide export may be added in the future.
 
