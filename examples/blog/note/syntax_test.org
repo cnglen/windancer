@@ -1,6 +1,6 @@
 :PROPERTIES:
 :CREATED:       2026-04-04T11:35:44+0800
-:LAST_MODIFIED: 2026-04-06T21:35:25+0800
+:LAST_MODIFIED: 2026-04-07T12:49:18+0800
 :END:
 #+TITLE: Org-mode Syntax Test
 #+AUTHOR: cnglen
@@ -151,7 +151,7 @@ The following drawer named d1's content will not appear in exported html.
  :end:
 
 
-The following drawer is NOT a property drawer, since property drawer are attached to a *heading* or *inlinetask*, or in zeroth section. And its content will not appear in exported html.
+The following drawer is NOT a property drawer, since property drawer are attached to a *heading* or *inlinetask*, or in zeroth section. And its content will not appear in exported html, too.
 
 :properties:
 :foo: bar
@@ -191,7 +191,7 @@ headline, or after two consecutive empty lines.  The footnote reference
 is simply the marker in square brackets, inside text.  Markers always
 start with ‘fn:’.
 
-From emacs manual [fn:emacs_manual]
+From emacs manual[fn:emacs_manual]
 #+end_quote
 
 
@@ -205,6 +205,10 @@ The other footnote[fn:footnote_defintion] defintions of current file is
 defined in [[#footnote-heading][the last heading]] named "Footnotes". One footnote defintion
 can be referenced multiple times.
 
+
+#+begin_note
+The definitons *inline* and *anonymous* footnote are exported with other kind of footnotes together(i.e, into the last part named "Footnotes" of html page)
+#+end_note
 
 *** TODO Inlinetasks
 :LOGBOOK:
@@ -271,7 +275,7 @@ Write syntax test document [1/3]
     - [X] footnote defintion
     - [ ] inline task
     - [X] items
-    - [ ] plain lists
+    - [X] plain lists
     - [ ] property drawer
     - [X] table
   - [X] lesser element [0/0]
@@ -291,7 +295,7 @@ Write a org parser and exporter
 
 - emacs :: An extensible, customizable, free/libre text editor — and more.
 - vi :: a screen-oriented text editor originally created by Bill Joy in 1976 for the Unix operating system
-
+  
 **** ordered list
 
 1) Open the fridge
@@ -327,35 +331,12 @@ Property drawers are a special type of drawer containing properties attached to 
 
 *** Table
 
-#+CAPTION[object in table]: table with objects
-#+attr_html: :border 2 :rules all :frame border
-| object kind           | object value                     | supported in table cell |
-|-----------------------+----------------------------------+-------------------------|
-| 01 text markup        | *bold*                           | y                       |
-| 02 entity             | \alpha                           | y                       |
-| 03 latex fragment     | $\sum_{i=1}^{n} i$               | y                       |
-| 04 superscript        | a_1                              | y                       |
-| 05 subscript          | c^{2}                            | y                       |
-| 06 plain text         | just text                        | y                       |
-| 07 footnote-reference | [fn:1]                           | y                       |
-| 08 line-break         | \\                               | n                       |
-| 09 timestamp          | <1234-07-31>                     | y                       |
-| 10 macro              | {{{title}}}                      | y                       |
-| 11 radio-target       | <<<radio target 011>>>           | y                       |
-| 12 target             | <<target 012>>                   | y                       |
-| 13 plain link         | https://foo.bar                  | y                       |
-| 14 angle link         | <mailto:foo@bar>                 | y                       |
-| 15 radio link         | radio target 011                 | y                       |
-| 16 regular link       | [[target 012]]                       | y                       |
-| 17 statistics-cookie  | NA                               | n                       |
-| 18 inline-babel-call  | NA                               | n                       |
-| 19 inline-src-block   | NA                               | n                       |
-| 20 citation           | [cite:@key]                      | y                       |
-| 21 export-snippet     | @@html:<b>@@bold text@@html:</b> | y                       |
-| 22 table-cell         | NA                               | n                       |
-| 23 citation-reference | NA                               | n                       |
+{{{color(red, FIXME)}}}: [0/3]
+- [ ] align method are not supported yet
+- [ ] the second table row should not be exported to html
+- [ ] table with multiple formulas, use which formula?
 
-#+CAPTION: table
+#+CAPTION: Table with coluns aligned differently
 | Name       | Phone | Age | as  |
 | /          | <r10> | <l> | <c> |
 |------------+-------+-----+-----|
@@ -371,7 +352,7 @@ Property drawers are a special type of drawer containing properties attached to 
 | 3 |   9 |  27 |  81 |  1.7321 |     1.3161 |
 #+TBLFM: $2=$1^2::$3=$1^3::$4=$1^4::$5=sqrt($1)::$6=sqrt(sqrt(($1)))
 
-#+CAPTION: table with formulas
+#+CAPTION: table with multiple formulas
 |   | x |    z |
 |---+---+------|
 | ! | x |   z1 |
@@ -381,9 +362,7 @@ Property drawers are a special type of drawer containing properties attached to 
 #+tblfM: $3=$x*300
 #+TBLFM: $3=$x*1
 
-table cell with objects:
-
-table cell's CONTENT can contain:
+table cell's CONTENT can contain, see [[#objects_overview_heading][objects oveview]].
 - minimal set of objects:
   - _plain text_
   - _text markup_
@@ -398,12 +377,6 @@ table cell's CONTENT can contain:
 - radio targets
 - targets
 - timestamps
-
-
-
-  
-
-
   
 ** Lesser elements
 
@@ -602,9 +575,41 @@ B test:
 
 
 * TODO Objects
+:PROPERTIES:
+:CUSTOM_ID: objects_overview_heading
+:END:
 :LOGBOOK:
 - State "TODO"       from              [2026-04-04 Sat 18:03]
 :END:
+
+#+CAPTION[object in table]: table with objects
+#+attr_html: :border 2 :rules all :frame border
+| object kind           | object value                     | supported in table cell |
+|-----------------------+----------------------------------+-------------------------|
+| 01 text markup        | *bold*                           | y                       |
+| 02 entity             | \alpha                           | y                       |
+| 03 latex fragment     | $\sum_{i=1}^{n} i$               | y                       |
+| 04 superscript        | a_1                              | y                       |
+| 05 subscript          | c^{2}                            | y                       |
+| 06 plain text         | just text                        | y                       |
+| 07 footnote-reference | [fn:1]                           | y                       |
+| 08 line-break         | \\                               | n                       |
+| 09 timestamp          | <1234-07-31>                     | y                       |
+| 10 macro              | {{{title}}}                      | y                       |
+| 11 radio-target       | <<<radio target 011>>>           | y                       |
+| 12 target             | <<target 012>>                   | y                       |
+| 13 plain link         | https://foo.bar                  | y                       |
+| 14 angle link         | <mailto:foo@bar>                 | y                       |
+| 15 radio link         | radio target 011                 | y                       |
+| 16 regular link       | [[target 012]]                       | y                       |
+| 17 statistics-cookie  | NA                               | n                       |
+| 18 inline-babel-call  | NA                               | n                       |
+| 19 inline-src-block   | NA                               | n                       |
+| 20 citation           | [cite:@key]                      | y                       |
+| 21 export-snippet     | @@html:<b>@@bold text@@html:</b> | y                       |
+| 22 table-cell         | NA                               | n                       |
+| 23 citation-reference | NA                               | n                       |
+
 
 *{{{color(red, NOTE)}}}*: this part is not stable yet.
 
