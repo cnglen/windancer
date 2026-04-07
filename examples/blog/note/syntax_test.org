@@ -1,7 +1,6 @@
 :PROPERTIES:
 :CREATED:       2026-04-04T11:35:44+0800
-:LAST_MODIFIED: 2026-04-07T12:49:18+0800
-:END:
+:LAST_MODIFIED: 2026-04-07T18:59:07+0800
 #+TITLE: Org-mode Syntax Test
 #+AUTHOR: cnglen
 #+AUTHOR: contributors
@@ -47,8 +46,11 @@ You can:
 #+end_note
 
 
-* TODO Elements
+* DONE Elements
+CLOSED: [2026-04-07 Tue 18:58]
 :LOGBOOK:
+- State "DONE"       from "TODO"       [2026-04-07 Tue 18:58] \\
+  all element is documented. Nome some elements are not supported now.
 - State "TODO"       from              [2026-04-04 Sat 18:02]
 :END:
 
@@ -262,6 +264,28 @@ Test 4:
 3) third item
 
 
+Test 5:
+- Item 1
+
+- Item 2
+  :drawer:
+  inside item 2
+  :end:
+
+
+Test 6:
+- a
+
+- b
+
+
+- c
+  - c
+    #+begin_src python
+      print("xx")
+    #+end_src
+
+
 **** unodered list
 
 Write syntax test document [1/3]
@@ -322,6 +346,7 @@ c. Den Kühlschrank schließen.
 :PROPERTIES:
 :foo:      bar
 :key:      value
+:CUSTOM_ID: property_drawer_heading
 :END:
 
 #+begin_quote
@@ -330,6 +355,10 @@ Property drawers are a special type of drawer containing properties attached to 
 
 
 *** Table
+:PROPERTIES:
+:custom_id: table_heading_line
+:END:
+
 
 {{{color(red, FIXME)}}}: [0/3]
 - [ ] align method are not supported yet
@@ -442,6 +471,12 @@ Source block of python:
 
 *{{{color(red, NOT supported)}}}* now
 
+clock: [2024-10-12]
+
+CLOCK: [2019-03-25 Mon 10:49]--[2019-03-25 Mon 11:31] =>  0:42
+
+clock: => 12:30
+
 *** TODO Diary Sexp
 :LOGBOOK:
 - State "TODO"       from              [2026-04-06 Mon 20:12]
@@ -451,20 +486,48 @@ Source block of python:
 
 *** Planning
 
+*{{{color(red, NOT supported)}}}* now
+
+**** TODO watch "The Matrix"
+    SCHEDULED: <1999-03-31 Wed>
+**** TODO take over the world with Org mode
+    SCHEDULED: <2006-03-12 Sun> DEADLINE: <2034-03-22 Wed>
+
 
 *** Comments
 
+# Just a comment
+#
+# Over multiple lines
+
+# A “comment line” starts with a hash character (#) and either a whitespace character or the immediate end of the line.
+
+# Comments consist of one or more consecutive comment lines.
+
+  # Just a comment
+  #
+  # Over multiple lines
+
+#
+
+The following it NOT a comment line, since no spaces flollwing ​~#~​:
+#a
 
 *** Fixed Witdh Area
+
+: This is a
+: fixed width area
 
 
 *** Horizontal Rules
 
------
+Horizontal must has at least 5 dashes:
 
 -----
 
-Horizontal must has at least 5 dashes: 
+-----
+
+The follwoing is not a horizontal rule, since it only contains 4 dashes:
 
 ----
 
@@ -479,7 +542,7 @@ Horizontal must has at least 5 dashes:
 
 *** Latex Environments
 
-equation with number:
+Equation with number:
 
 \begin{equation}  
 \begin{split}
@@ -493,9 +556,20 @@ equation without number:
 x = \sum_{i=1}^{n} i
 \]
 
+Let $a=2$, \(b=1\), $c$ is sum of $a$ and $b$, d is diff of $a$ and \(b\), then 
+- $$c=a+b=3$$
+- \[d=a-b=1\]
+
+
+\begin{align*}
+2x - 5y &= 8 \\
+3x + 9y &= -12
+\end{align*}
 
 
 *** Node Properties
+
+Node properties can ONLY EXIST in [[#property_drawer_heading][property drawers]].
 
 *** Paragraphs
 
@@ -506,73 +580,10 @@ Empty lines and other elements end paragraphs.
 
 Paragraphs can contain the standard set of objects.
 
-Drawer:
-:d3:
-a
-:end:
-
-
-block:
-#+begin_SRC python
-  print("hello")
-#+end_src
-
-
-comment:
-# this is a comment
-
 
 *** Table Rows
 
-
-** test
-
-A test:
-- Item 1
-
-- Item 2
-  :drawer:
-  inside item 2
-  :end:
-
-
-B test:
-- a
-
-- b
-
-
-- c
-  - c
-    #+begin_src python
-      print("xx")
-    #+end_src
-
-
-** fixed width
-: This is a  
-:
-: fixed width area
-
-
-** comment
-
-# A “comment line” starts with a hash character (#) and either a whitespace character or the immediate end of the line.
-
-# Comments consist of one or more consecutive comment lines.
-
-  # Just a comment
-  #
-  # Over multiple lines
-
-#
-
-  
-#a
-
-
-
-
+Table rows can ONLY EXIST in [[#table_heading_line][tables]] with Org type.
 
 * TODO Objects
 :PROPERTIES:
