@@ -6,7 +6,7 @@ use bincode;
 use serde::{Deserialize, Serialize};
 
 use crate::compiler::ast_builder::ExtractedLink;
-use crate::compiler::ast_builder::object::Object;
+use crate::compiler::ast_builder::object::{Object, TableCellAlignment};
 use crate::compiler::org_roam::RoamNode;
 
 pub(crate) trait Id {
@@ -215,23 +215,38 @@ pub struct Planning {
     pub timestamp: Object,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ColumnFormat {
+    pub alignment: TableCellAlignment,
+    pub max_width: Option<u8>,
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Table {
-    pub name: Option<String>, // 表格名称 (#+NAME:)
-    pub caption: Vec<Object>, // 表格标题 (#+CAPTION:)
-    // pub attributes: TableAttributes,    // 表格属性
-    pub header: Vec<TableRow>,       // 表头行（>=0）
-    pub separator: Option<TableRow>, // 分隔线行（可选）
-    pub rows: Vec<TableRow>,         // 数据行
-    pub formulas: Vec<TableFormula>, // 表格公式
+    pub name: Option<String>,                // 表格名称 (#+NAME:)
+    pub caption: Vec<Object>,                // 表格标题 (#+CAPTION:)
+    pub column_group_boundaries: Vec<usize>, // vec![2, 5] -> [0, 2], [3, 5]
+    pub column_formats: Vec<ColumnFormat>,   // <r10>
+    pub header: Vec<TableRow>,               // 表头行（>=0）
+    pub separator: Option<TableRow>,         // 分隔线行（可选）
+    pub rows: Vec<TableRow>,                 // 数据行
+    pub formulas: Vec<TableFormula>,         // 表格公式
+    pub meta_rows: Vec<TableRow>,            // rows with meta data
 }
 
 impl fmt::Debug for Table {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "caption={:?}\nname={:?}\nheader={:?}\nrows={:?}\nformulas={:?}",
-            self.caption, self.name, self.header, self.rows, self.formulas
+            "caption={:?}\nname={:?}\nheader={:#?}\nmeta_rows={:#?}\nrows={:#?}\nformulas={:?}\ncolumn_formats={:#?}\ncolumn_group_boundaries={:?}\n",
+            self.caption,
+            self.name,
+            self.header,
+            self.meta_rows,
+            self.rows,
+            self.formulas,
+            self.column_formats,
+            self.column_group_boundaries,
         )
     }
 }

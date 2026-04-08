@@ -1,6 +1,6 @@
 :PROPERTIES:
 :CREATED:       2026-04-04T11:35:44+0800
-:LAST_MODIFIED: 2026-04-07T18:59:07+0800
+:LAST_MODIFIED: 2026-04-08T16:19:47+0800
 #+TITLE: Org-mode Syntax Test
 #+AUTHOR: cnglen
 #+AUTHOR: contributors
@@ -365,12 +365,13 @@ Property drawers are a special type of drawer containing properties attached to 
 - [ ] the second table row should not be exported to html
 - [ ] table with multiple formulas, use which formula?
 
-#+CAPTION: Table with coluns aligned differently
-| Name       | Phone | Age | as  |
-| /          | <r10> | <l> | <c> |
-|------------+-------+-----+-----|
-| Peter Jack |   123 | 2   |  4  |
-| Anna       | 54321 | 125 | 999 |
+#+CAPTION: Table with columns aligned differently
+| Name       |       Phone | Age  |   as   |
+| /          |       <r10> | <l>  |  <c>   |
+|------------+-------------+------+--------|
+| Peter Jack |         123 | 2    |   4    |
+| Anna       |       54321 | 125  |  999   |
+|            | right align | left | center |
 
 #+CAPTION: table with formula
 | N | N^2 | N^3 | N^4 | sqrt(n) | sqrt[4](N) |

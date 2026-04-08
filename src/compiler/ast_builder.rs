@@ -22,14 +22,16 @@ use std::env;
 use std::path::Path;
 
 use element::{
-    AffiliatedKeyword, CenterBlock, Comment, CommentBlock, Drawer, Element, ExampleBlock,
-    ExportBlock, FixedWidth, FootnoteDefinition, HeadingSubtree, HorizontalRule, Item, Keyword,
-    LatexEnvironment, List, ListType, NodeProperty, OrgFile, Paragraph, Planning, PropertyDrawer,
-    QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableFormula, TableRow, TableRowType,
-    VerseBlock, ZerothSectionPreamble, get_properties,
+    AffiliatedKeyword, CenterBlock, ColumnFormat, Comment, CommentBlock, Drawer, Element,
+    ExampleBlock, ExportBlock, FixedWidth, FootnoteDefinition, HeadingSubtree, HorizontalRule,
+    Item, Keyword, LatexEnvironment, List, ListType, NodeProperty, OrgFile, Paragraph, Planning,
+    PropertyDrawer, QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableFormula, TableRow,
+    TableRowType, VerseBlock, ZerothSectionPreamble, get_properties,
 };
 use error::AstError;
-use object::{CitationReference, GeneralLink, Object, TableCell, TableCellType};
+use object::{
+    CitationReference, GeneralLink, Object, TableCell, TableCellAlignment, TableCellType,
+};
 use serde::{Deserialize, Serialize};
 
 use super::parser::syntax::{OrgSyntaxKind, SyntaxElement, SyntaxNode, SyntaxToken};
@@ -879,9 +881,9 @@ impl Converter {
         let mut caption = vec![];
         let separator = None;
         let mut rows = vec![];
+        let mut meta_rows = vec![];
         let mut header = vec![];
         let mut formulas = vec![];
-
         let idx_rule_row = node
             .children()
             .enumerate()
@@ -891,10 +893,51 @@ impl Converter {
         for (i, row) in node.children().enumerate() {
             match row.kind() {
                 OrgSyntaxKind::TableStandardRow => {
-                    if i < idx_rule_row {
-                        header.push(self.convert_table_row(&row, TableRowType::Header)?);
-                    } else {
-                        rows.push(self.convert_table_row(&row, TableRowType::Data)?);
+                    let first_cell = row
+                        .first_child_by_kind(&|e| e == OrgSyntaxKind::TableCell)
+                        .expect("first cell");
+
+                    let contents: Vec<_> = first_cell
+                        .children_with_tokens()
+                        .map(|e| self.convert_object(&e))
+                        .filter(|e| e.is_ok())
+                        .map(|e| e.unwrap())
+                        .filter(|e| e.is_some())
+                        .map(|e| e.unwrap())
+                        .collect();
+
+                    let text_binding = contents
+                        .iter()
+                        .map(|o| Renderer::default().render_object_without_escaple(o))
+                        .collect::<Vec<_>>()
+                        .join("");
+                    let first_cell_text = text_binding.trim();
+
+                    // /	列组定义行	❌ 不导出
+                    // !	定义列名	❌ 不导出
+                    // #	参与自动重算（数据行）	        ✅ 导出（但作为数据）
+                    // *	仅参与全局重算（数据行）	✅ 导出（但作为数据）
+                    // ^	定义上方字段名	❌ 不导出
+                    // _	定义下方字段名	❌ 不导出
+                    // $	定义表级参数	❌ 不导出
+                    match (i < idx_rule_row, first_cell_text) {
+                        (_, "/" | "!" | "^" | "_" | "$") => {
+                            meta_rows.push(self.convert_table_row(
+                                &row,
+                                TableRowType::Header,
+                                Some(first_cell_text),
+                            )?);
+                        }
+                        (true, _) => {
+                            header.push(self.convert_table_row(
+                                &row,
+                                TableRowType::Header,
+                                None,
+                            )?);
+                        }
+                        (false, _) => {
+                            rows.push(self.convert_table_row(&row, TableRowType::Data, None)?);
+                        }
                     }
                 }
                 OrgSyntaxKind::TableRuleRow => {
@@ -934,13 +977,64 @@ impl Converter {
                 _ => {}
             }
         }
+
+        let n_col = if !rows.is_empty() {
+            rows[0].cells.len()
+        } else if !header.is_empty() {
+            header[0].cells.len()
+        } else if !meta_rows.is_empty() {
+            meta_rows[0].cells.len()
+        } else {
+            panic!("table has NO data");
+        };
+        // todo: column groups
+        // todo: column alignment
+        let mut column_formats = vec![
+            ColumnFormat {
+                alignment: TableCellAlignment::Left,
+                max_width: None
+            };
+            n_col
+        ];
+        let column_group_boundaries = vec![];
+        for row in rows.iter().chain(meta_rows.iter().chain(header.iter())) {
+            for (j, cell) in row.cells.iter().enumerate() {
+                match cell {
+                    Object::TableCell(TableCell::AlignmentDirective {
+                        alignment,
+                        max_width,
+                        cell_type: _,
+                    }) => {
+                        column_formats[j] = ColumnFormat {
+                            alignment: alignment.clone(),
+                            max_width: *max_width,
+                        };
+                    }
+                    _ => {}
+                }
+            }
+        }
+        for row in rows.iter_mut().chain(header.iter_mut()) {
+            for (j, cell) in row.cells.iter_mut().enumerate() {
+                match cell {
+                    Object::TableCell(TableCell::Data { alignment, .. }) => {
+                        *alignment = Some(column_formats[j].alignment.clone());
+                    }
+                    _ => {}
+                }
+            }
+        }
+
         Ok(Table {
             name,
             caption,
             header,
             separator,
             rows,
+            meta_rows,
             formulas,
+            column_formats,
+            column_group_boundaries,
         })
     }
 
@@ -949,11 +1043,13 @@ impl Converter {
         &mut self,
         node: &SyntaxNode,
         row_type: TableRowType,
+        special_row_string: Option<&str>,
     ) -> Result<TableRow, AstError> {
         let cells = node
             .children()
             .filter(|e| e.kind() == OrgSyntaxKind::TableCell)
-            .map(|e| self.convert_table_cell(&e, row_type.clone()))
+            .enumerate()
+            .map(|(i, e)| self.convert_table_cell(&e, row_type.clone(), special_row_string, i))
             .filter(|e| e.is_ok())
             .map(|e| e.unwrap())
             .filter(|e| e.is_some())
@@ -984,8 +1080,20 @@ impl Converter {
         &mut self,
         node: &SyntaxNode,
         row_type: TableRowType,
+        special_row_string: Option<&str>,
+        icol: usize,
     ) -> Result<Option<Object>, AstError> {
-        let contents = node
+        // To render table_cell in render_object() easily without context row_type,
+        // table cell has a cell_type, which from row_type and redundancy
+        let cell_type = match row_type {
+            TableRowType::Data => TableCellType::Data,
+            TableRowType::Header => TableCellType::Header,
+            _ => TableCellType::Data,
+        };
+        // FIXME: fixed left
+        let alignment = Some(TableCellAlignment::Left);
+
+        let contents: Vec<_> = node
             .children_with_tokens()
             .map(|e| self.convert_object(&e))
             .filter(|e| e.is_ok())
@@ -994,16 +1102,178 @@ impl Converter {
             .map(|e| e.unwrap())
             .collect();
 
-        let cell_type = match row_type {
-            TableRowType::Data => TableCellType::Data,
-            TableRowType::Header => TableCellType::Header,
-            _ => TableCellType::Data,
+        let text_binding = contents
+            .iter()
+            .map(|o| Renderer::default().render_object_without_escaple(o))
+            .collect::<Vec<_>>()
+            .join("");
+        let text = text_binding.trim();
+
+        let cell = match special_row_string {
+            Some(_t) => match text {
+                "/" | "!" | "#" if icol == 0 => {
+                    Object::TableCell(TableCell::SpecialFirstColumnMarker {
+                        marker: text.chars().nth(0).unwrap(),
+                        cell_type,
+                    })
+                }
+                "<" => Object::TableCell(TableCell::ColumnGroupDirective {
+                    marker: object::ColumnGroupMarker::Start,
+                    cell_type,
+                }),
+                ">" => Object::TableCell(TableCell::ColumnGroupDirective {
+                    marker: object::ColumnGroupMarker::End,
+                    cell_type,
+                }),
+
+                "<>" => Object::TableCell(TableCell::ColumnGroupDirective {
+                    marker: object::ColumnGroupMarker::Single,
+                    cell_type,
+                }),
+
+                "<l>" => Object::TableCell(TableCell::AlignmentDirective {
+                    alignment: TableCellAlignment::Left,
+                    max_width: None,
+                    cell_type,
+                }),
+
+                "<c>" => Object::TableCell(TableCell::AlignmentDirective {
+                    alignment: TableCellAlignment::Center,
+                    max_width: None,
+                    cell_type,
+                }),
+                "<r>" => Object::TableCell(TableCell::AlignmentDirective {
+                    alignment: TableCellAlignment::Right,
+                    max_width: None,
+                    cell_type,
+                }),
+
+                s if s.starts_with("<l")
+                    && s.ends_with('>')
+                    && s[2..s.len() - 1].chars().all(|c| c.is_numeric()) =>
+                {
+                    let max_width: u8 = s[2..s.len() - 1].parse().unwrap();
+                    Object::TableCell(TableCell::AlignmentDirective {
+                        alignment: TableCellAlignment::Left,
+                        max_width: Some(max_width),
+                        cell_type,
+                    })
+                }
+                s if s.starts_with("<r")
+                    && s.ends_with('>')
+                    && s[2..s.len() - 1].chars().all(|c| c.is_numeric()) =>
+                {
+                    let max_width: u8 = s[2..s.len() - 1].parse().unwrap();
+                    Object::TableCell(TableCell::AlignmentDirective {
+                        alignment: TableCellAlignment::Right,
+                        max_width: Some(max_width),
+                        cell_type,
+                    })
+                }
+                s if s.starts_with("<c")
+                    && s.ends_with('>')
+                    && s[2..s.len() - 1].chars().all(|c| c.is_numeric()) =>
+                {
+                    let max_width: u8 = s[2..s.len() - 1].parse().unwrap();
+                    Object::TableCell(TableCell::AlignmentDirective {
+                        alignment: TableCellAlignment::Center,
+                        max_width: Some(max_width),
+                        cell_type,
+                    })
+                }
+
+                _ => Object::TableCell(TableCell::Data {
+                    contents,
+                    alignment,
+                    cell_type,
+                }),
+            },
+
+            None => Object::TableCell(TableCell::Data {
+                contents,
+                alignment,
+                cell_type,
+            }),
         };
 
-        Ok(Some(Object::TableCell(TableCell {
-            contents,
-            cell_type,
-        })))
+        // let cell = match text {
+        //     // // fixme: only in column
+        //     // '/' | '!' | '#' as t=> {
+        //     //     Object::TableCell(TableCell::SpecialFirstColumnMarker { marker: t, cell_type })
+        //     // },
+        //     "<" => Object::TableCell(TableCell::ColumnGroupDirective {
+        //         marker: object::ColumnGroupMarker::Start,
+        //         cell_type,
+        //     }),
+        //     ">" => Object::TableCell(TableCell::ColumnGroupDirective {
+        //         marker: object::ColumnGroupMarker::End,
+        //         cell_type,
+        //     }),
+
+        //     "<>" => Object::TableCell(TableCell::ColumnGroupDirective {
+        //         marker: object::ColumnGroupMarker::Single,
+        //         cell_type,
+        //     }),
+
+        //     "<l>" => Object::TableCell(TableCell::AlignmentDirective {
+        //         alignment: TableCellAlignment::Left,
+        //         max_width: None,
+        //         cell_type,
+        //     }),
+
+        //     "<c>" => Object::TableCell(TableCell::AlignmentDirective {
+        //         alignment: TableCellAlignment::Center,
+        //         max_width: None,
+        //         cell_type,
+        //     }),
+        //     "<r>" => Object::TableCell(TableCell::AlignmentDirective {
+        //         alignment: TableCellAlignment::Right,
+        //         max_width: None,
+        //         cell_type,
+        //     }),
+
+        //     s if s.starts_with("<l")
+        //         && s.ends_with('>')
+        //         && s[2..s.len() - 1].chars().all(|c| c.is_numeric()) =>
+        //     {
+        //         let max_width: u8 = s[2..s.len() - 1].parse().unwrap();
+        //         Object::TableCell(TableCell::AlignmentDirective {
+        //             alignment: TableCellAlignment::Left,
+        //             max_width: Some(max_width),
+        //             cell_type,
+        //         })
+        //     }
+        //     s if s.starts_with("<r")
+        //         && s.ends_with('>')
+        //         && s[2..s.len() - 1].chars().all(|c| c.is_numeric()) =>
+        //     {
+        //         let max_width: u8 = s[2..s.len() - 1].parse().unwrap();
+        //         Object::TableCell(TableCell::AlignmentDirective {
+        //             alignment: TableCellAlignment::Right,
+        //             max_width: Some(max_width),
+        //             cell_type,
+        //         })
+        //     }
+        //     s if s.starts_with("<c")
+        //         && s.ends_with('>')
+        //         && s[2..s.len() - 1].chars().all(|c| c.is_numeric()) =>
+        //     {
+        //         let max_width: u8 = s[2..s.len() - 1].parse().unwrap();
+        //         Object::TableCell(TableCell::AlignmentDirective {
+        //             alignment: TableCellAlignment::Center,
+        //             max_width: Some(max_width),
+        //             cell_type,
+        //         })
+        //     }
+
+        //     _ => Object::TableCell(TableCell::Data {
+        //         contents,
+        //         alignment,
+        //         cell_type,
+        //     }),
+        // };
+
+        Ok(Some(cell))
     }
 
     // convert markup object

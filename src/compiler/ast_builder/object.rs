@@ -98,18 +98,55 @@ pub enum Object {
     Whitespace(String),
 }
 
+// #[derive(Debug, Clone, Serialize, Deserialize)]
+// pub struct TableCell {
+//     pub contents: Vec<Object>,
+//     pub alignment: Option<TableCellAlignment>,
+//     pub cell_type: TableCellType,
+// }
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TableCell {
-    pub contents: Vec<Object>,
-    // pub alignment: CellAlignment, // 对齐方式
-    // pub span: CellSpan,           // 跨行/跨列信息
-    pub cell_type: TableCellType,
+pub enum TableCell {
+    Data {
+        contents: Vec<Object>,
+        alignment: Option<TableCellAlignment>,
+        cell_type: TableCellType,
+    },
+    AlignmentDirective {
+        alignment: TableCellAlignment,
+        max_width: Option<u8>,
+        cell_type: TableCellType,
+    },
+
+    ColumnGroupDirective {
+        marker: ColumnGroupMarker,
+        cell_type: TableCellType,
+    },
+
+    SpecialFirstColumnMarker {
+        marker: char,
+        cell_type: TableCellType,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ColumnGroupMarker {
+    Start,  // <
+    End,    // >
+    Single, // <>
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TableCellType {
-    Header,
-    Data,
+    Header, // ~ <th> in html: a header cell that acts as a title for a column or row
+    Data,   // ~ <td> in html: a standard cell that contains data
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TableCellAlignment {
+    Left,
+    Right,
+    Center,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

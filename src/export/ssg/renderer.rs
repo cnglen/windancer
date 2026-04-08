@@ -46,7 +46,9 @@ use crate::compiler::ast_builder::element::{
     HeadingSubtree, Id, Item, Keyword, LatexEnvironment, List, ListType, OrgFile, Paragraph,
     QuoteBlock, Section, SpecialBlock, SrcBlock, Table, TableRow, TableRowType, VerseBlock,
 };
-use crate::compiler::ast_builder::object::{GeneralLink, Object, TableCellType};
+use crate::compiler::ast_builder::object::{
+    GeneralLink, Object, TableCell, TableCellAlignment, TableCellType,
+};
 use crate::constants::entity::ENTITYNAME_TO_HTML;
 use crate::export::ssg::site::{Page, PageId, Site};
 use crate::export::ssg::toc::{TableOfContents, TocNode};
@@ -792,18 +794,48 @@ impl Renderer {
                 }
             }
 
-            Object::TableCell(table_cell) => {
-                let contents = table_cell
-                    .contents
-                    .iter()
-                    .map(|e| self.render_object(e))
-                    .collect::<String>();
+            Object::TableCell(table_cell) => match table_cell {
+                TableCell::Data {
+                    contents,
+                    cell_type,
+                    alignment,
+                } => {
+                    let contents = contents
+                        .iter()
+                        .map(|e| self.render_object(e))
+                        .collect::<String>();
 
-                match table_cell.cell_type {
-                    TableCellType::Header => format!(r##" <th>{}</th> "##, contents),
-                    TableCellType::Data => format!(r##" <td>{}</td> "##, contents),
+                    match (cell_type, alignment) {
+                        (TableCellType::Header, None) => {
+                            format!(r##" <th class="org-left">{}</th> "##, contents)
+                        }
+                        (TableCellType::Header, Some(TableCellAlignment::Left)) => {
+                            format!(r##" <th class="org-left">{}</th> "##, contents)
+                        }
+                        (TableCellType::Header, Some(TableCellAlignment::Center)) => {
+                            format!(r##" <th class="org-center">{}</th> "##, contents)
+                        }
+                        (TableCellType::Header, Some(TableCellAlignment::Right)) => {
+                            format!(r##" <th class="org-right">{}</th> "##, contents)
+                        }
+                        (TableCellType::Data, None) => {
+                            format!(r##" <td class="org-left">{}</td> "##, contents)
+                        }
+                        (TableCellType::Data, Some(TableCellAlignment::Left)) => {
+                            format!(r##" <td class="org-left">{}</td> "##, contents)
+                        }
+                        (TableCellType::Data, Some(TableCellAlignment::Center)) => {
+                            format!(r##" <td class="org-center">{}</td> "##, contents)
+                        }
+                        (TableCellType::Data, Some(TableCellAlignment::Right)) => {
+                            format!(r##" <td class="org-right">{}</td> "##, contents)
+                        }
+                    }
                 }
-            }
+                _ => {
+                    format!("")
+                }
+            },
 
             Object::Target(text) => {
                 format!(r##"<a id="{text}"></a>"##)
