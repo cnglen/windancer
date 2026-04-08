@@ -174,7 +174,7 @@ mod tests {
     Entity@3..9
       BackSlash@3..4 "\\"
       EntityName@4..9 "alpha"
-    Text@9..10 " "
+    Whitespace@9..10 " "
     LatexFragment@10..15
       Dollar@10..11 "$"
       Text@11..14 "a+b"

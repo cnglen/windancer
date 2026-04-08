@@ -884,6 +884,7 @@ impl Converter {
         let mut meta_rows = vec![];
         let mut header = vec![];
         let mut formulas = vec![];
+
         let idx_rule_row = node
             .children()
             .enumerate()
@@ -896,7 +897,6 @@ impl Converter {
                     let first_cell = row
                         .first_child_by_kind(&|e| e == OrgSyntaxKind::TableCell)
                         .expect("first cell");
-
                     let contents: Vec<_> = first_cell
                         .children_with_tokens()
                         .map(|e| self.convert_object(&e))
@@ -905,7 +905,6 @@ impl Converter {
                         .filter(|e| e.is_some())
                         .map(|e| e.unwrap())
                         .collect();
-
                     let text_binding = contents
                         .iter()
                         .map(|o| Renderer::default().render_object_without_escaple(o))
@@ -913,13 +912,13 @@ impl Converter {
                         .join("");
                     let first_cell_text = text_binding.trim();
 
-                    // /	列组定义行	❌ 不导出
-                    // !	定义列名	❌ 不导出
-                    // #	参与自动重算（数据行）	        ✅ 导出（但作为数据）
-                    // *	仅参与全局重算（数据行）	✅ 导出（但作为数据）
-                    // ^	定义上方字段名	❌ 不导出
-                    // _	定义下方字段名	❌ 不导出
-                    // $	定义表级参数	❌ 不导出
+                    // # fields in this row are automatically recalculated ✅
+                    // * fileds in this row are updated only in global recaluculation ✅
+                    // / define column group / narrowing <N> ❌
+                    // ! define column name ❌
+                    // ^ define names for fields above the row ❌
+                    // _ define names for fields below the row ❌
+                    // $ define parameters for formulas in this table ❌
                     match (i < idx_rule_row, first_cell_text) {
                         (_, "/" | "!" | "^" | "_" | "$") => {
                             meta_rows.push(self.convert_table_row(
@@ -941,7 +940,7 @@ impl Converter {
                     }
                 }
                 OrgSyntaxKind::TableRuleRow => {
-                    // rows.push(self.convert_table_row(&row, TableRowType::Rule)?);
+                    // nothing to do here, since header are identified by idx_rule_row
                 }
 
                 OrgSyntaxKind::TableFormula => {
@@ -1043,13 +1042,15 @@ impl Converter {
         &mut self,
         node: &SyntaxNode,
         row_type: TableRowType,
-        special_row_string: Option<&str>,
+        first_cell_text_special_string: Option<&str>,
     ) -> Result<TableRow, AstError> {
         let cells = node
             .children()
             .filter(|e| e.kind() == OrgSyntaxKind::TableCell)
             .enumerate()
-            .map(|(i, e)| self.convert_table_cell(&e, row_type.clone(), special_row_string, i))
+            .map(|(i, e)| {
+                self.convert_table_cell(&e, row_type.clone(), first_cell_text_special_string, i)
+            })
             .filter(|e| e.is_ok())
             .map(|e| e.unwrap())
             .filter(|e| e.is_some())
@@ -1076,11 +1077,13 @@ impl Converter {
 
     // object.table_cell
     // fixme
+    // Args
+    //   first_cell_text_cell_special_string: special first cell text of current row
     fn convert_table_cell(
         &mut self,
         node: &SyntaxNode,
         row_type: TableRowType,
-        special_row_string: Option<&str>,
+        first_cell_text_special_string: Option<&str>,
         icol: usize,
     ) -> Result<Option<Object>, AstError> {
         // To render table_cell in render_object() easily without context row_type,
@@ -1093,7 +1096,7 @@ impl Converter {
         // FIXME: fixed left
         let alignment = Some(TableCellAlignment::Left);
 
-        let contents: Vec<_> = node
+        let mut contents: Vec<_> = node
             .children_with_tokens()
             .map(|e| self.convert_object(&e))
             .filter(|e| e.is_ok())
@@ -1102,6 +1105,11 @@ impl Converter {
             .map(|e| e.unwrap())
             .collect();
 
+        contents.pop_if(|e| matches!(e, Object::Whitespace(_)));
+        if matches!(contents.first(), Some(Object::Whitespace(_))) {
+            contents.remove(0);
+        }
+
         let text_binding = contents
             .iter()
             .map(|o| Renderer::default().render_object_without_escaple(o))
@@ -1109,7 +1117,36 @@ impl Converter {
             .join("");
         let text = text_binding.trim();
 
-        let cell = match special_row_string {
+        /// Return Some only if `<[lrc][0-9]+>，other wise return None
+        fn parse_alignment_directive(s: &str) -> Option<(TableCellAlignment, Option<u8>)> {
+            if !s.starts_with('<') || !s.ends_with('>') {
+                return None;
+            }
+            let inner = &s[1..s.len() - 1];
+            if inner.is_empty() {
+                return None;
+            }
+
+            let (align_char, num_part) = inner.split_at(1);
+            let alignment = match align_char {
+                "l" => TableCellAlignment::Left,
+                "c" => TableCellAlignment::Center,
+                "r" => TableCellAlignment::Right,
+                _ => return None,
+            };
+
+            let max_width = if num_part.is_empty() {
+                None
+            } else if num_part.chars().all(|c| c.is_numeric()) {
+                num_part.parse().ok()
+            } else {
+                return None;
+            };
+
+            Some((alignment, max_width))
+        }
+
+        let cell = match first_cell_text_special_string {
             Some(_t) => match text {
                 "/" | "!" | "#" if icol == 0 => {
                     Object::TableCell(TableCell::SpecialFirstColumnMarker {
@@ -1131,147 +1168,40 @@ impl Converter {
                     cell_type,
                 }),
 
-                "<l>" => Object::TableCell(TableCell::AlignmentDirective {
-                    alignment: TableCellAlignment::Left,
-                    max_width: None,
-                    cell_type,
-                }),
-
-                "<c>" => Object::TableCell(TableCell::AlignmentDirective {
-                    alignment: TableCellAlignment::Center,
-                    max_width: None,
-                    cell_type,
-                }),
-                "<r>" => Object::TableCell(TableCell::AlignmentDirective {
-                    alignment: TableCellAlignment::Right,
-                    max_width: None,
-                    cell_type,
-                }),
-
-                s if s.starts_with("<l")
-                    && s.ends_with('>')
-                    && s[2..s.len() - 1].chars().all(|c| c.is_numeric()) =>
-                {
-                    let max_width: u8 = s[2..s.len() - 1].parse().unwrap();
-                    Object::TableCell(TableCell::AlignmentDirective {
-                        alignment: TableCellAlignment::Left,
-                        max_width: Some(max_width),
-                        cell_type,
-                    })
+                s => {
+                    // <l>, <c>, <r>, <l3>, <c4>, <r13>
+                    if let Some((alignment, max_width)) = parse_alignment_directive(s) {
+                        Object::TableCell(TableCell::AlignmentDirective {
+                            alignment,
+                            max_width,
+                            cell_type,
+                        })
+                    } else {
+                        Object::TableCell(TableCell::Data {
+                            contents,
+                            alignment,
+                            cell_type,
+                        })
+                    }
                 }
-                s if s.starts_with("<r")
-                    && s.ends_with('>')
-                    && s[2..s.len() - 1].chars().all(|c| c.is_numeric()) =>
-                {
-                    let max_width: u8 = s[2..s.len() - 1].parse().unwrap();
-                    Object::TableCell(TableCell::AlignmentDirective {
-                        alignment: TableCellAlignment::Right,
-                        max_width: Some(max_width),
-                        cell_type,
-                    })
-                }
-                s if s.starts_with("<c")
-                    && s.ends_with('>')
-                    && s[2..s.len() - 1].chars().all(|c| c.is_numeric()) =>
-                {
-                    let max_width: u8 = s[2..s.len() - 1].parse().unwrap();
-                    Object::TableCell(TableCell::AlignmentDirective {
-                        alignment: TableCellAlignment::Center,
-                        max_width: Some(max_width),
-                        cell_type,
-                    })
-                }
-
-                _ => Object::TableCell(TableCell::Data {
-                    contents,
-                    alignment,
-                    cell_type,
-                }),
             },
 
-            None => Object::TableCell(TableCell::Data {
-                contents,
-                alignment,
-                cell_type,
-            }),
+            None => {
+                if let Some((alignment, max_width)) = parse_alignment_directive(text) {
+                    Object::TableCell(TableCell::AlignmentDirective {
+                        alignment,
+                        max_width,
+                        cell_type,
+                    })
+                } else {
+                    Object::TableCell(TableCell::Data {
+                        contents,
+                        alignment,
+                        cell_type,
+                    })
+                }
+            }
         };
-
-        // let cell = match text {
-        //     // // fixme: only in column
-        //     // '/' | '!' | '#' as t=> {
-        //     //     Object::TableCell(TableCell::SpecialFirstColumnMarker { marker: t, cell_type })
-        //     // },
-        //     "<" => Object::TableCell(TableCell::ColumnGroupDirective {
-        //         marker: object::ColumnGroupMarker::Start,
-        //         cell_type,
-        //     }),
-        //     ">" => Object::TableCell(TableCell::ColumnGroupDirective {
-        //         marker: object::ColumnGroupMarker::End,
-        //         cell_type,
-        //     }),
-
-        //     "<>" => Object::TableCell(TableCell::ColumnGroupDirective {
-        //         marker: object::ColumnGroupMarker::Single,
-        //         cell_type,
-        //     }),
-
-        //     "<l>" => Object::TableCell(TableCell::AlignmentDirective {
-        //         alignment: TableCellAlignment::Left,
-        //         max_width: None,
-        //         cell_type,
-        //     }),
-
-        //     "<c>" => Object::TableCell(TableCell::AlignmentDirective {
-        //         alignment: TableCellAlignment::Center,
-        //         max_width: None,
-        //         cell_type,
-        //     }),
-        //     "<r>" => Object::TableCell(TableCell::AlignmentDirective {
-        //         alignment: TableCellAlignment::Right,
-        //         max_width: None,
-        //         cell_type,
-        //     }),
-
-        //     s if s.starts_with("<l")
-        //         && s.ends_with('>')
-        //         && s[2..s.len() - 1].chars().all(|c| c.is_numeric()) =>
-        //     {
-        //         let max_width: u8 = s[2..s.len() - 1].parse().unwrap();
-        //         Object::TableCell(TableCell::AlignmentDirective {
-        //             alignment: TableCellAlignment::Left,
-        //             max_width: Some(max_width),
-        //             cell_type,
-        //         })
-        //     }
-        //     s if s.starts_with("<r")
-        //         && s.ends_with('>')
-        //         && s[2..s.len() - 1].chars().all(|c| c.is_numeric()) =>
-        //     {
-        //         let max_width: u8 = s[2..s.len() - 1].parse().unwrap();
-        //         Object::TableCell(TableCell::AlignmentDirective {
-        //             alignment: TableCellAlignment::Right,
-        //             max_width: Some(max_width),
-        //             cell_type,
-        //         })
-        //     }
-        //     s if s.starts_with("<c")
-        //         && s.ends_with('>')
-        //         && s[2..s.len() - 1].chars().all(|c| c.is_numeric()) =>
-        //     {
-        //         let max_width: u8 = s[2..s.len() - 1].parse().unwrap();
-        //         Object::TableCell(TableCell::AlignmentDirective {
-        //             alignment: TableCellAlignment::Center,
-        //             max_width: Some(max_width),
-        //             cell_type,
-        //         })
-        //     }
-
-        //     _ => Object::TableCell(TableCell::Data {
-        //         contents,
-        //         alignment,
-        //         cell_type,
-        //     }),
-        // };
 
         Ok(Some(cell))
     }

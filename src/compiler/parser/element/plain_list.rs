@@ -572,7 +572,7 @@ mod tests {
             Paragraph@13..17
               Text@13..17 "two\n"
       Paragraph@17..21
-        Text@17..21 "    "
+        Whitespace@17..21 "    "
 "#
         );
     }

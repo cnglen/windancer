@@ -1195,7 +1195,7 @@ other objects (2):
             Whitespace@178..186 "        "
             Pipe@186..187 "|"
           TableCell@187..212
-            Text@187..188 " "
+            Whitespace@187..188 " "
             Bold@188..194
               Asterisk@188..189 "*"
               Text@189..193 "bold"
@@ -1214,7 +1214,7 @@ other objects (2):
             Whitespace@250..263 "             "
             Pipe@263..264 "|"
           TableCell@264..289
-            Text@264..265 " "
+            Whitespace@264..265 " "
             Entity@265..271
               BackSlash@265..266 "\\"
               EntityName@266..271 "alpha"
@@ -1232,7 +1232,7 @@ other objects (2):
             Whitespace@335..340 "     "
             Pipe@340..341 "|"
           TableCell@341..366
-            Text@341..342 " "
+            Whitespace@341..342 " "
             LatexFragment@342..360
               Dollar@342..343 "$"
               Text@343..359 "\\sum_{i=1}^{n} i"
@@ -1304,7 +1304,7 @@ other objects (2):
             Whitespace@647..648 " "
             Pipe@648..649 "|"
           TableCell@649..674
-            Text@649..650 " "
+            Whitespace@649..650 " "
             FootnoteReference@650..656
               LeftSquareBracket@650..651 "["
               Text@651..653 "fn"
@@ -1340,7 +1340,7 @@ other objects (2):
             Whitespace@792..802 "          "
             Pipe@802..803 "|"
           TableCell@803..828
-            Text@803..804 " "
+            Whitespace@803..804 " "
             Timestamp@804..816
               Text@804..816 "<1234-07-31>"
             Whitespace@816..827 "           "
@@ -1357,7 +1357,7 @@ other objects (2):
             Whitespace@865..879 "              "
             Pipe@879..880 "|"
           TableCell@880..905
-            Text@880..881 " "
+            Whitespace@880..881 " "
             Macro@881..892
               LeftCurlyBracket3@881..884 "{{{"
               MacroName@884..889 "title"
@@ -1376,7 +1376,7 @@ other objects (2):
             Whitespace@949..956 "       "
             Pipe@956..957 "|"
           TableCell@957..982
-            Text@957..958 " "
+            Whitespace@957..958 " "
             RadioTarget@958..980
               LeftAngleBracket3@958..961 "<<<"
               Text@961..977 "radio target 011"
@@ -1395,7 +1395,7 @@ other objects (2):
             Whitespace@1020..1033 "             "
             Pipe@1033..1034 "|"
           TableCell@1034..1059
-            Text@1034..1035 " "
+            Whitespace@1034..1035 " "
             Target@1035..1049
               LeftAngleBracket2@1035..1037 "<<"
               Text@1037..1047 "target 012"
@@ -1414,7 +1414,7 @@ other objects (2):
             Whitespace@1101..1110 "         "
             Pipe@1110..1111 "|"
           TableCell@1111..1136
-            Text@1111..1112 " "
+            Whitespace@1111..1112 " "
             PlainLink@1112..1127
               Text@1112..1117 "https"
               Colon@1117..1118 ":"
@@ -1433,7 +1433,7 @@ other objects (2):
             Whitespace@1178..1187 "         "
             Pipe@1187..1188 "|"
           TableCell@1188..1213
-            Text@1188..1189 " "
+            Whitespace@1188..1189 " "
             AngleLink@1189..1205
               LeftAngleBracket@1189..1190 "<"
               Text@1190..1196 "mailto"
@@ -1454,7 +1454,7 @@ other objects (2):
             Whitespace@1255..1264 "         "
             Pipe@1264..1265 "|"
           TableCell@1265..1290
-            Text@1265..1266 " "
+            Whitespace@1265..1266 " "
             RadioLink@1266..1282
               Text@1266..1282 "radio target 011"
             Whitespace@1282..1289 "       "
@@ -1471,7 +1471,7 @@ other objects (2):
             Whitespace@1334..1341 "       "
             Pipe@1341..1342 "|"
           TableCell@1342..1367
-            Text@1342..1343 " "
+            Whitespace@1342..1343 " "
             Link@1343..1357
               LeftSquareBracket@1343..1344 "["
               LinkPath@1344..1356

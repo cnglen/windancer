@@ -106,7 +106,7 @@ mod tests {
         let input = r##"
 src_python{print("hello");}"##;
         let expected_output = r##"Root@0..28
-  Text@0..1 "\n"
+  Whitespace@0..1 "\n"
   InlineSourceBlock@1..28
     Text@1..5 "src_"
     InlineSourceBlockLang@5..11 "python"

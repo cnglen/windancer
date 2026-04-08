@@ -129,7 +129,7 @@ mod tests {
     Text@0..11 "SCHEDULED: "
     Timestamp@11..27
       Text@11..27 "<1999-03-31 Wed>"
-    Text@27..28 "\n"
+    Whitespace@27..28 "\n"
 "##
         );
     }

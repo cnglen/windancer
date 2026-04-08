@@ -390,7 +390,7 @@ a */bold-italic/ *bold*
       Slash@134..135 "/"
     Text@135..141 " *bold"
     Asterisk@141..142 "*"
-  Text@142..143 "\n"
+  Whitespace@142..143 "\n"
 "##
         );
     }
@@ -438,7 +438,7 @@ _*/underline-bold-italic/*_
         Underscore@24..25 "_"
       Slash@25..26 "/"
     Asterisk@26..27 "*"
-  Text@27..29 "\n\n"
+  Whitespace@27..29 "\n\n"
   Bold@29..56
     Asterisk@29..30 "*"
     Underline@30..55
@@ -449,7 +449,7 @@ _*/underline-bold-italic/*_
         Slash@53..54 "/"
       Underscore@54..55 "_"
     Asterisk@55..56 "*"
-  Text@56..58 "\n\n"
+  Whitespace@56..58 "\n\n"
   Underline@58..85
     Underscore@58..59 "_"
     Italic@59..84
@@ -460,7 +460,7 @@ _*/underline-bold-italic/*_
         Asterisk@82..83 "*"
       Slash@83..84 "/"
     Underscore@84..85 "_"
-  Text@85..87 "\n\n"
+  Whitespace@85..87 "\n\n"
   Underline@87..114
     Underscore@87..88 "_"
     Bold@88..113
@@ -471,7 +471,7 @@ _*/underline-bold-italic/*_
         Slash@111..112 "/"
       Asterisk@112..113 "*"
     Underscore@113..114 "_"
-  Text@114..116 "\n\n"
+  Whitespace@114..116 "\n\n"
   Italic@116..143
     Slash@116..117 "/"
     Underline@117..142
@@ -482,7 +482,7 @@ _*/underline-bold-italic/*_
         Asterisk@140..141 "*"
       Underscore@141..142 "_"
     Slash@142..143 "/"
-  Text@143..145 "\n\n"
+  Whitespace@143..145 "\n\n"
   Italic@145..172
     Slash@145..146 "/"
     Bold@146..171
@@ -493,7 +493,7 @@ _*/underline-bold-italic/*_
         Underscore@169..170 "_"
       Asterisk@170..171 "*"
     Slash@171..172 "/"
-  Text@172..174 "\n\n"
+  Whitespace@172..174 "\n\n"
   Strikethrough@174..217
     Plus@174..175 "+"
     Italic@175..216
@@ -507,7 +507,7 @@ _*/underline-bold-italic/*_
         Asterisk@214..215 "*"
       Slash@215..216 "/"
     Plus@216..217 "+"
-  Text@217..219 "\n\n"
+  Whitespace@217..219 "\n\n"
   Strikethrough@219..262
     Plus@219..220 "+"
     Italic@220..261
@@ -521,7 +521,7 @@ _*/underline-bold-italic/*_
         Underscore@259..260 "_"
       Slash@260..261 "/"
     Plus@261..262 "+"
-  Text@262..264 "\n\n"
+  Whitespace@262..264 "\n\n"
   Strikethrough@264..292
     Plus@264..265 "+"
     Italic@265..291
@@ -532,7 +532,7 @@ _*/underline-bold-italic/*_
         Text@289..290 "*"
       Slash@290..291 "/"
     Plus@291..292 "+"
-  Text@292..294 "\n\n"
+  Whitespace@292..294 "\n\n"
   Bold@294..310
     Asterisk@294..295 "*"
     Underline@295..309
@@ -543,7 +543,7 @@ _*/underline-bold-italic/*_
         Tilde@307..308 "~"
       Underscore@308..309 "_"
     Asterisk@309..310 "*"
-  Text@310..312 "\n\n"
+  Whitespace@310..312 "\n\n"
   Bold@312..344
     Asterisk@312..313 "*"
     Underline@313..343
@@ -554,7 +554,7 @@ _*/underline-bold-italic/*_
         Tilde@341..342 "~"
       Underscore@342..343 "_"
     Asterisk@343..344 "*"
-  Text@344..346 "\n\n"
+  Whitespace@344..346 "\n\n"
   Bold@346..378
     Asterisk@346..347 "*"
     Underline@347..377
@@ -565,12 +565,12 @@ _*/underline-bold-italic/*_
         Equals@375..376 "="
       Underscore@376..377 "_"
     Asterisk@377..378 "*"
-  Text@378..384 "    \n\n"
+  Whitespace@378..384 "    \n\n"
   Code@384..440
     Tilde@384..385 "~"
     Text@385..439 "=*_/inner-most-includ ..."
     Tilde@439..440 "~"
-  Text@440..441 "\n"
+  Whitespace@440..441 "\n"
 "##
         )
     }
@@ -607,7 +607,7 @@ _*/underline-bold-italic/*_
                 r##" */_abc/* bar_"##
             ),
             r##"Root@0..14
-  Text@0..1 " "
+  Whitespace@0..1 " "
   Bold@1..9
     Asterisk@1..2 "*"
     Italic@2..8
@@ -625,7 +625,7 @@ _*/underline-bold-italic/*_
                 r##" /*+/"##
             ),
             r##"Root@0..5
-  Text@0..1 " "
+  Whitespace@0..1 " "
   Italic@1..5
     Slash@1..2 "/"
     Text@2..4 "*+"
@@ -639,7 +639,7 @@ _*/underline-bold-italic/*_
                 r##" ** a **"##
             ),
             r##"Root@0..8
-  Text@0..1 " "
+  Whitespace@0..1 " "
   Bold@1..8
     Asterisk@1..2 "*"
     Text@2..7 "* a *"
@@ -653,7 +653,7 @@ _*/underline-bold-italic/*_
                 r##" **a bold** : 2b"##
             ),
             r##"Root@0..16
-  Text@0..1 " "
+  Whitespace@0..1 " "
   Bold@1..11
     Asterisk@1..2 "*"
     Bold@2..10
@@ -671,7 +671,7 @@ _*/underline-bold-italic/*_
                 r##" ***a bold** : 2b"##
             ),
             r##"Root@0..17
-  Text@0..1 " "
+  Whitespace@0..1 " "
   Bold@1..12
     Asterisk@1..2 "*"
     Bold@2..11
@@ -689,7 +689,7 @@ _*/underline-bold-italic/*_
                 r##" ***a bold*** : 3b"##
             ),
             r##"Root@0..18
-  Text@0..1 " "
+  Whitespace@0..1 " "
   Bold@1..13
     Asterisk@1..2 "*"
     Bold@2..12

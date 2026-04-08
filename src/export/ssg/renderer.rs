@@ -677,14 +677,24 @@ impl Renderer {
 
     pub(crate) fn render_table_row(&self, table_row: &TableRow) -> String {
         match table_row.row_type {
-            TableRowType::Data | TableRowType::Header => format!(
-                "<tr>{}</tr>\n",
-                table_row
-                    .cells
-                    .iter()
-                    .map(|e| self.render_object(&e))
-                    .collect::<String>()
-            ),
+            TableRowType::Data | TableRowType::Header => {
+                if table_row.cells.iter().all(|c| match c {
+                    Object::TableCell(TableCell::AlignmentDirective { .. }) => true,
+                    Object::TableCell(TableCell::Data { contents, .. }) => contents.is_empty(),
+                    _ => false,
+                }) {
+                    String::new()
+                } else {
+                    format!(
+                        "<tr>{}</tr>\n",
+                        table_row
+                            .cells
+                            .iter()
+                            .map(|e| self.render_object(&e))
+                            .collect::<String>()
+                    )
+                }
+            }
 
             _ => String::new(),
         }
@@ -832,6 +842,35 @@ impl Renderer {
                         }
                     }
                 }
+                TableCell::AlignmentDirective {
+                    alignment,
+                    cell_type,
+                    ..
+                } => match (alignment, cell_type) {
+                    (TableCellAlignment::Left, TableCellType::Header) => {
+                        format!(r##" <th class="org-left">  </th> "##)
+                    }
+
+                    (TableCellAlignment::Center, TableCellType::Header) => {
+                        format!(r##" <th class="org-center">  </th> "##)
+                    }
+
+                    (TableCellAlignment::Right, TableCellType::Header) => {
+                        format!(r##" <th class="org-right"> </th> "##)
+                    }
+
+                    (TableCellAlignment::Left, TableCellType::Data) => {
+                        format!(r##" <td class="org-left">  </td> "##)
+                    }
+
+                    (TableCellAlignment::Center, TableCellType::Data) => {
+                        format!(r##" <td class="org-center">  </td> "##)
+                    }
+
+                    (TableCellAlignment::Right, TableCellType::Data) => {
+                        format!(r##" <td class="org-right"> </td> "##)
+                    }
+                },
                 _ => {
                     format!("")
                 }

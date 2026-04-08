@@ -337,7 +337,7 @@ a paragraph
         assert_eq!(
             get_parser_output(parser, input),
             r##"Paragraph@0..2
-  Text@0..2 "\n\n"
+  Whitespace@0..2 "\n\n"
 "##,
             "allow blanklines at the begnning"
         );

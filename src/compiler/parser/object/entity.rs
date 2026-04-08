@@ -109,7 +109,7 @@ mod tests {
   Entity@0..6
     BackSlash@0..1 "\\"
     EntityName@1..6 "alpha"
-  Text@6..7 "\n"
+  Whitespace@6..7 "\n"
 "###
             )
         );
@@ -214,10 +214,10 @@ mod tests {
             r###"Root@0..15
   LatexFragment@0..6
     Text@0..6 "\\alphA"
-  Text@6..7 " "
+  Whitespace@6..7 " "
   LatexFragment@7..14
     Text@7..14 "\\deltab"
-  Text@14..15 " "
+  Whitespace@14..15 " "
 "###
         );
     }

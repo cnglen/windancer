@@ -919,7 +919,7 @@ mod tests {
       Entity@18..24
         BackSlash@18..19 "\\"
         EntityName@19..24 "alpha"
-      Text@24..25 " "
+      Whitespace@24..25 " "
       LatexFragment@25..30
         Dollar@25..26 "$"
         Text@26..29 "a+b"
@@ -928,7 +928,7 @@ mod tests {
       Subscript@34..44
         Underscore@34..35 "_"
         Text@35..44 "subscript"
-      Text@44..45 " "
+      Whitespace@44..45 " "
       Bold@45..50
         Asterisk@45..46 "*"
         Text@46..49 "foo"
@@ -938,12 +938,12 @@ mod tests {
         LeftCurlyBracket3@55..58 "{{{"
         MacroName@58..63 "title"
         RightCurlyBracket3@63..66 "}}}"
-      Text@66..67 " "
+      Whitespace@66..67 " "
       PlainLink@67..83
         Text@67..72 "https"
         Colon@72..73 ":"
         Text@73..83 "://foo.bar"
-      Text@83..84 " "
+      Whitespace@83..84 " "
       AngleLink@84..103
         LeftAngleBracket@84..85 "<"
         Text@85..90 "https"

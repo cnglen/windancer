@@ -95,7 +95,7 @@ mod tests {
         let input = r##"
 call_hello(arguments)"##;
         let expected_output = r##"Root@0..22
-  Text@0..1 "\n"
+  Whitespace@0..1 "\n"
   InlineBabelCall@1..22
     Text@1..6 "call_"
     InlineBabelCallName@6..11 "hello"

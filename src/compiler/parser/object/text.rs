@@ -13,6 +13,12 @@ pub(crate) fn plain_text_parser<'a, C: 'a>(
         .repeated()
         .at_least(1)
         .to_slice()
-        .map(|s| crate::token!(OSK::Text, s))
+        .map(|s| {
+            if s.chars().all(|c| c.is_whitespace()) {
+                crate::token!(OSK::Whitespace, s)
+            } else {
+                crate::token!(OSK::Text, s)
+            }
+        })
         .boxed()
 }

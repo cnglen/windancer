@@ -1111,7 +1111,7 @@ example
       Equals@130..131 "="
       Text@131..136 "hello"
       Equals@136..137 "="
-    Text@137..138 "\n"
+    Whitespace@137..138 "\n"
   BlockEnd@138..154
     Whitespace@138..142 "    "
     Text@142..148 "#+END_"
@@ -1472,7 +1472,7 @@ cc
     Subscript@51..58
       Underscore@51..52 "_"
       Text@52..58 "center"
-    Text@58..59 "\n"
+    Whitespace@58..59 "\n"
 "##
         );
     }
