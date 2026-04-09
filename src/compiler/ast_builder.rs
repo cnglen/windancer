@@ -374,7 +374,7 @@ impl Converter {
                 properties,
                 title: self.keywords.get("TITLE").cloned().unwrap_or(vec![]),
                 node_type: NodeType::File,
-                tags: tags,
+                tags,
                 level: 0,
                 parent_id: None,
             };
@@ -388,7 +388,7 @@ impl Converter {
             keywords: self.keywords.clone(),
             extracted_links: self.extracted_links.clone(),
             roam_nodes: self.roam_nodes.clone(),
-            properties: properties,
+            properties,
         })
     }
 
@@ -501,7 +501,7 @@ impl Converter {
                             title: title.clone(),
                             node_type: NodeType::Headline,
                             tags: tags.clone(),
-                            level: level,
+                            level,
                             parent_id,
                         });
                     }
@@ -543,7 +543,7 @@ impl Converter {
             }
         }
 
-        Ok(Section { elements: elements })
+        Ok(Section { elements })
     }
 
     fn convert_zeroth_section_preamble(
@@ -582,66 +582,66 @@ impl Converter {
     fn convert_element(&mut self, node: &SyntaxNode) -> Result<Element, AstError> {
         self.context.kind_stack.push(node.kind());
         let ans = match node.kind() {
-            OrgSyntaxKind::Paragraph => Ok(Element::Paragraph(self.convert_paragraph(&node)?)),
+            OrgSyntaxKind::Paragraph => Ok(Element::Paragraph(self.convert_paragraph(node)?)),
 
-            OrgSyntaxKind::Drawer => Ok(Element::Drawer(self.convert_drawer(&node)?)),
+            OrgSyntaxKind::Drawer => Ok(Element::Drawer(self.convert_drawer(node)?)),
 
-            OrgSyntaxKind::Table => Ok(Element::Table(self.convert_table(&node)?)),
+            OrgSyntaxKind::Table => Ok(Element::Table(self.convert_table(node)?)),
 
             OrgSyntaxKind::CenterBlock => {
-                Ok(Element::CenterBlock(self.convert_center_block(&node)?))
+                Ok(Element::CenterBlock(self.convert_center_block(node)?))
             }
 
-            OrgSyntaxKind::QuoteBlock => Ok(Element::QuoteBlock(self.convert_quote_block(&node)?)),
+            OrgSyntaxKind::QuoteBlock => Ok(Element::QuoteBlock(self.convert_quote_block(node)?)),
 
             OrgSyntaxKind::SpecialBlock => {
-                Ok(Element::SpecialBlock(self.convert_special_block(&node)?))
+                Ok(Element::SpecialBlock(self.convert_special_block(node)?))
             }
 
             OrgSyntaxKind::ExampleBlock => {
-                Ok(Element::ExampleBlock(self.convert_example_block(&node)?))
+                Ok(Element::ExampleBlock(self.convert_example_block(node)?))
             }
-            OrgSyntaxKind::VerseBlock => Ok(Element::VerseBlock(self.convert_verse_block(&node)?)),
-            OrgSyntaxKind::SrcBlock => Ok(Element::SrcBlock(self.convert_src_block(&node)?)),
+            OrgSyntaxKind::VerseBlock => Ok(Element::VerseBlock(self.convert_verse_block(node)?)),
+            OrgSyntaxKind::SrcBlock => Ok(Element::SrcBlock(self.convert_src_block(node)?)),
             OrgSyntaxKind::CommentBlock => {
-                Ok(Element::CommentBlock(self.convert_comment_block(&node)?))
+                Ok(Element::CommentBlock(self.convert_comment_block(node)?))
             }
             OrgSyntaxKind::ExportBlock => {
-                Ok(Element::ExportBlock(self.convert_export_block(&node)?))
+                Ok(Element::ExportBlock(self.convert_export_block(node)?))
             }
 
-            OrgSyntaxKind::List => Ok(Element::List(self.convert_list(&node)?)),
+            OrgSyntaxKind::List => Ok(Element::List(self.convert_list(node)?)),
 
-            OrgSyntaxKind::Keyword => Ok(Element::Keyword(self.convert_keyword(&node)?)),
+            OrgSyntaxKind::Keyword => Ok(Element::Keyword(self.convert_keyword(node)?)),
 
-            OrgSyntaxKind::Comment => Ok(Element::Comment(self.convert_comment(&node)?)),
+            OrgSyntaxKind::Comment => Ok(Element::Comment(self.convert_comment(node)?)),
 
             OrgSyntaxKind::NodeProperty => {
-                Ok(Element::NodeProperty(self.convert_node_property(&node)?))
+                Ok(Element::NodeProperty(self.convert_node_property(node)?))
             }
 
             OrgSyntaxKind::PropertyDrawer => Ok(Element::PropertyDrawer(
-                self.convert_property_drawer(&node)?,
+                self.convert_property_drawer(node)?,
             )),
 
-            OrgSyntaxKind::FixedWidth => Ok(Element::FixedWidth(self.convert_fixed_width(&node)?)),
+            OrgSyntaxKind::FixedWidth => Ok(Element::FixedWidth(self.convert_fixed_width(node)?)),
 
             OrgSyntaxKind::HorizontalRule => {
                 Ok(Element::HorizontalRule(self.convert_horizontal_rule()?))
             }
 
             OrgSyntaxKind::FootnoteDefinition => Ok(Element::FootnoteDefinition(
-                self.convert_footnote_definition(&node)?,
+                self.convert_footnote_definition(node)?,
             )),
 
             OrgSyntaxKind::LatexEnvironment => Ok(Element::LatexEnvironment(
-                self.convert_latex_environment(&node)?,
+                self.convert_latex_environment(node)?,
             )),
 
-            OrgSyntaxKind::Planning => Ok(Element::Planning(self.convert_planning(&node)?)),
+            OrgSyntaxKind::Planning => Ok(Element::Planning(self.convert_planning(node)?)),
 
             OrgSyntaxKind::ZerothSectionPreamble => Ok(Element::ZerothSectionPreamble(
-                self.convert_zeroth_section_preamble(&node)?,
+                self.convert_zeroth_section_preamble(node)?,
             )),
 
             _ => {
@@ -895,9 +895,10 @@ impl Converter {
         for (i, row) in node.children().enumerate() {
             match row.kind() {
                 OrgSyntaxKind::TableStandardRow => {
+                    // FIXME: panic? chumsky.org search 0720 table in block?
                     let first_cell = row
                         .first_child_by_kind(&|e| e == OrgSyntaxKind::TableCell)
-                        .expect("first cell");
+                        .expect(&format!("first cell: row={:?}", row));
                     let contents: Vec<_> = first_cell
                         .children_with_tokens()
                         .map(|e| self.convert_object(&e))
@@ -1947,8 +1948,8 @@ impl Converter {
         }
 
         Ok(CenterBlock {
-            parameters: parameters,
-            contents: contents,
+            parameters,
+            contents,
         })
     }
 
@@ -1974,8 +1975,8 @@ impl Converter {
         }
 
         Ok(QuoteBlock {
-            parameters: parameters,
-            contents: contents,
+            parameters,
+            contents,
         })
     }
 
@@ -2016,9 +2017,9 @@ impl Converter {
         }
 
         Ok(SpecialBlock {
-            parameters: parameters,
-            contents: contents,
-            name: name,
+            parameters,
+            contents,
+            name,
         })
     }
 
@@ -2044,8 +2045,8 @@ impl Converter {
         }
 
         Ok(ExampleBlock {
-            data: data,
-            contents: contents,
+            data,
+            contents,
         })
     }
 
@@ -2071,8 +2072,8 @@ impl Converter {
         }
 
         Ok(CommentBlock {
-            data: data,
-            contents: contents,
+            data,
+            contents,
         })
     }
 
@@ -2098,8 +2099,8 @@ impl Converter {
         }
 
         Ok(VerseBlock {
-            data: data,
-            contents: contents,
+            data,
+            contents,
         })
     }
 
@@ -2199,7 +2200,6 @@ impl Converter {
             exports,
             vars,
             other_args,
-
             contents,
         })
     }
@@ -2226,8 +2226,8 @@ impl Converter {
         }
 
         Ok(ExportBlock {
-            data: data,
-            contents: contents,
+            data,
+            contents,
         })
     }
 
@@ -2471,7 +2471,7 @@ impl Converter {
             .map(|e| e.as_token().unwrap().text().to_string())
             .collect::<String>();
 
-        Ok(Comment { text: text })
+        Ok(Comment { text })
     }
 
     // element.node_property
@@ -2507,7 +2507,7 @@ impl Converter {
             .collect::<Vec<String>>()
             .join("\n");
 
-        Ok(FixedWidth { text: text })
+        Ok(FixedWidth { text })
     }
 
     // element.keyword

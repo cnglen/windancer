@@ -110,7 +110,7 @@ pub(crate) fn keyword_ci_parser_v2<'a, C: 'a>(
 
         loop {
             match inp.peek() {
-                Some(c) if matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9') => {
+                Some(c) if matches!(c, 'a'..='z' | 'A'..='Z'| '0'..='9') => {
                     inp.next();
                 }
                 _ => {
@@ -146,7 +146,7 @@ pub(crate) fn keyword_cs_parser_v2<'a, C: 'a>(
         let before = inp.cursor();
         loop {
             match inp.peek() {
-                Some(c) if matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9') => {
+                Some(c) if matches!(c, 'a'..='z' | 'A'..='Z'| '0'..='9') => {
                     inp.next();
                 }
                 _ => {
@@ -184,7 +184,7 @@ pub(crate) fn keyword_cs_parser<'a, C: 'a>(
         let before = inp.cursor();
         loop {
             match inp.peek() {
-                Some(c) if matches!(c, 'a'..'z' | 'A'..'Z'| '0'..'9') => {
+                Some(c) if matches!(c, 'a'..='z' | 'A'..='Z'| '0'..='9') => {
                     inp.next();
                 }
                 _ => {
