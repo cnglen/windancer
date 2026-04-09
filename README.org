@@ -1,3 +1,5 @@
+[[https://github.com/cnglen/windancer/actions/workflows/ci.yml][https://github.com/cnglen/windancer/actions/workflows/ci.yml/badge.svg?branch=main]]
+
 A toolkit for *parsing* and *rendering* [[http://orgmode.org/][orgmode]] built entirely in [[https://rust-lang.org/][Rust]]. | [[file:README_zh.org][中文]]
 
 [[file:docs/windancer_demo.gif]]
