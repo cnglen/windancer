@@ -9,6 +9,11 @@
       </caption>
     {% endif %}
 
+    {% for colgroup in colgroups %}
+      {{ colgroup | safe }}
+    {% endfor %}
+
+    
     {% if has_header %}
       <thead>
         {% for row in header_rows %}

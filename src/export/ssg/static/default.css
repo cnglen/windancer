@@ -110,6 +110,15 @@ table td, table th {
     background-color: white;
     border: 1px solid #e1e4e5;
 }
+
+table {
+    border-collapse: collapse;
+}
+
+table colgroup {
+    border: 2px solid #a1a4a5;
+}
+
 table tr:nth-child(2n-1) td{
     background-color:#f3f6f6;
 }
@@ -300,7 +309,7 @@ pre.src-nxml:before { content: 'XML'; }
      (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
 pre.src-conf:before { content: 'Configuration File'; }
 
-table { border-collapse:collapse; }
+
 caption.t-above { caption-side: top; }
 caption.t-bottom { caption-side: bottom; }
 td, th { vertical-align:top;  }

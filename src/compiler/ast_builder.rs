@@ -30,7 +30,8 @@ use element::{
 };
 use error::AstError;
 use object::{
-    CitationReference, GeneralLink, Object, TableCell, TableCellAlignment, TableCellType,
+    CitationReference, ColumnGroupMarker, GeneralLink, Object, TableCell, TableCellAlignment,
+    TableCellType,
 };
 use serde::{Deserialize, Serialize};
 
@@ -986,8 +987,8 @@ impl Converter {
         } else {
             panic!("table has NO data");
         };
-        // todo: column groups
-        // todo: column alignment
+
+        // calculate the `column_formats`, then update alignment for each cell
         let mut column_formats = vec![
             ColumnFormat {
                 alignment: TableCellAlignment::Left,
@@ -995,7 +996,7 @@ impl Converter {
             };
             n_col
         ];
-        let column_group_boundaries = vec![];
+
         for row in rows.iter().chain(meta_rows.iter().chain(header.iter())) {
             for (j, cell) in row.cells.iter().enumerate() {
                 match cell {
@@ -1022,6 +1023,36 @@ impl Converter {
                     _ => {}
                 }
             }
+        }
+
+        // calculate the column groups
+        let mut column_group_boundaries: Vec<usize> = Vec::new();
+        for row in meta_rows.iter() {
+            for (j, cell) in row.cells.iter().enumerate() {
+                if let Object::TableCell(TableCell::ColumnGroupDirective { marker, .. }) = cell {
+                    match marker {
+                        ColumnGroupMarker::Start => {
+                            let prev_boundary = j.saturating_sub(1);
+                            if column_group_boundaries.last() != Some(&prev_boundary) {
+                                column_group_boundaries.push(prev_boundary);
+                            }
+                        }
+                        ColumnGroupMarker::End => {
+                            column_group_boundaries.push(j);
+                        }
+                        ColumnGroupMarker::Single => {
+                            let prev_boundary = j.saturating_sub(1);
+                            if column_group_boundaries.last() != Some(&prev_boundary) {
+                                column_group_boundaries.push(prev_boundary);
+                            }
+                            column_group_boundaries.push(j);
+                        }
+                    }
+                }
+            }
+        }
+        if column_group_boundaries.last() != Some(&(n_col - 1)) {
+            column_group_boundaries.push(n_col - 1);
         }
 
         Ok(Table {
@@ -1093,8 +1124,6 @@ impl Converter {
             TableRowType::Header => TableCellType::Header,
             _ => TableCellType::Data,
         };
-        // FIXME: fixed left
-        let alignment = Some(TableCellAlignment::Left);
 
         let mut contents: Vec<_> = node
             .children_with_tokens()
@@ -1146,24 +1175,26 @@ impl Converter {
             Some((alignment, max_width))
         }
 
+        let default_alignment = Some(TableCellAlignment::Left);
         let cell = match first_cell_text_special_string {
-            Some(_t) => match text {
+            Some(t) => match text {
                 "/" | "!" | "#" if icol == 0 => {
                     Object::TableCell(TableCell::SpecialFirstColumnMarker {
                         marker: text.chars().nth(0).unwrap(),
                         cell_type,
                     })
                 }
-                "<" => Object::TableCell(TableCell::ColumnGroupDirective {
+
+                "<" if t == "/" => Object::TableCell(TableCell::ColumnGroupDirective {
                     marker: object::ColumnGroupMarker::Start,
                     cell_type,
                 }),
-                ">" => Object::TableCell(TableCell::ColumnGroupDirective {
+                ">" if t == "/" => Object::TableCell(TableCell::ColumnGroupDirective {
                     marker: object::ColumnGroupMarker::End,
                     cell_type,
                 }),
 
-                "<>" => Object::TableCell(TableCell::ColumnGroupDirective {
+                "<>" if t == "/" => Object::TableCell(TableCell::ColumnGroupDirective {
                     marker: object::ColumnGroupMarker::Single,
                     cell_type,
                 }),
@@ -1179,7 +1210,7 @@ impl Converter {
                     } else {
                         Object::TableCell(TableCell::Data {
                             contents,
-                            alignment,
+                            alignment: default_alignment,
                             cell_type,
                         })
                     }
@@ -1196,7 +1227,7 @@ impl Converter {
                 } else {
                     Object::TableCell(TableCell::Data {
                         contents,
-                        alignment,
+                        alignment: default_alignment,
                         cell_type,
                     })
                 }

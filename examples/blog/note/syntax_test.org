@@ -1,6 +1,6 @@
 :PROPERTIES:
 :CREATED:       2026-04-04T11:35:44+0800
-:LAST_MODIFIED: 2026-04-08T22:14:01+0800
+:LAST_MODIFIED: 2026-04-09T11:41:19+0800
 #+TITLE: Org-mode Syntax Test
 #+AUTHOR: cnglen
 #+AUTHOR: contributors
@@ -375,7 +375,8 @@ Property drawers are a special type of drawer containing properties attached to 
 |            |             |      |        | <r> |     |
 |------------+-------------+------+--------+-----+-----|
 | bad group  |           < | >    |        |     |     |
-| /          |           < |      |   >    |   < | >   |
+| !          |           < | >    |        |     |     |
+| /          |             | <    |        |   > |     |
 
 
 #+CAPTION: table with formula

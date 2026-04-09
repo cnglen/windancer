@@ -223,15 +223,17 @@ pub struct ColumnFormat {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Table {
-    pub name: Option<String>,                // 表格名称 (#+NAME:)
-    pub caption: Vec<Object>,                // 表格标题 (#+CAPTION:)
+    pub name: Option<String>, // 表格名称 (#+NAME:)
+
     pub column_group_boundaries: Vec<usize>, // vec![2, 5] -> [0, 2], [3, 5]
-    pub column_formats: Vec<ColumnFormat>,   // <r10>
-    pub header: Vec<TableRow>,               // 表头行（>=0）
-    pub separator: Option<TableRow>,         // 分隔线行（可选）
-    pub rows: Vec<TableRow>,                 // 数据行
-    pub formulas: Vec<TableFormula>,         // 表格公式
-    pub meta_rows: Vec<TableRow>,            // rows with meta data
+    pub caption: Vec<Object>,                // 表格标题 (#+CAPTION:)
+    pub header: Vec<TableRow>,               // header，contains >=0 row
+    pub rows: Vec<TableRow>,                 // body: contains >=0 row
+
+    pub column_formats: Vec<ColumnFormat>, // <r10>
+    pub separator: Option<TableRow>,       // optional separator row
+    pub meta_rows: Vec<TableRow>,          // rows with meta data
+    pub formulas: Vec<TableFormula>,       // 表格公式
 }
 
 impl fmt::Debug for Table {

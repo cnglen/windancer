@@ -652,15 +652,27 @@ impl Renderer {
             .map(|e| self.render_table_row(e))
             .collect();
 
+        let mut colgroups = Vec::new();
+        let mut i_start = 0;
+        for &i_end in &table.column_group_boundaries {
+            let len = i_end - i_start + 1;
+            let mut group = String::with_capacity(24 + 12 * len);
+            group.push_str("<colgroup>\n");
+            for _ in 0..len {
+                group.push_str("<col />\n");
+            }
+            group.push_str("</colgroup>\n");
+            colgroups.push(group);
+            i_start = i_end + 1;
+        }
+
         TableViewModel {
             table_number,
-
             has_caption,
             caption,
-
+            colgroups,
             has_header,
             header_rows,
-
             body_rows,
         }
     }
