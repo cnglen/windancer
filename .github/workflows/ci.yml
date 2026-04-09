@@ -49,12 +49,12 @@ jobs:
           - target: x86_64-pc-windows-msvc
             os: windows-latest
             bin: windancer.exe
-          - target: x86_64-apple-darwin
-            os: macos-latest
-            bin: windancer
-          - target: aarch64-apple-darwin
-            os: macos-latest
-            bin: windancer
+          # - target: x86_64-apple-darwin
+          #   os: macos-latest
+          #   bin: windancer
+          # - target: aarch64-apple-darwin
+          #   os: macos-latest
+          #   bin: windancer
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
