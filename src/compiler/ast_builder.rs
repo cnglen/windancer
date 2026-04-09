@@ -620,9 +620,9 @@ impl Converter {
                 Ok(Element::NodeProperty(self.convert_node_property(node)?))
             }
 
-            OrgSyntaxKind::PropertyDrawer => Ok(Element::PropertyDrawer(
-                self.convert_property_drawer(node)?,
-            )),
+            OrgSyntaxKind::PropertyDrawer => {
+                Ok(Element::PropertyDrawer(self.convert_property_drawer(node)?))
+            }
 
             OrgSyntaxKind::FixedWidth => Ok(Element::FixedWidth(self.convert_fixed_width(node)?)),
 
@@ -2044,10 +2044,7 @@ impl Converter {
             _ => {}
         }
 
-        Ok(ExampleBlock {
-            data,
-            contents,
-        })
+        Ok(ExampleBlock { data, contents })
     }
 
     // element.comment_block
@@ -2071,10 +2068,7 @@ impl Converter {
             _ => {}
         }
 
-        Ok(CommentBlock {
-            data,
-            contents,
-        })
+        Ok(CommentBlock { data, contents })
     }
 
     // element.verse_block
@@ -2098,10 +2092,7 @@ impl Converter {
             _ => {}
         }
 
-        Ok(VerseBlock {
-            data,
-            contents,
-        })
+        Ok(VerseBlock { data, contents })
     }
 
     // // FIXME: parse argument data? in compiler stage?
@@ -2225,10 +2216,7 @@ impl Converter {
             _ => {}
         }
 
-        Ok(ExportBlock {
-            data,
-            contents,
-        })
+        Ok(ExportBlock { data, contents })
     }
 
     //
