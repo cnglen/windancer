@@ -138,7 +138,7 @@ where
             children.push(token);
             children.extend(others);
 
-            crate::node!(syntax_kind.clone(), children)
+            crate::node!(syntax_kind, children)
         })
         .boxed();
 

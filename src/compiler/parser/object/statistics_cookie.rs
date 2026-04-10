@@ -11,8 +11,8 @@ pub(crate) fn statistics_cookie_parser<'a, C: 'a>()
     group((
         just("["),
         choice((
-            group((num.clone().or_not(), just("%"))).to_slice(),
-            group((num.clone().or_not(), just("/"), num.clone().or_not())).to_slice(),
+            group((num.or_not(), just("%"))).to_slice(),
+            group((num.or_not(), just("/"), num.or_not())).to_slice(),
         )),
         just("]"),
     ))
