@@ -946,10 +946,7 @@ impl Converter {
                                 affliated_keyword
                                     .value
                                     .into_iter()
-                                    .filter(|e| match e {
-                                        Object::Text(_t) => true,
-                                        _ => false,
-                                    })
+                                    .filter(|e| matches!(e, Object::Text(_t)))
                                     .map(|e| match e {
                                         Object::Text(t) => t,
                                         _ => String::from(""),

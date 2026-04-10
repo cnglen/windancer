@@ -242,8 +242,8 @@ fn key_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, String, MyExtra<'a, C>> +
             )
         })?;
 
-        let key = content.chars().take(idx + 0).collect::<String>();
-        for _ in 0..idx + 0 {
+        let key = content.chars().take(idx).collect::<String>();
+        for _ in 0..idx {
             inp.next();
         }
         Ok(key)
@@ -356,7 +356,7 @@ pub(crate) fn keyword_parser_inner<'a, C: 'a + std::default::Default>(
                 }
             }
 
-            if blank_lines.len() > 0 {
+            if !blank_lines.is_empty() {
                 children.extend(blank_lines);
                 // e.state().prev_char = Some('\n');
             }

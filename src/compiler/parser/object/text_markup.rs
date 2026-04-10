@@ -6,7 +6,7 @@ use crate::compiler::parser::{MyExtra, NT, OSK, object};
 pub(crate) fn contents_parser<'a, C: 'a>(
     marker: char,
 ) -> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Clone {
-    let post = one_of(" \t​-.,;:!?)}]\"'\\\r\n").or(end().to('x'));
+    let post = one_of(" \t\u{200B}-.,;:!?)}]\"'\\\r\n").or(end().to('x'));
 
     none_of(" \t\u{200B}")              // not begin with whitespace.
         .then(any()
@@ -17,11 +17,7 @@ pub(crate) fn contents_parser<'a, C: 'a>(
         )
         .to_slice()
         .try_map_with(|content:&str, e| { // not end with whitespace.
-            let content_end_valid = match content.chars().last() {
-                Some(' ' | '\t' | '​') => false,
-                _ => true
-            };
-
+            let content_end_valid = !matches!(content.chars().last(), Some(' ' | '\t' | '​'));
             match content_end_valid {
                 true => {Ok(content)},
                 false => {Err(Rich::custom(
@@ -39,7 +35,7 @@ fn text_markup_parser_inner<'a, C: 'a, T>(
 where
     T: Parser<'a, &'a str, Vec<NT>, MyExtra<'a, C>> + Clone + 'a,
 {
-    let post = one_of(" \t​-.,;:!?)}]\"'\\\r\n").or(end().to('x'));
+    let post = one_of(" \t\u{200B}-.,;:!?)}]\"'\\\r\n").or(end().to('x'));
 
     let (token_kind, node_kind) = match marker {
         '*' => (OSK::Asterisk, OSK::Bold),

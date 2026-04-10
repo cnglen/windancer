@@ -387,15 +387,8 @@ impl OrgParser {
                 .parse(input)
                 .unwrap()
                 .into_iter()
-                .filter(|s| match s {
-                    NodeOrToken::<GreenNode, GreenToken>::Node(n)
-                        if n.kind() == OrgSyntaxKind::RadioTarget.into() =>
-                    {
-                        true
-                    }
-                    _ => false,
-                })
-                .collect();
+            .filter(|s| matches!(s, NodeOrToken::<GreenNode, GreenToken>::Node(n) if n.kind() == OrgSyntaxKind::RadioTarget.into()))
+            .collect();
 
         let root = NodeOrToken::<GreenNode, GreenToken>::Node(GreenNode::new(
             OrgSyntaxKind::Root.into(),
