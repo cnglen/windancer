@@ -52,7 +52,7 @@ where
     };
 
     object::prev_valid_parser(|c| {
-        c.map_or(true, |c| {
+        c.is_none_or(|c| {
             matches!(
                 c,
                 ' '| '\t'| '​'|              // whitespace character

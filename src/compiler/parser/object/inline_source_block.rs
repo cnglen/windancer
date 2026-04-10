@@ -31,7 +31,7 @@ pub(crate) fn inline_source_block_parser<'a, C: 'a>()
     )));
     let body = body_single_expression.repeated().at_least(1).to_slice();
 
-    object::prev_valid_parser(|c| c.map_or(true, |e| e.is_whitespace()))
+    object::prev_valid_parser(|c| c.is_none_or(|e| e.is_whitespace()))
         .ignore_then(group((
             just("src_"),
             none_of(" {[\t").repeated().at_least(1).to_slice(),

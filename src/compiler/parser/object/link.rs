@@ -174,7 +174,7 @@ pub(crate) fn plain_link_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyE
         .filter(|c: &char| !c.is_alphanumeric())
         .or(end().to('x'));
 
-    object::prev_valid_parser(|c| c.map_or(true, |c| !c.is_alphanumeric()))
+    object::prev_valid_parser(|c| c.is_none_or(|c| !c.is_alphanumeric()))
         .ignore_then(protocol)
         // protocol
         .then(just(":"))

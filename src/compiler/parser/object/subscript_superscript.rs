@@ -120,7 +120,7 @@ where
             })
     };
 
-    let t3_t1_t2 = object::prev_valid_parser(|c| c.map_or(false, |c| !c.is_whitespace()))
+    let t3_t1_t2 = object::prev_valid_parser(|c| c.is_some_and(|c| !c.is_whitespace()))
         .ignore_then(just(c))
         .then(match mode {
             OrgUseSubSuperscripts::Brace => choice((f_t2("{"),)).boxed(),

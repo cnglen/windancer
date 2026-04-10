@@ -73,7 +73,7 @@ pub(crate) fn latex_fragment_parser<'a, C: 'a>()
         .or(end().to('x'));
     let border1 = none_of("\r\n \t.,;$");
     let border2 = none_of("\r\n \t.,$");
-    let t_tex_inline = object::prev_valid_parser(|c| c.map_or(true, |e| e != '$'))
+    let t_tex_inline = object::prev_valid_parser(|c| c != Some('$'))
         .ignore_then(just("$"))
         .then(choice((
             // PRE$CHAR$POST must be in first order, $|pia$, $pi|$

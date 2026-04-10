@@ -31,7 +31,7 @@ pub(crate) fn inline_babel_call_parser<'a, C: 'a>()
         .at_least(1)
         .to_slice();
 
-    object::prev_valid_parser(|c| c.map_or(true, |e| e.is_whitespace()))
+    object::prev_valid_parser(|c| c.is_none_or(|e| e.is_whitespace()))
         .ignore_then(group((
             just("call_"),
             none_of(" []()\t").repeated().at_least(1).to_slice(),

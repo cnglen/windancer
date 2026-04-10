@@ -11,7 +11,7 @@ pub(crate) fn line_break_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyE
     //     .rewind()
 
     // PRE\\SPACE
-    object::prev_valid_parser(|c| c.map_or(true, |e| e != '\\'))
+    object::prev_valid_parser(|c| c != Some('\\'))
         .ignore_then(just(r##"\\"##))
         // just(r##"\\"##)
         .then(object::whitespaces())
