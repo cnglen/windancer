@@ -902,13 +902,13 @@ pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
                 children.push(begin_node);
 
                 // element_parser is here to avoid context error
-                let mut state = e.state();
+                let state = e.state();
                 let content_node = element_parser
                     .clone()
                     .repeated()
                     .collect::<Vec<_>>()
                     .map(|s| crate::node!(OSK::BlockContent, s))
-                    .parse_with_state(contents, &mut state)
+                    .parse_with_state(contents, state)
                     .into_output()
                     .unwrap();
                 children.push(content_node);

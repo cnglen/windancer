@@ -765,7 +765,7 @@ impl Converter {
             match child.kind() {
                 OrgSyntaxKind::AffiliatedKeyword => {
                     if let Ok(affiliated_keyword) =
-                        self.convert_affiliated_keyword(&child.as_node().unwrap())
+                        self.convert_affiliated_keyword(child.as_node().unwrap())
                     {
                         affiliated_keywords.push(affiliated_keyword)
                     }
@@ -801,7 +801,7 @@ impl Converter {
             match child.kind() {
                 OrgSyntaxKind::AffiliatedKeyword => {
                     if let Ok(affiliated_keyword) =
-                        self.convert_affiliated_keyword(&child.as_node().unwrap())
+                        self.convert_affiliated_keyword(child.as_node().unwrap())
                     {
                         affiliated_keywords.push(affiliated_keyword);
                     }

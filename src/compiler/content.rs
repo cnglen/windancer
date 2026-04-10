@@ -92,7 +92,7 @@ impl Section {
             }
         }
 
-        build_section(&self, &mut graph, &mut id_to_index, &mut refs_to_id);
+        build_section(self, &mut graph, &mut id_to_index, &mut refs_to_id);
 
         RoamGraph { id_to_index, graph }
     }

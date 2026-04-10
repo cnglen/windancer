@@ -201,7 +201,7 @@ pub(crate) fn keyword_cs_parser<'a, C: 'a>(
             ));
         }
 
-        if !allowed_keywords.contains(&name) {
+        if !allowed_keywords.contains(name) {
             return Err(Rich::custom(
                 inp.span_since(&before),
                 format!("invalid key: '{}'", name),
