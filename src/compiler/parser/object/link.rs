@@ -14,10 +14,9 @@ pub(crate) static LINK_PROTOCOLS: phf::Set<&'static str> = phf_set! {
     "help", "file", "elisp"
 };
 
-/// PROTOCOL: A string which is one of the link type strings in org-link-parameters
+// PROTOCOL: A string which is one of the link type strings in org-link-parameters
 // - Consume only verified to reduce # of backtracks: rollbackstate.on_save 1761022 -> 1661398 (94.3%)
 // #[allow(unused)]
-
 pub(crate) fn protocol<'a, C: 'a>() -> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Clone {
     custom(|inp: &mut InputRef<'a, '_, &'a str, MyExtra<'a, C>>| {
         let before = inp.cursor();

@@ -23,7 +23,6 @@ pub(crate) fn line_break_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyE
 
             if !maybe_ws.is_empty() {
                 children.push(crate::token!(OSK::Whitespace, maybe_ws));
-            } else {
             }
 
             crate::node!(OSK::LineBreak, children)

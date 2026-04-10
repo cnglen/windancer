@@ -12,10 +12,6 @@ use crate::compiler::parser::{MyExtra, NT, OSK, element};
 ///     - \n + end()
 ///     - end()
 /// - 开头不能以`* Text`开头, 否则部分标题会被识别为Section
-
-// block_parser
-// blank_line``
-// other_parser
 pub(crate) fn section_parser<'a, C: 'a>(
     element_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
 ) -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {

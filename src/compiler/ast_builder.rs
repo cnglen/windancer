@@ -51,6 +51,12 @@ impl AstBuilder {
     }
 }
 
+impl Default for AstBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 pub enum SourcePathSegment {
     File {
@@ -141,6 +147,7 @@ impl ExtractedLink {
     }
 }
 
+#[derive(Default)]
 pub struct BuilderContext {
     current_path: Vec<SourcePathSegment>, // inclusing File -> ZerothSeciton -> Heading
     _current_file_path: Option<std::path::PathBuf>,
@@ -219,17 +226,6 @@ struct Converter {
     roam_nodes: Vec<RoamNode>,
 }
 
-impl Default for BuilderContext {
-    fn default() -> Self {
-        BuilderContext {
-            current_path: vec![],
-            _current_file_path: None,
-            current_roam_node_path: vec![],
-            kind_stack: vec![],
-        }
-    }
-}
-
 impl Converter {
     fn get_roam_info(
         properties: &BTreeMap<String, String>,
@@ -273,8 +269,7 @@ impl Converter {
     }
 
     fn convert(&mut self, root: &SyntaxNode) -> Result<OrgFile, AstError> {
-        let ans = self.convert_document(root);
-        ans
+        self.convert_document(root)
     }
 
     /// 在第一个标题处分割节点列表
@@ -2057,20 +2052,19 @@ impl Converter {
             let mut parts = raw_arguments.split_whitespace();
 
             while let Some(part) = parts.next() {
-                if part.starts_with(':') {
-                    let key = &part[1..]; // 去掉冒号
-                    if let Some(value) = parts.next() {
-                        match key {
-                            "results" => results = Some(value.to_string()),
-                            "exports" => exports = Some(value.to_string()),
-                            "var" => {
-                                if let Some((var_name, var_value)) = value.split_once('=') {
-                                    vars.insert(var_name.to_string(), var_value.to_string());
-                                }
+                if let Some(key) = part.strip_prefix(':')
+                    && let Some(value) = parts.next()
+                {
+                    match key {
+                        "results" => results = Some(value.to_string()),
+                        "exports" => exports = Some(value.to_string()),
+                        "var" => {
+                            if let Some((var_name, var_value)) = value.split_once('=') {
+                                vars.insert(var_name.to_string(), var_value.to_string());
                             }
-                            _ => {
-                                other_args.insert(key.to_string(), value.to_string());
-                            }
+                        }
+                        _ => {
+                            other_args.insert(key.to_string(), value.to_string());
                         }
                     }
                 }

@@ -143,9 +143,9 @@ impl OrgParser {
         (keyword, macro_template)
     }
 
-    fn expand_macro_template(template: &String, args: Vec<String>) -> String {
+    fn expand_macro_template(template: &str, args: Vec<String>) -> String {
         match args.len() {
-            0 => template.clone(),
+            0 => template.to_owned(),
             1 => template.replace("$1", &args[0]),
             2 => template.replace("$1", &args[0]).replace("$2", &args[1]),
             3 => template
@@ -264,9 +264,8 @@ impl OrgParser {
                                 &keyword_value_expanded
                                     [1..keyword_value_expanded.chars().count() - 1],
                             );
-                            if ts.is_ok() {
-                                let z = ts.unwrap();
-                                let z = z.format(&args).to_string();
+                            if let Ok(ts_)=ts {
+                                let z = ts_.format(&args).to_string();
                                 builder.token(OSK::Text.into(), &z);
                             }
                         } else {

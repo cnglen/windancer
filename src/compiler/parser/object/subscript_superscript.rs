@@ -120,7 +120,8 @@ where
             })
     };
 
-    let t3_t1_t2 = object::prev_valid_parser(|c| c.is_some_and(|c| !c.is_whitespace()))
+    // t3_t1_t2
+    object::prev_valid_parser(|c| c.is_some_and(|c| !c.is_whitespace()))
         .ignore_then(just(c))
         .then(match mode {
             OrgUseSubSuperscripts::Brace => choice((f_t2("{"),)).boxed(),
@@ -140,94 +141,7 @@ where
 
             crate::node!(syntax_kind, children)
         })
-        .boxed();
-
-    // let t3_t1_t2 = just(c)
-    //     .try_map_with(|s, e| {
-    //         // check PRE
-    //         let pre_valid = (e.state() as &mut RollbackState<ParserState>)
-    //             .prev_char
-    //             .map_or(false, |c| !c.is_whitespace());
-
-    //         match pre_valid {
-    //             true => Ok(s),
-    //             false => Err(Rich::<char>::custom(
-    //                 e.span(),
-    //                 format!(
-    //                     "sub/sup script parser: pre_valid={pre_valid}, PRE={:?} not valid",
-    //                     (e.state() as &mut RollbackState<ParserState>).prev_char
-    //                 ),
-    //             )),
-    //         }
-    //     })
-    //     .then(choice((
-    //         // CHAR^ SIGN CHARS FINAL
-    //         sign.then(chars_final_parser())
-    //             .to_slice()
-    //             .map_with(|sign_content, e| {
-    //                 (e.state() as &mut RollbackState<ParserState>).prev_char =
-    //                     sign_content.chars().last();
-
-    //                 vec![crate::token!(OSK::Text, sign_content)]
-    //             }),
-    //         // CHAR^* or CHAR_*
-    //         just("*").map_with(|aes, e| {
-    //             (e.state() as &mut RollbackState<ParserState>).prev_char = Some('*');
-    //             vec![crate::token!(OSK::Text, aes)]
-    //         }),
-    //         // CHAR^{expression} / CHAR^(EXPRESSION)
-    //         one_of("({")
-    //             .map_with(|s: char, e| {
-    //                 // update state for next expression parser: nest + state + ctx
-    //                 (e.state() as &mut RollbackState<ParserState>).prev_char = Some(s);
-    //                 s
-    //             })
-    //             .then(expression_parser)
-    //             .then_with_ctx(
-    //                 // ctx type -> expression has ctx type
-    //                 just('a').configure(|cfg, ctx: &(char, _)| {
-    //                     let bracket_close = match (*ctx).0 {
-    //                         '(' => ')',
-    //                         '{' => '}',
-    //                         _ => unreachable!(),
-    //                     };
-    //                     cfg.seq(bracket_close)
-    //                 }),
-    //             )
-    //             .map_with(move |((lb, expression), rb), e| {
-    //                 (e.state() as &mut RollbackState<ParserState>).prev_char = Some(rb);
-
-    //                 let mut children = Vec::with_capacity(expression.len() + 2);
-    //                 children.push(crate::token!(
-    //                     match lb {
-    //                         '{' => OSK::LeftCurlyBracket,
-    //                         '(' => OSK::LeftRoundBracket,
-    //                         _ => unreachable!(),
-    //                     },
-    //                     lb_str(lb)
-    //                 ));
-    //                 children.extend(expression);
-    //                 children.push(crate::token!(OSK::RightCurlyBracket, rb_str(rb)));
-
-    //                 children
-    //             }),
-    //     )))
-    //     .map(move |(sup, others)| {
-    //         let mut children = vec![];
-
-    //         let token = match sup {
-    //             "^" => crate::token!(OSK::Caret, sup),
-    //             "_" => crate::token!(OSK::Underscore, sup),
-    //             _ => unreachable!(),
-    //         };
-    //         children.push(token);
-    //         children.extend(others);
-
-    //         crate::node!(syntax_kind.clone(), children)
-    //     })
-    //     .boxed();
-
-    t3_t1_t2
+        .boxed()
 }
 
 fn create_simple_script_parser<'a, C: 'a>(
