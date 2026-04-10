@@ -117,8 +117,7 @@ impl Compiler {
     // 如何收集RoamNode，构建一张基于RoamNode图, 并构建RoamNode的父子关系及ID引用关系。(a，a的儿子b,a的孙子c均是RoamNode, c引用了RoamNode x, a和x, b和x的关系该如何处理？)
     fn get_metadata(syntax_tree: &SyntaxNode) -> DocumentMetadata {
         let mut keyword = std::collections::HashMap::<String, Vec<String>>::new();
-        let mut preorder = syntax_tree.preorder();
-        while let Some(event) = preorder.next() {
+        for event in syntax_tree.preorder() {
             if let WalkEvent::Enter(element) = event
                 && element.kind() == OrgSyntaxKind::Keyword
             {

@@ -303,14 +303,14 @@ pub(crate) fn keyword_parser_inner<'a, C: 'a + std::default::Default>(
         p1_part1.clone().then(end().to(None)),
         p1_part1
             .clone()
-            .then(object::newline().then(end()).to_slice().map(|s| Some(s))),
+            .then(object::newline().then(end()).to_slice().map(Some)),
         p1_part1
             .clone()
-            .then(object::newline().map(|c| Some(c)))
+            .then(object::newline().map(Some))
             .then_ignore(blank_line_parser().repeated().at_least(1).rewind()),
         p1_part1
             .clone()
-            .then(object::newline().map(|c| Some(c)))
+            .then(object::newline().map(Some))
             // .map(|s|{println!("dbg: s={s:?}"); s})
             .and_is(
                 element_parser_having_affiliated_keywords_for_lookahead
@@ -378,7 +378,7 @@ pub(crate) fn keyword_parser_inner<'a, C: 'a + std::default::Default>(
         p1a_part1
             .clone()
             .then(just('\n').then(end()).to_slice().to(Some("\n"))),
-        p1a_part1.clone().then(just("\n").map(|c| Some(c))).and_is(
+        p1a_part1.clone().then(just("\n").map(Some)).and_is(
             element_parser_having_affiliated_keywords_for_lookahead
                 .clone()
                 .ignored()

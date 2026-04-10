@@ -17,7 +17,7 @@ pub mod element;
 mod error;
 pub mod object;
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap};
 use std::env;
 use std::path::Path;
 
@@ -1283,51 +1283,54 @@ impl Converter {
 
     // object.text
     fn convert_text(&self, token: &SyntaxToken) -> Result<Option<Object>, AstError> {
-        let trim_kinds_1: HashSet<OrgSyntaxKind> = [OrgSyntaxKind::Paragraph].into_iter().collect();
-        let trim_kinds_0: HashSet<OrgSyntaxKind> = [
-            OrgSyntaxKind::SrcBlock,
-            OrgSyntaxKind::Verbatim,
-            OrgSyntaxKind::Code,
-        ]
-        .into_iter()
-        .collect();
+        Ok(Some(Object::Text(token.text().to_string())))
 
-        let mut stack = self.context.kind_stack.clone();
-        stack.pop();
+        // let trim_kinds_1: HashSet<OrgSyntaxKind> = [OrgSyntaxKind::Paragraph].into_iter().collect();
+        // let trim_kinds_0: HashSet<OrgSyntaxKind> = [
+        //     OrgSyntaxKind::SrcBlock,
+        //     OrgSyntaxKind::Verbatim,
+        //     OrgSyntaxKind::Code,
+        // ]
+        // .into_iter()
+        // .collect();
 
-        let mut has_kinds_0 = false;
-        let mut has_kinds_1 = false;
-        for kind in stack.iter() {
-            if trim_kinds_1.contains(kind) {
-                has_kinds_1 = true;
-            }
+        // let mut stack = self.context.kind_stack.clone();
+        // stack.pop();
 
-            if trim_kinds_0.contains(kind) {
-                has_kinds_0 = true;
-            }
-        }
-        // todo: how to compress whitespaces?
-        let enable_trim = if has_kinds_1 && !has_kinds_0 {
-            false
-        } else {
-            false
-        };
+        // let mut has_kinds_0 = false;
+        // let mut has_kinds_1 = false;
+        // for kind in stack.iter() {
+        //     if trim_kinds_1.contains(kind) {
+        //         has_kinds_1 = true;
+        //     }
 
-        if enable_trim {
-            Ok(Some(Object::Text(
-                token
-                    .text()
-                    .split("\n")
-                    .collect::<Vec<_>>()
-                    .iter()
-                    .map(|e| e.trim())
-                    .collect::<Vec<_>>()
-                    .join("")
-                    .to_string(),
-            )))
-        } else {
-            Ok(Some(Object::Text(token.text().to_string())))
-        }
+        //     if trim_kinds_0.contains(kind) {
+        //         has_kinds_0 = true;
+        //     }
+        // }
+        // // todo: how to compress whitespaces?
+        // let enable_trim = if has_kinds_1 && !has_kinds_0 {
+        //     false
+        // } else {
+        //     false
+        // };
+
+        // let enable_trim = false;
+        // if enable_trim {
+        //     Ok(Some(Object::Text(
+        //         token
+        //             .text()
+        //             .split("\n")
+        //             .collect::<Vec<_>>()
+        //             .iter()
+        //             .map(|e| e.trim())
+        //             .collect::<Vec<_>>()
+        //             .join("")
+        //             .to_string(),
+        //     )))
+        // } else {
+        //     Ok(Some(Object::Text(token.text().to_string())))
+        // }
     }
 
     // object.subscript
@@ -1817,34 +1820,31 @@ impl Converter {
     // object.latex_fragment
     fn convert_latex_fragment(&self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
         let tokens = node.children_with_tokens();
-        let display_mode = if tokens
+        let display_mode = if (tokens
             .clone()
             .filter(|e| e.kind() == OrgSyntaxKind::Dollar2)
             .count()
-            == 2
+            == 2)
+            || (tokens
+                .clone()
+                .filter(|e| {
+                    e.kind() == OrgSyntaxKind::LeftSquareBracket
+                        || e.kind() == OrgSyntaxKind::RightSquareBracket
+                })
+                .count()
+                == 2)
         {
             Some(true)
-        } else if tokens
-            .clone()
-            .filter(|e| {
-                e.kind() == OrgSyntaxKind::LeftSquareBracket
-                    || e.kind() == OrgSyntaxKind::RightSquareBracket
-            })
-            .count()
-            == 2
-        {
-            Some(true)
-        } else if tokens
+        } else if (tokens
             .clone()
             .filter(|e| {
                 e.kind() == OrgSyntaxKind::LeftRoundBracket
                     || e.kind() == OrgSyntaxKind::RightRoundBracket
             })
             .count()
-            == 2
+            == 2)
+            || (tokens.filter(|e| e.kind() == OrgSyntaxKind::Dollar).count() == 2)
         {
-            Some(false)
-        } else if tokens.filter(|e| e.kind() == OrgSyntaxKind::Dollar).count() == 2 {
             Some(false)
         } else {
             // e.g: \enlargethispage{2\baselineskip}

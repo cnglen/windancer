@@ -24,17 +24,9 @@ type OSK = OrgSyntaxKind;
 type MyState = extra::SimpleState<ParserState>;
 type MyExtra<'a, C> = extra::Full<Rich<'a, char>, MyState, C>;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct ParserState {
     radio_targets: HashSet<String>,
-}
-
-impl Default for ParserState {
-    fn default() -> Self {
-        Self {
-            radio_targets: HashSet::new(),
-        }
-    }
 }
 
 impl ParserState {
@@ -52,8 +44,7 @@ pub struct ParserResult {
 // get text from syntax node `e`
 pub fn get_text(e: &SyntaxNode) -> String {
     let mut text = String::new();
-    let mut preorder = e.preorder_with_tokens();
-    while let Some(event) = preorder.next() {
+    for event in e.preorder_with_tokens() {
         if let WalkEvent::Enter(element) = event
             && let Some(token) = element.as_token()
         {
@@ -102,8 +93,7 @@ impl OrgParser {
         let mut keyword = std::collections::HashMap::<String, String>::new();
         let mut macro_template = std::collections::HashMap::<String, String>::new();
 
-        let mut preorder = syntax_tree.preorder();
-        while let Some(event) = preorder.next() {
+        for event in syntax_tree.preorder() {
             if let WalkEvent::Enter(element) = event
                 && element.kind() == OSK::Keyword
             {
@@ -399,8 +389,7 @@ impl OrgParser {
         let syntax_tree = SyntaxNode::new_root(root.into_node().expect("xx"));
         for e in syntax_tree.children() {
             let mut text = String::new();
-            let mut preorder = e.preorder_with_tokens();
-            while let Some(event) = preorder.next() {
+            for event in e.preorder_with_tokens() {
                 if let WalkEvent::Enter(element) = event
                     && let Some(token) = element.as_token()
                     && token.kind() != OrgSyntaxKind::LeftAngleBracket3

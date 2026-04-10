@@ -252,21 +252,19 @@ pub(crate) fn just_case_insensitive<'a, C: 'a>(
 }
 
 /// zero or more whitespaces(including space, \tab)
-pub(crate) fn whitespaces<'a, C: 'a>()
--> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Copy {
+pub(crate) fn whitespaces<'a, C: 'a>() -> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Copy {
     one_of(" \t").repeated().to_slice()
 }
 /// one or more whitespaces(including space, \tab)
-pub(crate) fn whitespaces_g1<'a, C: 'a>()
--> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Copy {
+pub(crate) fn whitespaces_g1<'a, C: 'a>() -> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Copy
+{
     one_of(" \t").repeated().at_least(1).to_slice()
 }
 
 /// 解析一行: 至少有一个字符
 /// Line <- (!EOL .)+
 /// EOL <- CR? LF
-pub(crate) fn line_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Copy {
+pub(crate) fn line_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Copy {
     let end_of_line = choice((just(LF).to(()), just(CRLF).to(()), end()));
 
     none_of(CRLF)

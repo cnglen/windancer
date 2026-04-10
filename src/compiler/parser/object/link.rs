@@ -67,11 +67,11 @@ fn path_plain_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, String, MyExtra<'a
             .take_while(|c| !matches!(c, ' ' | '\t' | '\n' | '[' | ']' | '<' | '>')) // () is allowed for parenthesis-wrapped
             .collect();
 
-        let mut content_chars_ = content_.chars();
+        let content_chars_ = content_.chars();
         let mut content = String::new();
         let mut paren_depth = 0;
         let mut max_paren_depth = 0;
-        while let Some(c) = content_chars_.next() {
+        for c in content_chars_ {
             match c {
                 // 遇到左括号，增加深度
                 '(' => {

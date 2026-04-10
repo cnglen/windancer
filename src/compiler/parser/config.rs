@@ -119,7 +119,7 @@ impl OrgParserConfig {
                 !self.org_element_dual_keywords.contains(*s)
                     && !self.org_element_parsed_keywords.contains(*s)
             })
-            .map(|s| s.clone())
+            .cloned()
             .collect()
     }
 }
