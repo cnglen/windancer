@@ -444,8 +444,7 @@ impl Converter {
                                     .as_node()
                                     .unwrap()
                                     .children_with_tokens()
-                                    .map(|e| self.convert_object(&e))
-                                    .flatten()
+                                    .flat_map(|e| self.convert_object(&e))
                                     .flatten()
                                     .collect();
 
@@ -890,8 +889,7 @@ impl Converter {
                         .expect(&format!("first cell: row={:?}", row));
                     let contents: Vec<_> = first_cell
                         .children_with_tokens()
-                        .map(|e| self.convert_object(&e))
-                        .flatten()
+                        .flat_map(|e| self.convert_object(&e))
                         .flatten()
                         .collect();
                     let text_binding = contents
@@ -1062,10 +1060,9 @@ impl Converter {
             .children()
             .filter(|e| e.kind() == OrgSyntaxKind::TableCell)
             .enumerate()
-            .map(|(i, e)| {
+            .flat_map(|(i, e)| {
                 self.convert_table_cell(&e, row_type.clone(), first_cell_text_special_string, i)
             })
-            .flatten()
             // .filter(|e| e.is_ok())
             // .map(|e| e.unwrap())
             .flatten()
@@ -1110,8 +1107,7 @@ impl Converter {
 
         let mut contents: Vec<_> = node
             .children_with_tokens()
-            .map(|e| self.convert_object(&e))
-            .flatten()
+            .flat_map(|e| self.convert_object(&e))
             .flatten()
             .collect();
 
@@ -1245,8 +1241,7 @@ impl Converter {
     fn convert_radio_target(&mut self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
         let objects = node
             .children_with_tokens()
-            .map(|e| self.convert_object(&e))
-            .flatten()
+            .flat_map(|e| self.convert_object(&e))
             .flatten()
             .collect::<Vec<_>>();
 
@@ -1259,8 +1254,7 @@ impl Converter {
     fn convert_radio_link(&mut self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
         let objects = node
             .children_with_tokens()
-            .map(|e| self.convert_object(&e))
-            .flatten()
+            .flat_map(|e| self.convert_object(&e))
             .flatten()
             .collect::<Vec<_>>();
 
@@ -1343,8 +1337,7 @@ impl Converter {
     fn convert_subscript(&mut self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
         let objects = node
             .children_with_tokens()
-            .map(|e| self.convert_object(&e))
-            .flatten()
+            .flat_map(|e| self.convert_object(&e))
             .flatten()
             .collect();
         Ok(Some(Object::Subscript(objects)))
@@ -1354,8 +1347,7 @@ impl Converter {
     fn convert_superscript(&mut self, node: &SyntaxNode) -> Result<Option<Object>, AstError> {
         let objects = node
             .children_with_tokens()
-            .map(|e| self.convert_object(&e))
-            .flatten()
+            .flat_map(|e| self.convert_object(&e))
             .flatten()
             .collect();
         Ok(Some(Object::Superscript(objects)))
@@ -1436,8 +1428,7 @@ impl Converter {
                             e.kind() != OrgSyntaxKind::LeftSquareBracket
                                 && e.kind() != OrgSyntaxKind::RightSquareBracket
                         })
-                        .map(|e| self.convert_object(&e))
-                        .flatten()
+                        .flat_map(|e| self.convert_object(&e))
                         .flatten()
                         .collect()
                 } else {
@@ -1743,8 +1734,7 @@ impl Converter {
             None => vec![],
             Some(e) => e
                 .children_with_tokens()
-                .map(|e| self.convert_object(&e))
-                .flatten()
+                .flat_map(|e| self.convert_object(&e))
                 .flatten()
                 .collect::<Vec<_>>(),
         };
@@ -1755,8 +1745,7 @@ impl Converter {
             None => vec![],
             Some(e) => e
                 .children_with_tokens()
-                .map(|e| self.convert_object(&e))
-                .flatten()
+                .flat_map(|e| self.convert_object(&e))
                 .flatten()
                 .collect::<Vec<_>>(),
         };
@@ -1784,8 +1773,7 @@ impl Converter {
         let references = node
             .children()
             .filter(|e| e.kind() == OrgSyntaxKind::CitationReference)
-            .map(|e| self.convert_citation_reference(&e))
-            .flatten()
+            .flat_map(|e| self.convert_citation_reference(&e))
             .flatten()
             .collect::<Vec<_>>();
 
@@ -1795,8 +1783,7 @@ impl Converter {
             None => vec![],
             Some(e) => e
                 .children_with_tokens()
-                .map(|e| self.convert_object(&e))
-                .flatten()
+                .flat_map(|e| self.convert_object(&e))
                 .flatten()
                 .collect::<Vec<_>>(),
         };
@@ -1807,8 +1794,7 @@ impl Converter {
             None => vec![],
             Some(e) => e
                 .children_with_tokens()
-                .map(|e| self.convert_object(&e))
-                .flatten()
+                .flat_map(|e| self.convert_object(&e))
                 .flatten()
                 .collect::<Vec<_>>(),
         };
@@ -2188,8 +2174,7 @@ impl Converter {
                         .as_node()
                         .unwrap()
                         .children_with_tokens()
-                        .map(|e| self.convert_object(&e))
-                        .flatten()
+                        .flat_map(|e| self.convert_object(&e))
                         .flatten()
                         .collect::<Vec<_>>();
 
@@ -2287,8 +2272,7 @@ impl Converter {
 
         let contents = node
             .children()
-            .map(|e| self.convert_element(&e))
-            .flatten()
+            .flat_map(|e| self.convert_element(&e))
             .collect();
 
         let rids = match self.footnote_label_to_rids.get(&label) {
@@ -2360,8 +2344,7 @@ impl Converter {
             items: node
                 .children()
                 .filter(|e| e.kind() == OrgSyntaxKind::ListItem)
-                .map(|e| self.convert_item(&e))
-                .flatten()
+                .flat_map(|e| self.convert_item(&e))
                 .collect(),
         })
     }
@@ -2432,8 +2415,7 @@ impl Converter {
             .first_child_by_kind(&|e| e == OrgSyntaxKind::KeywordValue)
             .unwrap()
             .children_with_tokens()
-            .map(|e| self.convert_object(&e))
-            .flatten()
+            .flat_map(|e| self.convert_object(&e))
             .flatten()
             .collect::<Vec<_>>();
 
@@ -2473,8 +2455,7 @@ impl Converter {
             .first_child_by_kind(&|e| e == OrgSyntaxKind::KeywordValue)
             .unwrap()
             .children_with_tokens()
-            .map(|e| self.convert_object(&e))
-            .flatten()
+            .flat_map(|e| self.convert_object(&e))
             .flatten()
             .collect::<Vec<_>>();
 
