@@ -446,8 +446,7 @@ impl Converter {
                                     .children_with_tokens()
                                     .map(|e| self.convert_object(&e))
                                     .flatten()
-                                    .filter(|e| e.is_some())
-                                    .map(|e| e.unwrap())
+                                    .flatten()
                                     .collect();
 
                                 title = ans;
@@ -893,8 +892,7 @@ impl Converter {
                         .children_with_tokens()
                         .map(|e| self.convert_object(&e))
                         .flatten()
-                        .filter(|e| e.is_some())
-                        .map(|e| e.unwrap())
+                        .flatten()
                         .collect();
                     let text_binding = contents
                         .iter()
@@ -1070,8 +1068,7 @@ impl Converter {
             .flatten()
             // .filter(|e| e.is_ok())
             // .map(|e| e.unwrap())
-            .filter(|e| e.is_some())
-            .map(|e| e.unwrap())
+            .flatten()
             .collect::<Vec<_>>();
 
         Ok(TableRow { cells, row_type })
@@ -1115,8 +1112,7 @@ impl Converter {
             .children_with_tokens()
             .map(|e| self.convert_object(&e))
             .flatten()
-            .filter(|e| e.is_some())
-            .map(|e| e.unwrap())
+            .flatten()
             .collect();
 
         contents.pop_if(|e| matches!(e, Object::Whitespace(_)));
@@ -1251,8 +1247,7 @@ impl Converter {
             .children_with_tokens()
             .map(|e| self.convert_object(&e))
             .flatten()
-            .filter(|e| e.is_some())
-            .map(|e| e.unwrap())
+            .flatten()
             .collect::<Vec<_>>();
 
         let radio_target = Object::RadioTarget(objects);
@@ -1266,8 +1261,7 @@ impl Converter {
             .children_with_tokens()
             .map(|e| self.convert_object(&e))
             .flatten()
-            .filter(|e| e.is_some())
-            .map(|e| e.unwrap())
+            .flatten()
             .collect::<Vec<_>>();
 
         let radio_link = Object::RadioLink(objects);
@@ -1351,8 +1345,7 @@ impl Converter {
             .children_with_tokens()
             .map(|e| self.convert_object(&e))
             .flatten()
-            .filter(|e| e.is_some())
-            .map(|e| e.unwrap())
+            .flatten()
             .collect();
         Ok(Some(Object::Subscript(objects)))
     }
@@ -1363,8 +1356,7 @@ impl Converter {
             .children_with_tokens()
             .map(|e| self.convert_object(&e))
             .flatten()
-            .filter(|e| e.is_some())
-            .map(|e| e.unwrap())
+            .flatten()
             .collect();
         Ok(Some(Object::Superscript(objects)))
     }
@@ -1446,8 +1438,7 @@ impl Converter {
                         })
                         .map(|e| self.convert_object(&e))
                         .flatten()
-                        .filter(|e| e.is_some())
-                        .map(|e| e.unwrap())
+                        .flatten()
                         .collect()
                 } else {
                     vec![]
@@ -1754,8 +1745,7 @@ impl Converter {
                 .children_with_tokens()
                 .map(|e| self.convert_object(&e))
                 .flatten()
-                .filter(|e| e.is_some())
-                .map(|e| e.unwrap())
+                .flatten()
                 .collect::<Vec<_>>(),
         };
 
@@ -1767,8 +1757,7 @@ impl Converter {
                 .children_with_tokens()
                 .map(|e| self.convert_object(&e))
                 .flatten()
-                .filter(|e| e.is_some())
-                .map(|e| e.unwrap())
+                .flatten()
                 .collect::<Vec<_>>(),
         };
 
@@ -1797,8 +1786,7 @@ impl Converter {
             .filter(|e| e.kind() == OrgSyntaxKind::CitationReference)
             .map(|e| self.convert_citation_reference(&e))
             .flatten()
-            .filter(|e| e.is_some())
-            .map(|e| e.unwrap())
+            .flatten()
             .collect::<Vec<_>>();
 
         let global_prefix_node =
@@ -1809,8 +1797,7 @@ impl Converter {
                 .children_with_tokens()
                 .map(|e| self.convert_object(&e))
                 .flatten()
-                .filter(|e| e.is_some())
-                .map(|e| e.unwrap())
+                .flatten()
                 .collect::<Vec<_>>(),
         };
 
@@ -1822,8 +1809,7 @@ impl Converter {
                 .children_with_tokens()
                 .map(|e| self.convert_object(&e))
                 .flatten()
-                .filter(|e| e.is_some())
-                .map(|e| e.unwrap())
+                .flatten()
                 .collect::<Vec<_>>(),
         };
 
@@ -2204,8 +2190,7 @@ impl Converter {
                         .children_with_tokens()
                         .map(|e| self.convert_object(&e))
                         .flatten()
-                        .filter(|e| e.is_some())
-                        .map(|e| e.unwrap())
+                        .flatten()
                         .collect::<Vec<_>>();
 
                     // tag = Some(
@@ -2449,8 +2434,7 @@ impl Converter {
             .children_with_tokens()
             .map(|e| self.convert_object(&e))
             .flatten()
-            .filter(|e| e.is_some())
-            .map(|e| e.unwrap())
+            .flatten()
             .collect::<Vec<_>>();
 
         self.keywords
@@ -2491,8 +2475,7 @@ impl Converter {
             .children_with_tokens()
             .map(|e| self.convert_object(&e))
             .flatten()
-            .filter(|e| e.is_some())
-            .map(|e| e.unwrap())
+            .flatten()
             .collect::<Vec<_>>();
 
         Ok(AffiliatedKeyword {
