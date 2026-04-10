@@ -189,14 +189,13 @@ impl BuilderContext {
     }
 
     fn leave_heading(&mut self) {
-        if let Some(segment) = self.current_path.last() {
-            if let SourcePathSegment::Heading { id, .. } = segment {
+        if let Some(segment) = self.current_path.last()
+            && let SourcePathSegment::Heading { id, .. } = segment {
                 if let Some(_) = id {
                     self.current_roam_node_path.pop();
                 }
                 self.current_path.pop();
             }
-        }
     }
 
     fn current_path(&self) -> Vec<SourcePathSegment> {

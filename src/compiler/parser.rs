@@ -54,11 +54,10 @@ pub fn get_text(e: &SyntaxNode) -> String {
     let mut text = String::new();
     let mut preorder = e.preorder_with_tokens();
     while let Some(event) = preorder.next() {
-        if let WalkEvent::Enter(element) = event {
-            if let Some(token) = element.as_token() {
+        if let WalkEvent::Enter(element) = event
+            && let Some(token) = element.as_token() {
                 text.push_str(token.text());
             }
-        }
     }
     text
 }
@@ -104,8 +103,8 @@ impl OrgParser {
 
         let mut preorder = syntax_tree.preorder();
         while let Some(event) = preorder.next() {
-            if let WalkEvent::Enter(element) = event {
-                if element.kind() == OSK::Keyword {
+            if let WalkEvent::Enter(element) = event
+                && element.kind() == OSK::Keyword {
                     let key = element
                         .first_child_by_kind(&|e| e == OSK::KeywordKey)
                         .expect("must have KeywordKey")
@@ -147,7 +146,6 @@ impl OrgParser {
                         keyword.insert(key, value);
                     }
                 }
-            }
         }
 
         tracing::debug!("keyword collected: {:#?}", keyword);
@@ -410,14 +408,13 @@ impl OrgParser {
             let mut text = String::new();
             let mut preorder = e.preorder_with_tokens();
             while let Some(event) = preorder.next() {
-                if let WalkEvent::Enter(element) = event {
-                    if let Some(token) = element.as_token()
+                if let WalkEvent::Enter(element) = event
+                    && let Some(token) = element.as_token()
                         && token.kind() != OrgSyntaxKind::LeftAngleBracket3
                         && token.kind() != OrgSyntaxKind::RightAngleBracket3
                     {
                         text.push_str(token.text());
                     }
-                }
             }
             radio_targets_text.push(text);
         }
