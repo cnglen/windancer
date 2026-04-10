@@ -214,7 +214,7 @@ pub(crate) fn keyword_cs_parser<'a, C: 'a>(
 
 /// 解析行终止符：换行符(LF/CRLF)或输入结束
 pub(crate) fn newline_or_ending<'a, C: 'a>()
--> impl Parser<'a, &'a str, Option<&'a str>, MyExtra<'a, C>> + Clone + Copy {
+-> impl Parser<'a, &'a str, Option<&'a str>, MyExtra<'a, C>> + Copy {
     choice((
         just(LF).to(Some(LF)),
         just(CRLF).to(Some(CRLF)),
@@ -229,7 +229,7 @@ pub(crate) fn newline<'a, C: 'a>() -> impl Parser<'a, &'a str, &'a str, MyExtra<
 
 pub(crate) fn just_case_insensitive<'a, C: 'a>(
     s: &'a str,
-) -> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Clone + Copy {
+) -> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Copy {
     custom(move |inp| {
         let before = inp.cursor();
         for expected_char in s.chars() {
@@ -253,12 +253,12 @@ pub(crate) fn just_case_insensitive<'a, C: 'a>(
 
 /// zero or more whitespaces(including space, \tab)
 pub(crate) fn whitespaces<'a, C: 'a>()
--> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Clone + Copy {
+-> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Copy {
     one_of(" \t").repeated().to_slice()
 }
 /// one or more whitespaces(including space, \tab)
 pub(crate) fn whitespaces_g1<'a, C: 'a>()
--> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Clone + Copy {
+-> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Copy {
     one_of(" \t").repeated().at_least(1).to_slice()
 }
 
@@ -266,7 +266,7 @@ pub(crate) fn whitespaces_g1<'a, C: 'a>()
 /// Line <- (!EOL .)+
 /// EOL <- CR? LF
 pub(crate) fn line_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Clone + Copy {
+-> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Copy {
     let end_of_line = choice((just(LF).to(()), just(CRLF).to(()), end()));
 
     none_of(CRLF)
@@ -285,7 +285,7 @@ pub(crate) fn line_parser_allow_blank<'a, C: 'a>()
 }
 
 pub(crate) fn blank_line_str_parser<'a, C: 'a>()
--> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Clone + Copy {
+-> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Copy {
     whitespaces().then(just(LF).or(just(CRLF))).to_slice()
 }
 
