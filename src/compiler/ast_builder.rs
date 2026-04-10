@@ -445,8 +445,7 @@ impl Converter {
                                     .unwrap()
                                     .children_with_tokens()
                                     .map(|e| self.convert_object(&e))
-                                    .filter(|e| e.is_ok())
-                                    .map(|e| e.unwrap())
+                                    .flatten()
                                     .filter(|e| e.is_some())
                                     .map(|e| e.unwrap())
                                     .collect();
@@ -893,8 +892,7 @@ impl Converter {
                     let contents: Vec<_> = first_cell
                         .children_with_tokens()
                         .map(|e| self.convert_object(&e))
-                        .filter(|e| e.is_ok())
-                        .map(|e| e.unwrap())
+                        .flatten()
                         .filter(|e| e.is_some())
                         .map(|e| e.unwrap())
                         .collect();
@@ -1116,8 +1114,7 @@ impl Converter {
         let mut contents: Vec<_> = node
             .children_with_tokens()
             .map(|e| self.convert_object(&e))
-            .filter(|e| e.is_ok())
-            .map(|e| e.unwrap())
+            .flatten()
             .filter(|e| e.is_some())
             .map(|e| e.unwrap())
             .collect();
@@ -1253,8 +1250,7 @@ impl Converter {
         let objects = node
             .children_with_tokens()
             .map(|e| self.convert_object(&e))
-            .filter(|e| e.is_ok())
-            .map(|e| e.unwrap())
+            .flatten()
             .filter(|e| e.is_some())
             .map(|e| e.unwrap())
             .collect::<Vec<_>>();
@@ -1269,8 +1265,7 @@ impl Converter {
         let objects = node
             .children_with_tokens()
             .map(|e| self.convert_object(&e))
-            .filter(|e| e.is_ok())
-            .map(|e| e.unwrap())
+            .flatten()
             .filter(|e| e.is_some())
             .map(|e| e.unwrap())
             .collect::<Vec<_>>();
@@ -1355,8 +1350,7 @@ impl Converter {
         let objects = node
             .children_with_tokens()
             .map(|e| self.convert_object(&e))
-            .filter(|e| e.is_ok())
-            .map(|e| e.unwrap())
+            .flatten()
             .filter(|e| e.is_some())
             .map(|e| e.unwrap())
             .collect();
@@ -1368,8 +1362,7 @@ impl Converter {
         let objects = node
             .children_with_tokens()
             .map(|e| self.convert_object(&e))
-            .filter(|e| e.is_ok())
-            .map(|e| e.unwrap())
+            .flatten()
             .filter(|e| e.is_some())
             .map(|e| e.unwrap())
             .collect();
@@ -1452,8 +1445,7 @@ impl Converter {
                                 && e.kind() != OrgSyntaxKind::RightSquareBracket
                         })
                         .map(|e| self.convert_object(&e))
-                        .filter(|e| e.is_ok())
-                        .map(|e| e.unwrap())
+                        .flatten()
                         .filter(|e| e.is_some())
                         .map(|e| e.unwrap())
                         .collect()
@@ -1761,8 +1753,7 @@ impl Converter {
             Some(e) => e
                 .children_with_tokens()
                 .map(|e| self.convert_object(&e))
-                .filter(|e| e.is_ok())
-                .map(|e| e.unwrap())
+                .flatten()
                 .filter(|e| e.is_some())
                 .map(|e| e.unwrap())
                 .collect::<Vec<_>>(),
@@ -1775,8 +1766,7 @@ impl Converter {
             Some(e) => e
                 .children_with_tokens()
                 .map(|e| self.convert_object(&e))
-                .filter(|e| e.is_ok())
-                .map(|e| e.unwrap())
+                .flatten()
                 .filter(|e| e.is_some())
                 .map(|e| e.unwrap())
                 .collect::<Vec<_>>(),
@@ -1806,8 +1796,7 @@ impl Converter {
             .children()
             .filter(|e| e.kind() == OrgSyntaxKind::CitationReference)
             .map(|e| self.convert_citation_reference(&e))
-            .filter(|e| e.is_ok())
-            .map(|e| e.unwrap())
+            .flatten()
             .filter(|e| e.is_some())
             .map(|e| e.unwrap())
             .collect::<Vec<_>>();
@@ -1819,8 +1808,7 @@ impl Converter {
             Some(e) => e
                 .children_with_tokens()
                 .map(|e| self.convert_object(&e))
-                .filter(|e| e.is_ok())
-                .map(|e| e.unwrap())
+                .flatten()
                 .filter(|e| e.is_some())
                 .map(|e| e.unwrap())
                 .collect::<Vec<_>>(),
@@ -1833,8 +1821,7 @@ impl Converter {
             Some(e) => e
                 .children_with_tokens()
                 .map(|e| self.convert_object(&e))
-                .filter(|e| e.is_ok())
-                .map(|e| e.unwrap())
+                .flatten()
                 .filter(|e| e.is_some())
                 .map(|e| e.unwrap())
                 .collect::<Vec<_>>(),
@@ -2216,8 +2203,7 @@ impl Converter {
                         .unwrap()
                         .children_with_tokens()
                         .map(|e| self.convert_object(&e))
-                        .filter(|e| e.is_ok())
-                        .map(|e| e.unwrap())
+                        .flatten()
                         .filter(|e| e.is_some())
                         .map(|e| e.unwrap())
                         .collect::<Vec<_>>();
@@ -2317,8 +2303,7 @@ impl Converter {
         let contents = node
             .children()
             .map(|e| self.convert_element(&e))
-            .filter(|e| e.is_ok())
-            .map(|e| e.unwrap())
+            .flatten()
             .collect();
 
         let rids = match self.footnote_label_to_rids.get(&label) {
@@ -2391,8 +2376,7 @@ impl Converter {
                 .children()
                 .filter(|e| e.kind() == OrgSyntaxKind::ListItem)
                 .map(|e| self.convert_item(&e))
-                .filter(|e| e.is_ok())
-                .map(|e| e.unwrap())
+                .flatten()
                 .collect(),
         })
     }
@@ -2464,8 +2448,7 @@ impl Converter {
             .unwrap()
             .children_with_tokens()
             .map(|e| self.convert_object(&e))
-            .filter(|e| e.is_ok())
-            .map(|e| e.unwrap())
+            .flatten()
             .filter(|e| e.is_some())
             .map(|e| e.unwrap())
             .collect::<Vec<_>>();
@@ -2507,8 +2490,7 @@ impl Converter {
             .unwrap()
             .children_with_tokens()
             .map(|e| self.convert_object(&e))
-            .filter(|e| e.is_ok())
-            .map(|e| e.unwrap())
+            .flatten()
             .filter(|e| e.is_some())
             .map(|e| e.unwrap())
             .collect::<Vec<_>>();
