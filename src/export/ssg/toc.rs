@@ -18,7 +18,7 @@ pub struct TocNode {
     pub children: Vec<TocNode>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct TableOfContents {
     root_nodes: Vec<TocNode>, // not flatten
 }
@@ -26,12 +26,6 @@ pub struct TableOfContents {
 impl TableOfContents {
     pub fn new(root_nodes: Vec<TocNode>) -> Self {
         Self { root_nodes }
-    }
-}
-
-impl Default for TableOfContents {
-    fn default() -> Self {
-        Self { root_nodes: vec![] }
     }
 }
 
@@ -48,7 +42,7 @@ impl TableOfContents {
             max_depth: usize,
         ) {
             let is_active =
-                active_slug.map_or(false, |slug| slug == node.path.trim_start_matches('#'));
+                active_slug.is_some_and(|slug| slug == node.path.trim_start_matches('#'));
             let active_class = if is_active { r#" class="active""# } else { "" };
             if node.level <= max_depth {
                 html.push_str(&format!(

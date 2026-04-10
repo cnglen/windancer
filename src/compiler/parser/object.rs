@@ -110,7 +110,7 @@ pub(crate) fn keyword_ci_parser_v2<'a, C: 'a>(
 
         loop {
             match inp.peek() {
-                Some(c) if matches!(c, 'a'..='z' | 'A'..='Z'| '0'..='9') => {
+                Some('a'..='z' | 'A'..='Z' | '0'..='9') => {
                     inp.next();
                 }
                 _ => {
@@ -146,7 +146,7 @@ pub(crate) fn keyword_cs_parser_v2<'a, C: 'a>(
         let before = inp.cursor();
         loop {
             match inp.peek() {
-                Some(c) if matches!(c, 'a'..='z' | 'A'..='Z'| '0'..='9') => {
+                Some('a'..='z' | 'A'..='Z' | '0'..='9') => {
                     inp.next();
                 }
                 _ => {
@@ -163,7 +163,7 @@ pub(crate) fn keyword_cs_parser_v2<'a, C: 'a>(
             ));
         }
 
-        if !allowed_keywords.contains(&name.to_string()) {
+        if !allowed_keywords.contains(name) {
             return Err(Rich::custom(
                 inp.span_since(&before),
                 format!("invalid key: '{}'", name),
@@ -184,7 +184,7 @@ pub(crate) fn keyword_cs_parser<'a, C: 'a>(
         let before = inp.cursor();
         loop {
             match inp.peek() {
-                Some(c) if matches!(c, 'a'..='z' | 'A'..='Z'| '0'..='9') => {
+                Some('a'..='z' | 'A'..='Z' | '0'..='9') => {
                     inp.next();
                 }
                 _ => {
@@ -197,7 +197,7 @@ pub(crate) fn keyword_cs_parser<'a, C: 'a>(
         if name.is_empty() {
             return Err(Rich::custom(
                 inp.span_since(&before),
-                format!("no valid string found: empty found"),
+                "no valid string found: empty found".to_string(),
             ));
         }
 
@@ -321,7 +321,7 @@ pub(crate) fn objects_parser<'a, C: 'a>(
 //         .collect::<Vec<_>>()
 // }
 
-/// objects_parser
+// objects_parser
 // object defintion:
 // minimal_set_object := entity + latex_fragment + subscript + superscript + text_markup + plain_text, 6 objects
 // standard_set_object := entity + latex_fragment + angle_link + line_break + macro + target + timestamp +  statistics-cookie + inline-babel-call + export_snippet + inline_src_block + radio_link + regular_link + radio-target + subscript + superscript + text_markup + footnote_reference + citation + plain_text + plain_link, 21 objects
@@ -435,14 +435,9 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
 
     match org_use_sub_superscripts {
         OrgUseSubSuperscripts::Brace | OrgUseSubSuperscripts::True => {
-            let subscript = subscript_parser(
-                org_use_sub_superscripts.clone(),
-                standard_set_object.clone(),
-            );
-            let superscript = superscript_parser(
-                org_use_sub_superscripts.clone(),
-                standard_set_object.clone(),
-            );
+            let subscript = subscript_parser(org_use_sub_superscripts, standard_set_object.clone());
+            let superscript =
+                superscript_parser(org_use_sub_superscripts, standard_set_object.clone());
 
             // minimal set object: 6
             let non_plain_text_for_minimal = Parser::boxed(choice((
@@ -456,8 +451,8 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 latex_fragment.clone(),
                 entity.clone(),
                 text_markup::simple_text_markup_parser(),
-                subscript_superscript::simple_subscript_parser(org_use_sub_superscripts.clone()),
-                subscript_superscript::simple_superscript_parser(org_use_sub_superscripts.clone()),
+                subscript_superscript::simple_subscript_parser(org_use_sub_superscripts),
+                subscript_superscript::simple_superscript_parser(org_use_sub_superscripts),
             )));
 
             let plain_text_for_minimal = plain_text_parser(non_plain_text_for_minimal_lookahead);
@@ -483,8 +478,8 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 latex_fragment.clone(),
                 entity.clone(),
                 text_markup::simple_text_markup_parser(),
-                subscript_superscript::simple_subscript_parser(org_use_sub_superscripts.clone()),
-                subscript_superscript::simple_superscript_parser(org_use_sub_superscripts.clone()),
+                subscript_superscript::simple_subscript_parser(org_use_sub_superscripts),
+                subscript_superscript::simple_superscript_parser(org_use_sub_superscripts),
                 export_snippet.clone(),
                 inline_babel_call.clone(),
                 inline_source_block.clone(),
@@ -524,8 +519,8 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 latex_fragment.clone(),
                 entity.clone(),
                 text_markup::simple_text_markup_parser(),
-                subscript_superscript::simple_subscript_parser(org_use_sub_superscripts.clone()),
-                subscript_superscript::simple_superscript_parser(org_use_sub_superscripts.clone()),
+                subscript_superscript::simple_subscript_parser(org_use_sub_superscripts),
+                subscript_superscript::simple_superscript_parser(org_use_sub_superscripts),
                 citation::simple_citation_parser(),
                 export_snippet.clone(),
                 footnote_reference::simple_footnote_reference_parser(),
@@ -564,8 +559,8 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 independent_object.clone(), // 12个
                 radio_target::simple_radio_target_parser(),
                 text_markup::simple_text_markup_parser(),
-                subscript_superscript::simple_subscript_parser(org_use_sub_superscripts.clone()),
-                subscript_superscript::simple_superscript_parser(org_use_sub_superscripts.clone()),
+                subscript_superscript::simple_subscript_parser(org_use_sub_superscripts),
+                subscript_superscript::simple_superscript_parser(org_use_sub_superscripts),
                 footnote_reference::simple_footnote_reference_parser(),
                 citation::simple_citation_parser(),
             )));
@@ -598,8 +593,8 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 independent_object.clone(), // 12
                 radio_target::simple_radio_target_parser(),
                 text_markup::simple_text_markup_parser(),
-                subscript_superscript::simple_subscript_parser(org_use_sub_superscripts.clone()),
-                subscript_superscript::simple_superscript_parser(org_use_sub_superscripts.clone()),
+                subscript_superscript::simple_subscript_parser(org_use_sub_superscripts),
+                subscript_superscript::simple_superscript_parser(org_use_sub_superscripts),
                 footnote_reference::simple_footnote_reference_parser(),
                 citation::simple_citation_parser(),
                 // table_cell,            // table cell only in table_row of table, DONOT INCLUDE THIS
@@ -624,8 +619,8 @@ pub(crate) fn get_object_parser<'a, C: 'a>(
                 independent_object.clone(), // 12个
                 radio_target::simple_radio_target_parser(),
                 text_markup::simple_text_markup_parser(),
-                subscript_superscript::simple_subscript_parser(org_use_sub_superscripts.clone()),
-                subscript_superscript::simple_superscript_parser(org_use_sub_superscripts.clone()),
+                subscript_superscript::simple_subscript_parser(org_use_sub_superscripts),
+                subscript_superscript::simple_superscript_parser(org_use_sub_superscripts),
                 citation::simple_citation_parser(),
             )));
             let plain_text_parser_for_keyword =

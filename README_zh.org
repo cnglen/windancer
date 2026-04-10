@@ -1,4 +1,4 @@
-https://github.com/cnglen/windancer/actions/workflows/ci.yml/badge.svg?branch=main]]
+[[https://github.com/cnglen/windancer/actions/workflows/ci.yml][https://github.com/cnglen/windancer/actions/workflows/ci.yml/badge.svg?branch=main]]
 
 一个完全用[[https://rust-lang.org/][Rust]]构建的、用于 *​解析* ​和 *渲染* ​[[http://orgmode.org/][org-mode]]的工具。
 

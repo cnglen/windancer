@@ -88,7 +88,7 @@ impl OrgParserConfig {
     pub(crate) fn org_element_dual_keywords_parsed(&self) -> HashSet<String> {
         self.org_element_dual_keywords
             .intersection(&self.org_element_parsed_keywords)
-            .map(|s| s.clone())
+            .cloned()
             .collect()
     }
 
@@ -96,7 +96,7 @@ impl OrgParserConfig {
     pub(crate) fn org_element_dual_keywords_string(&self) -> HashSet<String> {
         self.org_element_dual_keywords
             .difference(&self.org_element_parsed_keywords)
-            .map(|s| s.clone())
+            .cloned()
             .collect()
     }
 

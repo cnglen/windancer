@@ -49,8 +49,8 @@ pub(crate) fn org_file_parser<'a>(
                     + maybe_property_drawer.as_ref().map(|_| 1).unwrap_or(0);
                 if estimated_0 > 0 {
                     let mut children_in_section_preamble = Vec::with_capacity(estimated_0);
-                    children_in_section_preamble.extend(maybe_comment.into_iter());
-                    children_in_section_preamble.extend(maybe_property_drawer.into_iter());
+                    children_in_section_preamble.extend(maybe_comment);
+                    children_in_section_preamble.extend(maybe_property_drawer);
                     let zeroth_section_preamble =
                         crate::node!(OSK::ZerothSectionPreamble, children_in_section_preamble);
                     children_in_section.push(zeroth_section_preamble);

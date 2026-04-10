@@ -16,20 +16,11 @@ use crate::compiler::{Compiler, CompilerConfig};
 use crate::export::ssg::renderer::{Renderer, RendererConfig};
 use crate::export::ssg::site::{SiteBuilder, SiteConfig};
 
+#[derive(Default)]
 pub struct StaticSiteGenerator {
     pub compiler: Compiler,
     pub site_builder: SiteBuilder,
     pub renderer: Renderer,
-}
-
-impl Default for StaticSiteGenerator {
-    fn default() -> Self {
-        Self {
-            compiler: Compiler::default(),
-            site_builder: SiteBuilder::default(),
-            renderer: Renderer::default(),
-        }
-    }
 }
 
 #[derive(Debug, Deserialize)]

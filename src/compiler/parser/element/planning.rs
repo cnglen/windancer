@@ -42,7 +42,7 @@ pub(crate) fn planning_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExt
                 }
             }
 
-            if ws.len() > 0 {
+            if !ws.is_empty() {
                 children.push(crate::token!(OSK::Whitespace, ws));
             }
 

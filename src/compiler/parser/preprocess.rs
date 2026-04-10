@@ -118,7 +118,7 @@ pub(crate) fn include_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, IncludePar
                                         .unwrap(),
                                 );
                             } else {
-                                let ab = v.split("-").into_iter().collect::<Vec<_>>();
+                                let ab = v.split("-").collect::<Vec<_>>();
                                 if ab.len() == 2 {
                                     start_line = Some(ab[0].parse::<usize>().expect("a number"));
                                     end_line = Some(ab[1].parse::<usize>().expect("a number"));
@@ -198,7 +198,7 @@ impl IncludePreProcessor {
                 .join("\n");
 
             let ans = if include_params.language != "org" {
-                vec![
+                [
                     format!(
                         "{}#+BEGIN_SRC {}",
                         prefix_whitespaces, include_params.language
@@ -217,7 +217,7 @@ impl IncludePreProcessor {
             ans
         } else {
             tracing::error!("parse include failed: {:?}", errors);
-            return Cow::Borrowed(line);
+            Cow::Borrowed(line)
         }
     }
 }

@@ -48,15 +48,12 @@ fn table_rule_row<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> +
             }
             children.push(crate::token!(OSK::Pipe, pipe));
             children.push(crate::token!(OSK::Dash, dash));
-            if content.len() > 0 {
+            if !content.is_empty() {
                 children.push(crate::token!(OSK::Text, content));
             }
 
-            match maybe_newline {
-                Some(newline) => {
-                    children.push(crate::token!(OSK::Newline, newline));
-                }
-                None => {}
+            if let Some(newline) = maybe_newline {
+                children.push(crate::token!(OSK::Newline, newline));
             }
 
             crate::node!(OSK::TableRuleRow, children)
@@ -92,11 +89,8 @@ pub(crate) fn table_formula_parser<'a, C: 'a>()
                 vec![crate::token!(OSK::Text, formula)]
             ));
 
-            match nl {
-                Some(newline) => {
-                    children.push(crate::token!(OSK::Newline, newline));
-                }
-                None => {}
+            if let Some(newline) = nl {
+                children.push(crate::token!(OSK::Newline, newline));
             }
 
             crate::node!(OSK::TableFormula, children)

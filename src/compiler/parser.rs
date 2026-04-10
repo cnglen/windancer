@@ -124,7 +124,7 @@ impl OrgParser {
                             .children_with_tokens()
                             .map(|e| {
                                 if let Some(node) = e.as_node() {
-                                    get_text(&node)
+                                    get_text(node)
                                 } else {
                                     e.as_token().expect("todo").text().to_string()
                                 }
@@ -142,15 +142,13 @@ impl OrgParser {
                                     template.trim().to_string(),
                                 ); // overwrite here
                             }
+                        } else if keyword.contains_key(&key) {
+                            keyword
+                                .get_mut(&key)
+                                .expect("has value")
+                                .push_str(&format!(" {value}"))
                         } else {
-                            if keyword.contains_key(&key) {
-                                keyword
-                                    .get_mut(&key)
-                                    .expect("has value")
-                                    .push_str(&format!(" {value}"))
-                            } else {
-                                keyword.insert(key, value);
-                            }
+                            keyword.insert(key, value);
                         }
                     }
                 }
@@ -241,7 +239,7 @@ impl OrgParser {
         let input_file_path = input_file.as_ref();
         let metadata = fs::metadata(input_file_path).expect("todo");
         let modified_time = metadata.modified().expect("todo");
-        let modified_time: DateTime<Local> = modified_time.clone().into();
+        let modified_time: DateTime<Local> = modified_time.into();
         let input_file_name = input_file_path.file_name().expect("file name");
 
         builder.start_node(node.kind().into());
@@ -277,7 +275,7 @@ impl OrgParser {
                     if let Some(keyword_value_expanded) = k2v.get(&name) {
                         builder.start_node(OSK::Macro.into());
 
-                        if args.len() > 0 {
+                        if !args.is_empty() {
                             let args = args.join("");
                             let ts_parser = object::timestamp::FlexibleDateTimeParser::new();
                             let ts = ts_parser.parse(
@@ -342,7 +340,7 @@ impl OrgParser {
                     builder.start_node(OSK::Macro.into());
                     builder.token(
                         OSK::Text.into(),
-                        &Self::expand_macro_template(&template, args),
+                        &Self::expand_macro_template(template, args),
                     );
                     builder.finish_node();
                 }
@@ -386,8 +384,7 @@ impl OrgParser {
             input_file,
         );
         let syntax_tree_with_macro_expanded = SyntaxNode::new_root(builder.finish());
-        let preprocessed_text = get_text(&syntax_tree_with_macro_expanded);
-        preprocessed_text
+        get_text(&syntax_tree_with_macro_expanded)
     }
 
     // Get radio target from RadioTarget defintion in pattern of <<<CONTENTS>>>
@@ -421,12 +418,11 @@ impl OrgParser {
             while let Some(event) = preorder.next() {
                 match event {
                     WalkEvent::Enter(element) => {
-                        if let Some(token) = element.as_token() {
-                            if token.kind() != OrgSyntaxKind::LeftAngleBracket3
-                                && token.kind() != OrgSyntaxKind::RightAngleBracket3
-                            {
-                                text.push_str(token.text());
-                            }
+                        if let Some(token) = element.as_token()
+                            && token.kind() != OrgSyntaxKind::LeftAngleBracket3
+                            && token.kind() != OrgSyntaxKind::RightAngleBracket3
+                        {
+                            text.push_str(token.text());
                         }
                     }
                     _ => {}
@@ -456,7 +452,7 @@ impl OrgParser {
             .lines()
             .filter(|s| s.contains("<<<") && s.contains(">>>"))
             .collect::<String>();
-        let radio_targets = if radio_target_lines.len() > 0 {
+        let radio_targets = if !radio_target_lines.is_empty() {
             self.get_radio_targets(radio_target_lines.as_str())
         } else {
             HashSet::new()
@@ -506,12 +502,7 @@ impl OrgParser {
                 self.get_keyword_and_macro_template(&syntax_tree_first_round);
 
             // get preprocessed_text
-            &self.expand_macro(
-                &mut syntax_tree_first_round,
-                &k2v,
-                &macro_template,
-                input_file,
-            )
+            &self.expand_macro(&syntax_tree_first_round, &k2v, &macro_template, input_file)
         } else {
             tracing::trace!("preprocess ignored");
             input
@@ -538,9 +529,8 @@ impl OrgParser {
             .into_node()
             .unwrap();
 
-        let syntax_tree = SyntaxNode::new_root(green_tree); // i.e, red tree
-
-        syntax_tree
+        // i.e, red tree
+        SyntaxNode::new_root(green_tree)
     }
 }
 

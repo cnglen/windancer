@@ -8,7 +8,7 @@ pub(crate) fn contents_parser<'a, C: 'a>(
 ) -> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Clone {
     let post = one_of(" \t​-.,;:!?)}]\"'\\\r\n").or(end().to('x'));
 
-    none_of(" \t​")              // not begin with whitespace.
+    none_of(" \t\u{200B}")              // not begin with whitespace.
         .then(any()
               .and_is(
                   just(marker).ignore_then(post).ignored().not()
@@ -18,7 +18,7 @@ pub(crate) fn contents_parser<'a, C: 'a>(
         .to_slice()
         .try_map_with(|content:&str, e| { // not end with whitespace.
             let content_end_valid = match content.chars().last() {
-                Some(c) if matches!(c, ' ' | '\t' | '​') => false,
+                Some(' ' | '\t' | '​') => false,
                 _ => true
             };
 

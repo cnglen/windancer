@@ -209,7 +209,7 @@ pub(crate) fn heading_subtree_parser<'a, C: 'a + std::default::Default>(
 
                 if let Some((((left_colon, tags), right_colon), whitespace)) = maybe_tag {
                     let mut tag_token_children: Vec<NT> = vec![];
-                    tag_token_children.push(crate::token!(OSK::Colon, &left_colon.to_string()));
+                    tag_token_children.push(crate::token!(OSK::Colon, left_colon));
 
                     for tag in tags {
                         tag_token_children.push(crate::token!(OSK::HeadingRowTag, tag));
@@ -220,7 +220,7 @@ pub(crate) fn heading_subtree_parser<'a, C: 'a + std::default::Default>(
                     let tag_node: NT = crate::node!(OSK::HeadingRowTags, tag_token_children);
                     children.push(tag_node);
 
-                    if whitespace.len() > 0 {
+                    if !whitespace.is_empty() {
                         children.push(crate::token!(OSK::Whitespace, whitespace));
                     }
                 }

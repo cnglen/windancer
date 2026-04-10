@@ -52,37 +52,35 @@ impl Section {
                 }
 
                 for node in document.ast.roam_nodes.iter() {
-                    if let Some(parent_id) = &node.parent_id {
-                        if let Some(current_index) = id_to_index.get(node.id.as_str()) {
-                            if let Some(parent_index) = id_to_index.get(parent_id.as_str()) {
-                                graph.add_edge(*parent_index, *current_index, EdgeType::Parent {});
-                            }
-                        }
+                    if let Some(parent_id) = &node.parent_id
+                        && let Some(current_index) = id_to_index.get(node.id.as_str())
+                        && let Some(parent_index) = id_to_index.get(parent_id.as_str())
+                    {
+                        graph.add_edge(*parent_index, *current_index, EdgeType::Parent {});
                     }
 
                     for extracted_link in document.ast.extracted_links.iter() {
-                        if extracted_link.link.protocol == "id" {
-                            if let Some(source_id) = extracted_link.source_roam_id() {
-                                let target_id = extracted_link
-                                    .link
-                                    .path
-                                    .strip_prefix("id:")
-                                    .expect("must have ID in path")
-                                    .to_string();
+                        if extracted_link.link.protocol == "id"
+                            && let Some(source_id) = extracted_link.source_roam_id()
+                        {
+                            let target_id = extracted_link
+                                .link
+                                .path
+                                .strip_prefix("id:")
+                                .expect("must have ID in path")
+                                .to_string();
 
-                                if let Some(source_index) = id_to_index.get(source_id.as_str()) {
-                                    if let Some(target_index) = id_to_index.get(&target_id) {
-                                        if !graph.contains_edge(*source_index, *target_index) {
-                                            graph.add_edge(
-                                                *source_index,
-                                                *target_index,
-                                                EdgeType::ExplicitReference {
-                                                    source_path: extracted_link.source_path.clone(),
-                                                },
-                                            );
-                                        }
-                                    }
-                                }
+                            if let Some(source_index) = id_to_index.get(source_id.as_str())
+                                && let Some(target_index) = id_to_index.get(&target_id)
+                                && !graph.contains_edge(*source_index, *target_index)
+                            {
+                                graph.add_edge(
+                                    *source_index,
+                                    *target_index,
+                                    EdgeType::ExplicitReference {
+                                        source_path: extracted_link.source_path.clone(),
+                                    },
+                                );
                             }
                         }
                     }
@@ -90,7 +88,7 @@ impl Section {
             }
 
             for subsection in &section.subsections {
-                build_section(subsection, &mut graph, &mut id_to_index, &mut refs_to_id);
+                build_section(subsection, graph, id_to_index, refs_to_id);
             }
         }
 

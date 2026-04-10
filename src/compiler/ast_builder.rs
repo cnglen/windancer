@@ -1083,8 +1083,9 @@ impl Converter {
             .map(|(i, e)| {
                 self.convert_table_cell(&e, row_type.clone(), first_cell_text_special_string, i)
             })
-            .filter(|e| e.is_ok())
-            .map(|e| e.unwrap())
+            .flatten()
+            // .filter(|e| e.is_ok())
+            // .map(|e| e.unwrap())
             .filter(|e| e.is_some())
             .map(|e| e.unwrap())
             .collect::<Vec<_>>();
@@ -1411,11 +1412,9 @@ impl Converter {
             Some(token) => {
                 let raw = token.as_token().unwrap().text().to_string();
                 let raw = raw.replace(r##"\,"##, "MAGIC_ESCAPED_COMMA");
-                let a = raw
-                    .split(",")
+                raw.split(",")
                     .map(|s| s.trim().replace("MAGIC_ESCAPED_COMMA", ",").to_string())
-                    .collect::<Vec<String>>();
-                a
+                    .collect::<Vec<String>>()
             }
         };
 
@@ -1585,7 +1584,7 @@ impl Converter {
             }
             None => {
                 let label_generated = format!("anonymous_{}", self.n_anonymous_label);
-                self.n_anonymous_label = self.n_anonymous_label + 1;
+                self.n_anonymous_label += 1;
                 self.footnote_label_to_rids
                     .insert(label_generated.clone(), vec![1]);
                 self.footnote_label_to_nid
@@ -1608,7 +1607,7 @@ impl Converter {
                 .children_with_tokens()
                 .filter(|e| e.kind() == OrgSyntaxKind::AffiliatedKeyword)
                 .map(|e| {
-                    self.convert_affiliated_keyword(&e.as_node().unwrap())
+                    self.convert_affiliated_keyword(e.as_node().unwrap())
                         .unwrap()
                 })
                 .collect::<Vec<_>>();
@@ -1656,7 +1655,7 @@ impl Converter {
         } else if n_space == 1 {
             node.children_with_tokens()
                 .filter(|e| e.kind() == OrgSyntaxKind::Spaces)
-                .map(|e| format!("_{}", e.as_token().expect("todo").text().to_string()))
+                .map(|e| format!("_{}", e.as_token().expect("todo").text()))
                 .collect::<String>()
         } else {
             String::from("error occured, please fixme")
@@ -2255,7 +2254,6 @@ impl Converter {
                             .as_token()
                             .unwrap()
                             .text()
-                            .to_string(),
                     ));
                 }
 

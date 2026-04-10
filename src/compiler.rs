@@ -119,43 +119,39 @@ impl Compiler {
         let mut keyword = std::collections::HashMap::<String, Vec<String>>::new();
         let mut preorder = syntax_tree.preorder();
         while let Some(event) = preorder.next() {
-            match event {
-                WalkEvent::Enter(element) => {
-                    if element.kind() == OrgSyntaxKind::Keyword {
-                        let key = element
-                            .first_child_by_kind(&|e| e == OrgSyntaxKind::KeywordKey)
-                            .expect("must have KeywordKey")
-                            .children_with_tokens()
-                            .map(|e| e.as_token().expect("todo").text().to_string())
-                            .collect::<String>()
-                            .to_ascii_uppercase();
+            if let WalkEvent::Enter(element) = event
+                && element.kind() == OrgSyntaxKind::Keyword
+            {
+                let key = element
+                    .first_child_by_kind(&|e| e == OrgSyntaxKind::KeywordKey)
+                    .expect("must have KeywordKey")
+                    .children_with_tokens()
+                    .map(|e| e.as_token().expect("todo").text().to_string())
+                    .collect::<String>()
+                    .to_ascii_uppercase();
 
-                        let value = element
-                            .first_child_by_kind(&|e| e == OrgSyntaxKind::KeywordValue)
-                            .expect("must have KeywordValue")
-                            .children_with_tokens()
-                            .map(|e| {
-                                if let Some(node) = e.as_node() {
-                                    get_text(&node)
-                                } else {
-                                    e.as_token().expect("todo").text().to_string()
-                                }
-                            })
-                            .collect::<String>()
-                            .trim()
-                            .to_string();
-
-                        if (key != "MACRO") && (!value.is_empty()) {
-                            if keyword.contains_key(&key) {
-                                keyword.get_mut(&key).expect("has value").push(value);
-                            } else {
-                                keyword.insert(key, vec![value]);
-                            }
+                let value = element
+                    .first_child_by_kind(&|e| e == OrgSyntaxKind::KeywordValue)
+                    .expect("must have KeywordValue")
+                    .children_with_tokens()
+                    .map(|e| {
+                        if let Some(node) = e.as_node() {
+                            get_text(node)
+                        } else {
+                            e.as_token().expect("todo").text().to_string()
                         }
+                    })
+                    .collect::<String>()
+                    .trim()
+                    .to_string();
+
+                if (key != "MACRO") && (!value.is_empty()) {
+                    if keyword.contains_key(&key) {
+                        keyword.get_mut(&key).expect("has value").push(value);
+                    } else {
+                        keyword.insert(key, vec![value]);
                     }
                 }
-
-                _ => {}
             }
         }
 
@@ -210,10 +206,10 @@ impl Compiler {
 
     fn has_org_file<P: AsRef<Path>>(path: P) -> bool {
         for entry in WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
-            if entry.metadata().unwrap().is_file() {
-                if entry.path().extension().unwrap_or(OsStr::new("")) == "org" {
-                    return true;
-                }
+            if entry.metadata().unwrap().is_file()
+                && entry.path().extension().unwrap_or(OsStr::new("")) == "org"
+            {
+                return true;
             }
         }
         false
@@ -221,6 +217,7 @@ impl Compiler {
 
     /// Compile the directory containging org-files `d_org` into a `Section`
     /// - use recursive to support subdirectories
+    ///
     /// Args:
     ///   d_org:
     ///   d_base: base path
@@ -240,13 +237,13 @@ impl Compiler {
             // tracing::debug!("compile_section: {}", path.display());
             let filename = path.file_name().expect("xx").to_string_lossy().to_string();
 
-            if path.is_dir() && (!filename.starts_with(&['.', '#'])) {
+            if path.is_dir() && (!filename.starts_with(['.', '#'])) {
                 if Self::has_org_file(&path) {
                     tracing::debug!("compile_section@dir: {}", path.display());
-                    subsections.push(self.compile_section(path.as_path(), &d_base.as_ref())?);
+                    subsections.push(self.compile_section(path.as_path(), d_base.as_ref())?);
                 }
             } else if path.extension() == Some(OsStr::new("org"))
-                && (!filename.starts_with(&['.', '#']))
+                && (!filename.starts_with(['.', '#']))
             {
                 tracing::debug!("compile_section@org: {}", path.display());
                 documents.push(self.compile_file(path, d_base.as_ref().to_path_buf())?);

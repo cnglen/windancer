@@ -149,11 +149,12 @@ fn load_templates_from_dir(dir: &str) -> std::io::Result<HashMap<String, String>
         let entry = entry?;
         let path = entry.path();
 
-        if path.is_file() && path.extension().map_or(false, |ext| ext == "html") {
-            if let Some(stem) = path.file_name().and_then(|s| s.to_str()) {
-                let content = fs::read_to_string(&path)?;
-                templates.insert(stem.to_string(), content);
-            }
+        if path.is_file()
+            && path.extension().is_some_and(|ext| ext == "html")
+            && let Some(stem) = path.file_name().and_then(|s| s.to_str())
+        {
+            let content = fs::read_to_string(&path)?;
+            templates.insert(stem.to_string(), content);
         }
     }
 
@@ -376,11 +377,7 @@ impl Renderer {
         let id = page.ast.properties.get("ID");
         ctx.insert("id", &id);
 
-        let is_home = if page.url == "/index.html" {
-            true
-        } else {
-            false
-        };
+        let is_home = page.url == "/index.html";
         ctx.insert("is_home", &is_home);
 
         let now = Local::now();
@@ -430,13 +427,10 @@ impl Renderer {
 
         ctx.insert("enable_tinydis", &self.config.enable_tinydis);
         ctx.insert("tinydis_server_url", &self.config.tinydis_server_url);
-        let html = self
-            .context
+        self.context
             .tera
             .render("page.tera.html", &ctx)
-            .unwrap_or_else(|err| format!("Template rendering page failed: {}", err));
-
-        html
+            .unwrap_or_else(|err| format!("Template rendering page failed: {}", err))
     }
 
     fn render_page(&mut self, page: &Page) -> std::io::Result<String> {
@@ -556,7 +550,7 @@ impl Renderer {
                 let section = Section { elements };
                 self.render_section(&section)
             } else {
-                self.render_section(&section)
+                self.render_section(section)
             }
         } else {
             String::new()
@@ -702,7 +696,7 @@ impl Renderer {
                         table_row
                             .cells
                             .iter()
-                            .map(|e| self.render_object(&e))
+                            .map(|e| self.render_object(e))
                             .collect::<String>()
                     )
                 }
@@ -761,9 +755,7 @@ impl Renderer {
                 format!(r##"<code class="inline">{}</code>"##, inner)
             }
 
-            Object::Whitespace(content) => {
-                format!(r##"{}"##, content)
-            }
+            Object::Whitespace(content) => content.to_string(),
 
             Object::GeneralLink(GeneralLink {
                 protocol,
@@ -771,7 +763,7 @@ impl Renderer {
                 path,
                 is_image,
             }) => {
-                let desc = if description.len() == 0 {
+                let desc = if description.is_empty() {
                     path
                 } else {
                     &description
@@ -782,7 +774,7 @@ impl Renderer {
 
                 if protocol == "fuzzy" {
                     format!(r##"<a href="#{}">{}</a>"##, path, desc)
-                } else if description.len() == 0 && *is_image {
+                } else if description.is_empty() && *is_image {
                     let path_html = if path.starts_with("file:") {
                         path.strip_prefix("file:").unwrap()
                     } else {
@@ -805,10 +797,10 @@ impl Renderer {
                     let id = path.strip_prefix("id:").expect("id:");
 
                     let href = if let Some(url) = self.context.roamid_to_url.get(id) {
-                        format!("{}", url)
+                        url.to_string()
                     } else {
                         tracing::warn!("no url found for {}", id);
-                        format!("#{}", id)
+                        id.to_string()
                     };
                     format!(r##"<a href="{}">{}</a>"##, href, desc)
                 } else {
@@ -860,32 +852,30 @@ impl Renderer {
                     ..
                 } => match (alignment, cell_type) {
                     (TableCellAlignment::Left, TableCellType::Header) => {
-                        format!(r##" <th class="org-left">  </th> "##)
+                        r##" <th class="org-left">  </th> "##.to_string()
                     }
 
                     (TableCellAlignment::Center, TableCellType::Header) => {
-                        format!(r##" <th class="org-center">  </th> "##)
+                        r##" <th class="org-center">  </th> "##.to_string()
                     }
 
                     (TableCellAlignment::Right, TableCellType::Header) => {
-                        format!(r##" <th class="org-right"> </th> "##)
+                        r##" <th class="org-right"> </th> "##.to_string()
                     }
 
                     (TableCellAlignment::Left, TableCellType::Data) => {
-                        format!(r##" <td class="org-left">  </td> "##)
+                        r##" <td class="org-left">  </td> "##.to_string()
                     }
 
                     (TableCellAlignment::Center, TableCellType::Data) => {
-                        format!(r##" <td class="org-center">  </td> "##)
+                        r##" <td class="org-center">  </td> "##.to_string()
                     }
 
                     (TableCellAlignment::Right, TableCellType::Data) => {
-                        format!(r##" <td class="org-right"> </td> "##)
+                        r##" <td class="org-right"> </td> "##.to_string()
                     }
                 },
-                _ => {
-                    format!("")
-                }
+                _ => String::new(),
             },
 
             Object::Target(text) => {
@@ -919,12 +909,10 @@ impl Renderer {
                     None => "fixme!! error occured",
                 };
 
-                format!("{v}")
+                v.to_string()
             }
 
-            Object::LineBreak => {
-                format!("<br>\n")
-            }
+            Object::LineBreak => "<br>\n".to_string(),
 
             Object::RadioTarget(objects) => {
                 let inner: String = objects.iter().map(|o| self.render_object(o)).collect();
@@ -960,16 +948,14 @@ impl Renderer {
                 None => String::from(content),
             },
 
-            Object::StatisticsCookie(value) => {
-                format!("{}", value)
-            }
+            Object::StatisticsCookie(value) => value.to_string(),
 
             Object::ExportSnippet { backend, value } => {
                 if backend == "html" {
-                    format!("{}", value)
+                    value.to_string()
                 } else {
                     // ignore other backend
-                    format!("")
+                    String::new()
                 }
             }
 
@@ -1036,9 +1022,7 @@ impl Renderer {
                         block.language, block.language, s
                     )
                 }
-                _ => {
-                    format!("")
-                }
+                _ => String::new(),
             }
         } else {
             format!(
@@ -1050,18 +1034,16 @@ impl Renderer {
 
     // FIXME: only support html now
     fn render_export_block(&self, block: &ExportBlock) -> String {
-        format!(
-            r##"{}"##,
-            block
-                .contents
-                .iter()
-                .map(|e| self.render_object_without_escaple(e))
-                .collect::<String>()
-        )
+        block
+            .contents
+            .iter()
+            .map(|e| self.render_object_without_escaple(e))
+            .collect::<String>()
+            .to_string()
     }
 
     fn render_comment_block() -> String {
-        format!(r##""##)
+        String::new()
     }
 
     fn render_fixed_width(block: &FixedWidth) -> String {
@@ -1072,11 +1054,11 @@ impl Renderer {
     }
 
     fn render_horizontal_rule() -> String {
-        format!(r##"<hr>"##)
+        r##"<hr>"##.to_string()
     }
 
     fn render_latex_environment(latex_environment: &LatexEnvironment) -> String {
-        format!(r##"{}"##, latex_environment.text)
+        latex_environment.text.to_string()
     }
 
     fn render_drawer(&mut self, _drawer: &Drawer) -> String {
@@ -1106,18 +1088,17 @@ impl Renderer {
             .collect::<Vec<String>>()
             .join(" ");
 
-        let is_figure_only_paragrah = paragraph.objects.iter().count() == 1
+        let is_figure_only_paragrah = paragraph.objects.len() == 1
             && paragraph
                 .objects
                 .iter()
-                .filter(|e| match e {
-                    Object::GeneralLink(GeneralLink {
+                .filter(|e| {
+                    matches!(e, Object::GeneralLink(GeneralLink {
                         protocol: _,
                         path: _,
                         description,
                         is_image,
-                    }) if description.len() == 0 && *is_image => true,
-                    _ => false,
+                    }) if description.is_empty() && *is_image)
                 })
                 .count()
                 == 1
@@ -1149,7 +1130,7 @@ impl Renderer {
                 .flat_map(|e| {
                     e.split(":")
                         .map(|ee| ee.trim())
-                        .filter(|ee| ee.len() > 0)
+                        .filter(|ee| !ee.is_empty())
                         .map(|ee| ee.split_once(" "))
                 })
                 .filter(|e| e.is_some())
@@ -1160,7 +1141,7 @@ impl Renderer {
                 .collect::<Vec<String>>()
                 .join(" ");
 
-            self.context.figure_counter = self.context.figure_counter + 1;
+            self.context.figure_counter += 1;
 
             let path = match &paragraph.objects[0] {
                 Object::GeneralLink(GeneralLink { path, .. }) => path,
@@ -1275,8 +1256,8 @@ impl Renderer {
     fn render_keyword(&self, keyword: &Keyword) -> String {
         // title has been rendered in render_org_file() with id
         match keyword.key.to_ascii_uppercase().as_str() {
-            "TITLE" => format!(""),
-            _ => format!(""),
+            "TITLE" => String::new(),
+            _ => String::new(),
         }
     }
 
@@ -1287,7 +1268,7 @@ impl Renderer {
                     r##"<ul>{}</ul>"##,
                     list.items
                         .iter()
-                        .map(|i| self.render_item(&i))
+                        .map(|i| self.render_item(i))
                         .collect::<String>()
                 )
             }
@@ -1297,7 +1278,7 @@ impl Renderer {
                     r##"<ol>{}</ol>"##,
                     list.items
                         .iter()
-                        .map(|i| self.render_item(&i))
+                        .map(|i| self.render_item(i))
                         .collect::<String>()
                 )
             }
@@ -1307,7 +1288,7 @@ impl Renderer {
                     r##"<dl>{}</dl>"##,
                     list.items
                         .iter()
-                        .map(|i| self.render_item(&i))
+                        .map(|i| self.render_item(i))
                         .collect::<String>()
                 )
             }
@@ -1317,9 +1298,9 @@ impl Renderer {
     fn render_item(&mut self, item: &Item) -> String {
         let checkbox_html = match item.checkbox.as_deref() {
             None => String::from(""),
-            Some("[X]") => format!("✅"),
-            Some("[ ]") => format!("⬜"),
-            Some("[-]") => format!("⏳"),
+            Some("[X]") => "✅".to_string(),
+            Some("[ ]") => "⬜".to_string(),
+            Some("[-]") => "⏳".to_string(),
             Some(_) => String::from(""),
         };
 
@@ -1327,7 +1308,7 @@ impl Renderer {
         let contents_html = if item.contents.len() == 1 {
             item.contents
                 .iter()
-                .map(|i| self.render_element(&i))
+                .map(|i| self.render_element(i))
                 .collect::<String>()
                 .as_str()
                 // .trim_prefix("<p>")
@@ -1338,7 +1319,7 @@ impl Renderer {
         } else {
             item.contents
                 .iter()
-                .map(|i| self.render_element(&i))
+                .map(|i| self.render_element(i))
                 .map(|i| i.replacen("<p>", "", 1))
                 .collect::<String>()
         };

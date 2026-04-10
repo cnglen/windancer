@@ -41,17 +41,14 @@ impl PageNavContext {
             .map(|id| pageid_url.get(id).unwrap().to_string())
             .collect();
 
-        let prev_sibling = if let Some(prev_sibling_id) = &page.prev_sibling_id {
-            Some(pageid_url.get(prev_sibling_id).unwrap().to_string())
-        } else {
-            None
-        };
-
-        let next_sibling = if let Some(next_sibling_id) = &page.next_sibling_id {
-            Some(pageid_url.get(next_sibling_id).unwrap().to_string())
-        } else {
-            None
-        };
+        let prev_sibling = page
+            .prev_sibling_id
+            .as_ref()
+            .map(|prev_sibling_id| pageid_url.get(prev_sibling_id).unwrap().to_string());
+        let next_sibling = page
+            .next_sibling_id
+            .as_ref()
+            .map(|next_sibling_id| pageid_url.get(next_sibling_id).unwrap().to_string());
 
         let prev_flattened = if let Some(prev_flattened_id) = &page.prev_flattened_id {
             nav_valid = true;

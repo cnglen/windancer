@@ -98,23 +98,18 @@ impl fmt::Debug for Page {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
 #[serde(default)]
 pub struct SiteConfig {
     // pub base_url: String,
     // pub theme: String,
     // pub generate_search_index: bool,
 }
-impl Default for SiteConfig {
-    fn default() -> Self {
-        Self {}
-    }
-}
 
 // roam from site
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Site {
     pub config: SiteConfig,
     pub pages: HashMap<PageId, Page>,
@@ -187,20 +182,6 @@ impl Site {
         TableOfContents::new(root_nodes)
     }
 }
-impl Default for Site {
-    fn default() -> Self {
-        Self {
-            config: SiteConfig::default(),
-            pages: HashMap::new(),
-            pageid_to_url: HashMap::new(),
-            root_page_id: PageId::new(),
-            tag_index: HashMap::new(),
-            flattened_pages: vec![],
-            _static_assets: vec![],
-            knowledge_graph: KnowledgeGraph::default(),
-        }
-    }
-}
 
 use crate::compiler::ast_builder::object::Object;
 use crate::compiler::org_roam::{EdgeType, NodeType, RoamNode};
@@ -231,7 +212,7 @@ impl GraphNode {
             refs: roam_node.refs.clone(),
             properties: roam_node.properties.clone(),
             tags: roam_node.tags.clone(),
-            level: roam_node.level.clone(),
+            level: roam_node.level,
             parent_id: roam_node.parent_id.clone(),
             url,
         }
@@ -239,21 +220,11 @@ impl GraphNode {
 }
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct KnowledgeGraph {
     pub graph: DiGraph<GraphNode, EdgeType>,
     pub id_to_index: HashMap<String, NodeIndex>,
     pub id_to_url: HashMap<String, String>,
-}
-
-impl Default for KnowledgeGraph {
-    fn default() -> Self {
-        Self {
-            graph: DiGraph::default(),
-            id_to_index: HashMap::default(),
-            id_to_url: HashMap::default(),
-        }
-    }
 }
 
 pub struct SiteBuilder {
@@ -278,7 +249,7 @@ impl Default for SiteBuilder {
     }
 }
 impl SiteBuilder {
-    pub fn new<'a>(config: SiteConfig, output_directory: &'a str) -> Self {
+    pub fn new(config: SiteConfig, output_directory: &str) -> Self {
         Self {
             output_directory: std::path::Path::new(output_directory).to_path_buf(),
             config,
@@ -311,8 +282,8 @@ impl SiteBuilder {
             .title
             .clone()
             .unwrap_or("no title found".to_string());
-        let last_modified_ts = document.metadata.last_modified_ts.clone();
-        let created_ts = document.metadata.created_ts.clone();
+        let last_modified_ts = document.metadata.last_modified_ts;
+        let created_ts = document.metadata.created_ts;
 
         let url = format!("/{}", document.html_path());
         let metadata = PageMetadata {};
@@ -377,7 +348,7 @@ impl SiteBuilder {
                 if doc.file_info.maybe_index {
                     let id = self.process_document(doc);
                     index_page_id = Some(id.clone());
-                    n_index_page = n_index_page + 1;
+                    n_index_page += 1;
                     self.parent_stack.push(id);
                 } else {
                     self.process_document(doc);
@@ -401,7 +372,7 @@ impl SiteBuilder {
         }
 
         for subsection in section.subsections.iter() {
-            self.process_section(&subsection);
+            self.process_section(subsection);
         }
 
         for _ in 0..n_index_page {
@@ -433,6 +404,7 @@ impl SiteBuilder {
         std::fs::write(static_directory_to.join("default.css"), default_css)
             .expect("write default.css failed");
 
+        // copy user's static directory to site root directory, default.css can be overwritten
         if static_directory_from.is_dir() {
             tracing::debug!(from=?static_directory_from.display(), to=?static_directory_to.display());
 
@@ -441,8 +413,8 @@ impl SiteBuilder {
             options.copy_inside = false;
             options.content_only = true;
 
-            copy(&static_directory_from, &static_directory_to, &options)
-                .expect(format!("copy failed from {}", static_directory_from.display()).as_str());
+            copy(&static_directory_from, static_directory_to, &options)
+                .unwrap_or_else(|_| panic!("copy failed from {}", static_directory_from.display()));
             static_assets.push((static_directory_from, static_directory_to.to_path_buf()));
         }
 
@@ -457,8 +429,7 @@ impl SiteBuilder {
                 let from_parent_full_path = std::fs::canonicalize(from.parent().unwrap()).expect(
                     "input file `from` should have a parent and the parent have a full path",
                 );
-                let relative_directories_vec = match from_parent_full_path.strip_prefix(&directory)
-                {
+                let relative_directories_vec = match from_parent_full_path.strip_prefix(directory) {
                     Ok(relative_path) => relative_path
                         .components()
                         .map(|e| e.as_os_str().to_string_lossy().to_string())
@@ -480,7 +451,7 @@ impl SiteBuilder {
                     .to_string();
                 if from.is_file()
                     && from.extension() != Some(std::ffi::OsStr::new("org"))
-                    && (!from_filename.starts_with(&['.', '#']))
+                    && (!from_filename.starts_with(['.', '#']))
                     && (!from_filename.ends_with("_ast.json"))
                     && (!from_filename.ends_with("_syntax.json"))
                 {
@@ -599,37 +570,35 @@ impl SiteBuilder {
                 }
 
                 for node in document.ast.roam_nodes.iter() {
-                    if let Some(parent_id) = &node.parent_id {
-                        if let Some(current_index) = id_to_index.get(node.id.as_str()) {
-                            if let Some(parent_index) = id_to_index.get(parent_id.as_str()) {
-                                graph.add_edge(*parent_index, *current_index, EdgeType::Parent {});
-                            }
-                        }
+                    if let Some(parent_id) = &node.parent_id
+                        && let Some(current_index) = id_to_index.get(node.id.as_str())
+                        && let Some(parent_index) = id_to_index.get(parent_id.as_str())
+                    {
+                        graph.add_edge(*parent_index, *current_index, EdgeType::Parent {});
                     }
 
                     for extracted_link in document.ast.extracted_links.iter() {
-                        if extracted_link.link.protocol == "id" {
-                            if let Some(source_id) = extracted_link.source_roam_id() {
-                                let target_id = extracted_link
-                                    .link
-                                    .path
-                                    .strip_prefix("id:")
-                                    .expect("must have ID in path")
-                                    .to_string();
+                        if extracted_link.link.protocol == "id"
+                            && let Some(source_id) = extracted_link.source_roam_id()
+                        {
+                            let target_id = extracted_link
+                                .link
+                                .path
+                                .strip_prefix("id:")
+                                .expect("must have ID in path")
+                                .to_string();
 
-                                if let Some(source_index) = id_to_index.get(source_id.as_str()) {
-                                    if let Some(target_index) = id_to_index.get(&target_id) {
-                                        if !graph.contains_edge(*source_index, *target_index) {
-                                            graph.add_edge(
-                                                *source_index,
-                                                *target_index,
-                                                EdgeType::ExplicitReference {
-                                                    source_path: extracted_link.source_path.clone(),
-                                                },
-                                            );
-                                        }
-                                    }
-                                }
+                            if let Some(source_index) = id_to_index.get(source_id.as_str())
+                                && let Some(target_index) = id_to_index.get(&target_id)
+                                && !graph.contains_edge(*source_index, *target_index)
+                            {
+                                graph.add_edge(
+                                    *source_index,
+                                    *target_index,
+                                    EdgeType::ExplicitReference {
+                                        source_path: extracted_link.source_path.clone(),
+                                    },
+                                );
                             }
                         }
                     }
@@ -637,7 +606,7 @@ impl SiteBuilder {
             }
 
             for subsection in &section.subsections {
-                build_section(subsection, &mut graph, &mut id_to_index, &mut refs_to_id);
+                build_section(subsection, graph, id_to_index, refs_to_id);
             }
         }
 
