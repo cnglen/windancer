@@ -96,7 +96,7 @@ where
             .then_with_ctx(
                 // ctx type -> expression has ctx type
                 just('a').configure(|cfg, ctx: &(char, _)| {
-                    let bracket_close = match (*ctx).0 {
+                    let bracket_close = match ctx.0 {
                         '(' => ')',
                         '{' => '}',
                         _ => unreachable!(),

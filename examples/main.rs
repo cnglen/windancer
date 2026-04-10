@@ -5,7 +5,7 @@ use std::time::Instant;
 
 use orgize::Org;
 use orgize::rowan::ast::AstNode;
-use tracing;
+// use tracing;
 use tracing_subscriber::FmtSubscriber;
 // use windancer::compiler::ast_builder::AstBuilder;
 // use windancer::compiler::parser::OrgParser;
@@ -19,7 +19,7 @@ fn main() -> std::io::Result<()> {
     tracing::subscriber::set_global_default(subscriber).expect("set global subscripber failed");
 
     let f_org = "tests/test.org";
-    let input = &fs::read_to_string(f_org).unwrap_or(String::new());
+    let input = &fs::read_to_string(f_org).unwrap_or_default();
 
     let use_orgize = true;
     if use_orgize {
@@ -40,7 +40,7 @@ fn main() -> std::io::Result<()> {
     let start = Instant::now();
     let mut ssg = StaticSiteGenerator::default();
     let html = ssg.generate_html(f_org);
-    let _ = fs::write("tests/windancer_output.html", format!("{}", html));
+    let _ = fs::write("tests/windancer_output.html", &html);
     let duration = start.elapsed();
     tracing::info!("windancer:               : {:?}", duration);
 

@@ -231,13 +231,8 @@ impl FileInfo {
             .to_string_lossy()
             .to_string();
         let n = relative_directories_vec.len();
-        let maybe_index = if (n > 0 && relative_directories_vec[n - 1] == f_name)
-            || (n == 0 && f_name == base_path_last_directory)
-        {
-            true
-        } else {
-            false
-        };
+        let maybe_index = (n > 0 && relative_directories_vec[n - 1] == f_name)
+            || (n == 0 && f_name == base_path_last_directory);
 
         let (relative_path, relative_directories) =
             if f_path.to_string_lossy() == base_path.to_string_lossy() {

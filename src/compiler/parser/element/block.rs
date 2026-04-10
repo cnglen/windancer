@@ -104,6 +104,7 @@ fn special_name_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, &'a str, MyExtra
         let before = inp.cursor();
         loop {
             match inp.peek() {
+                #[allow(clippy::unnecessary_cast)]
                 Some(c) if !(c as char).is_whitespace() => {
                     inp.next();
                 }
@@ -435,9 +436,8 @@ fn comment_or_example_block_parser<'a, C: 'a>(
                 children.push(begin_row);
 
                 if !content.is_empty() {
-                    let mut c_children = Vec::with_capacity(1);
-                    c_children.push(crate::token!(OSK::Text, &content));
-                    let node = crate::node!(OSK::BlockContent, c_children);
+                    let node =
+                        crate::node!(OSK::BlockContent, vec![crate::token!(OSK::Text, &content)]);
                     children.push(node);
                 }
 
@@ -825,24 +825,25 @@ pub(crate) fn special_block_parser<'a, C: 'a + std::default::Default>(
             },
         );
 
-    let end_row = object::whitespaces()
-        .then(object::just_case_insensitive("#+end_"))
-        .then(just("").configure(
-            |cfg, ctx: &(&str, &str, &str, Option<(&str, &str)>, &str)| cfg.seq((*ctx).2),
-        ))
-        .then(object::whitespaces())
-        .then(object::newline_or_ending())
-        .map(
-            |((((end_whitespaces1, end_), end_name), end_whitespaces2), end_maybe_newline)| {
-                (
-                    end_whitespaces1,
-                    end_,
-                    end_name,
-                    end_whitespaces2,
-                    end_maybe_newline,
-                )
-            },
-        );
+    let end_row =
+        object::whitespaces()
+            .then(object::just_case_insensitive("#+end_"))
+            .then(just("").configure(
+                |cfg, ctx: &(&str, &str, &str, Option<(&str, &str)>, &str)| cfg.seq(ctx.2),
+            ))
+            .then(object::whitespaces())
+            .then(object::newline_or_ending())
+            .map(
+                |((((end_whitespaces1, end_), end_name), end_whitespaces2), end_maybe_newline)| {
+                    (
+                        end_whitespaces1,
+                        end_,
+                        end_name,
+                        end_whitespaces2,
+                        end_maybe_newline,
+                    )
+                },
+            );
 
     let content_inner = object::line_parser()
         .or(object::blank_line_str_parser())
@@ -967,14 +968,15 @@ pub(crate) fn simple_special_block_parser<'a, C: 'a + std::default::Default>(
             },
         );
 
-    let end_row = object::whitespaces()
-        .ignore_then(object::just_case_insensitive("#+end_"))
-        .ignore_then(just("").configure(
-            |cfg, ctx: &(&str, &str, &str, Option<(&str, &str)>, &str)| cfg.seq((*ctx).2),
-        ))
-        .ignore_then(object::whitespaces())
-        .ignore_then(object::newline_or_ending())
-        .ignored();
+    let end_row =
+        object::whitespaces()
+            .ignore_then(object::just_case_insensitive("#+end_"))
+            .ignore_then(just("").configure(
+                |cfg, ctx: &(&str, &str, &str, Option<(&str, &str)>, &str)| cfg.seq(ctx.2),
+            ))
+            .ignore_then(object::whitespaces())
+            .ignore_then(object::newline_or_ending())
+            .ignored();
 
     let content_inner = object::line_parser()
         .or(object::blank_line_str_parser())

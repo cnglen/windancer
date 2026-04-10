@@ -253,16 +253,16 @@ pub(crate) fn regular_link_parser_inner<'a, C: 'a>(
         .then(description_parser)
         .then(just("]"))
         .or_not()
-        .map(|description| match description {
-            None => None,
-
-            Some(((lbracket, content), rbracket)) => Some(crate::node!(OSK::LinkDescription, {
-                let mut children = Vec::with_capacity(2 + content.len());
-                children.push(crate::token!(OSK::LeftSquareBracket, lbracket));
-                children.extend(content);
-                children.push(crate::token!(OSK::RightSquareBracket, rbracket));
-                children
-            })),
+        .map(|description| {
+            description.map(|((lbracket, content), rbracket)| {
+                crate::node!(OSK::LinkDescription, {
+                    let mut children = Vec::with_capacity(2 + content.len());
+                    children.push(crate::token!(OSK::LeftSquareBracket, lbracket));
+                    children.extend(content);
+                    children.push(crate::token!(OSK::RightSquareBracket, rbracket));
+                    children
+                })
+            })
         });
 
     let normal_char = none_of("[]\\");
@@ -330,7 +330,7 @@ pub(crate) fn regular_link_parser_inner<'a, C: 'a>(
                 let mut children = Vec::new();
                 children.push(crate::token!(OSK::LeftSquareBracket, lbracket));
                 children.push(path);
-                children.extend(maybe_desc.into_iter());
+                children.extend(maybe_desc);
                 children.push(crate::token!(OSK::RightSquareBracket, rbracket));
                 children.extend(
                     maybe_newline

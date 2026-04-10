@@ -20,6 +20,7 @@ use tracing;
 pub mod config;
 
 type NT = NodeOrToken<GreenNode, GreenToken>;
+#[allow(clippy::upper_case_acronyms)]
 type OSK = OrgSyntaxKind;
 type MyState = extra::SimpleState<ParserState>;
 type MyExtra<'a, C> = extra::Full<Rich<'a, char>, MyState, C>;
@@ -127,14 +128,22 @@ impl OrgParser {
                             template.trim().to_string(),
                         ); // overwrite here
                     }
-                } else if keyword.contains_key(&key) {
-                    keyword
-                        .get_mut(&key)
-                        .expect("has value")
-                        .push_str(&format!(" {value}"))
                 } else {
-                    keyword.insert(key, value);
+                    let entry = keyword.entry(key);
+                    let val = entry.or_default();
+                    if !val.is_empty() {
+                        val.push(' ');
+                    }
+                    val.push_str(&value);
                 }
+                //     if keyword.contains_key(&key) {
+                //     keyword
+                //         .get_mut(&key)
+                //         .expect("has value")
+                //         .push_str(&format!(" {value}"))
+                // } else {
+                //     keyword.insert(key, value);
+                // }
             }
         }
 
@@ -264,7 +273,7 @@ impl OrgParser {
                                 &keyword_value_expanded
                                     [1..keyword_value_expanded.chars().count() - 1],
                             );
-                            if let Ok(ts_)=ts {
+                            if let Ok(ts_) = ts {
                                 let z = ts_.format(&args).to_string();
                                 builder.token(OSK::Text.into(), &z);
                             }

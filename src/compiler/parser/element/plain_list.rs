@@ -8,7 +8,7 @@ use crate::compiler::parser::{MyExtra, NT, OSK, ParserState, element, object};
 fn item_counter_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Clone {
     choice((
         text::int(10),
-        any().filter(|c: &char| matches!(c, 'a'..='z')).to_slice(),
+        any().filter(|c: &char| c.is_ascii_lowercase()).to_slice(),
     ))
 }
 
@@ -125,6 +125,7 @@ fn create_item_indent_node(s: &str) -> NT {
 }
 
 // Create ListItemIndent node from `s`
+#[allow(clippy::too_many_arguments)]
 fn create_item_node<'a, C: 'a + std::default::Default>(
     element_parser: impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone + 'a,
     lookahead_only: bool,

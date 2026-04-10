@@ -108,22 +108,26 @@ pub(crate) fn keyword_ci_parser_v2<'a, C: 'a>(
     custom(move |inp| {
         let before = inp.cursor();
 
-        loop {
-            match inp.peek() {
-                Some('a'..='z' | 'A'..='Z' | '0'..='9') => {
-                    inp.next();
-                }
-                _ => {
-                    break;
-                }
-            }
+        // loop {
+        //     match inp.peek() {
+        //         Some('a'..='z' | 'A'..='Z' | '0'..='9') => {
+        //             inp.next();
+        //         }
+        //         _ => {
+        //             break;
+        //         }
+        //     }
+        // }
+        while let Some('a'..='z' | 'A'..='Z' | '0'..='9') = inp.peek() {
+            inp.next();
         }
+
         let name: &str = inp.slice_since(&before..);
 
         if name.is_empty() {
             return Err(Rich::custom(
                 inp.span_since(&before),
-                format!("no valid string found: empty found"),
+                "no valid string found: empty found".to_string(),
             ));
         }
 
@@ -144,22 +148,25 @@ pub(crate) fn keyword_cs_parser_v2<'a, C: 'a>(
 ) -> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Clone {
     custom(move |inp| {
         let before = inp.cursor();
-        loop {
-            match inp.peek() {
-                Some('a'..='z' | 'A'..='Z' | '0'..='9') => {
-                    inp.next();
-                }
-                _ => {
-                    break;
-                }
-            }
+        // loop {
+        //     match inp.peek() {
+        //         Some('a'..='z' | 'A'..='Z' | '0'..='9') => {
+        //             inp.next();
+        //         }
+        //         _ => {
+        //             break;
+        //         }
+        //     }
+        // }
+        while let Some('a'..='z' | 'A'..='Z' | '0'..='9') = inp.peek() {
+            inp.next();
         }
         let name: &str = inp.slice_since(&before..);
 
         if name.is_empty() {
             return Err(Rich::custom(
                 inp.span_since(&before),
-                format!("no valid string found: empty found"),
+                "no valid string found: empty found".to_string(),
             ));
         }
 
@@ -182,15 +189,18 @@ pub(crate) fn keyword_cs_parser<'a, C: 'a>(
 ) -> impl Parser<'a, &'a str, &'a str, MyExtra<'a, C>> + Clone {
     custom(|inp| {
         let before = inp.cursor();
-        loop {
-            match inp.peek() {
-                Some('a'..='z' | 'A'..='Z' | '0'..='9') => {
-                    inp.next();
-                }
-                _ => {
-                    break;
-                }
-            }
+        // loop {
+        //     match inp.peek() {
+        //         Some('a'..='z' | 'A'..='Z' | '0'..='9') => {
+        //             inp.next();
+        //         }
+        //         _ => {
+        //             break;
+        //         }
+        //     }
+        // }
+        while let Some('a'..='z' | 'A'..='Z' | '0'..='9') = inp.peek() {
+            inp.next();
         }
         let name: &str = inp.slice_since(&before..);
 
@@ -240,7 +250,7 @@ pub(crate) fn just_case_insensitive<'a, C: 'a>(
                     let found = inp.slice_since(&before..);
                     let error = Rich::custom(
                         inp.span_since(&before),
-                        &format!("expected '{}' found '{}'", s, found),
+                        format!("expected '{}' found '{}'", s, found),
                     );
 
                     return Err(error);
@@ -373,6 +383,7 @@ pub(crate) fn object_in_keyword_parser<'a, C: 'a>(
 
 // (full_set_object, standard_set_object, minimal_set_object, object_in_regular_link, object_in_table_cell)
 // - full_set_object DOES NOT include table_cell
+#[allow(clippy::type_complexity)]
 pub(crate) fn get_object_parser<'a, C: 'a>(
     config: OrgParserConfig,
 ) -> (
@@ -827,6 +838,7 @@ mod tests {
     use crate::compiler::parser::org_file::org_file_parser;
     use crate::compiler::parser::{OrgParser, ParserState};
 
+    #[allow(clippy::invisible_characters)]
     fn get_objects_string() -> String {
         r##"
 minimal set objects(6)
@@ -912,14 +924,15 @@ other objects (2):
     #[test]
     fn test_blank_line() {
         // let mut state = RollbackState(ParserState::default());
-        for input in vec![" \n", "\t\n", "\n", " \t   \n"] {
+        for input in [" \n", "\t\n", "\n", " \t   \n"] {
             assert_eq!(
                 blank_line_parser::<()>().parse(input).into_result(),
                 Ok(crate::token!(OSK::BlankLine, input))
             );
         }
 
-        for input in vec![" \n "] {
+        {
+            let input = " \n ";
             assert_eq!(
                 blank_line_parser::<()>()
                     // .parse_with_state(input, &mut state)

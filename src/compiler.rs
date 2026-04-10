@@ -145,11 +145,13 @@ impl Compiler {
                     .to_string();
 
                 if (key != "MACRO") && (!value.is_empty()) {
-                    if keyword.contains_key(&key) {
-                        keyword.get_mut(&key).expect("has value").push(value);
-                    } else {
-                        keyword.insert(key, vec![value]);
-                    }
+                    keyword.entry(key).or_default().push(value);
+
+                    // if keyword.contains_key(&key) {
+                    //     keyword.get_mut(&key).expect("has value").push(value);
+                    // } else {
+                    //     keyword.insert(key, vec![value]);
+                    // }
                 }
             }
         }

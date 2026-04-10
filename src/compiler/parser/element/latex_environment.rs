@@ -40,9 +40,7 @@ fn latex_environment_parser_inner<'a, C: 'a>(
 
     let end_row = object::whitespaces()
         .then(object::just_case_insensitive(r##"\END{"##))
-        .then(
-            just("").configure(|cfg, ctx: &(&str, &str, &str, &str, &str, &str)| cfg.seq((*ctx).2)),
-        )
+        .then(just("").configure(|cfg, ctx: &(&str, &str, &str, &str, &str, &str)| cfg.seq(ctx.2)))
         .then(just("}"))
         .then(object::whitespaces())
         .then(object::newline_or_ending())

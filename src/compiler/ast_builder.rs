@@ -199,7 +199,7 @@ impl BuilderContext {
         if let Some(segment) = self.current_path.last()
             && let SourcePathSegment::Heading { id, .. } = segment
         {
-            if let Some(_) = id {
+            if id.is_some() {
                 self.current_roam_node_path.pop();
             }
             self.current_path.pop();
@@ -227,6 +227,7 @@ struct Converter {
 }
 
 impl Converter {
+    #[allow(clippy::type_complexity)]
     fn get_roam_info(
         properties: &BTreeMap<String, String>,
     ) -> Option<(String, Vec<String>, Vec<String>, BTreeMap<String, String>)> {
@@ -277,7 +278,7 @@ impl Converter {
         let mut zeroth_nodes = Vec::new();
         let mut remaining_nodes = Vec::new();
 
-        if let Some(first_node) = nodes.get(0) {
+        if let Some(first_node) = nodes.first() {
             match first_node.kind() {
                 OrgSyntaxKind::HeadingSubtree => {
                     remaining_nodes.push(first_node.clone());
@@ -881,7 +882,7 @@ impl Converter {
                     // FIXME: panic? chumsky.org search 0720 table in block?
                     let first_cell = row
                         .first_child_by_kind(&|e| e == OrgSyntaxKind::TableCell)
-                        .expect(&format!("first cell: row={:?}", row));
+                        .unwrap_or_else(|| panic!("first cell: row={:?}", row));
                     let contents: Vec<_> = first_cell
                         .children_with_tokens()
                         .flat_map(|e| self.convert_object(&e))
@@ -1915,7 +1916,7 @@ impl Converter {
         if node.kind() == OrgSyntaxKind::SpecialBlock {
             name = node
                 .first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::BlockBegin)
-                .expect(format!("no block begin found: {:#?}", node).as_str())
+                .unwrap_or_else(|| panic!("no block begin found: {:#?}", node))
                 .as_node()
                 .unwrap()
                 .children_with_tokens()
@@ -1930,7 +1931,7 @@ impl Converter {
 
             for e in node
                 .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockContent)
-                .expect(format!("no block content found: {:#?}", node).as_str())
+                .unwrap_or_else(|| panic!("no block content found: {:#?}", node))
                 .children()
             {
                 if let Ok(element) = self.convert_element(&e) {
@@ -2428,19 +2429,15 @@ impl Converter {
             .map(|e| e.as_token().unwrap().text().to_string())
             .collect::<String>();
 
-        let optvalue = if let Some(node_optvalue) =
-            node.first_child_by_kind(&|e| e == OrgSyntaxKind::KeywordOptvalue)
-        {
-            Some(
+        let optvalue = node
+            .first_child_by_kind(&|e| e == OrgSyntaxKind::KeywordOptvalue)
+            .map(|node_optvalue| {
                 node_optvalue
                     .children_with_tokens()
                     .filter(|e| e.kind() == OrgSyntaxKind::Text)
                     .map(|e| e.as_token().unwrap().text().to_string())
-                    .collect::<String>(),
-            )
-        } else {
-            None
-        };
+                    .collect::<String>()
+            });
 
         let objects = node
             .first_child_by_kind(&|e| e == OrgSyntaxKind::KeywordValue)

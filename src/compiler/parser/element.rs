@@ -22,6 +22,7 @@ use crate::compiler::parser::config::OrgParserConfig;
 use crate::compiler::parser::{MyExtra, NT};
 
 // heading should not be in here, since it's parsed by document!
+#[allow(clippy::type_complexity)]
 pub(crate) fn get_element_parser<'a, C: 'a + std::default::Default>(
     config: OrgParserConfig,
 ) -> (

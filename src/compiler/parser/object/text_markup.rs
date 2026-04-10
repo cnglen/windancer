@@ -208,7 +208,7 @@ mod tests {
         assert_eq!(
             get_parsers_output(
                 object::objects_parser::<()>(OrgParserConfig::default()),
-                "一个​*粗体*​、​/斜体/​、​_下划线_​、​+横划线+​、​~编程~​和​=字面=​文本"
+                "一个\u{200B}*粗体*\u{200B}、\u{200B}/斜体/\u{200B}、\u{200B}_下划线_\u{200B}、\u{200B}+横划线+\u{200B}、\u{200B}~编程~\u{200B}和\u{200B}=字面=\u{200B}文本"
             ),
             r##"Root@0..117
   Text@0..9 "一个\u{200b}"

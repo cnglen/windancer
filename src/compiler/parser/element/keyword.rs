@@ -410,7 +410,7 @@ pub(crate) fn keyword_parser_inner<'a, C: 'a + std::default::Default>(
                 children.push(crate::token!(OSK::Newline, newline));
                 // e.state().prev_char = newline.chars().last();
             }
-            if blank_lines.len() > 0 {
+            if !blank_lines.is_empty() {
                 children.extend(blank_lines);
                 // e.state().prev_char = Some('\n');
             }

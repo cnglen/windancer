@@ -9,7 +9,7 @@ use windancer::compiler::parser::config::OrgParserConfig;
 
 fn bench_windancer_orgize(c: &mut Criterion) {
     let f_org = "examples/blog/note/syntax_test.org";
-    let doc_raw = &fs::read_to_string(f_org).unwrap_or(String::new());
+    let doc_raw = &fs::read_to_string(f_org).unwrap_or_default();
     let doc_raw = doc_raw.as_str();
 
     let mut group = c.benchmark_group("org-doc-parse");
@@ -38,7 +38,7 @@ fn bench_windancer_orgize(c: &mut Criterion) {
         &doc_raw,
         |b, &doc_raw| {
             b.iter(|| {
-                let orgize_green_tree = OrgizeOrg::parse(&doc_raw);
+                let orgize_green_tree = OrgizeOrg::parse(doc_raw);
                 let syntax_tree = orgize_green_tree.document();
                 let syntax_tree = syntax_tree.syntax();
                 let _ = fs::write("tests/orgize_red_tree.json", format!("{:#?}", syntax_tree));

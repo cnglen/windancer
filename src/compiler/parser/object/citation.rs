@@ -210,7 +210,7 @@ pub(crate) fn citation_parser_inner<'a, C: 'a>(
                 children.push(crate::token!(OSK::Semicolon, semicolon));
             }
 
-            for reference in references[0..(references.len()) - 1].into_iter() {
+            for reference in references[0..(references.len()) - 1].iter() {
                 children.push(reference.clone());
                 children.push(crate::token!(OSK::Semicolon, ";"))
             }

@@ -3,6 +3,7 @@ use chumsky::prelude::*;
 use crate::compiler::parser::{MyExtra, NT, OSK};
 
 /// Macro parser
+#[allow(clippy::type_complexity)]
 pub(crate) fn macro_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, NT, MyExtra<'a, C>> + Clone {
     let name = any()
         .filter(|c: &char| c.is_alphabetic())
