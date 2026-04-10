@@ -190,14 +190,11 @@ impl BuilderContext {
 
     fn leave_heading(&mut self) {
         if let Some(segment) = self.current_path.last() {
-            match segment {
-                SourcePathSegment::Heading { id, .. } => {
-                    if let Some(_) = id {
-                        self.current_roam_node_path.pop();
-                    }
-                    self.current_path.pop();
+            if let SourcePathSegment::Heading { id, .. } = segment {
+                if let Some(_) = id {
+                    self.current_roam_node_path.pop();
                 }
-                _ => {}
+                self.current_path.pop();
             }
         }
     }
@@ -410,10 +407,11 @@ impl Converter {
         let mut properties = BTreeMap::new();
         for child in node.children() {
             match child.kind() {
-                OrgSyntaxKind::Section => match self.convert_section(&child) {
-                    Ok(s) => section = Some(s),
-                    Err(_) => {}
-                },
+                OrgSyntaxKind::Section => {
+                    if let Ok(s) = self.convert_section(&child) {
+                        section = Some(s)
+                    }
+                }
                 OrgSyntaxKind::HeadingRow => {
                     for c in child.children_with_tokens() {
                         match c.kind() {
@@ -430,15 +428,12 @@ impl Converter {
                                 keyword = Some(c.as_token().unwrap().text().to_string())
                             }
                             OrgSyntaxKind::HeadingRowPriority => {
-                                match c
+                                if let Some(p) = c
                                     .as_node()
                                     .unwrap()
                                     .first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::Text)
                                 {
-                                    Some(p) => {
-                                        priority = Some(p.as_token().unwrap().text().to_string());
-                                    }
-                                    _ => {}
+                                    priority = Some(p.as_token().unwrap().text().to_string());
                                 }
                             }
                             OrgSyntaxKind::HeadingRowComment => {
@@ -462,11 +457,8 @@ impl Converter {
                             OrgSyntaxKind::HeadingRowTags => {
                                 let tc = c.as_node().unwrap();
                                 for child in tc.children_with_tokens() {
-                                    match child.kind() {
-                                        OrgSyntaxKind::HeadingRowTag => {
-                                            tags.push(child.as_token().unwrap().text().to_string());
-                                        }
-                                        _ => {}
+                                    if child.kind() == OrgSyntaxKind::HeadingRowTag {
+                                        tags.push(child.as_token().unwrap().text().to_string());
                                     }
                                 }
                             }
@@ -507,12 +499,11 @@ impl Converter {
                     }
                     self.context.enter_heading(title.clone(), id, level);
                 }
-                OrgSyntaxKind::HeadingSubtree => match self.convert_heading_subtree(&child) {
-                    Ok(cc) => {
+                OrgSyntaxKind::HeadingSubtree => {
+                    if let Ok(cc) = self.convert_heading_subtree(&child) {
                         sub_heading_subtrees.push(cc);
                     }
-                    _ => {}
-                },
+                }
                 _ => {}
             }
         }
@@ -1000,28 +991,23 @@ impl Converter {
 
         for row in rows.iter().chain(meta_rows.iter().chain(header.iter())) {
             for (j, cell) in row.cells.iter().enumerate() {
-                match cell {
-                    Object::TableCell(TableCell::AlignmentDirective {
-                        alignment,
-                        max_width,
-                        cell_type: _,
-                    }) => {
-                        column_formats[j] = ColumnFormat {
-                            alignment: alignment.clone(),
-                            max_width: *max_width,
-                        };
-                    }
-                    _ => {}
+                if let Object::TableCell(TableCell::AlignmentDirective {
+                    alignment,
+                    max_width,
+                    cell_type: _,
+                }) = cell
+                {
+                    column_formats[j] = ColumnFormat {
+                        alignment: alignment.clone(),
+                        max_width: *max_width,
+                    };
                 }
             }
         }
         for row in rows.iter_mut().chain(header.iter_mut()) {
             for (j, cell) in row.cells.iter_mut().enumerate() {
-                match cell {
-                    Object::TableCell(TableCell::Data { alignment, .. }) => {
-                        *alignment = Some(column_formats[j].alignment.clone());
-                    }
-                    _ => {}
+                if let Object::TableCell(TableCell::Data { alignment, .. }) = cell {
+                    *alignment = Some(column_formats[j].alignment.clone());
                 }
             }
         }
@@ -1247,11 +1233,8 @@ impl Converter {
     ) -> Result<Option<Object>, AstError> {
         let mut objects = vec![];
         for child in node.children_with_tokens() {
-            match self.convert_object(&child) {
-                Ok(Some(object)) => {
-                    objects.push(object);
-                }
-                _ => {}
+            if let Ok(Some(object)) = self.convert_object(&child) {
+                objects.push(object);
             }
         }
         match markup_type {
@@ -1929,21 +1912,17 @@ impl Converter {
         let parameters = None;
         let mut contents = vec![];
 
-        match node.kind() {
-            OrgSyntaxKind::CenterBlock => {
-                let _q = node.first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::BlockBegin);
-                for e in node
-                    .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockContent)
-                    .unwrap()
-                    .children()
-                {
-                    if let Ok(element) = self.convert_element(&e) {
-                        contents.push(element);
-                    }
+        if node.kind() == OrgSyntaxKind::CenterBlock {
+            let _q = node.first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::BlockBegin);
+            for e in node
+                .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockContent)
+                .unwrap()
+                .children()
+            {
+                if let Ok(element) = self.convert_element(&e) {
+                    contents.push(element);
                 }
             }
-
-            _ => {}
         }
 
         Ok(CenterBlock {
@@ -1957,20 +1936,17 @@ impl Converter {
         let parameters = None;
         let mut contents = vec![];
 
-        match node.kind() {
-            OrgSyntaxKind::QuoteBlock => {
-                let _q = node.first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::BlockBegin);
-                for e in node
-                    .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockContent)
-                    .unwrap()
-                    .children()
-                {
-                    if let Ok(element) = self.convert_element(&e) {
-                        contents.push(element);
-                    }
+        if node.kind() == OrgSyntaxKind::QuoteBlock {
+            let _q = node.first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::BlockBegin);
+            for e in node
+                .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockContent)
+                .unwrap()
+                .children()
+            {
+                if let Ok(element) = self.convert_element(&e) {
+                    contents.push(element);
                 }
             }
-            _ => {}
         }
 
         Ok(QuoteBlock {
@@ -1985,34 +1961,31 @@ impl Converter {
         let mut contents = vec![];
         let mut name = String::new();
 
-        match node.kind() {
-            OrgSyntaxKind::SpecialBlock => {
-                name = node
-                    .first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::BlockBegin)
-                    .expect(format!("no block begin found: {:#?}", node).as_str())
-                    .as_node()
-                    .unwrap()
-                    .children_with_tokens()
-                    .filter(|e| e.kind() == OrgSyntaxKind::Text)
-                    .nth(1)
-                    .expect("special block begin row should has at least two text")
-                    .as_token()
-                    .expect("todo")
-                    .text()
-                    .to_string()
-                    .to_lowercase();
+        if node.kind() == OrgSyntaxKind::SpecialBlock {
+            name = node
+                .first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::BlockBegin)
+                .expect(format!("no block begin found: {:#?}", node).as_str())
+                .as_node()
+                .unwrap()
+                .children_with_tokens()
+                .filter(|e| e.kind() == OrgSyntaxKind::Text)
+                .nth(1)
+                .expect("special block begin row should has at least two text")
+                .as_token()
+                .expect("todo")
+                .text()
+                .to_string()
+                .to_lowercase();
 
-                for e in node
-                    .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockContent)
-                    .expect(format!("no block content found: {:#?}", node).as_str())
-                    .children()
-                {
-                    if let Ok(element) = self.convert_element(&e) {
-                        contents.push(element);
-                    }
+            for e in node
+                .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockContent)
+                .expect(format!("no block content found: {:#?}", node).as_str())
+                .children()
+            {
+                if let Ok(element) = self.convert_element(&e) {
+                    contents.push(element);
                 }
             }
-            _ => {}
         }
 
         Ok(SpecialBlock {
@@ -2027,20 +2000,16 @@ impl Converter {
         let data = None;
         let mut contents = vec![];
 
-        match node.kind() {
-            OrgSyntaxKind::ExampleBlock => {
-                for e in node
-                    .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockContent)
-                    .unwrap()
-                    .children_with_tokens()
-                {
-                    if let Ok(Some(object)) = self.convert_object(&e) {
-                        contents.push(object);
-                    }
+        if node.kind() == OrgSyntaxKind::ExampleBlock {
+            for e in node
+                .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockContent)
+                .unwrap()
+                .children_with_tokens()
+            {
+                if let Ok(Some(object)) = self.convert_object(&e) {
+                    contents.push(object);
                 }
             }
-
-            _ => {}
         }
 
         Ok(ExampleBlock { data, contents })
@@ -2051,20 +2020,16 @@ impl Converter {
         let data = None;
         let mut contents = vec![];
 
-        match node.kind() {
-            OrgSyntaxKind::CommentBlock => {
-                for e in node
-                    .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockContent)
-                    .unwrap()
-                    .children_with_tokens()
-                {
-                    if let Ok(Some(object)) = self.convert_object(&e) {
-                        contents.push(object);
-                    }
+        if node.kind() == OrgSyntaxKind::CommentBlock {
+            for e in node
+                .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockContent)
+                .unwrap()
+                .children_with_tokens()
+            {
+                if let Ok(Some(object)) = self.convert_object(&e) {
+                    contents.push(object);
                 }
             }
-
-            _ => {}
         }
 
         Ok(CommentBlock { data, contents })
@@ -2075,20 +2040,16 @@ impl Converter {
         let data = None;
         let mut contents = vec![];
 
-        match node.kind() {
-            OrgSyntaxKind::VerseBlock => {
-                for e in node
-                    .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockContent)
-                    .unwrap()
-                    .children_with_tokens()
-                {
-                    if let Ok(Some(object)) = self.convert_object(&e) {
-                        contents.push(object);
-                    }
+        if node.kind() == OrgSyntaxKind::VerseBlock {
+            for e in node
+                .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockContent)
+                .unwrap()
+                .children_with_tokens()
+            {
+                if let Ok(Some(object)) = self.convert_object(&e) {
+                    contents.push(object);
                 }
             }
-
-            _ => {}
         }
 
         Ok(VerseBlock { data, contents })
@@ -2104,83 +2065,79 @@ impl Converter {
         let mut vars: BTreeMap<String, String> = BTreeMap::new();
         let mut other_args: BTreeMap<String, String> = BTreeMap::new();
         let mut contents = vec![];
-        match node.kind() {
-            OrgSyntaxKind::SrcBlock => {
-                language = node
-                    .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockBegin)
-                    .unwrap()
-                    .first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::SrcBlockLanguage)
-                    .unwrap()
-                    .as_token()
-                    .unwrap()
-                    .text()
-                    .to_string()
-                    .to_lowercase();
+        if node.kind() == OrgSyntaxKind::SrcBlock {
+            language = node
+                .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockBegin)
+                .unwrap()
+                .first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::SrcBlockLanguage)
+                .unwrap()
+                .as_token()
+                .unwrap()
+                .text()
+                .to_string()
+                .to_lowercase();
 
-                switches = node
-                    .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockBegin)
-                    .unwrap()
-                    .first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::SrcBlockSwitches)
-                    .map_or(vec![], |e| {
-                        e.as_token()
-                            .unwrap()
-                            .text()
-                            .split_whitespace()
-                            .map(|e| e.to_string())
-                            .collect::<Vec<String>>()
-                    });
+            switches = node
+                .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockBegin)
+                .unwrap()
+                .first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::SrcBlockSwitches)
+                .map_or(vec![], |e| {
+                    e.as_token()
+                        .unwrap()
+                        .text()
+                        .split_whitespace()
+                        .map(|e| e.to_string())
+                        .collect::<Vec<String>>()
+                });
 
-                let raw_arguments = node
-                    .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockBegin)
-                    .unwrap()
-                    .first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::SrcBlockHeaderArguments)
-                    .map_or(String::from(""), |e| {
-                        e.as_token().unwrap().text().to_string().to_lowercase()
-                    });
+            let raw_arguments = node
+                .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockBegin)
+                .unwrap()
+                .first_child_or_token_by_kind(&|c| c == OrgSyntaxKind::SrcBlockHeaderArguments)
+                .map_or(String::from(""), |e| {
+                    e.as_token().unwrap().text().to_string().to_lowercase()
+                });
 
-                let mut parts = raw_arguments.split_whitespace();
+            let mut parts = raw_arguments.split_whitespace();
 
-                while let Some(part) = parts.next() {
-                    if part.starts_with(':') {
-                        let key = &part[1..]; // 去掉冒号
-                        if let Some(value) = parts.next() {
-                            match key {
-                                "results" => results = Some(value.to_string()),
-                                "exports" => exports = Some(value.to_string()),
-                                "var" => {
-                                    if let Some((var_name, var_value)) = value.split_once('=') {
-                                        vars.insert(var_name.to_string(), var_value.to_string());
-                                    }
-                                }
-                                _ => {
-                                    other_args.insert(key.to_string(), value.to_string());
+            while let Some(part) = parts.next() {
+                if part.starts_with(':') {
+                    let key = &part[1..]; // 去掉冒号
+                    if let Some(value) = parts.next() {
+                        match key {
+                            "results" => results = Some(value.to_string()),
+                            "exports" => exports = Some(value.to_string()),
+                            "var" => {
+                                if let Some((var_name, var_value)) = value.split_once('=') {
+                                    vars.insert(var_name.to_string(), var_value.to_string());
                                 }
                             }
-                        }
-                    }
-                }
-
-                if exports.is_none() {
-                    match language.as_str() {
-                        "ditaa" | "mermaid" | "dot" => {
-                            exports = Some("results".to_string());
-                        }
-                        _ => {}
-                    }
-                }
-
-                let maybe_block_content =
-                    node.first_child_by_kind(&|c| c == OrgSyntaxKind::BlockContent);
-                if let Some(block_content) = maybe_block_content {
-                    for e in block_content.children_with_tokens() {
-                        if let Ok(Some(object)) = self.convert_object(&e) {
-                            contents.push(object);
+                            _ => {
+                                other_args.insert(key.to_string(), value.to_string());
+                            }
                         }
                     }
                 }
             }
 
-            _ => {}
+            if exports.is_none() {
+                match language.as_str() {
+                    "ditaa" | "mermaid" | "dot" => {
+                        exports = Some("results".to_string());
+                    }
+                    _ => {}
+                }
+            }
+
+            let maybe_block_content =
+                node.first_child_by_kind(&|c| c == OrgSyntaxKind::BlockContent);
+            if let Some(block_content) = maybe_block_content {
+                for e in block_content.children_with_tokens() {
+                    if let Ok(Some(object)) = self.convert_object(&e) {
+                        contents.push(object);
+                    }
+                }
+            }
         }
 
         Ok(SrcBlock {
@@ -2199,20 +2156,16 @@ impl Converter {
         let data = None;
         let mut contents = vec![];
 
-        match node.kind() {
-            OrgSyntaxKind::ExportBlock => {
-                for e in node
-                    .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockContent)
-                    .unwrap()
-                    .children_with_tokens()
-                {
-                    if let Ok(Some(object)) = self.convert_object(&e) {
-                        contents.push(object);
-                    }
+        if node.kind() == OrgSyntaxKind::ExportBlock {
+            for e in node
+                .first_child_by_kind(&|c| c == OrgSyntaxKind::BlockContent)
+                .unwrap()
+                .children_with_tokens()
+            {
+                if let Ok(Some(object)) = self.convert_object(&e) {
+                    contents.push(object);
                 }
             }
-
-            _ => {}
         }
 
         Ok(ExportBlock { data, contents })

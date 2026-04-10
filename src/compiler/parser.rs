@@ -54,13 +54,10 @@ pub fn get_text(e: &SyntaxNode) -> String {
     let mut text = String::new();
     let mut preorder = e.preorder_with_tokens();
     while let Some(event) = preorder.next() {
-        match event {
-            WalkEvent::Enter(element) => {
-                if let Some(token) = element.as_token() {
-                    text.push_str(token.text());
-                }
+        if let WalkEvent::Enter(element) = event {
+            if let Some(token) = element.as_token() {
+                text.push_str(token.text());
             }
-            _ => {}
         }
     }
     text
@@ -107,52 +104,49 @@ impl OrgParser {
 
         let mut preorder = syntax_tree.preorder();
         while let Some(event) = preorder.next() {
-            match event {
-                WalkEvent::Enter(element) => {
-                    if element.kind() == OSK::Keyword {
-                        let key = element
-                            .first_child_by_kind(&|e| e == OSK::KeywordKey)
-                            .expect("must have KeywordKey")
-                            .children_with_tokens()
-                            .map(|e| e.as_token().expect("todo").text().to_string())
-                            .collect::<String>()
-                            .to_ascii_uppercase();
+            if let WalkEvent::Enter(element) = event {
+                if element.kind() == OSK::Keyword {
+                    let key = element
+                        .first_child_by_kind(&|e| e == OSK::KeywordKey)
+                        .expect("must have KeywordKey")
+                        .children_with_tokens()
+                        .map(|e| e.as_token().expect("todo").text().to_string())
+                        .collect::<String>()
+                        .to_ascii_uppercase();
 
-                        let value = element
-                            .first_child_by_kind(&|e| e == OSK::KeywordValue)
-                            .expect("must have KeywordValue")
-                            .children_with_tokens()
-                            .map(|e| {
-                                if let Some(node) = e.as_node() {
-                                    get_text(node)
-                                } else {
-                                    e.as_token().expect("todo").text().to_string()
-                                }
-                            })
-                            .collect::<String>()
-                            .trim()
-                            .to_string();
-
-                        if key == "MACRO" {
-                            if let Some((name, template)) =
-                                value.split_once(|c: char| c.is_whitespace())
-                            {
-                                macro_template.insert(
-                                    name.to_ascii_uppercase().to_string(),
-                                    template.trim().to_string(),
-                                ); // overwrite here
+                    let value = element
+                        .first_child_by_kind(&|e| e == OSK::KeywordValue)
+                        .expect("must have KeywordValue")
+                        .children_with_tokens()
+                        .map(|e| {
+                            if let Some(node) = e.as_node() {
+                                get_text(node)
+                            } else {
+                                e.as_token().expect("todo").text().to_string()
                             }
-                        } else if keyword.contains_key(&key) {
-                            keyword
-                                .get_mut(&key)
-                                .expect("has value")
-                                .push_str(&format!(" {value}"))
-                        } else {
-                            keyword.insert(key, value);
+                        })
+                        .collect::<String>()
+                        .trim()
+                        .to_string();
+
+                    if key == "MACRO" {
+                        if let Some((name, template)) =
+                            value.split_once(|c: char| c.is_whitespace())
+                        {
+                            macro_template.insert(
+                                name.to_ascii_uppercase().to_string(),
+                                template.trim().to_string(),
+                            ); // overwrite here
                         }
+                    } else if keyword.contains_key(&key) {
+                        keyword
+                            .get_mut(&key)
+                            .expect("has value")
+                            .push_str(&format!(" {value}"))
+                    } else {
+                        keyword.insert(key, value);
                     }
                 }
-                _ => {}
             }
         }
 
@@ -416,16 +410,13 @@ impl OrgParser {
             let mut text = String::new();
             let mut preorder = e.preorder_with_tokens();
             while let Some(event) = preorder.next() {
-                match event {
-                    WalkEvent::Enter(element) => {
-                        if let Some(token) = element.as_token()
-                            && token.kind() != OrgSyntaxKind::LeftAngleBracket3
-                            && token.kind() != OrgSyntaxKind::RightAngleBracket3
-                        {
-                            text.push_str(token.text());
-                        }
+                if let WalkEvent::Enter(element) = event {
+                    if let Some(token) = element.as_token()
+                        && token.kind() != OrgSyntaxKind::LeftAngleBracket3
+                        && token.kind() != OrgSyntaxKind::RightAngleBracket3
+                    {
+                        text.push_str(token.text());
                     }
-                    _ => {}
                 }
             }
             radio_targets_text.push(text);
@@ -495,7 +486,7 @@ impl OrgParser {
                     .into_output()
                     .expect("Parse failed in first round"),
             };
-            let mut syntax_tree_first_round = parse_result_first_round.syntax();
+            let syntax_tree_first_round = parse_result_first_round.syntax();
 
             // get keyword and macro_template from sytnax tree
             let (k2v, macro_template) =

@@ -406,12 +406,9 @@ pub(crate) fn keyword_parser_inner<'a, C: 'a + std::default::Default>(
                 children.push(crate::token!(OSK::Whitespace, ws));
             }
             children.push(crate::node!(OSK::KeywordValue, value));
-            match nl {
-                Some(newline) => {
-                    children.push(crate::token!(OSK::Newline, newline));
-                    // e.state().prev_char = newline.chars().last();
-                }
-                None => {}
+            if let Some(newline) = nl {
+                children.push(crate::token!(OSK::Newline, newline));
+                // e.state().prev_char = newline.chars().last();
             }
             if blank_lines.len() > 0 {
                 children.extend(blank_lines);

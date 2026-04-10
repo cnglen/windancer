@@ -37,9 +37,9 @@ impl Section {
 
         fn build_section(
             section: &Section,
-            mut graph: &mut DiGraph<RoamNode, EdgeType>,
-            mut id_to_index: &mut HashMap<String, NodeIndex>,
-            mut refs_to_id: &mut HashMap<String, String>,
+            graph: &mut DiGraph<RoamNode, EdgeType>,
+            id_to_index: &mut HashMap<String, NodeIndex>,
+            refs_to_id: &mut HashMap<String, String>,
         ) {
             for document in section.documents.iter() {
                 for node in document.ast.roam_nodes.iter() {
