@@ -362,10 +362,9 @@ Property drawers are a special type of drawer containing properties attached to 
 :custom_id: table_heading_line
 :END:
 
+Table *alignment* and *colgroup* are supported.
 
-{{{color(red, FIXME)}}}: [0/3]
-- [ ] align method are not supported yet
-- [ ] the second table row should not be exported to html
+{{{color(red, FIXME)}}}: [0/1]
 - [ ] table with multiple formulas, use which formula?
 
 #+CAPTION: Table with columns aligned differently
@@ -757,7 +756,29 @@ This is a org [fn:org-mode] file.
 The inline footnote[fn:inline_footnote]  defined in [[#footnote_definition_headline][Footnode Defintion Heading]]  is referenced again here.
 
 
-** citation
+** TODO Citation
+:PROPERTIES:
+:CUSTOM_ID: citation_headline
+:END:
+:LOGBOOK:
+- State "TODO"       from              [2026-04-11 Sat 19:25]
+:END:
+
+*{{{color(red, NOT supported)}}}* now
+
+#+begin_quote
+Org mode provides a more sophisticated markup to "cite" external
+resources.  For example, consider the following Org mode snippet
+
+     #+bibliography: citationdata.bib
+
+     Org mode is used by various communities [cite:teaching: @orgteaching;
+     and TeX: @orgtex].  [cite/author/caps:@orgtex] uses Org mode to simplify
+     writing scientific publications, while [cite/author/caps:@orgteaching]
+     experiment with Org babel to improve teaching.
+
+     #+print_bibliography:
+#+end_quote
 
 [cite/style:common prefix ;prefix @key suffix; prefix @foo suffix ; common suffix]
 
@@ -765,6 +786,35 @@ The inline footnote[fn:inline_footnote]  defined in [[#footnote_definition_headl
 
 [cite:@key]
 
+** TODO Citation references
+:LOGBOOK:
+- State "TODO"       from              [2026-04-11 Sat 19:29]
+:END:
+
+Citation references are only found within [[#citation_headline][Citiation]]s
+
+
+** TODO Inline Babel Calls
+:LOGBOOK:
+- State "TODO"       from              [2026-04-11 Sat 19:31]
+:END:
+
+*{{{color(red, NOT supported)}}}* now
+
+# call_NAME[HEADER1](ARGUMENTS)[HEADER2]
+# call_NAME(ARGUMENTS)
+
+
+** DONE Inline Source Blocks
+CLOSED: [2026-04-11 Sat 19:43]
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-04-11 Sat 19:43]
+- State "TODO"       from              [2026-01-09 Fri 22:26]
+:END:
+
+src_python{print("hello")} {{{results(=None=)}}}
+
+src_cpp[:includes <iostream>]{std::cout<< "hi cpp" << std::endl;} {{{results(=hi cpp=)}}}
 
 
 ** DONE Line break
@@ -807,6 +857,42 @@ b
 
 
 
+** Link Test
+:PROPERTIES:
+:ID:       e30bb0f4-a323-4dce-8f6b-2f3b060e6dd0
+:END:
+
+regular link: with description [[https://www.baidu.com][baidu]]; without description [[https://foo.bar][foo_bar]]; description with objects [[http://foo.bar][\alpha *bold* $a+b$ foo]]; fuzzy internal [[target]]
+
+plain link: https://plainlink.org https://foo(bar).org
+
+angle link: <mailto:xx@xx.com> <https://foo(bar).org>
+
+radio link: my radio target, define three radio target <<<*bold* target>>> and <<<my radio target>>>  and <<<\alpha>>> and <<<$\alpha$>>>, then we have *bold* target, my radio target, notmyradio target and $\alpha$ and \alpha.
+
+
+
+#+name: Blossoming Swirls of Elegance
+#+caption: This is a caption for the image linked below
+#+caption: Blossoming Swirls of Elegance Free Vector Download
+[[https://images.freeimages.com/image/previews/1b1/blossoming-swirls-of-elegance-5690563.jpg]]
+
+
+
+*** image test
+
+#+NAME: foo
+#+begin_src mermaid :file ./image/test_demo_git.png :cache yes :exports results
+  flowchart RL
+    WD[WorkingDirectory] -- git add --> SA[StageArea] -- git commit --> Repo[.git]
+    Repo --> |git checkout| WD
+#+end_src
+
+#+RESULTS[78e2508f51e4853e901b6e1aa28643594183cf32]: foo
+[[file:./image/test_demo_git.png]]
+
+
+
 ** DONE Macro
 CLOSED: [2026-01-13 Tue 10:30]
 :PROPERTIES:
@@ -841,41 +927,6 @@ CLOSED: [2026-01-13 Tue 10:30]
 
 {{{color(red, tow line
 of red)}}}
-
-
-** Link Test
-:PROPERTIES:
-:ID:       e30bb0f4-a323-4dce-8f6b-2f3b060e6dd0
-:END:
-
-regular link: with description [[https://www.baidu.com][baidu]]; without description [[https://foo.bar][foo_bar]]; description with objects [[http://foo.bar][\alpha *bold* $a+b$ foo]]; fuzzy internal [[target]]
-
-plain link: https://plainlink.org https://foo(bar).org
-
-angle link: <mailto:xx@xx.com> <https://foo(bar).org>
-
-radio link: my radio target, define three radio target <<<*bold* target>>> and <<<my radio target>>>  and <<<\alpha>>> and <<<$\alpha$>>>, then we have *bold* target, my radio target, notmyradio target and $\alpha$ and \alpha.
-
-
-
-#+name: Blossoming Swirls of Elegance
-#+caption: This is a caption for the image linked below
-#+caption: Blossoming Swirls of Elegance Free Vector Download
-[[https://images.freeimages.com/image/previews/1b1/blossoming-swirls-of-elegance-5690563.jpg]]
-
-
-
-*** image test
-
-#+NAME: foo
-#+begin_src mermaid :file ./image/test_demo_git.png :cache yes :exports results
-  flowchart RL
-    WD[WorkingDirectory] -- git add --> SA[StageArea] -- git commit --> Repo[.git]
-    Repo --> |git checkout| WD
-#+end_src
-
-#+RESULTS[78e2508f51e4853e901b6e1aa28643594183cf32]: foo
-[[file:./image/test_demo_git.png]]
 
 
 ** DONE timestamp
@@ -1092,14 +1143,6 @@ an expression enclosed in curly brackets: a_{2}, a_{b{3}}, a_{b_{c}_{d}_{e}} (or
 sign(optional) chars final: a_+34, a_-12,889,78.3\a, 10_24, 10_tau, 10_-12, 10_-tau, x_2-y_3, x_(2-i), x_{i_2}, a_2Kو b_(3+2),
 
 
-** TODO inline source
-:LOGBOOK:
-- State "TODO"       from              [2026-01-09 Fri 22:26]
-:END:
-
-src_python{print("hello")} {{{results(=None=)}}}
-
-src_cpp[:includes <iostream>]{std::cout<< "hi cpp" << std::endl;} {{{results(=hi cpp=)}}}
 
 
 ** target
@@ -1128,11 +1171,6 @@ Here we refer to item [[target][descript of target]]. (C-c C-o)
 
 define a radio target: <<<*bold* target>>>, reference a target *bold* target
 
-
-** inline babel call
-
-# call_NAME[HEADER1](ARGUMENTS)[HEADER2]
-# call_NAME(ARGUMENTS)
 
 
 
