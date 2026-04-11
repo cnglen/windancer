@@ -1,6 +1,6 @@
 :PROPERTIES:
 :CREATED:       2026-04-04T11:35:44+0800
-:LAST_MODIFIED: 2026-04-09T11:41:19+0800
+:LAST_MODIFIED: 2026-04-11T08:57:20+0800
 #+TITLE: Org-mode Syntax Test
 #+AUTHOR: cnglen
 #+AUTHOR: contributors
@@ -185,6 +185,9 @@ updated *automatically* by a *user function*.
 
 
 *** Footnote Defintions
+:PROPERTIES:
+:CUSTOM_ID: footnote_definition_headline
+:END:
 
 #+begin_quote
 A footnote[fn:footnote_defintion] is started by a footnote marker in square brackets in column
@@ -689,15 +692,19 @@ CLOSED: [2025-10-22 Wed 11:37]
 - State "DONE"       from "DOING"      [2025-10-22 Wed 11:37]
 :END:
 
-pattern1: ​=\NAME=​ This is a entity \alpha, and another entity \beta, and last \Delta
+- pattern1 :: ​=\NAME=​ This is a entity \alpha, and another entity \beta, and last \Delta
+- pattern2 :: ​=\NAME{}=​ without spaces \pi{}d.
+- pattern3 :: ​=\_SPACES=​
+  - \_   3spaces
+  - \_                    20spaces
+  - \_                     21spaces, split into 20 space entity + one space.
 
-pattern2: ​=\NAME{}=​ without spaces \pi{}d.
+Pro tip: Given a circle \Gamma of diameter d, the length of its circumference is \pi{}d.
 
-pattern3: ​=\_SPACES=​
-
-\_   3spaces
-\_                    20spaces
-\_                     21spaces, split into 20 space entity + one space.
+During export, these symbols are transformed into the native format
+of the exporter backend.  Strings like ‘\alpha’ are exported as
+‘&alpha;’ in the HTML output, and as ‘\(\alpha\)’ in the LaTeX output.
+Similarly, ‘\nbsp’ becomes ‘&nbsp;’ in HTML and ‘~’ in LaTeX.
 
 
 ** DONE Latex fragment
@@ -708,7 +715,7 @@ CLOSED: [2025-10-22 Wed 11:38]
 
 - ​=\NAME BRACKETS=​: \enlargethispage{2\baselineskip}
 - ​=\(CONTENTS\)=​: \(\pi=3.1415\)
-- ​=\[CONTENTS\]=​: \[\sum_{n=1}^{n}n = \frac{n(n+1)}{2}$$\]  
+- ​=\[CONTENTS\]=​: \[\sum_{n=1}^{n}n = \frac{n(n+1)}{2}\]
 - ​=PRE$BORDER1 BODY BORDER2$POST=​: $a+b$
 - ​=PRE$CHAR$POST=​: $a$, $\pi$
 - ​=$$CONTENTS$$=​: $$\sum_{n=1}^{n}n = \frac{n(n+1)}{2}$$
@@ -718,7 +725,7 @@ $$c=a+b=3$$
 \[a-b=1\]
 
 \enlargethispage{2\baselineskip}
-\enlargethispage[2\baselineskip]
+\enlargethispage[12\baselineskip]
 
 If $a^2=b$ and \( b=2 \), then the solution must be either $$ a=+\sqrt{2} $$ or \[ a=-\sqrt{2} \].
 
@@ -736,6 +743,28 @@ CLOSED: [2026-01-13 Tue 11:06]
 ​=@@html:<b>@@bold text@@html:</b>@@=​: @@html:<b>@@bold text@@html:</b>@@
 
 ​=@@beamer:some code@@ ignored in html backend=​: @@beamer:some code@@ ignored in html backend
+
+
+** DONE Footnote References
+CLOSED: [2026-04-11 Sat 17:51]
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-04-11 Sat 17:51]
+- State "TODO"       from              [2026-04-04 Sat 17:37]
+:END:
+
+This is a org [fn:org-mode] file.
+
+The inline footnote[fn:inline_footnote]  defined in [[#footnote_definition_headline][Footnode Defintion Heading]]  is referenced again here.
+
+
+** citation
+
+[cite/style:common prefix ;prefix @key suffix; prefix @foo suffix ; common suffix]
+
+[cite/a/f:c.f.;the very important @@atkey @ once;the crucial @baz vol. 3]
+
+[cite:@key]
+
 
 
 ** DONE Line break
@@ -1106,23 +1135,6 @@ define a radio target: <<<*bold* target>>>, reference a target *bold* target
 # call_NAME(ARGUMENTS)
 
 
-** citation
-
-[cite/style:common prefix ;prefix @key suffix; prefix @foo suffix ; common suffix]
-
-[cite/a/f:c.f.;the very important @@atkey @ once;the crucial @baz vol. 3]
-
-[cite:@key]
-
-
-** TODO Footnote References
-:LOGBOOK:
-- State "TODO"       from              [2026-04-04 Sat 17:37]
-:END:
-
-This is a org [fn:org-mode] file, not not markdown[fn:md].
-
-This is a inline footnote[fn:x:yy] and anonymous fn[fn::zz]. 
 
 * Footnotes
 :PROPERTIES:

@@ -344,6 +344,23 @@ impl Converter {
             }
         }
 
+        // post processing footnote definitions
+        tracing::trace!("footnote_label_to_rids={:#?}", self.footnote_label_to_rids);
+        for footnote_definition in self.footnote_definitions.iter_mut() {
+            if footnote_definition.rids.len()
+                != self
+                    .footnote_label_to_rids
+                    .get(&footnote_definition.label)
+                    .unwrap_or(&vec![])
+                    .len()
+            {
+                footnote_definition.rids = self
+                    .footnote_label_to_rids
+                    .get(&footnote_definition.label)
+                    .unwrap()
+                    .clone();
+            }
+        }
         self.footnote_definitions.sort_by(|a, b| a.nid.cmp(&b.nid));
 
         // at last we collect file node: keywords may not at zeroth section
