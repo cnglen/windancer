@@ -1,5 +1,10 @@
 <div class="table-container">
-  <table border="2">
+  {% if name %}
+    <table id="{{name}}" border="2">
+  {% else %}
+    <table border="2">
+  {% endif %}  
+
     {% if has_caption %}
       <caption class="t-above">
         {% if table_number %}

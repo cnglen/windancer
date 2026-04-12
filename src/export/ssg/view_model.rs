@@ -7,6 +7,7 @@ pub struct TableViewModel {
     pub table_number: Option<usize>,
     pub has_caption: bool,
     pub caption: String,
+    pub name: Option<String>,
     pub colgroups: Vec<String>,
     pub has_header: bool,
     pub header_rows: Vec<String>,

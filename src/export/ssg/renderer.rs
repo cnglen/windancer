@@ -153,6 +153,7 @@ fn load_templates_from_dir(dir: &str) -> std::io::Result<HashMap<String, String>
             && path.extension().is_some_and(|ext| ext == "html")
             && let Some(stem) = path.file_name().and_then(|s| s.to_str())
         {
+            tracing::info!(" from {}", path.display());
             let content = fs::read_to_string(&path)?;
             templates.insert(stem.to_string(), content);
         }
@@ -182,7 +183,7 @@ fn build_merged_tera(user_dir: &str) -> std::io::Result<tera::Tera> {
 
     let user_dir_path = Path::new(user_dir);
     if user_dir_path.exists() {
-        tracing::info!("Load template from {user_dir}");
+        tracing::trace!("Load template from {user_dir}");
         let user_tmpls = load_templates_from_dir(user_dir)?;
         all_templates.extend(user_tmpls);
     }
@@ -664,6 +665,7 @@ impl Renderer {
             table_number,
             has_caption,
             caption,
+            name: table.name.clone(),
             colgroups,
             has_header,
             header_rows,

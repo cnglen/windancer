@@ -604,6 +604,7 @@ Table rows can ONLY EXIST in [[#table_heading_line][tables]] with Org type.
 :END:
 
 #+CAPTION[object in table]: table with objects
+#+NAME: table_with_objects
 #+attr_html: :border 2 :rules all :frame border
 | object kind           | object value                     | supported in table cell |
 |-----------------------+----------------------------------+-------------------------|
@@ -660,8 +661,7 @@ standard set object(21)
 
 11 radio-target: <<<radio target>>>
 
-12 target: 
-<<target>>
+12 target: <<target>>
 
 13-16 link: plain link https://foo.bar, angle link <mailto:foo@bar>, radio link radio target, regular link [[target]]
 
@@ -857,7 +857,7 @@ b
 
 
 
-** Link Test
+** Links
 :PROPERTIES:
 :ID:       e30bb0f4-a323-4dce-8f6b-2f3b060e6dd0
 :END:
@@ -868,8 +868,13 @@ plain link: https://plainlink.org https://foo(bar).org
 
 angle link: <mailto:xx@xx.com> <https://foo(bar).org>
 
-radio link: my radio target, define three radio target <<<*bold* target>>> and <<<my radio target>>>  and <<<\alpha>>> and <<<$\alpha$>>>, then we have *bold* target, my radio target, notmyradio target and $\alpha$ and \alpha.
+radio link: define four radio targets:
+- <<<*bold* target>>>
+- <<<my radio target>>>
+- <<<\alpha>>>
+- <<<$\alpha$>>>
 
+then we have *bold* target, my radio target, $\alpha$ and \alpha.
 
 
 #+name: Blossoming Swirls of Elegance
@@ -902,34 +907,136 @@ CLOSED: [2026-01-13 Tue 10:30]
 - State "DONE"       from              [2026-01-13 Tue 10:30]
 :END:
 
+
+={{{property(name)}}}= and ​={{{n}}}=​  *{{{color(red, NOT supported)}}}* now
+
+
 | macro name        | arguments     | raw reference                                  | rendered value                                   | kind                                                 | supported |
 |-------------------+---------------+------------------------------------------------+--------------------------------------------------+------------------------------------------------------+-----------|
-| title             |               | ={{{title}}}=                                  | {{{title}}}                                      | keyword(title)                                       |           |
-| author            |               | ={{{author}}}=                                 | {{{author}}}                                     | keyword(author)                                      |           |
-| author            |               | ={{{author()}}}=                               | {{{author}}}                                     | keyword(author)                                      |           |
-| email             |               | ={{{email}}}=                                  | {{{email}}}                                      | keyword(email)                                       |           |
-| keyword           | NAME          | ={{{keyword(project)}}}=                       | {{{keyword(project)}}}                           | keyword(NAME)                                        |           |
-| date              |               | ={{{date}}}=                                   | {{{date}}}                                       | keyword(date)                                        |           |
-| date              | FORMAT        | ={{{date(%Y-%m-%dT%H:%M:%S%z)}}}=              | {{{date(%Y-%m-%dT%H:%M:%S%z)}}}                  | format keyword(DATE) if it's a signle timestamp      |           |
+| title             |               | ={{{title}}}=                                  | {{{title}}}                                      | keyword(title)                                       | Yes       |
+| author            |               | ={{{author}}}=                                 | {{{author}}}                                     | keyword(author)                                      | Yes       |
+| author            |               | ={{{author()}}}=                               | {{{author}}}                                     | keyword(author)                                      | Yes       |
+| email             |               | ={{{email}}}=                                  | {{{email}}}                                      | keyword(email)                                       | Yes       |
+| keyword           | NAME          | ={{{keyword(project)}}}=                       | {{{keyword(project)}}}                           | keyword(NAME)                                        | Yes       |
+| date              |               | ={{{date}}}=                                   | {{{date}}}                                       | keyword(date)                                        | Yes       |
+| date              | FORMAT        | ={{{date(%Y-%m-%dT%H:%M:%S%z)}}}=              | {{{date(%Y-%m-%dT%H:%M:%S%z)}}}                  | format keyword(DATE) if it's a signle timestamp      | Yes       |
 |-------------------+---------------+------------------------------------------------+--------------------------------------------------+------------------------------------------------------+-----------|
-| time              | FORMAT        | ={{{time(%Y-%m-%dT%H:%M:%S%z)}}}=              | {{{time(%Y-%m-%dT%H:%M:%S%z)}}}                  | export time                                          |           |
-| modification-time | FORMAT        | ={{{modification-time(%Y-%m-%dT%H:%M:%S%z)}}}= | {{{modification-time(%Y-%m-%dT%H:%M:%S%z)}}}     | modification time                                    |           |
+| time              | FORMAT        | ={{{time(%Y-%m-%dT%H:%M:%S%z)}}}=              | {{{time(%Y-%m-%dT%H:%M:%S%z)}}}                  | export time                                          | Yes       |
+| modification-time | FORMAT        | ={{{modification-time(%Y-%m-%dT%H:%M:%S%z)}}}= | {{{modification-time(%Y-%m-%dT%H:%M:%S%z)}}}     | modification time                                    | Yes       |
 |-------------------+---------------+------------------------------------------------+--------------------------------------------------+------------------------------------------------------+-----------|
-| input-file        |               | ={{{input-file}}}=                             | {{{input-file}}}                                 | filename of the exported file                        |           |
+| input-file        |               | ={{{input-file}}}=                             | {{{input-file}}}                                 | filename of the exported file                        | Yes       |
 |-------------------+---------------+------------------------------------------------+--------------------------------------------------+------------------------------------------------------+-----------|
 | property          | PROPERTY_NAME | ={{{property(custom_id)}}}=                    | {{{property(custom_id)}}}                        | value of property PROPERTY_NAME in the current entry | No        |
 |-------------------+---------------+------------------------------------------------+--------------------------------------------------+------------------------------------------------------+-----------|
 | n                 |               | ={{{n}}}=                                      | {{{n}}}                                          | number of macro expanded: NOT supported              | No        |
 |-------------------+---------------+------------------------------------------------+--------------------------------------------------+------------------------------------------------------+-----------|
-| color             |               | ={{{color(red, red text)}}}=                   | {{{color(red, red text)}}}                       | by =#+macro:=                                        |           |
+| color             |               | ={{{color(red, red text)}}}=                   | {{{color(red, red text)}}}                       | by =#+macro:=                                        | Yes       |
 |-------------------+---------------+------------------------------------------------+--------------------------------------------------+------------------------------------------------------+-----------|
-| results           | value         |                                                | src_python{print("hello")} {{{results(=None=)}}} | inline source block                                  |           |
+| results           | value         | ={{{results(=None=)}}}=                        | src_python{print("hello")} {{{results(=None=)}}} | inline source block                                  | Yes       |
 
-{{{color(red, tow line
+{{{color(red, two line
 of red)}}}
 
 
-** DONE timestamp
+** DONE Targets and Radio Targets
+CLOSED: [2026-04-12 Sun 17:38]
+:LOGBOOK:
+- State "DONE"       from              [2026-04-12 Sun 17:38]
+:END:
+*** Targets
+
+<<yes a target>> this is a target named ​~yes a target~​
+
+<<not a target   >>
+
+<< not a target>>
+
+<<not
+a target>>
+
+one item
+
+<<target>>another item
+
+Here we refer to item [[yes a target][descript of target]]. (C-c C-o)
+
+*** radio target
+
+define a radio target: <<</italic/ target>>>, then reference a target /italic/ target
+
+
+
+
+** Statistics Cookies
+
+** Subscript and Superscript
+*** superscript
+
+simple
+
+a^{34}
+
+a^{(34)}
+
+complex
+
+a^{(34)+3}
+
+a^{(385)+3}
+
+a^{(385)+{a*b + (c/d) + a^{d}} + [d+e]}
+
+a^{c+[d+e}
+
+a^{c+(d+e}: bad
+
+a^(c+4)
+
+a^(c+4}: bad
+
+complex with object
+
+a^{foo *boldmarkup* bar}
+
+a^{*boldmarkup*}
+
+a^{*boldmarkup* foo \alpha}
+
+a^{\alpha} 
+
+a^(385+3 [[https://baidu.com][baidu]])
+
+a^{385+3 [[https://baidu.com][baidu]]}
+
+a single asterisk: b^*, ^^*, ,^*
+
+an expression enclosed in curly brackets: a^{2}, a^{b{3}}, a^{b^{c}^{d}^{e}} (org-toggle-pretty-entities C-c C-x \)
+
+sign(optional) chars final: foo^abc... a^+34, a^-12,889,,,,78.3\a, 10^24, 10^tau, 10^-12, 10^-tau, x^2-y^3, x^(2-i), x^{i^2}, a^2Kو b^(3+2),
+
+
+
+b^[a]: bad
+
+a^+aa,
+
+*** subscript
+
+a single asterisk: b_*, __*, ,_*
+
+an expression enclosed in curly brackets: a_{2}, a_{b{3}}, a_{b_{c}_{d}_{e}} (org-toggle-pretty-entities C-c C-x \)
+
+sign(optional) chars final: a_+34, a_-12,889,78.3\a, 10_24, 10_tau, 10_-12, 10_-tau, x_2-y_3, x_(2-i), x_{i_2}, a_2Kو b_(3+2),
+
+
+
+
+** Table Cells
+
+See [[table_with_objects][this table]]
+
+
+** DONE Timestamps
 CLOSED: [2026-01-13 Tue 11:10]
 :LOGBOOK:
 - State "DONE"       from              [2026-01-13 Tue 11:10]
@@ -979,7 +1086,7 @@ CLOSED: [2026-01-13 Tue 11:10]
 <1997-11-03 Mon 19:15-20:18 +23d>
   
 
-** text-markup
+** Text Markup
 
 *** basic test
 
@@ -1083,96 +1190,7 @@ a ~=*/bold_italic/*=~ line
 
 
 
-** superscript and subscript
-*** superscript
-
-simple
-
-a^{34}
-
-a^{(34)}
-
-complex
-
-a^{(34)+3}
-
-a^{(385)+3}
-
-a^{(385)+{a*b + (c/d) + a^{d}} + [d+e]}
-
-a^{c+[d+e}
-
-a^{c+(d+e}: bad
-
-a^(c+4)
-
-a^(c+4}: bad
-
-complex with object
-
-a^{foo *boldmarkup* bar}
-
-a^{*boldmarkup*}
-
-a^{*boldmarkup* foo \alpha}
-
-a^{\alpha} 
-
-a^(385+3 [[https://baidu.com][baidu]])
-
-a^{385+3 [[https://baidu.com][baidu]]}
-
-a single asterisk: b^*, ^^*, ,^*
-
-an expression enclosed in curly brackets: a^{2}, a^{b{3}}, a^{b^{c}^{d}^{e}} (org-toggle-pretty-entities C-c C-x \)
-
-sign(optional) chars final: foo^abc... a^+34, a^-12,889,,,,78.3\a, 10^24, 10^tau, 10^-12, 10^-tau, x^2-y^3, x^(2-i), x^{i^2}, a^2Kو b^(3+2),
-
-
-
-b^[a]: bad
-
-a^+aa,
-
-*** subscript
-
-a single asterisk: b_*, __*, ,_*
-
-an expression enclosed in curly brackets: a_{2}, a_{b{3}}, a_{b_{c}_{d}_{e}} (org-toggle-pretty-entities C-c C-x \)
-
-sign(optional) chars final: a_+34, a_-12,889,78.3\a, 10_24, 10_tau, 10_-12, 10_-tau, x_2-y_3, x_(2-i), x_{i_2}, a_2Kو b_(3+2),
-
-
-
-
-** target
-<<<y>>>
-
-<<y>>
-
-<<yes a target>>
-
-<<not a target   >>
-
-<< not a target>>
-
-<<not
-a target>>
-
-one item
-
-<<target>>another item
-
-Here we refer to item [[target][descript of target]]. (C-c C-o)
-
-
-
-** radio target
-
-define a radio target: <<<*bold* target>>>, reference a target *bold* target
-
-
-
+** Plain Text
 
 * Footnotes
 :PROPERTIES:
