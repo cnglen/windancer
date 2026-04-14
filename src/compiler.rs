@@ -56,6 +56,52 @@ impl Compiler {
         d_base: P,
     ) -> Result<Document, Box<dyn std::error::Error>> {
         let f_org = f_org.as_ref();
+        let input = &fs::read_to_string(f_org)
+            .unwrap_or_else(|e| panic!("Failed to read {:?}: {}", f_org, e));
+        let enable_render = input
+            .lines()
+            .filter(|s| {
+                s.to_lowercase().contains("nil") && s.to_lowercase().starts_with("#+render:")
+            })
+            .map(|s| {
+                let pattern = "#+render:";
+                let pattern_lower = pattern.to_lowercase();
+                let bytes = s.as_bytes();
+                let n = bytes.len();
+                let mut i = 0;
+                while i < n {
+                    if i + pattern.len() <= n {
+                        let slice = &s[i..i + pattern.len()];
+                        if slice.to_lowercase() == pattern_lower {
+                            let mut j = i + pattern.len();
+                            while j < n && (bytes[j] == b' ' || bytes[j] == b'\t') {
+                                j += 1;
+                            }
+                            if j + 3 <= n {
+                                let nil_slice = &s[j..j + 3];
+                                if nil_slice.to_lowercase() == "nil" {
+                                    let mut k = j + 3;
+                                    while k < n && (bytes[k] == b' ' || bytes[k] == b'\t') {
+                                        k += 1;
+                                    }
+                                    if k == n {
+                                        return true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    i += 1;
+                }
+                false
+            })
+            .count()
+            > 0;
+        if enable_render {
+            tracing::warn!("{} is not parsed since #+render:nil", f_org.display());
+            return Err("no need to parser since enable_render=false".into());
+        }
+
         let syntax_tree = self.parser.parse(f_org);
         // tracing::trace!("syntax_tree:{:#?}", syntax_tree);
 
@@ -247,7 +293,10 @@ impl Compiler {
                 && (!filename.starts_with(['.', '#']))
             {
                 tracing::debug!("compile_section@org: {}", path.display());
-                documents.push(self.compile_file(path, d_base.as_ref().to_path_buf())?);
+
+                if let Ok(doc) = self.compile_file(path, d_base.as_ref().to_path_buf()) {
+                    documents.push(doc);
+                }
             }
         }
 

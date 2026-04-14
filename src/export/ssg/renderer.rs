@@ -61,7 +61,7 @@ fn hash_string_to_usize(input: &str) -> usize {
 }
 
 pub struct RendererContext {
-    tera: tera::Tera,
+    tera: Option<tera::Tera>,
     // table counter in sit or page?
     pub table_counter: usize,
     pub figure_counter: usize,
@@ -69,6 +69,20 @@ pub struct RendererContext {
     pub pageid_to_url: HashMap<PageId, String>,
     pub roamid_to_url: HashMap<String, String>,
     pub prev_head_level: Vec<u8>,
+}
+
+impl RendererContext {
+    fn default_without_tera() -> Self {
+        Self {
+            tera: None,
+            table_counter: 0,
+            figure_counter: 0,
+            toc: TableOfContents::default(),
+            pageid_to_url: HashMap::default(),
+            roamid_to_url: HashMap::default(),
+            prev_head_level: vec![0],
+        }
+    }
 }
 
 impl Default for RendererContext {
@@ -84,7 +98,7 @@ impl Default for RendererContext {
         tera.autoescape_on(vec![]);
 
         Self {
-            tera,
+            tera: Some(tera),
             table_counter: 0,
             figure_counter: 0,
             toc: TableOfContents::default(),
@@ -153,7 +167,7 @@ fn load_templates_from_dir(dir: &str) -> std::io::Result<HashMap<String, String>
             && path.extension().is_some_and(|ext| ext == "html")
             && let Some(stem) = path.file_name().and_then(|s| s.to_str())
         {
-            tracing::info!(" from {}", path.display());
+            tracing::trace!(" from {}", path.display());
             let content = fs::read_to_string(&path)?;
             templates.insert(stem.to_string(), content);
         }
@@ -199,23 +213,13 @@ fn build_merged_tera(user_dir: &str) -> std::io::Result<tera::Tera> {
 impl Default for Renderer {
     fn default() -> Self {
         let config = RendererConfig::default();
-        let input_directory = std::path::Path::new("content").to_path_buf();
         let output_directory = std::path::Path::new("public").to_path_buf();
-
-        let binding = input_directory
-            .parent()
-            .expect("parent should exists")
-            .join("templates");
-        let user_dir = binding.to_str().expect("todo");
-        let mut tera = build_merged_tera(user_dir).expect("");
-        tera.autoescape_on(vec![]);
-
         Self {
             output_directory,
             config,
             context: RendererContext {
-                tera,
-                ..RendererContext::default()
+                tera: None,
+                ..RendererContext::default_without_tera()
             },
             footnote_defintions: vec![],
         }
@@ -305,6 +309,7 @@ impl Renderer {
             .expect("parent should exists")
             .join("templates");
         let user_dir = binding.to_str().expect("todo");
+
         let mut tera = build_merged_tera(user_dir).expect("");
         tera.autoescape_on(vec![]);
 
@@ -312,8 +317,8 @@ impl Renderer {
             output_directory,
             config,
             context: RendererContext {
-                tera,
-                ..RendererContext::default()
+                tera: Some(tera),
+                ..RendererContext::default_without_tera()
             },
             footnote_defintions: vec![],
         }
@@ -353,6 +358,8 @@ impl Renderer {
             let html = self
                 .context
                 .tera
+                .as_mut()
+                .expect("tera should be Some()")
                 .render("tag.tera.html", &ctx)
                 .unwrap_or_else(|err| format!("Template rendering page failed: {}", err));
 
@@ -430,6 +437,8 @@ impl Renderer {
         ctx.insert("tinydis_server_url", &self.config.tinydis_server_url);
         self.context
             .tera
+            .as_mut()
+            .expect("tera should be Some()")
             .render("page.tera.html", &ctx)
             .unwrap_or_else(|err| format!("Template rendering page failed: {}", err))
     }
@@ -679,6 +688,8 @@ impl Renderer {
             .expect("render_table: from serialize failed");
         self.context
             .tera
+            .as_mut()
+            .expect("tera should not be None")
             .render("table.tera.html", &ctx)
             .unwrap_or_else(|err| format!("Template rendering table failed: {}", err))
     }

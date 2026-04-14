@@ -224,6 +224,9 @@ struct Converter {
     keywords: BTreeMap<String, Vec<Object>>,
     extracted_links: Vec<ExtractedLink>,
     roam_nodes: Vec<RoamNode>,
+
+    // renderer without tera
+    renderer: Renderer,
 }
 
 impl Converter {
@@ -266,6 +269,7 @@ impl Converter {
             context: BuilderContext::new(f_org),
             extracted_links: vec![],
             roam_nodes: vec![],
+            renderer: Renderer::default(),
         }
     }
 
@@ -462,7 +466,7 @@ impl Converter {
                                     .collect();
 
                                 title = ans;
-                                // title = Some(c.as_token().unwrap().text().to_string())
+                                // tracing::trace!("title={:?}", title);
                             }
                             OrgSyntaxKind::HeadingRowTags => {
                                 let tc = c.as_node().unwrap();
@@ -893,6 +897,7 @@ impl Converter {
             .find(|(_i, e)| e.kind() == OrgSyntaxKind::TableRuleRow)
             .map(|(idx, _)| idx)
             .unwrap_or(0);
+
         for (i, row) in node.children().enumerate() {
             match row.kind() {
                 OrgSyntaxKind::TableStandardRow => {
@@ -905,9 +910,10 @@ impl Converter {
                         .flat_map(|e| self.convert_object(&e))
                         .flatten()
                         .collect();
+                    // slow ...
                     let text_binding = contents
                         .iter()
-                        .map(|o| Renderer::default().render_object_without_escaple(o))
+                        .map(|o| self.renderer.render_object_without_escaple(o))
                         .collect::<Vec<_>>()
                         .join("");
                     let first_cell_text = text_binding.trim();
@@ -928,6 +934,7 @@ impl Converter {
                             )?);
                         }
                         (true, _) => {
+                            // slow ...
                             header.push(self.convert_table_row(
                                 &row,
                                 TableRowType::Header,
@@ -983,8 +990,7 @@ impl Converter {
         } else {
             panic!("table has NO data");
         };
-
-        // calculate the `column_formats`, then update alignment for each cell
+        tracing::trace!("calculate the `column_formats`, then update alignment for each cell");
         let mut column_formats = vec![
             ColumnFormat {
                 alignment: TableCellAlignment::Left,
@@ -1016,7 +1022,7 @@ impl Converter {
             }
         }
 
-        // calculate the column groups
+        tracing::trace!("calculate the column groups");
         let mut column_group_boundaries: Vec<usize> = Vec::new();
         for row in meta_rows.iter() {
             for (j, cell) in row.cells.iter().enumerate() {
@@ -1128,7 +1134,7 @@ impl Converter {
 
         let text_binding = contents
             .iter()
-            .map(|o| Renderer::default().render_object_without_escaple(o))
+            .map(|o| self.renderer.render_object_without_escaple(o))
             .collect::<Vec<_>>()
             .join("");
         let text = text_binding.trim();
