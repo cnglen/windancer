@@ -128,6 +128,7 @@ impl Document {
             );
             "".to_string()
         };
+        let directory = Renderer::slugify(directory);
 
         let html_file_name = if self.file_info.maybe_index {
             "index.html".to_string()
@@ -267,6 +268,7 @@ impl FileInfo {
 #[derive(Debug)]
 pub struct DocumentMetadata {
     pub title: Option<String>,
+    pub description: Option<String>,
     pub authors: Vec<String>,
     pub created_ts: Option<DateTime<Local>>,
     pub last_modified_ts: Option<DateTime<Local>>,
@@ -293,6 +295,7 @@ impl Default for DocumentMetadata {
     fn default() -> Self {
         Self {
             title: None,
+            description: None,
             authors: Vec::new(),
             created_ts: None,
             last_modified_ts: None,

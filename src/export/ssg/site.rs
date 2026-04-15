@@ -23,6 +23,7 @@ pub struct Page {
     pub id: PageId,
 
     pub title: String,
+    pub description: String, // -> <meta name="description" content="">
     // the url relative to root of site, such as "/blog/foo/index.html"
     pub url: String,
     // the html path relatie to root of site, such as "blog/foo/index.html"
@@ -52,6 +53,7 @@ impl Page {
             children_ids,
 
             title: String::default(),
+            description: String::default(),
             url: String::default(),
             metadata: PageMetadata {},
             ast: OrgFile {
@@ -89,11 +91,12 @@ impl fmt::Debug for Page {
             r##"Page {{
     id: {:#?},
     title: {:#?},
+    description: {:#?},
     url: {:#?},
     parent_id: {:#?},
     children_ids: {:#?},
 }}"##,
-            self.id, self.title, self.url, self.parent_id, self.children_ids
+            self.id, self.title, self.description, self.url, self.parent_id, self.children_ids
         )
     }
 }
@@ -282,6 +285,11 @@ impl SiteBuilder {
             .title
             .clone()
             .unwrap_or("no title found".to_string());
+        let description = document
+            .metadata
+            .description
+            .clone()
+            .unwrap_or("".to_string());
         let last_modified_ts = document.metadata.last_modified_ts;
         let created_ts = document.metadata.created_ts;
 
@@ -317,6 +325,7 @@ impl SiteBuilder {
             Page {
                 id: id.clone(),
                 title,
+                description,
                 url,
                 metadata,
                 ast,

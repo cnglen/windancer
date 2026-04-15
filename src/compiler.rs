@@ -206,6 +206,7 @@ impl Compiler {
 
         let title = keyword.remove("TITLE").map(|e| e.join(" "));
         let authors = keyword.remove("AUTHOR").unwrap_or(vec![]);
+        let description = keyword.remove("DESCRIPTION").map(|e| e.join(" "));
         let filetags = keyword
             .remove("FILETAGS")
             .unwrap_or(vec![])
@@ -240,6 +241,7 @@ impl Compiler {
 
         DocumentMetadata {
             title,
+            description,
             authors,
             filetags,
             category,

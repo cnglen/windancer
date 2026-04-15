@@ -382,6 +382,7 @@ impl Renderer {
         let mut ctx = tera::Context::from_serialize(page_nav_context)
             .expect("render_page: from serialize failed");
         ctx.insert("title", &page.title);
+        ctx.insert("description", &page.description);
         let id = page.ast.properties.get("ID");
         ctx.insert("id", &id);
 

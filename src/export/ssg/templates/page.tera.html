@@ -7,6 +7,10 @@
   <meta name="generator" content="Org Mode">
   <meta name="HandheldFriendly" content="true">
   <meta name="MobileOptimized" content="width">
+  {% if description %}
+  <meta name="description" content="{{description}}">
+  {% endif %}
+
 
   <title>{{title}}</title>
   <link rel="icon" type="image/png" href="/favicon.png">
@@ -98,6 +102,7 @@
     }
   </style>
 
+  {% include "site_header.tera.html" ignore missing %}
 </head>
 
 <body>
@@ -171,7 +176,7 @@
           </button>
           {% endif %}
           {% for tag_bgcolor in tags %}
-          <a href="/tags/{{tag_bgcolor.0}}"
+          <a href="/tags/{{tag_bgcolor.0}}.html"
             class="v-chip text-white text-center whitespace-nowrap inline-flex no-underline box-border px-4 py-2"
             style="background-color: {{tag_bgcolor.1}};">
             <span class="v-chip-content">🏷{{tag_bgcolor.0|safe}}</span>
