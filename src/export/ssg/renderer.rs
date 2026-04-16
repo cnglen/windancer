@@ -586,7 +586,7 @@ impl Renderer {
 </section>
 "##,
             index = index,
-            level = heading.level,
+            level = heading.level + 1,
             title = escape_html(&title),
             todo = todo_html,
             tags = tags_html,
