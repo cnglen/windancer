@@ -1149,6 +1149,11 @@ impl Converter {
                 return None;
             }
 
+            if inner.chars().all(|c| c.is_ascii_digit()) {
+                let max_width = inner.parse().ok();
+                return Some((TableCellAlignment::Left, max_width));
+            }
+
             let (align_char, num_part) = inner.split_at(1);
             let alignment = match align_char {
                 "l" => TableCellAlignment::Left,
