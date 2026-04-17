@@ -37,9 +37,13 @@ use std::fs;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::{Path, PathBuf};
 
+use anyhow::Context;
 use chrono::{Datelike, Local};
 use html_escape;
 use serde::Deserialize;
+use sitemap_rs::url::Url as SitemapUrl;
+use sitemap_rs::url_set::UrlSet;
+use url::Url;
 
 use crate::compiler::ast_builder::element::{
     self, CenterBlock, Drawer, Element, ExampleBlock, ExportBlock, FixedWidth, FootnoteDefinition,
@@ -330,9 +334,35 @@ impl Renderer {
         self.context.pageid_to_url = site.pageid_to_url.clone();
         self.context.roamid_to_url = site.knowledge_graph.id_to_url.clone();
 
+        let mut sitemap_urls: Vec<SitemapUrl> = vec![];
         for (_id, page) in site.pages.iter() {
             self.render_page(page).expect("render_page should success");
+
+            let mut url = SitemapUrl::builder(
+                Url::parse(&site.config.base_url)
+                    .context("`ssg.site.base_url` is not configured")
+                    .expect("base url")
+                    .join(&page.url)
+                    .expect("full url")
+                    .to_string(),
+            );
+            if let Some(last_modified_local) = page.last_modified_ts {
+                url.last_modified(last_modified_local.with_timezone(last_modified_local.offset()));
+            }
+            let url = url.build().expect("build url");
+            sitemap_urls.push(url);
         }
+        let url_set: UrlSet = UrlSet::new(sitemap_urls)
+            .context("Failed to build sitemap URL set")
+            .unwrap();
+        let f_sitemap = self.output_directory.join("sitemap.xml");
+        let mut file = fs::File::create(&f_sitemap)
+            .with_context(|| format!("Failed to create {:?}", f_sitemap))
+            .unwrap();
+        url_set
+            .write(&mut file)
+            .context("Failed to write sitemap XML")
+            .unwrap();
 
         // render tags
         for (tag, page_ids) in site.tag_index.iter() {

@@ -48,6 +48,8 @@ no_further_action = ["DONE"]
 
 [ssg]
 [ssg.site]
+# used to generate sitemap.xml
+base_url = "http://127.0.0.1/"
 
 [ssg.renderer]
 automatic_equaiton_numbering = true

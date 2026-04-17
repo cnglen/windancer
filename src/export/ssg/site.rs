@@ -104,7 +104,7 @@ impl fmt::Debug for Page {
 #[derive(Debug, Clone, Deserialize, Default)]
 #[serde(default)]
 pub struct SiteConfig {
-    // pub base_url: String,
+    pub base_url: String,
     // pub theme: String,
     // pub generate_search_index: bool,
 }
