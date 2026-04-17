@@ -91,10 +91,8 @@ pub(crate) fn include_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, IncludePar
                 let (mut min_level, mut only_contents, mut lines) = (None, false, (None, None));
                 for (k, v) in named_args {
                     match k {
-                        ":only-contents" => {
-                            if v.to_lowercase() != "nil" {
-                                only_contents = true;
-                            }
+                        ":only-contents" if v.to_lowercase() != "nil" => {
+                            only_contents = true;
                         }
                         ":minlevel" => {
                             min_level = Some(v.parse::<usize>().expect("a number"));

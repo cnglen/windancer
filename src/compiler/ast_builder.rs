@@ -365,7 +365,7 @@ impl Converter {
                     .clone();
             }
         }
-        self.footnote_definitions.sort_by(|a, b| a.nid.cmp(&b.nid));
+        self.footnote_definitions.sort_by_key(|a| a.nid);
 
         // at last we collect file node: keywords may not at zeroth section
         if let Some((id, aliases, refs, properties)) = Self::get_roam_info(&properties) {
