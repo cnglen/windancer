@@ -370,3 +370,32 @@ nav.toc li.active {
 dd {
     margin-inline-start: 40px;
 }
+
+body {
+    display: grid !important;
+    grid-template-rows: 1fr auto !important;
+    min-height: 100vh !important;
+    margin: 0 !important;
+}
+
+main#main-content {
+    /* 确保 main 不会溢出 */
+    min-height: 0 !important;
+    overflow: visible !important;
+}
+
+.site-footer {
+    /* footer 自动在 grid 的第二行 */
+    margin-top: 0 !important;
+}
+
+/* TOC 保持 sticky，但不影响 grid 行高 */
+.toc-site,
+.toc-page {
+    position: sticky;
+    top: 0;
+    height: auto;
+    max-height: 100vh;
+    overflow-y: auto;
+    align-self: start;
+}

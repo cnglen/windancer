@@ -117,12 +117,12 @@
     class="overlay-toc-page fixed inset-0 z-[999] hidden bg-transparent cursor-default"></label>
 
   <main id="main-content"
-    class="grid min-h-screen transition-all duration-300 ease grid-cols-1 px-[1%] gap-0 md:px-4 md:grid-cols-[1fr_3fr_1fr] grid-rows-1 print:block"
+    class="grid transition-all duration-300 ease grid-cols-1 px-[1%] gap-0 md:px-4 md:grid-cols-[1fr_3fr_1fr] grid-rows-1 print:block"
     role="main">
     {# toc-site sidebar #}
     <label for="toggle-toc-site">
       <nav
-        class="toc-site hidden z-[1000] sticky top-0 left-0 bg-gray-50 border-r border-gray-100 col-start-1 row-start-1 pl-2 pr-2 pt-6 pb-6 overflow-y-auto h-screen print:hidden md:block max-w-xs md:max-w-sm lg:max-w-md transition-transform duration-300 shadow-[2px_0_10px_rgba(0,0,0,0.1)]"
+        class="toc-site hidden z-[1000] sticky top-0 left-0 bg-gray-50 border-r border-gray-100 col-start-1 row-start-1 pl-2 pr-2 pt-6 pb-6 overflow-y-auto min-h-[97vh] print:hidden md:block max-w-xs md:max-w-sm lg:max-w-md transition-transform duration-300 shadow-[2px_0_10px_rgba(0,0,0,0.1)]"
         aria-label="site-navigation" role="navigation">
         <div title="site navigation">☰</div>
         <div id="text-table-of-contents" role="doc-toc">
@@ -233,7 +233,7 @@
     {% if is_toc_page_has_content %}
     <label for="toggle-toc-page">
       <nav
-        class="toc-page hidden z-[1000] sticky top-0 right-0 bg-gray-50 border-r border-gray-100 col-start-3 row-start-1 pl-2 pr-2 pt-6 pb-6 overflow-y-auto h-screen print:hidden md:block max-w-xs md:max-w-sm lg:max-w-md transition-transform duration-300 shadow-[2px_0_10px_rgba(0,0,0,0.1)]">
+        class="toc-page hidden z-[1000] sticky top-0 right-0 bg-gray-50 border-r border-gray-100 col-start-3 row-start-1 pl-2 pr-2 pt-6 pb-6 overflow-y-auto min-h-[97vh] print:hidden md:block max-w-xs md:max-w-sm lg:max-w-md transition-transform duration-300 shadow-[2px_0_10px_rgba(0,0,0,0.1)]">
         <div id="table-of-contents" role="doc-toc">
           <div title="page outline"> 📖 </div>
           <div id="text-table-of-contents" role="doc-toc">
