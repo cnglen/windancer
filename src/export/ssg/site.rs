@@ -413,6 +413,10 @@ impl SiteBuilder {
         std::fs::write(static_directory_to.join("default.css"), default_css)
             .expect("write default.css failed");
 
+        let default_favicon = include_bytes!("static/favicon.png");
+        std::fs::write(static_directory_to.join("favicon.png"), default_favicon)
+            .expect("write favicon.png failed");
+
         // copy user's static directory to site root directory, default.css can be overwritten
         if static_directory_from.is_dir() {
             tracing::debug!(from=?static_directory_from.display(), to=?static_directory_to.display());
