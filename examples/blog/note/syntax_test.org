@@ -969,66 +969,92 @@ define a radio target: <<</italic/ target>>>, then reference a target /italic/ t
 
 ** Statistics Cookies
 
-** Subscript and Superscript
-*** superscript
+** DONE Subscript and Superscript
+CLOSED: [2026-04-27 Mon 17:29]
+:LOGBOOK:
+- State "DONE"       from              [2026-04-27 Mon 17:29]
+:END:
 
-simple
+In the default configuration, ​={}=​ is required for subscript and super script. The option can be configured by:
+#+begin_src toml
+  [compiler.parser]
+  # Three value supported:
+  # - brace: only _{}/^{} is recognized as subscript and superscript
+  # - nil: disable subscript and superscript
+  # - true: {}/()/* https://orgmode.org/worg/org-syntax.html#Subscript_and_Superscript
+  org_use_sub_superscripts = "true"  
+#+end_src
 
-a^{34}
+*** Superscript
 
-a^{(34)}
+- simple :: an expression enclosed in curly brackets
+  - a^{34}
+  - a^{(34)} 
+  - a^{b{3}}
+  - a^{b^{c}^{d}^{e}}
+  - a^{b^{c^{d^{e}}}}    
+  - a single asterisk:
+    - b^{*}
+    - ^^{*}
+    - ,^{*}
+- complex
+  - a^{(34)+3}
+  - a^{(385)+3}
+  - a^{(385)+{a*b + (c/d) + a^{d}} + [d+e]}
+  - a^{c+[d+e}
+- complex with object
+  - a^{foo *boldmarkup* bar}
+  - a^{*boldmarkup*}
+  - a^{*boldmarkup* foo \alpha}
+  - a^{\alpha}
+  - a^(385+3 [[https://baidu.com][baidu]])
+  - a^{385+3 [[https://baidu.com][baidu]]}
+- Super script is enabled only if ​=org_use_sub_superscripts=​ is set to "true":
+  - a^(c+4)
+  - foo^abc...
+  - a^+34
+  - a^-12,889,,,,78.3\a,
+  - 10^24,
+  - 10^tau,
+  - 10^-12,
+  - 10^-tau,
+  - x^2-y^3,
+  - x^(2-i),
+  - a^2Kو
+  - b^(3+2), 
 
-complex
+Bad:
+- a^{c+(d+e}
+- a^(c+4}
+- b^[a]
 
-a^{(34)+3}
-
-a^{(385)+3}
-
-a^{(385)+{a*b + (c/d) + a^{d}} + [d+e]}
-
-a^{c+[d+e}
-
-a^{c+(d+e}: bad
-
-a^(c+4)
-
-a^(c+4}: bad
-
-complex with object
-
-a^{foo *boldmarkup* bar}
-
-a^{*boldmarkup*}
-
-a^{*boldmarkup* foo \alpha}
-
-a^{\alpha} 
-
-a^(385+3 [[https://baidu.com][baidu]])
-
-a^{385+3 [[https://baidu.com][baidu]]}
-
-a single asterisk: b^*, ^^*, ,^*
-
-an expression enclosed in curly brackets: a^{2}, a^{b{3}}, a^{b^{c}^{d}^{e}} (org-toggle-pretty-entities C-c C-x \)
-
-sign(optional) chars final: foo^abc... a^+34, a^-12,889,,,,78.3\a, 10^24, 10^tau, 10^-12, 10^-tau, x^2-y^3, x^(2-i), x^{i^2}, a^2Kو b^(3+2),
-
-
-
-b^[a]: bad
-
-a^+aa,
-
-*** subscript
-
-a single asterisk: b_*, __*, ,_*
-
-an expression enclosed in curly brackets: a_{2}, a_{b{3}}, a_{b_{c}_{d}_{e}} (org-toggle-pretty-entities C-c C-x \)
-
-sign(optional) chars final: a_+34, a_-12,889,78.3\a, 10_24, 10_tau, 10_-12, 10_-tau, x_2-y_3, x_(2-i), x_{i_2}, a_2Kو b_(3+2),
+The display style can be toggled by ​=org-toggle-pretty-entities=​ or =C-c C-x=
 
 
+
+*** Subscript
+
+- an expression enclosed in curly brackets:
+  - a_{2},
+  - a_{b{3}},
+  - a_{b_{c}_{d}_{e}}
+  - a_{b_{c_{d_{e}}}}
+- a single asterisk:
+  - b_{*},
+  - __{*},
+  - ,_{*}
+- Subscript is enabled only if ​=org_use_sub_superscripts=​ is set to "true":
+  - a_+34,
+  - a_-12,889,78.3\a,
+  - 10_24,
+  - 10_tau,
+  - 10_-12,
+  - 10_-tau,
+  - x_2-y_3,
+  - x_(2-i),
+  - x_{i_2},
+  - a_2Kو
+  - b_(3+2),
 
 
 ** Table Cells

@@ -16,7 +16,7 @@ debug = false
 # Three value supported:
 # - brace: only _{}/^{} is recognized as subscript and superscript
 # - nil: disable subscript and superscript
-# - true: todo
+# - true: {}/()/* https://orgmode.org/worg/org-syntax.html#Subscript_and_Superscript
 org_use_sub_superscripts = "brace"
 # #+KEY[OPTVAL]: VALUE
 # Only KEY which are a member of `org_element_parsed_keywords`, VALUE can contain objects
