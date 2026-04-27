@@ -8,3 +8,5 @@ ssg = "demo.blog.publish"
 [compiler]
 debug = false
 
+[compiler.parser]
+org_use_sub_superscripts = "brace"

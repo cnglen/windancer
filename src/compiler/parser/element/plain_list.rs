@@ -160,13 +160,23 @@ fn create_item_node<'a, C: 'a + std::default::Default>(
             )
         } else {
             // Note: use parse() here, if we use nested_in() here, CTX type error
-            element_parser
+            let (maybe_output, errors) = element_parser
                 .repeated()
                 .collect::<Vec<_>>()
                 .map(|s| crate::node!(OSK::ListItemContent, s))
                 .parse_with_state(content, state)
-                .into_output()
-                .unwrap() // fixme
+                .into_output_errors();
+
+            if let Some(output) = maybe_output {
+                output
+            } else {
+                tracing::warn!("{:?}", errors);
+                let text_node = crate::token!(OSK::Text, content);
+                let paragraph_node = crate::node!(OSK::Paragraph, vec![text_node]);
+                let node = crate::node!(OSK::ListItemContent, vec![paragraph_node]);
+                tracing::warn!("use {}", content);
+                node
+            }
         };
         children.push(content_node);
     }

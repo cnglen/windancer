@@ -5,7 +5,7 @@
 #+AUTHOR: cnglen
 #+AUTHOR: contributors
 #+EMAIL: cnglen@gmail.com
-#+FILETAGS: :emacs:org-mode:windancer:
+#+FILETAGS: :emacs:org-mode:
 #+HTML_HEAD: <style>pre.src{background:#282a36;color:#ffb86c;} </style>
 #+MACRO: color @@html:<span style="color:$1">$2</span>@@@@latex:\textcolor{$1}{$2}@@
 #+MACRO: bgcolor @@html:<span style="background-color:$1;">$2</span>@@@@latex:$2@@
@@ -595,11 +595,13 @@ Paragraphs can contain the standard set of objects.
 
 Table rows can ONLY EXIST in [[#table_heading_line][tables]] with Org type.
 
-* TODO Objects
+* DONE Objects
+CLOSED: [2026-04-27 Mon 19:36]
 :PROPERTIES:
 :CUSTOM_ID: objects_overview_heading
 :END:
 :LOGBOOK:
+- State "DONE"       from "TODO"       [2026-04-27 Mon 19:36]
 - State "TODO"       from              [2026-04-04 Sat 18:03]
 :END:
 
@@ -635,54 +637,31 @@ Table rows can ONLY EXIST in [[#table_heading_line][tables]] with Org type.
 
 *{{{color(red, NOTE)}}}*: this part is not stable yet.
 
-minimal set objects(6)
 
-01 text-markup: *bold*, /italic/, _underline_, +strike-throught+, ​~code~, =verbatim=
-
-02 entity: \alpha
-
-03 latex-fragment: $\sum_{i=1}^{n}i$
-
-04 suscripot: a_{i,j}
-
-05 supscript: a^3
-
-06 plain-text: text
-
-standard set object(21)
-
-07 footnote-reference: [fn:1]
-
-08 line-break: \\
-
-09 timestamp: <1234-07-31>
-
-10 macro: {{{title}}}
-
-11 radio-target: <<<radio target>>>
-
-12 target: <<target>>
-
-13-16 link: plain link https://foo.bar, angle link <mailto:foo@bar>, radio link radio target, regular link [[target]]
-
-17 statistics-cookie: todo
-
-18 inline-babel-call: todo
-
-19 inline-src-block: todo
-
-20 citation: todo
-
-21 export-snippet: todo
-
-
-other objects (2):
-
-22 table-cell:
-| foo |   | bar |
-
-23 citation-reference: todo
-
+- standard set object(21)
+  - minimal set objects(6)
+    - 01 text-markup: *bold*, /italic/, _underline_, +strike-throught+, ​~code~, =verbatim=
+    - 02 entity: \alpha
+    - 03 latex-fragment: $\sum_{i=1}^{n}i$
+    - 04 suscripot: a_{i,j}
+    - 05 supscript: a^3
+    - 06 plain-text: text
+  - 07 footnote-reference: [fn:1]
+  - 08 line-break: \\
+  - 09 timestamp: <1234-07-31>
+  - 10 macro: {{{title}}}
+  - 11 radio-target: <<<radio target>>>
+  - 12 target: <<target>>
+  - 13-16 link: plain link https://foo.bar, angle link <mailto:foo@bar>, radio link radio target, regular link [[target]]
+  - 17 statistics-cookie
+  - 18 inline-babel-call
+  - 19 inline-src-block
+  - 20 citation
+  - 21 export-snippet
+- other objects (2):
+  - 22 table-cell:
+    | foo |   | bar |
+  - 23 citation-reference
 
 
 ** DONE Entity
@@ -857,16 +836,27 @@ b
 
 
 
-** Links
+** DONE Links
+CLOSED: [2026-04-27 Mon 18:55]
 :PROPERTIES:
 :ID:       e30bb0f4-a323-4dce-8f6b-2f3b060e6dd0
 :END:
+:LOGBOOK:
+- State "DONE"       from              [2026-04-27 Mon 18:55]
+:END:
 
-regular link: with description [[https://www.baidu.com][baidu]]; without description [[https://foo.bar][foo_bar]]; description with objects [[http://foo.bar][\alpha *bold* $a+b$ foo]]; fuzzy internal [[target]]
+- regular link:
+  - with description [[https://www.baidu.com][baidu]];
+  - without description [[https://google.com]]
+  - description with objects [[http://foo.bar][\alpha *bold* $a+b$ foo]];
+  - fuzzy internal [[target]]
 
-plain link: https://plainlink.org https://foo(bar).org
-
-angle link: <mailto:xx@xx.com> <https://foo(bar).org>
+- plain link:
+  - https://plainlink.org
+  - https://foo(bar).org
+- angle link:
+  - <mailto:xx@xx.com>
+  - <https://foo(bar).org>
 
 radio link: define four radio targets:
 - <<<*bold* target>>>
@@ -877,14 +867,15 @@ radio link: define four radio targets:
 then we have *bold* target, my radio target, $\alpha$ and \alpha.
 
 
+
+
+*** image test
+
 #+name: Blossoming Swirls of Elegance
 #+caption: This is a caption for the image linked below
 #+caption: Blossoming Swirls of Elegance Free Vector Download
 [[https://images.freeimages.com/image/previews/1b1/blossoming-swirls-of-elegance-5690563.jpg]]
 
-
-
-*** image test
 
 #+NAME: foo
 #+begin_src mermaid :file ./image/test_demo_git.png :cache yes :exports results
@@ -893,8 +884,11 @@ then we have *bold* target, my radio target, $\alpha$ and \alpha.
     Repo --> |git checkout| WD
 #+end_src
 
+#+CAPTION: git work flow
 #+RESULTS[78e2508f51e4853e901b6e1aa28643594183cf32]: foo
 [[file:./image/test_demo_git.png]]
+
+
 
 
 
@@ -967,7 +961,20 @@ define a radio target: <<</italic/ target>>>, then reference a target /italic/ t
 
 
 
-** Statistics Cookies
+** DONE Statistics Cookies
+CLOSED: [2026-04-27 Mon 18:44]
+:LOGBOOK:
+- State "DONE"       from              [2026-04-27 Mon 18:44]
+:END:
+
+   - Organize party [2/4]
+     - [-] call people [1/3]
+       - [ ] Peter
+       - [X] Sarah
+       - [ ] Sam
+     - [X] order food
+     - [ ] think about what music to play
+     - [X] talk to the neighbors
 
 ** DONE Subscript and Superscript
 CLOSED: [2026-04-27 Mon 17:29]
@@ -1120,11 +1127,10 @@ a *bold*, a /italic/, a _underline_, a +strikethrough+, a ~code~, and a =verbati
 
 一个​*粗体*​、​/斜体/​、​_下划线_​、​+横划线+​、​~编程~​和​=字面=​文本
 
-Not*bold* bad PRE
-
-Not *bold*( bad POST
-
-Not * bold* *bold * bad content
+- bad:
+  - bad PRE: Not*bold* 
+  - bad POST: Not *bold*( 
+  - bad content: Not * bold* *bold * 
 
 *** Nested test
 
@@ -1135,8 +1141,6 @@ a *bold NOT/italic/* text
 */This text is bold and italic, _and this part is also underlined_./*
 
 a */bold-italic/ *bold*
-
-**** nested test
 
 */_bold-italic-underline_/*
 
@@ -1156,7 +1160,9 @@ _*/underline-bold-italic/*_
 
 +/_*strikethrough-italic_*/+
 
-*_~inner-most~_*
+*_~inner-most-with-underline-bold~_*
+
+/_~inner-most-with-underline-italic~_/
 
 *_~=inner-most-include-equal=~_*
 
@@ -1164,59 +1170,35 @@ _*/underline-bold-italic/*_
 
 ~=*_/inner-most-include-equal-star-underscore-slash/_*=~
 
- 
-未正确嵌套的处理，未定义:
+***a bold*** : 3 bold matched
 
- */abc/
+**a bold** : 2 bold mathced
 
- */abc/ _adf_
+bad nested example:
+- */abc/
+- */abc/ _adf_
+- */_abc/* bar_
+- /*+/
+- ** a **
 
- */_abc/* bar_
+- ***a bold** : 3 bold + 2 bold
 
- /*+/
-
- ** a **
-
- **a bold** : 2b
-
- ***a bold** : 2b
-    
- ***a bold*** : 3b
-
-
-
-
-***  object in markup
+*** object in markup
 
 a *[[https://www.foo.org][foo]]* link
 
-*** todo
+*** Chinese test
 
-a /i/ line
-
-a ​*bold*​ line
+这是​*粗体*​，​/斜体/​, ​_下划线_​，​*/粗斜体/*​，​+横滑线+​。
 
 
+** DONE Plain Text
+CLOSED: [2026-04-27 Mon 19:32]
+:LOGBOOK:
+- State "DONE"       from              [2026-04-27 Mon 19:32]
+:END:
 
-
-b _*/underline-bold-italic/*_ line
-c /_*italic-underline-bold*_/ line
-d /*_italic-bold-underline_*/ line
-e ~=*_/inner-most/_*=~ line
-
-
-
-a *bold* line
-
-a ~=*/bold_italic/*=~ line
-
-
-中文​*bold*​测试
-
-
-
-
-** Plain Text
+This is a plain text.
 
 * Footnotes
 :PROPERTIES:
