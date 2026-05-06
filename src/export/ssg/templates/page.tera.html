@@ -22,7 +22,7 @@
   <link rel="stylesheet" href="/encre.css" />
   <link rel="stylesheet" href="/default.css" />  
 
-  {% if enable_tinydis %}
+  {% if enable_tinydis and enable_discussion %}
     <link rel="stylesheet" href="/assets/tinydis.css" />
   {% endif %}
 
@@ -120,6 +120,8 @@
     class="grid transition-all duration-300 ease grid-cols-1 px-[1%] gap-0 md:px-4 md:grid-cols-[1fr_3fr_1fr] grid-rows-1 print:block"
     role="main">
     {# toc-site sidebar #}
+
+    {% if enable_toc_site %}
     <label for="toggle-toc-site">
       <nav
         class="toc-site hidden z-[1000] sticky top-0 left-0 bg-gray-50 border-r border-gray-100 col-start-1 row-start-1 pl-2 pr-2 pt-6 pb-6 overflow-y-auto min-h-[97vh] print:hidden md:block max-w-xs md:max-w-sm lg:max-w-md transition-transform duration-300 shadow-[2px_0_10px_rgba(0,0,0,0.1)]"
@@ -130,6 +132,7 @@
         </div>
       </nav>
     </label>
+    {% endif %}
 
     {# article #}
     <article
@@ -138,15 +141,18 @@
       <header class="mb-8">
         <div
           class="article-container grid grid-cols-[1fr_3fr_1fr] grid-rows-[1fr] transition-all duration-300 ease z-[1001]">
+          {% if enable_toc_site %}
           <label for="toggle-toc-site" class="lg:hidden col-start-1 row-start-1 text-left">
             ☰
           </label>
+          {% endif %}
+          
           <div class="header-actions col-start-2 row-start-1">
             {# <form role="search" aria-label="search"> #}
               {# <input type="search" placeholder="Search..."> #}
               {# </form> #}
           </div>
-          {% if is_toc_page_has_content %}
+          {% if is_toc_page_has_content and enable_toc_page %}
             <label for="toggle-toc-page" class="lg:hidden col-start-3 row-start-1 text-right">
               📖
             </label>
@@ -189,7 +195,7 @@
         {{ content }}
       </div>
 
-      {% if enable_tinydis %}
+      {% if enable_tinydis and enable_discussion %}
         {% if id %}
           <div id="tinydis" data-page-id="{{id}}" data-server-url="{{tinydis_server_url}}"></div>
         {% else %}
@@ -230,7 +236,7 @@
     </article>
 
     {# toc page sidebar #}
-    {% if is_toc_page_has_content %}
+    {% if enable_toc_page and is_toc_page_has_content %}
     <label for="toggle-toc-page">
       <nav
         class="toc-page hidden z-[1000] sticky top-0 right-0 bg-gray-50 border-r border-gray-100 col-start-3 row-start-1 pl-2 pr-2 pt-6 pb-6 overflow-y-auto min-h-[97vh] print:hidden md:block max-w-xs md:max-w-sm lg:max-w-md transition-transform duration-300 shadow-[2px_0_10px_rgba(0,0,0,0.1)]">

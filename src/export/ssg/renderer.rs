@@ -441,6 +441,10 @@ impl Renderer {
             &self.config.automatic_equaiton_numbering,
         );
 
+        ctx.insert("enable_discussion", &page.enable_discussion);
+        ctx.insert("enable_toc_page", &page.enable_toc_page);
+        ctx.insert("enable_toc_site", &page.enable_toc_site);
+
         let content = self.render_org_file(&page.ast); // 7ms
         ctx.insert("content", &content);
 

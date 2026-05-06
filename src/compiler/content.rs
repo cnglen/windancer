@@ -281,6 +281,10 @@ pub struct DocumentMetadata {
     pub enable_render: bool, // only work for exporter
     pub in_search_index: bool,
 
+    pub enable_toc_site: bool,
+    pub enable_toc_page: bool,
+    pub enable_discussion: bool,
+
     // // // 🔥 Org-roam 核心属性
     // pub roam_node_id: Option<String>, // ID property of zeroth section
     // pub roam_alias: Vec<String>, // ROAM_ALIAS property of zeroth section
@@ -301,6 +305,9 @@ impl Default for DocumentMetadata {
             last_modified_ts: None,
             filetags: Vec::new(),
             category: Vec::new(),
+            enable_discussion: true,
+            enable_toc_page: true,
+            enable_toc_site: true,
             weight: None,
             language: None,
             is_draft: false,

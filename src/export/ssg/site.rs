@@ -42,6 +42,10 @@ pub struct Page {
     pub tags: HashSet<String>,
     pub category: Vec<String>,
 
+    pub enable_toc_site: bool,
+    pub enable_toc_page: bool,
+    pub enable_discussion: bool,
+
     pub created_ts: Option<DateTime<Local>>,
     pub last_modified_ts: Option<DateTime<Local>>,
 }
@@ -68,6 +72,10 @@ impl Page {
             syntax_tree: SyntaxNode::new_root(GreenNode::new(OrgSyntaxKind::Root.into(), vec![])),
 
             parent_id: None,
+
+            enable_discussion: true,
+            enable_toc_page: true,
+            enable_toc_site: true,
 
             prev_sibling_id: None,
             next_sibling_id: None,
@@ -293,6 +301,10 @@ impl SiteBuilder {
         let last_modified_ts = document.metadata.last_modified_ts;
         let created_ts = document.metadata.created_ts;
 
+        let enable_discussion = document.metadata.enable_discussion;
+        let enable_toc_page = document.metadata.enable_toc_page;
+        let enable_toc_site = document.metadata.enable_toc_site;
+
         let url = format!("/{}", document.html_path());
         let metadata = PageMetadata {};
 
@@ -334,6 +346,9 @@ impl SiteBuilder {
                 category,
                 parent_id,
                 children_ids,
+                enable_discussion,
+                enable_toc_page,
+                enable_toc_site,
                 prev_sibling_id,
                 next_sibling_id,
                 next_flattened_id,

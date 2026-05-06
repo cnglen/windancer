@@ -225,6 +225,34 @@ impl Compiler {
                     .contains("NIL")
             })
             .unwrap_or(true);
+        let enable_discussion = keyword
+            .remove("DISCUSSION")
+            .map(|e| {
+                !e.into_iter()
+                    .map(|ee| ee.to_uppercase())
+                    .collect::<HashSet<String>>()
+                    .contains("NIL")
+            })
+            .unwrap_or(true);
+        let enable_toc_site = keyword
+            .remove("TOC_SITE")
+            .map(|e| {
+                !e.into_iter()
+                    .map(|ee| ee.to_uppercase())
+                    .collect::<HashSet<String>>()
+                    .contains("NIL")
+            })
+            .unwrap_or(true);
+        let enable_toc_page = keyword
+            .remove("TOC_PAGE")
+            .map(|e| {
+                !e.into_iter()
+                    .map(|ee| ee.to_uppercase())
+                    .collect::<HashSet<String>>()
+                    .contains("NIL")
+            })
+            .unwrap_or(true);
+
         let created_ts = keyword.remove("DATE").map(|e| e.join("")).map(|e| {
             object::timestamp::FlexibleDateTimeParser::new()
                 .parse(e.as_str())
@@ -249,6 +277,9 @@ impl Compiler {
             extra: keyword,
             last_modified_ts,
             created_ts,
+            enable_toc_page,
+            enable_toc_site,
+            enable_discussion,
             ..DocumentMetadata::default()
         }
     }
