@@ -66,15 +66,16 @@ impl TableOfContents {
             node_to_html(node, active_slug, &mut html, max_depth);
         }
         html.push_str(r#"</ul></nav>"#);
+        html
 
-        // beatufity html
-        use tidier::{Doc, FormatOptions};
-        let opts = FormatOptions::new()
-            .wrap(80)
-            .tabs(false)
-            .strip_comments(false);
+        // // beatufity html
+        // use tidier::{Doc, FormatOptions};
+        // let opts = FormatOptions::new()
+        //     .wrap(80)
+        //     .tabs(false)
+        //     .strip_comments(false);
 
-        let doc = Doc::new(html, false).expect("todo");
-        doc.format(&opts).expect("todo")
+        // let doc = Doc::new(html, false).expect("todo");
+        // doc.format(&opts).expect("todo")
     }
 }
