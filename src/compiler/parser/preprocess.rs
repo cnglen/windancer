@@ -20,7 +20,7 @@ pub struct IncludeParams {
 pub(crate) fn include_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, IncludeParams, MyExtra<'a, C>>
 {
     let file_name = object::whitespaces_g1().ignore_then(choice((
-        none_of(" \t\n")
+        none_of("\"")
             .repeated()
             .at_least(1)
             .to_slice()
@@ -129,6 +129,7 @@ pub(crate) fn include_parser<'a, C: 'a>() -> impl Parser<'a, &'a str, IncludePar
                     }
                 }
 
+                tracing::trace!("file_name={}", file_name);
                 IncludeParams {
                     n_whitespace,
                     file_name: file_name.to_string(),
@@ -232,7 +233,7 @@ mod tests {
         let input = r##"#+INCLUDE: "~/.emacs" src emacs-lisp"##;
         let expected_output = r##"IncludeParams {
     n_whitespace: 0,
-    file_name: "\"~/.emacs\"",
+    file_name: "~/.emacs",
     block_name: Some(
         "src",
     ),
@@ -258,7 +259,7 @@ mod tests {
         let input = r##"#+INCLUDE: "~/my-book/chapter2.org" :minlevel 1"##;
         let expected_output = r##"IncludeParams {
     n_whitespace: 0,
-    file_name: "\"~/my-book/chapter2.org\"",
+    file_name: "~/my-book/chapter2.org",
     block_name: None,
     language: "org",
     min_level: Some(
@@ -284,7 +285,7 @@ mod tests {
         let input = r##"#+INCLUDE: "~/.emacs" :lines "5-10""##;
         let expected_output = r##"IncludeParams {
     n_whitespace: 0,
-    file_name: "\"~/.emacs\"",
+    file_name: "~/.emacs",
     block_name: None,
     language: "org",
     min_level: None,
@@ -312,7 +313,7 @@ mod tests {
         let input = r##"#+INCLUDE: "~/.emacs" :lines "-10" "##;
         let expected_output = r##"IncludeParams {
     n_whitespace: 0,
-    file_name: "\"~/.emacs\"",
+    file_name: "~/.emacs",
     block_name: None,
     language: "org",
     min_level: None,
@@ -338,7 +339,7 @@ mod tests {
         let input = r##"#+INCLUDE: "~/.emacs" :lines "10-" "##;
         let expected_output = r##"IncludeParams {
     n_whitespace: 0,
-    file_name: "\"~/.emacs\"",
+    file_name: "~/.emacs",
     block_name: None,
     language: "org",
     min_level: None,
@@ -364,7 +365,7 @@ mod tests {
         let input = r##"#+INCLUDE: "./paper.org::*conclusion" :lines "1-20" "##;
         let expected_output = r##"IncludeParams {
     n_whitespace: 0,
-    file_name: "\"./paper.org::*conclusion\"",
+    file_name: "./paper.org::*conclusion",
     block_name: None,
     language: "org",
     min_level: None,
@@ -392,7 +393,7 @@ mod tests {
         let input = r##"#+INCLUDE: "./paper.org::#theory" :only-contents t"##;
         let expected_output = r##"IncludeParams {
     n_whitespace: 0,
-    file_name: "\"./paper.org::#theory\"",
+    file_name: "./paper.org::#theory",
     block_name: None,
     language: "org",
     min_level: None,
@@ -401,6 +402,30 @@ mod tests {
         None,
     ),
     only_contents: true,
+}"##;
+        let (maybe_output, errors) = parser.parse(input).into_output_errors();
+        if let Some(output) = maybe_output {
+            assert_eq!(format!("{:#?}", output), expected_output);
+        } else {
+            panic!("{:?}", errors);
+        }
+    }
+
+    #[test]
+    fn test_include_08() {
+        let parser = include_parser::<()>();
+        let input = r##"#+INCLUDE: paper.org"##;
+        let expected_output = r##"IncludeParams {
+    n_whitespace: 0,
+    file_name: "paper.org",
+    block_name: None,
+    language: "org",
+    min_level: None,
+    lines: (
+        None,
+        None,
+    ),
+    only_contents: false,
 }"##;
         let (maybe_output, errors) = parser.parse(input).into_output_errors();
         if let Some(output) = maybe_output {

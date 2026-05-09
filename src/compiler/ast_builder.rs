@@ -2439,8 +2439,24 @@ impl Converter {
             .flatten()
             .collect::<Vec<_>>();
 
-        self.keywords
-            .insert(key.to_uppercase().clone(), value.clone()); // override! better method?
+        match key.to_ascii_uppercase().as_str() {
+            e if e == "HTML_HEAD" || e == "HTML_HEAD_EXTRA" => {
+                if self.keywords.contains_key(e) {
+                    self.keywords
+                        .get_mut(e)
+                        .expect("should have HTML_HEAD")
+                        .extend(value.clone());
+                } else {
+                    self.keywords
+                        .insert(key.to_uppercase().clone(), value.clone());
+                }
+            }
+            _ => {
+                self.keywords
+                    .insert(key.to_uppercase().clone(), value.clone()); // override! better method?
+            }
+        }
+
         Ok(Keyword { key, value })
     }
 

@@ -253,6 +253,16 @@ impl Compiler {
             })
             .unwrap_or(true);
 
+        let enable_section_number = keyword
+            .remove("SECTION_NUMBER")
+            .map(|e| {
+                !e.into_iter()
+                    .map(|ee| ee.to_uppercase())
+                    .collect::<HashSet<String>>()
+                    .contains("NIL")
+            })
+            .unwrap_or(true);
+
         let created_ts = keyword.remove("DATE").map(|e| e.join("")).map(|e| {
             object::timestamp::FlexibleDateTimeParser::new()
                 .parse(e.as_str())
@@ -280,6 +290,7 @@ impl Compiler {
             enable_toc_page,
             enable_toc_site,
             enable_discussion,
+            enable_section_number,
             ..DocumentMetadata::default()
         }
     }
@@ -317,13 +328,13 @@ impl Compiler {
             // tracing::debug!("compile_section: {}", path.display());
             let filename = path.file_name().expect("xx").to_string_lossy().to_string();
 
-            if path.is_dir() && (!filename.starts_with(['.', '#'])) {
+            if path.is_dir() && (!filename.starts_with(['.', '#', '_'])) {
                 if Self::has_org_file(&path) {
                     tracing::debug!("compile_section@dir: {}", path.display());
                     subsections.push(self.compile_section(path.as_path(), d_base.as_ref())?);
                 }
             } else if path.extension() == Some(OsStr::new("org"))
-                && (!filename.starts_with(['.', '#']))
+                && (!filename.starts_with(['.', '#', '_']))
             {
                 tracing::debug!("compile_section@org: {}", path.display());
 

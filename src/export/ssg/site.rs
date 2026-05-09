@@ -45,6 +45,7 @@ pub struct Page {
     pub enable_toc_site: bool,
     pub enable_toc_page: bool,
     pub enable_discussion: bool,
+    pub enable_section_number: bool,
 
     pub created_ts: Option<DateTime<Local>>,
     pub last_modified_ts: Option<DateTime<Local>>,
@@ -76,6 +77,7 @@ impl Page {
             enable_discussion: true,
             enable_toc_page: true,
             enable_toc_site: true,
+            enable_section_number: true,
 
             prev_sibling_id: None,
             next_sibling_id: None,
@@ -304,6 +306,7 @@ impl SiteBuilder {
         let enable_discussion = document.metadata.enable_discussion;
         let enable_toc_page = document.metadata.enable_toc_page;
         let enable_toc_site = document.metadata.enable_toc_site;
+        let enable_section_number = document.metadata.enable_section_number;
 
         let url = format!("/{}", document.html_path());
         let metadata = PageMetadata {};
@@ -349,6 +352,7 @@ impl SiteBuilder {
                 enable_discussion,
                 enable_toc_page,
                 enable_toc_site,
+                enable_section_number,
                 prev_sibling_id,
                 next_sibling_id,
                 next_flattened_id,

@@ -1,0 +1,18 @@
+* history
+
+** SSG
+
+config suppports: SECTION_NUMBER
+#+begin_example
+#+SECTION_NUMBER: nil
+#+end_example
+
+file name starswith _ are ignored, such as _foo.org
+
+html head supported: #+HTML_HEAD, #+HTML_HEAD_EXTRA supported
+
+css: 不区分mobile, 默认隐藏toc, 点击展开
+
+** AST
+
+value of keywords named #+HTML_HEAD/#+HTML_HEAD_EXTRA are collected into vec, rather than override

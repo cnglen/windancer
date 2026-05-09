@@ -284,6 +284,7 @@ pub struct DocumentMetadata {
     pub enable_toc_site: bool,
     pub enable_toc_page: bool,
     pub enable_discussion: bool,
+    pub enable_section_number: bool,
 
     // // // 🔥 Org-roam 核心属性
     // pub roam_node_id: Option<String>, // ID property of zeroth section
@@ -308,6 +309,7 @@ impl Default for DocumentMetadata {
             enable_discussion: true,
             enable_toc_page: true,
             enable_toc_site: true,
+            enable_section_number: true,
             weight: None,
             language: None,
             is_draft: false,

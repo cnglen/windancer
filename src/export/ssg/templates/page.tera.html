@@ -66,15 +66,14 @@
   - unchecked: shown
   #}
   <style>
-    @media (max-width: 768px) {
-
+    @media (max-width: 9768px) {
       .toc-site,
       .toc-page {
         display: none !important;
         position: fixed;
         top: 0;
         bottom: 0;
-        width: 280px;
+        width: max(280px, 25%);
         z-index: 1000;
         transition: transform 0.3s ease;
       }
@@ -102,6 +101,14 @@
     }
   </style>
 
+  {% if html_head %}
+    {{html_head}}
+  {% endif %}
+
+  {% if html_head_extra %}
+    {{html_head_extra}}
+  {% endif %}    
+  
   {% include "site_header.tera.html" ignore missing %}
 </head>
 
@@ -126,7 +133,6 @@
       <nav
         class="toc-site hidden z-[1000] sticky top-0 left-0 bg-gray-50 border-r border-gray-100 col-start-1 row-start-1 pl-2 pr-2 pt-6 pb-6 overflow-y-auto min-h-[97vh] print:hidden md:block max-w-xs md:max-w-sm lg:max-w-md transition-transform duration-300 shadow-[2px_0_10px_rgba(0,0,0,0.1)]"
         aria-label="site-navigation" role="navigation">
-        <div title="site navigation">☰</div>
         <div id="text-table-of-contents" role="doc-toc">
           {{ toc }}
         </div>
@@ -142,7 +148,7 @@
         <div
           class="article-container grid grid-cols-[1fr_3fr_1fr] grid-rows-[1fr] transition-all duration-300 ease z-[1001]">
           {% if enable_toc_site %}
-          <label for="toggle-toc-site" class="lg:hidden col-start-1 row-start-1 text-left">
+          <label for="toggle-toc-site" class="col-start-1 row-start-1 text-left" title="Toggle TOC of site">
             ☰
           </label>
           {% endif %}
@@ -153,7 +159,7 @@
               {# </form> #}
           </div>
           {% if is_toc_page_has_content and enable_toc_page %}
-            <label for="toggle-toc-page" class="lg:hidden col-start-3 row-start-1 text-right">
+            <label for="toggle-toc-page" class="col-start-3 row-start-1 text-right" title="Toggle TOC of page">
               📖
             </label>
           {% endif %}
@@ -241,7 +247,6 @@
       <nav
         class="toc-page hidden z-[1000] sticky top-0 right-0 bg-gray-50 border-r border-gray-100 col-start-3 row-start-1 pl-2 pr-2 pt-6 pb-6 overflow-y-auto min-h-[97vh] print:hidden md:block max-w-xs md:max-w-sm lg:max-w-md transition-transform duration-300 shadow-[2px_0_10px_rgba(0,0,0,0.1)]">
         <div id="table-of-contents" role="doc-toc">
-          <div title="page outline"> 📖 </div>
           <div id="text-table-of-contents" role="doc-toc">
             {{ toc_of_current_page }}
           </div>

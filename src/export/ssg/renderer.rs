@@ -416,6 +416,25 @@ impl Renderer {
         let id = page.ast.properties.get("ID");
         ctx.insert("id", &id);
 
+        let html_head = page
+            .ast
+            .keywords
+            .get("HTML_HEAD")
+            .unwrap_or(&vec![])
+            .iter()
+            .map(|e| self.render_object_without_escaple(e))
+            .collect::<String>();
+        let html_head_extra = page
+            .ast
+            .keywords
+            .get("HTML_HEAD_EXTRA")
+            .unwrap_or(&vec![])
+            .iter()
+            .map(|e| self.render_object_without_escaple(e))
+            .collect::<String>();
+        ctx.insert("html_head", &html_head);
+        ctx.insert("html_head_extra", &html_head_extra);
+
         let is_home = page.url == "/index.html";
         ctx.insert("is_home", &is_home);
 
@@ -445,7 +464,7 @@ impl Renderer {
         ctx.insert("enable_toc_page", &page.enable_toc_page);
         ctx.insert("enable_toc_site", &page.enable_toc_site);
 
-        let content = self.render_org_file(&page.ast); // 7ms
+        let content = self.render_org_file(&page.ast, page.enable_section_number); // 7ms
         ctx.insert("content", &content);
 
         let toc = self.get_toc_of_page(page);
@@ -492,7 +511,7 @@ impl Renderer {
     }
 
     // todo: use tera template
-    fn render_org_file(&mut self, org_file: &OrgFile) -> String {
+    fn render_org_file(&mut self, org_file: &OrgFile, enable_section_number: bool) -> String {
         self.context.prev_head_level = vec![0];
 
         self.footnote_defintions = org_file.footnote_definitions.clone();
@@ -504,7 +523,7 @@ impl Renderer {
         }
 
         for subtree in &org_file.heading_subtrees {
-            output.push_str(&self.render_heading_subtree(subtree));
+            output.push_str(&self.render_heading_subtree(subtree, enable_section_number));
         }
 
         output
@@ -518,7 +537,7 @@ impl Renderer {
             .collect::<String>()
     }
 
-    fn render_heading_subtree(&mut self, heading: &HeadingSubtree) -> String {
+    fn render_heading_subtree(&mut self, heading: &HeadingSubtree, use_index: bool) -> String {
         if heading.level > self.context.prev_head_level.len() as u8 {
             self.context.prev_head_level.push(1);
         } else if heading.level == self.context.prev_head_level.len() as u8 {
@@ -531,7 +550,7 @@ impl Renderer {
             let tmp = self.context.prev_head_level.pop().unwrap();
             self.context.prev_head_level.push(tmp + 1);
         }
-        let index = self
+        let mut index = self
             .context
             .prev_head_level
             .iter()
@@ -605,12 +624,16 @@ impl Renderer {
             let children_html: Vec<String> = heading
                 .sub_heading_subtrees
                 .iter()
-                .map(|child| self.render_heading_subtree(child))
+                .map(|child| self.render_heading_subtree(child, use_index))
                 .collect();
             format!("\n{}", children_html.join(""))
         } else {
             String::new()
         };
+
+        if !use_index {
+            index = String::from("");
+        }
 
         format!(
             r##"<section class="outline-{level}">
@@ -1305,6 +1328,11 @@ impl Renderer {
         // title has been rendered in render_org_file() with id
         match keyword.key.to_ascii_uppercase().as_str() {
             "TITLE" => String::new(),
+            "HTML" => keyword
+                .value
+                .iter()
+                .map(|e| self.render_object_without_escaple(e))
+                .collect::<String>(),
             _ => String::new(),
         }
     }
