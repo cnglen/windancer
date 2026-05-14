@@ -3,6 +3,7 @@ mod engine;
 pub mod renderer;
 pub mod site;
 pub mod toc;
+pub mod util;
 pub mod view_model;
 use std::fs;
 use std::path::Path;

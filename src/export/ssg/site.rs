@@ -16,6 +16,7 @@ use crate::compiler::ast_builder::element::{Id, OrgFile};
 use crate::compiler::content::{Document, Section};
 use crate::compiler::parser::syntax::{OrgSyntaxKind, SyntaxNode};
 use crate::export::ssg::toc::{TableOfContents, TocNode};
+use crate::export::ssg::util::slugify_to_path;
 
 #[allow(dead_code)]
 #[derive(Clone)]
@@ -485,11 +486,13 @@ impl SiteBuilder {
                     && from.extension() != Some(std::ffi::OsStr::new("org"))
                     && (!from_filename.starts_with(['.', '#']))
                     && (!from_filename.ends_with("_ast.json"))
+                    && (!from_filename.ends_with(".md"))
                     && (!from_filename.ends_with("_syntax.json"))
                 {
-                    let to_directory = self
-                        .output_directory
-                        .join(relative_directories_vec.join("/"));
+                    let to_directory = slugify_to_path(
+                        self.output_directory
+                            .join(relative_directories_vec.join("/")),
+                    );
                     if !to_directory.is_dir() {
                         std::fs::create_dir_all(&to_directory)?;
                     }

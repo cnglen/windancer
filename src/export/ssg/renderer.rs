@@ -294,13 +294,6 @@ impl Renderer {
         }
     }
 
-    pub fn slugify(s: String) -> String {
-        s.to_ascii_lowercase()
-            .split(&['-', '_', ' '])
-            .collect::<Vec<_>>()
-            .join("-")
-    }
-
     pub fn new<'a>(
         config: RendererConfig,
         input_directory: &'a str,

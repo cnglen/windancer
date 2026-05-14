@@ -15,7 +15,7 @@ use petgraph::graph::{DiGraph, NodeIndex};
 use crate::compiler::ast_builder::element::OrgFile;
 use crate::compiler::org_roam::{EdgeType, RoamGraph, RoamNode};
 use crate::compiler::parser::syntax::SyntaxNode;
-use crate::export::ssg::renderer::Renderer; // remove to exporter?
+use crate::export::ssg::util::slugify_to_string;
 
 /// A single directory is compiled to a section, which:
 /// - includes several documents and subsections
@@ -128,12 +128,12 @@ impl Document {
             );
             "".to_string()
         };
-        let directory = Renderer::slugify(directory);
+        let directory = slugify_to_string(directory);
 
         let html_file_name = if self.file_info.maybe_index {
             "index.html".to_string()
         } else {
-            Renderer::slugify(self.file_info.file_name.replace(".org", ".html"))
+            slugify_to_string(self.file_info.file_name.replace(".org", ".html"))
         };
 
         std::path::Path::new(&directory)
