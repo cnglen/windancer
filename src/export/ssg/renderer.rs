@@ -331,14 +331,19 @@ impl Renderer {
         for (_id, page) in site.pages.iter() {
             self.render_page(page).expect("render_page should success");
 
-            let mut url = SitemapUrl::builder(
-                Url::parse(&site.config.base_url)
-                    .context("`ssg.site.base_url` is not configured")
-                    .expect("base url")
-                    .join(&page.url)
-                    .expect("full url")
-                    .to_string(),
-            );
+            let raw_url = Url::parse(&site.config.base_url)
+                .context("`ssg.site.base_url` is not configured")
+                .expect("base url")
+                .join(&page.url)
+                .expect("full url")
+                .to_string();
+
+            let clean_url = match raw_url.strip_suffix("index.html") {
+                Some(prefix) => prefix.to_string(),
+                None => raw_url,
+            };
+            
+            let mut url = SitemapUrl::builder(clean_url);
             if let Some(last_modified_local) = page.last_modified_ts {
                 url.last_modified(last_modified_local.with_timezone(last_modified_local.offset()));
             }
