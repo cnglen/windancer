@@ -342,7 +342,7 @@ impl Renderer {
                 Some(prefix) => prefix.to_string(),
                 None => raw_url,
             };
-            
+
             let mut url = SitemapUrl::builder(clean_url);
             if let Some(last_modified_local) = page.last_modified_ts {
                 url.last_modified(last_modified_local.with_timezone(last_modified_local.offset()));
