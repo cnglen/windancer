@@ -559,7 +559,7 @@ impl SiteBuilder {
 
         // update next_sibling_id and prev_sibling_id
         let mut siblings = vec![];
-        for (_id, page) in self.pages.iter() {
+        for page in self.pages.values() {
             if page.children_ids.len() >= 2 {
                 siblings.push(page.children_ids.clone());
             }
@@ -695,7 +695,7 @@ impl SiteBuilder {
                 .collect::<Vec<_>>();
             let faked_root_page_id = PageId::from("FAKED_ROOT_ID");
             let faked_root = Page::faked(faked_root_page_id.clone(), children_ids); // root_page -children-> children
-            for (_id, page) in self.pages.iter_mut() {
+            for page in self.pages.values_mut() {
                 if page.parent_id.is_none() {
                     page.parent_id = Some(faked_root_page_id.clone()); // root_page <-parent- children
                 }

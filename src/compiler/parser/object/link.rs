@@ -276,7 +276,7 @@ pub(crate) fn regular_link_parser_inner<'a, C: 'a>(
         .then(
             any()
                 .filter(|c: &char| {
-                    (c.is_alphanumeric() || matches!(c, '.' | '/' | ':' | '@'))
+                    (c.is_alphanumeric() || matches!(c, '.' | '/' | ':' | '@' | '-'))
                         && (*c != '[')
                         && (*c != ']')
                 })

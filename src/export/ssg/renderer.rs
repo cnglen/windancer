@@ -328,7 +328,7 @@ impl Renderer {
         self.context.roamid_to_url = site.knowledge_graph.id_to_url.clone();
 
         let mut sitemap_urls: Vec<SitemapUrl> = vec![];
-        for (_id, page) in site.pages.iter() {
+        for page in site.pages.values() {
             self.render_page(page).expect("render_page should success");
 
             let raw_url = Url::parse(&site.config.base_url)
@@ -843,7 +843,7 @@ impl Renderer {
 
                 if protocol == "fuzzy" {
                     if path.starts_with("./") || path.starts_with("/") {
-                        format!(r##"<a href="{}">{}</a>"##, path, desc) 
+                        format!(r##"<a href="{}">{}</a>"##, path, desc)
                     } else {
                         format!(r##"<a href="#{}">{}</a>"##, path, desc)
                     }
