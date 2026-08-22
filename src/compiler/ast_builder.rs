@@ -1407,11 +1407,12 @@ impl Converter {
 
     // object.link
     fn parse_pathreg(s: String) -> (String, String) {
-        if s.starts_with("./") {
-            ("file".to_string(), s.replacen("./", "file:./", 1))
-        } else if s.starts_with("/") {
-            ("file".to_string(), s.replacen("/", "file:/", 1))
-        } else if s.starts_with("#") {
+        // if s.starts_with("./") {
+        //     ("file".to_string(), s.replacen("./", "file:./", 1))
+        // } else if s.starts_with("/") {
+        //     ("file".to_string(), s.replacen("/", "file:/", 1))
+        // } else
+        if s.starts_with("#") {
             ("custom_id".to_string(), s)
         } else if s.starts_with("(") && s.ends_with(")") {
             ("coderef".to_string(), s)

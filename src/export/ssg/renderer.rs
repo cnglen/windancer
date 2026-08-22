@@ -842,7 +842,11 @@ impl Renderer {
                 };
 
                 if protocol == "fuzzy" {
-                    format!(r##"<a href="#{}">{}</a>"##, path, desc)
+                    if path.starts_with("./") || path.starts_with("/") {
+                        format!(r##"<a href="{}">{}</a>"##, path, desc) 
+                    } else {
+                        format!(r##"<a href="#{}">{}</a>"##, path, desc)
+                    }
                 } else if description.is_empty() && *is_image {
                     let path_html = if path.starts_with("file:") {
                         path.strip_prefix("file:").unwrap()

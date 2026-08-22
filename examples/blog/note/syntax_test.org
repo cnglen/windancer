@@ -849,7 +849,9 @@ CLOSED: [2026-04-27 Mon 18:55]
   - with description [[https://www.baidu.com][baidu]];
   - without description [[https://google.com]]
   - description with objects [[http://foo.bar][\alpha *bold* $a+b$ foo]];
-  - fuzzy internal [[target]]
+  - fuzzy
+    - internal [[target]]
+    - relative link [[./editor/emacs.html][emacs]]
 
 - plain link:
   - https://plainlink.org
